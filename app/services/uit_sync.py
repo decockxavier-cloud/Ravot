@@ -30,17 +30,16 @@ def fetch_events(page_start=0, limit=50):
     gezinsgericht (Vlieg-label OF typicalAgeRange die kinderen dekt)."""
     cfg = current_app.config
     params = {
-        "apiKey": cfg["UIT_API_KEY"],
+        "clientId": cfg["UIT_API_KEY"],  # publiq Search API: client id als query-param
         "start": page_start,
         "limit": limit,
-        "workflowStatus": "APPROVED",
-        "audienceType": "everyone",
-        "dateFrom": datetime.utcnow().strftime("%Y-%m-%dT00:00:00%z") or datetime.utcnow().isoformat(),
-        "q": '(labels:"UiT met Vlieg" OR typicalAgeRange:[0 TO 12])',
         "embed": "true",
         "addressCountry": "BE",
+        "q": "typicalAgeRange:[0 TO 12]",  # gezinsgericht; Vlieg-label bestaat niet op test
     }
-    resp = requests.get(f"{cfg['UIT_SEARCH_URL']}/events", params=params, timeout=30)
+    headers = {"Accept": "application/ld+json"}
+    resp = requests.get(f"{cfg['UIT_SEARCH_URL']}/events", params=params,
+                        headers=headers, timeout=30)
     resp.raise_for_status()
     return resp.json()
 
@@ -101,7 +100,12 @@ def normalise(item):
     addr = ((loc.get("address") or {}).get("nl")
             or (loc.get("address") or {})) or {}
     geo = loc.get("geo") or {}
-    terms = [(_first_nl(t.get("label")) or "").lower() for t in item.get("terms", [])]
+    terms = []
+    for t in item.get("terms", []) or []:
+        lbl = t.get("label")
+        lbl = _first_nl(lbl) if isinstance(lbl, dict) else lbl
+        if lbl:
+            terms.append(str(lbl).lower())
     cats = sorted({v for term in terms for k, v in THEME_MAP.items() if k in term}) or ["buiten"]
     indoor = any(t in " ".join(terms) for t in INDOOR_TYPES)
     lo, hi = parse_age_range(item.get("typicalAgeRange"))
@@ -205,6 +209,25 @@ def update_centroids():
         db.session.add(pc)
 
 
+def backfill_geo_from_postcode():
+    """Events zonder eigen coördinaten (komt voor in testdata en soms live)
+    krijgen de coördinaten van hun postcode-zwaartepunt, zodat kaart en
+    afstandsberekening blijven werken."""
+    from ..postcodes import POSTCODE_COORDS
+    # 1) events zonder geo maar met postcode → centroid of ingebouwde tabel
+    events = Event.query.filter(Event.lat.is_(None), Event.postcode.isnot(None)).all()
+    filled = 0
+    for ev in events:
+        pc = db.session.get(PostcodeCentroid, ev.postcode)
+        if pc and pc.lat:
+            ev.lat, ev.lng = pc.lat, pc.lng
+            filled += 1
+        elif ev.postcode in POSTCODE_COORDS:
+            ev.lat, ev.lng = POSTCODE_COORDS[ev.postcode]
+            filled += 1
+    return filled
+
+
 def run_sync(max_pages=200, page_size=50):
     """Volledige nachtelijke sync. Retourneert aantal verwerkte events."""
     total = 0
@@ -223,5 +246,8 @@ def run_sync(max_pages=200, page_size=50):
         if len(members) < page_size:
             break
     update_centroids()
+    db.session.commit()
+    backfill_geo_from_postcode()   # kaart werkt ook bij events zonder eigen geo
+    update_centroids()             # nu ook centroids voor die opgevulde postcodes
     db.session.commit()
     return total
