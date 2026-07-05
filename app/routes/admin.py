@@ -16,10 +16,23 @@ from ..models import Admin, AuditLog, Event, Family, Interaction, Review
 bp = Blueprint("admin", __name__, url_prefix="/beheer")
 
 
+def _huidige_admin():
+    """Admin uit de sessie, of None als de sessie verweesd/ongeldig is.
+    Maakt een kapotte sessie meteen leeg zodat de app nooit vastloopt."""
+    aid = session.get("admin_id")
+    if not aid:
+        return None
+    admin = db.session.get(Admin, aid)
+    if admin is None:  # sessie verwijst naar niet-bestaande admin → opruimen
+        session.pop("admin_id", None)
+        session.pop("admin_2fa_ok", None)
+    return admin
+
+
 def admin_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
-        if not session.get("admin_id") or not session.get("admin_2fa_ok"):
+        if not _huidige_admin() or not session.get("admin_2fa_ok"):
             return redirect(url_for("admin.login"))
         return f(*args, **kwargs)
     return wrapper
@@ -33,6 +46,12 @@ def audit(action):
 @bp.route("/login", methods=["GET", "POST"])
 @limiter.limit("10/hour", methods=["POST"])
 def login():
+    if request.method == "GET":
+        # Schone start: ruim een half-ingelogde of verweesde sessie op,
+        # zodat een oude cookie je nooit blokkeert (geen incognito nodig).
+        if not session.get("admin_2fa_ok"):
+            session.pop("admin_id", None)
+            session.pop("admin_2fa_ok", None)
     if request.method == "POST":
         admin = Admin.query.filter_by(email=request.form.get("email", "").lower().strip()).first()
         ok = False
@@ -42,6 +61,7 @@ def login():
             except VerifyMismatchError:
                 ok = False
         if ok:
+            session.clear()  # verse sessie, geen resten van een oude cookie
             session["admin_id"] = admin.id
             session["admin_2fa_ok"] = False
             # Nog geen bevestigde 2FA → verplichte enrollment met QR-code.
@@ -59,7 +79,7 @@ def tweefa_instellen():
     Bereikbaar na wachtwoord-login, zolang totp_confirmed nog False is."""
     if not session.get("admin_id"):
         return redirect(url_for("admin.login"))
-    admin = db.session.get(Admin, session["admin_id"])
+    admin = _huidige_admin()
     if admin is None:
         return redirect(url_for("admin.login"))
     if admin.totp_confirmed:  # al ingesteld → niets te doen hier
@@ -98,7 +118,7 @@ def tweefa_instellen():
 def otp():
     if not session.get("admin_id"):
         return redirect(url_for("admin.login"))
-    admin = db.session.get(Admin, session["admin_id"])
+    admin = _huidige_admin()
     if admin is None:
         return redirect(url_for("admin.login"))
     if not admin.totp_confirmed:  # nog niet ingeschreven → naar QR-flow

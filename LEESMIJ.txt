@@ -1,15 +1,34 @@
-RAVOT — QR-code werkend (PNG i.p.v. SVG)
+RAVOT — Admin login definitief werkend (QR + geen vastloper)
+=============================================================
 
-De QR-code wordt nu als PNG gegenereerd: puur zwart-wit, hoog contrast, ruime
-witrand. Machinaal geverifieerd dat hij correct decodeert naar je TOTP-secret,
-dus scanners lezen hem betrouwbaar (de vorige SVG-versie deed dat niet altijd).
+Dit pakket bevat BEIDE laatste fixes samen, zodat je maar één keer hoeft uit te rollen:
 
-Op de VPS na git pull:
+1) QR-CODE ALS PNG (scanbaar):
+   De QR wordt nu als puur zwart-wit PNG gegenereerd met ruime witrand.
+   Machinaal geverifieerd dat hij correct decodeert naar je TOTP-secret.
+   De vorige SVG (donkergroen op crème) had te weinig contrast om te scannen.
+
+2) GEEN INCOGNITO MEER NODIG:
+   Na het vernieuwen van de SECRET_KEY vandaag waren oude sessie-cookies ongeldig,
+   waardoor de adminpagina's vastliepen in je gewone browser.
+   - Login-pagina ruimt een half-ingelogde sessie automatisch op.
+   - Geslaagde login start met een volledig verse sessie.
+   - Een sessie naar een niet-bestaande admin crasht niet meer.
+
+UITROLLEN op de VPS na git pull:
   docker compose up -d --build
 (geen migratie nodig)
 
-Daarna: /beheer → inloggen → QR scannen (tijdgebaseerd/TOTP) → code → binnen.
+DAARNA — gewoon in je NORMALE browser:
+  1. Ga naar ravot.be/beheer
+  2. Log in met e-mail + wachtwoord (decock.xavier@gmail.com)
+  3. Scan de QR met je authenticator-app -> kies TIJDGEBASEERD (TOTP)
+  4. Typ de code -> je bent binnen
+
+TIP: staat de pagina op je telefoon EN je authenticator-app ook? Dan kan de
+camera zijn eigen scherm niet scannen. Zet de pagina dan op je pc open en scan
+met je telefoon (of gebruik de handmatige sleutel als tijdgebaseerd).
 
 Gewijzigd:
-  app/routes/admin.py         (QR als PNG data-URI, puur zwart-wit)
-  app/static/css/ravot.css    (img gecentreerd)
+  app/routes/admin.py         (PNG-QR + robuuste sessie-afhandeling)
+  app/static/css/ravot.css    (QR gecentreerd)
