@@ -76,13 +76,19 @@ def tweefa_instellen():
             return redirect(url_for("admin.dashboard"))
         flash("Die code klopt niet. Scan de QR opnieuw en probeer een verse code.", "error")
 
-    # QR-code (SVG) server-side genereren — niets externs, geen tracking.
+    # QR-code server-side genereren als PNG data-URI (puur zwart-wit = best
+    # leesbaar voor scanners), niets externs, geen tracking.
+    import io
+    import base64
     import segno
     uri = pyotp.TOTP(admin.totp_secret).provisioning_uri(
         name=admin.email, issuer_name="Ravot Beheer")
     qr = segno.make(uri, error="m")
-    svg = qr.svg_inline(scale=5, border=2, dark="#1F3A2A", light="#ffffff")
-    return render_template("admin/tweefa_instellen.html", qr_svg=svg,
+    buf = io.BytesIO()
+    qr.save(buf, kind="png", scale=8, border=4, dark="#000000", light="#ffffff")
+    b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+    qr_svg = f'<img src="data:image/png;base64,{b64}" alt="QR-code voor 2FA" width="240" height="240">'
+    return render_template("admin/tweefa_instellen.html", qr_svg=qr_svg,
                            secret=admin.totp_secret, title="Stel 2FA in",
                            family=None, active=None)
 

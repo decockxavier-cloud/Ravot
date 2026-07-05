@@ -1,15 +1,15 @@
-RAVOT — QR-code uitlijning fix (cosmetisch)
+RAVOT — QR-code werkend (PNG i.p.v. SVG)
 
-Centreert de QR-code netjes in zijn kader en geeft hem een nette rand
-(quiet zone) zodat scanners hem betrouwbaarder lezen.
-
-BELANGRIJK: stel eerst je 2FA in met de HUIDIGE (scanbare) QR voordat je dit
-uitrolt — de code werkt al, dit is enkel opmaak. Rol daarna gerust uit.
+De QR-code wordt nu als PNG gegenereerd: puur zwart-wit, hoog contrast, ruime
+witrand. Machinaal geverifieerd dat hij correct decodeert naar je TOTP-secret,
+dus scanners lezen hem betrouwbaar (de vorige SVG-versie deed dat niet altijd).
 
 Op de VPS na git pull:
   docker compose up -d --build
-(geen migratie nodig; puur front-end + één regel in de route)
+(geen migratie nodig)
+
+Daarna: /beheer → inloggen → QR scannen (tijdgebaseerd/TOTP) → code → binnen.
 
 Gewijzigd:
-  app/routes/admin.py         (QR met border, scale 5)
-  app/static/css/ravot.css    (QR gecentreerd)
+  app/routes/admin.py         (QR als PNG data-URI, puur zwart-wit)
+  app/static/css/ravot.css    (img gecentreerd)
