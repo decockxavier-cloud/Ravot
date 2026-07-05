@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block body_class %}met-sfeer{% endblock %}
+{% block content %}
+<h1>Ontdek alles 🔭</h1>
+
+{% if not has_profile %}
+<div class="personaliseer-banner">
+  <div>
+    <strong>Zie wat bij jouw gezin past</strong>
+    <p>Vul je postcode en de leeftijd van je kinderen in — dan sorteren we op maat.</p>
+  </div>
+  <a class="btn btn-zon" href="{{ url_for('public.proberen') }}">Personaliseer →</a>
+</div>
+{% endif %}
+
+<form method="get" action="{{ url_for('public.ontdek') }}" class="zoekrij" id="ontdek-zoek">
+  <input type="search" name="q" value="{{ zoek }}" class="zoekveld"
+         placeholder="🔍 Zoek op naam of gemeente…" aria-label="Zoek">
+  <input type="hidden" name="sort" value="{{ sort }}">
+</form>
+
+<div class="filterbalk" role="group" aria-label="Sorteren">
+  <a class="filterchip {{ 'aan' if sort=='score' }}" href="{{ url_for('public.ontdek', sort='score', q=zoek) }}">😄 Best gescoord</a>
+  <a class="filterchip {{ 'aan' if sort=='datum' }}" href="{{ url_for('public.ontdek', sort='datum', q=zoek) }}">📅 Eerst gepland</a>
+  <a class="filterchip {{ 'aan' if sort=='gratis' }}" href="{{ url_for('public.ontdek', sort='gratis', q=zoek) }}">🆓 Gratis</a>
+</div>
+<p class="resultaat-teller">{{ rows|length }} activiteiten</p>
+
+{% if rows %}
+  {% for r in rows %}{% set e = r.event %}
+    {% include "public/_kaart.html" %}
+  {% endfor %}
+{% else %}
+  <div class="card leeg"><span class="groot-emoji">🔍</span>
+    <p>Niets gevonden. Probeer een andere zoekterm of <a href="{{ url_for('public.ontdek') }}">toon alles</a>.</p></div>
+{% endif %}
+{% endblock %}

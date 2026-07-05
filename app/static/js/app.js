@@ -91,7 +91,7 @@ document.addEventListener("click", function (e) {
 
 // Deelknop op eventpagina (native share, met kopieer-fallback)
 document.addEventListener("click", function (e) {
-  var btn = e.target.closest("#deel");
+  var btn = e.target.closest("#deel, .deel-knop");
   if (!btn) return;
   var data = { title: btn.dataset.titel, text: "Leuk voor het gezin: " + btn.dataset.titel, url: btn.dataset.url };
   if (navigator.share) {

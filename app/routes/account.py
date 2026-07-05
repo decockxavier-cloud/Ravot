@@ -76,6 +76,7 @@ def onboarding():
 @bp.route("/profiel", methods=["GET", "POST"])
 @login_required
 def profiel():
+    """Mijn Ravot — dashboard met bewaard, te reviewen, scores en vrienden."""
     fam = me()
     if request.method == "POST":
         fam.postcode = request.form.get("postcode", fam.postcode).strip()[:4]
@@ -91,11 +92,59 @@ def profiel():
                 db.session.add(Child(family_id=fam.id, birth_year=current_year - int(a)))
         db.session.commit()
         flash("Profiel bewaard.", "ok")
-        return redirect(url_for("account.profiel"))
-    saved = SavedEvent.query.filter_by(family_id=fam.id).order_by(SavedEvent.created_at.desc()).all()
-    return render_template("account/profiel.html", family=fam, saved=saved,
-                           categories=CATEGORIES, current_year=datetime.now(timezone.utc).year,
+        return redirect(url_for("account.instellingen"))
+
+    now = datetime.utcnow()
+    # Bewaarde activiteiten (komende eerst)
+    saved_rows = SavedEvent.query.filter_by(family_id=fam.id) \
+        .order_by(SavedEvent.created_at.desc()).all()
+    bewaard = [s.event for s in saved_rows if s.event]
+    bewaard_komend = [e for e in bewaard if not e.start or e.start >= now]
+    bewaard_voorbij = [e for e in bewaard if e.start and e.start < now]
+
+    # Te reviewen: bewaarde events die al voorbij zijn en nog geen review kregen
+    reeds = {r.event_id for r in Review.query.filter_by(family_id=fam.id)}
+    te_reviewen = [e for e in bewaard_voorbij if e.id not in reeds]
+
+    # Eigen gegeven Ravotscores
+    mijn_reviews = Review.query.filter_by(family_id=fam.id) \
+        .order_by(Review.created_at.desc()).limit(20).all()
+
+    # Vrienden
+    from ..models import Connection
+    conns = Connection.query.filter(
+        db.or_(Connection.family_a == fam.id, Connection.family_b == fam.id)).all()
+
+    return render_template("account/mijn_ravot.html", family=fam,
+                           bewaard_komend=bewaard_komend, bewaard_voorbij=bewaard_voorbij,
+                           te_reviewen=te_reviewen, mijn_reviews=mijn_reviews,
+                           aantal_vrienden=len(conns),
                            title="Mijn Ravot", active="profiel")
+
+
+@bp.route("/instellingen", methods=["GET", "POST"])
+@login_required
+def instellingen():
+    """Gezinsinstellingen (postcode, kinderen, mails). Los van het dashboard."""
+    fam = me()
+    if request.method == "POST":
+        fam.postcode = request.form.get("postcode", fam.postcode).strip()[:4]
+        fam.radius_km = int(request.form.get("radius", fam.radius_km))
+        fam.budget_pref = request.form.get("budget", fam.budget_pref)
+        fam.newsletter_opt_in = request.form.get("newsletter") == "on"
+        fam.monday_opt_in = request.form.get("monday") == "on"
+        fam.display_name = (request.form.get("display_name") or "").strip()[:80] or None
+        Child.query.filter_by(family_id=fam.id).delete()
+        current_year = datetime.now(timezone.utc).year
+        for a in request.form.getlist("age"):
+            if a.strip().isdigit() and 0 <= int(a) <= 17:
+                db.session.add(Child(family_id=fam.id, birth_year=current_year - int(a)))
+        db.session.commit()
+        flash("Instellingen bewaard.", "ok")
+        return redirect(url_for("account.instellingen"))
+    return render_template("account/instellingen.html", family=fam,
+                           categories=CATEGORIES, current_year=datetime.now(timezone.utc).year,
+                           title="Gezinsinstellingen", active="profiel")
 
 
 # ------------------------------------------------------- feedback & bewaren --
@@ -116,6 +165,10 @@ def feedback(event_id, verdict):
         interest.weight = adjust_weight(interest.weight, liked=(verdict == "like"))
     db.session.add(Interaction(family_id=fam.id, event_id=event_id, type=verdict))
     db.session.commit()
+    if verdict == "like":
+        flash("Genoteerd — we tonen je meer van dit soort activiteiten. 👍", "ok")
+    else:
+        flash("Genoteerd — dit tonen we je minder. Je vindt het niet meer in je suggesties.", "ok")
     return redirect(request.referrer or url_for("public.vandaag"))
 
 
@@ -127,10 +180,13 @@ def save(event_id):
     existing = SavedEvent.query.filter_by(family_id=fam.id, event_id=event_id).first()
     if existing:
         db.session.delete(existing)
+        db.session.commit()
+        flash("Uit je bewaarde activiteiten gehaald.", "ok")
     else:
         db.session.add(SavedEvent(family_id=fam.id, event_id=event_id))
         db.session.add(Interaction(family_id=fam.id, event_id=event_id, type="save"))
-    db.session.commit()
+        db.session.commit()
+        flash("Bewaard! Terug te vinden onder Mijn Ravot → Bewaard. ❤️", "ok")
     return redirect(request.referrer or url_for("public.vandaag"))
 
 
@@ -214,7 +270,7 @@ def friends():
         friends_.append(other.display_name or "Een gezin")
     return render_template("account/vrienden.html", family=fam, friends=friends_,
                            invite_code=_invite_code(fam.id),
-                           title="Vrienden", active=None)
+                           title="Vrienden", active="profiel")
 
 
 def _invite_code(family_id):

@@ -1,0 +1,41 @@
+{# Herbruikbare eventkaart. Verwacht: e (event), r (row met agg/family_total), family #}
+<article class="card kaart-event"
+         data-free="{{ '1' if e.is_free else '0' }}"
+         data-indoor="{{ '1' if e.indoor else '0' }}"
+         data-score="{{ (r.agg.avg if r.agg else 0) if r is defined else 0 }}"
+         data-zoek="{{ (e.title ~ ' ' ~ (e.gemeente or '')) | lower }}">
+  {% if e.image_url %}
+  <a href="{{ url_for('public.event', slug=e.slug) }}" class="thumb-link">
+    <img class="thumb" src="{{ e.image_url }}" alt="" loading="lazy"
+         onerror="this.closest('.thumb-link').style.display='none'"></a>
+  {% endif %}
+  <h3><a href="{{ url_for('public.event', slug=e.slug) }}">{{ e.title }}</a></h3>
+  <p class="meta">📍 {{ e.gemeente }}{% if e.start %} · 🕐 {{ e.start.strftime("%a %d/%m") }}{% endif %}</p>
+  <div class="badges">
+    <span class="badge">{{ e.age_min }}–{{ e.age_max }} jaar</span>
+    {% if e.is_free %}<span class="badge badge-free">Gratis</span>{% endif %}
+    {% if r is defined and r.agg %}<span class="badge badge-score">😄 {{ r.agg.avg }} ({{ r.agg.count }})</span>
+    {% else %}<span class="badge badge-leeg" title="Nog geen Ravotscore">nog geen score</span>{% endif %}
+    {% if e.indoor %}<span class="badge">🌧️ binnen</span>{% endif %}
+    {% if e.has_vlieg %}<span class="badge badge-vlieg">🐛 Vlieg</span>{% endif %}
+  </div>
+  {% if family %}
+  <div class="kaart-acties">
+    <form method="post" action="{{ url_for('account.save', event_id=e.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="mini-actie {{ 'aan' if e.id in bewaard_ids|default([]) }}" type="submit"
+              title="Bewaren">{{ '❤️' if e.id in bewaard_ids|default([]) else '🤍' }} Bewaar</button>
+    </form>
+    <a class="mini-actie" href="{{ url_for('account.review', event_id=e.id) }}" title="Geef een score">😄 Score</a>
+    <button class="mini-actie deel-knop" type="button"
+            data-titel="{{ e.title }}" data-url="{{ url_for('public.event', slug=e.slug, _external=True) }}"
+            title="Delen">📤 Deel</button>
+  </div>
+  {% else %}
+  <div class="kaart-acties">
+    <a class="mini-actie" href="{{ url_for('auth.login') }}" title="Aanmelden om te bewaren">🤍 Bewaar</a>
+    <button class="mini-actie deel-knop" type="button"
+            data-titel="{{ e.title }}" data-url="{{ url_for('public.event', slug=e.slug, _external=True) }}">📤 Deel</button>
+  </div>
+  {% endif %}
+</article>

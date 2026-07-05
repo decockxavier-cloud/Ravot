@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block body_class %}met-sfeer{% endblock %}
+{% block content %}
+<h1>Mijn Ravot 🏠</h1>
+<p class="hint">Dag {{ family.display_name or "ravotters" }}! Hier vind je alles terug.</p>
+
+<div class="dash-snel">
+  <a class="dash-tegel" href="#bewaard"><span class="dash-emoji">❤️</span>
+    <span class="dash-cijfer">{{ bewaard_komend|length }}</span><span>bewaard</span></a>
+  <a class="dash-tegel" href="#reviewen"><span class="dash-emoji">😄</span>
+    <span class="dash-cijfer">{{ te_reviewen|length }}</span><span>te scoren</span></a>
+  <a class="dash-tegel" href="{{ url_for('account.friends') }}"><span class="dash-emoji">👨‍👩‍👧</span>
+    <span class="dash-cijfer">{{ aantal_vrienden }}</span><span>vrienden</span></a>
+  <a class="dash-tegel" href="{{ url_for('account.instellingen') }}"><span class="dash-emoji">⚙️</span>
+    <span>instellingen</span></a>
+</div>
+
+{% if te_reviewen %}
+<section id="reviewen">
+  <h2>Waren jullie hierbij? 😊</h2>
+  <p class="hint">Geef een Ravotscore en help andere gezinnen kiezen.</p>
+  {% for e in te_reviewen %}
+  <div class="card mini-card">
+    <div><strong>{{ e.title }}</strong><br><span class="meta">📍 {{ e.gemeente }} · {{ e.start.strftime('%d/%m') if e.start }}</span></div>
+    <a class="btn btn-zon btn-klein" href="{{ url_for('account.review', event_id=e.id) }}">Geef score</a>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+<section id="bewaard">
+  <h2>Bewaard voor later ❤️</h2>
+  {% if bewaard_komend %}
+    {% for e in bewaard_komend %}{% set family = family %}
+      {% include "public/_kaart.html" %}
+    {% endfor %}
+  {% else %}
+    <div class="card leeg"><span class="groot-emoji">🤍</span>
+      <p>Nog niets bewaard. Tik op het hartje bij een activiteit om ze hier te bewaren.</p>
+      <a class="btn btn-stil btn-klein" href="{{ url_for('public.ontdek') }}">Ontdek activiteiten →</a></div>
+  {% endif %}
+</section>
+
+{% if bewaard_voorbij %}
+<section>
+  <h2>Al geweest 🕰️</h2>
+  {% for e in bewaard_voorbij %}
+  <div class="card mini-card">
+    <div><strong>{{ e.title }}</strong><br><span class="meta">{{ e.start.strftime('%d/%m') if e.start }}</span></div>
+    <a class="btn btn-stil btn-klein" href="{{ url_for('account.review', event_id=e.id) }}">Score geven</a>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+{% if mijn_reviews %}
+<section>
+  <h2>Mijn Ravotscores 😄</h2>
+  {% for rv in mijn_reviews %}
+  <div class="card mini-card">
+    <div><strong>{{ rv.event.title if rv.event else 'Activiteit' }}</strong><br>
+      <span class="meta">kind {{ rv.kid_score }}/5 · jij {{ rv.parent_score }}/5</span></div>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+<p style="text-align:center;margin-top:20px">
+  <a class="hint" href="{{ url_for('account.instellingen') }}">⚙️ Gezinsinstellingen &amp; privacy</a></p>
+{% endblock %}

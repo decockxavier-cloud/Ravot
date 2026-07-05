@@ -1,43 +1,53 @@
-RAVOT — Inloggen met CODE i.p.v. link (scanner-probleem definitief weg)
-========================================================================
+RAVOT — Verfijnronde: sterkere, overtuigendere app
+====================================================
 
-De magic LINK is vervangen door een 6-cijferige INLOGCODE. Er is geen link meer
-in de mail, dus geen enkele mailscanner (Gmail, Outlook SafeLinks...) kan je
-inlog nog "opbranden". Dit lost het probleem structureel op.
+Op basis van je feedback. Puur front-end + routes — GEEN migratie nodig.
 
-HOE HET WERKT:
-1. Gezin vult e-mailadres in op ravot.be.
-2. Krijgt een mail met een code van 6 cijfers (staat ook in het onderwerp).
-3. Typt de code in op de site -> ingelogd.
-De code is 15 min geldig, werkt één keer, en is beveiligd tegen raden
-(max 5 pogingen, dan is de code dood).
+NIEUW / VERBETERD:
 
-BELANGRIJK — LET OP HET SCHUINE STREEPJE:
-Dit pakket bevat een nieuwe database-kolom. Je MOET migreren:
+1. NAVIGATIE — compleet nieuwe, warme onderbalk met ronde iconen:
+   Ontdek · Vandaag · Weekend · Kaart · Mijn Ravot
 
-  cd /srv/ravot && git pull && docker compose up -d --build
-  docker compose exec web flask migrate-db     # voegt magic_tokens.attempts toe (veilig)
+2. ONTDEK (nieuwe voordeur, /ontdek):
+   - Toont ALLE events ZONDER dat je postcode/leeftijden hoeft in te vullen.
+   - Prominente "Personaliseer →"-knop bovenaan voor wie wél op maat wil.
+   - Sorteren op: Best gescoord / Eerst gepland / Gratis. Zoeken op naam of gemeente.
 
-BELANGRIJK — RUIM OUDE MAGIC-LINK BESTANDEN OP DE VPS OP:
-Deze bestanden zijn verwijderd en mogen ook op de server weg (anders blijven ze
-als dode bestanden staan; ze worden niet meer gebruikt maar geven geen fout):
-  app/templates/auth/bevestig_login.html
-  app/templates/auth/check_mail.html
-  app/templates/mail/magic_link.html
-Als je met 'git pull' werkt worden verwijderde bestanden automatisch mee
-verwijderd, dus normaal hoef je hier niets te doen.
+3. ACTIES ZICHTBAAR & DUIDELIJK:
+   - Bewaren/Score/Deel staan nu op ELKE kaart (niet meer enkel na doorklikken).
+   - Bewaren, Leuk en Niet-voor-ons geven nu een duidelijke bevestiging
+     ("Bewaard! Terug te vinden onder Mijn Ravot → Bewaard").
+   - Het hartje toont of iets al bewaard is.
 
-TESTEN:
-  ravot.be -> Aanmelden -> e-mail invoeren -> code uit de mail intypen -> binnen.
-Werkt met elk e-mailadres, ook Hotmail/Outlook.
+4. MIJN RAVOT — van mager naar echt dashboard:
+   - Snel-tegels: bewaard / te scoren / vrienden / instellingen.
+   - "Waren jullie hierbij?" — events die voorbij zijn en nog een score missen,
+     meteen scoorbaar IN de app (niet enkel via de mail achteraf).
+   - Bewaard voor later, Al geweest, en Mijn Ravotscores op één plek.
+   - Instellingen zitten nu op een aparte, nettere pagina (/mijn/instellingen).
+
+5. SOCIALE LAAG ZICHTBAAR:
+   - Vrienden-pagina legt nu uit HOE koppelen werkt en WAT "deel met vrienden" doet
+     (wie ziet het en waar). Bereikbaar via de vrienden-tegel in het dashboard.
+
+EERLIJKE KANTTEKENING:
+- Filteren/sorteren op Ravotscore en de sociale features tonen pas hun volle
+  waarde als er ECHTE reviews en gebruikers zijn. De structuur staat er nu klaar;
+  hij vult zich zodra er feedback binnenkomt (en zodra je op live data draait).
+
+UITROLLEN op de VPS na git pull:
+  docker compose up -d --build
+(geen migratie, geen sync nodig)
 
 Gewijzigd/nieuw:
-  app/services/magic.py                  (issue_code / verify_code, brute-force-slot)
-  app/routes/auth.py                     (login stuurt code; /code verifieert)
-  app/models.py                          (magic_tokens.attempts)
-  app/__init__.py                        (migrate-db: attempts-kolom)
-  app/templates/auth/login.html          (tekst: code i.p.v. link)
-  app/templates/auth/code_invoeren.html  NIEUW (code-invoerpagina)
-  app/templates/mail/inlogcode.html      NIEUW (mail met de code)
-  app/static/css/ravot.css               (code-invoer styling)
-VERWIJDERD: bevestig_login.html, check_mail.html, magic_link.html
+  app/routes/public.py                   (Ontdek-route, score-helper)
+  app/routes/account.py                  (dashboard + aparte instellingen, bevestigingen)
+  app/__init__.py                        (bewaard_ids in alle templates)
+  app/templates/base.html                (nieuwe navigatiebalk)
+  app/templates/public/ontdek.html       NIEUW
+  app/templates/public/_kaart.html       NIEUW (herbruikbare kaart met acties)
+  app/templates/account/mijn_ravot.html  NIEUW (dashboard)
+  app/templates/account/instellingen.html NIEUW (losgekoppelde instellingen)
+  app/templates/account/vrienden.html    (uitleg over delen)
+  app/static/css/ravot.css               (nav, dashboard, kaart-acties, banner)
+  app/static/js/app.js                   (deel-knop op alle kaarten)

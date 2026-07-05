@@ -90,6 +90,14 @@ def window(scope):
     return now, now + timedelta(days=30)
 
 
+def s_helper(event, profile, agg):
+    """Scoreberekening die niet crasht als er geen profiel is."""
+    try:
+        return score_event(event, profile, ravot_avg=agg["avg"] if agg else None)
+    except Exception:
+        return 0
+
+
 def scored_events(profile, scope, extra_filter=None, limit=40, weer=True):
     start, end = window(scope)
     q = Event.query.filter(Event.start <= end, (Event.end >= start) | (Event.start >= start))
@@ -243,6 +251,50 @@ def weekend():
                            title="Dit weekend", answer=None,
                            regen=rows[0].get("regen") if rows else None,
                            has_profile=has_profile, family=fam, active="weekend")
+
+
+@bp.route("/ontdek")
+def ontdek():
+    """Alle gezinsactiviteiten, zichtbaar ZONDER postcode of profiel.
+    Personaliseren kan met één tik (de banner bovenaan)."""
+    profile, fam = build_profile()
+    has_profile = bool(fam or guest_profile().get("postcode"))
+    sort = request.args.get("sort", "score")  # score | datum | gratis
+    zoek = (request.args.get("q") or "").strip().lower()
+    now = datetime.utcnow()
+
+    q = Event.query.filter(Event.start >= now - timedelta(hours=6))
+    if zoek:
+        like = f"%{zoek}%"
+        q = q.filter(db.or_(db.func.lower(Event.title).like(like),
+                            db.func.lower(Event.gemeente).like(like)))
+    candidates = q.order_by(Event.start.asc()).limit(500).all()
+
+    # Ravotscore per reeks ophalen (voor tonen + sorteren)
+    rows, agg_cache = [], {}
+    for e in candidates:
+        agg = agg_cache.get(e.series_id)
+        if agg is None and e.series_id:
+            revs = Review.query.join(Event, Review.event_id == Event.id) \
+                .filter(Event.series_id == e.series_id).all()
+            agg = aggregate_ravotscore(revs)
+            agg_cache[e.series_id] = agg or False
+        agg = agg or None
+        rows.append({"event": e, "agg": agg, "score": s_helper(e, profile, agg),
+                     "family_total": None})
+
+    if sort == "score":
+        rows.sort(key=lambda r: ((r["agg"] or {}).get("avg") or 0, r["event"].start or now),
+                  reverse=True)
+    elif sort == "gratis":
+        rows = [r for r in rows if r["event"].is_free]
+        rows.sort(key=lambda r: r["event"].start or now)
+    else:  # datum
+        rows.sort(key=lambda r: r["event"].start or now)
+
+    return render_template("public/ontdek.html", rows=rows[:120], sort=sort, zoek=zoek,
+                           has_profile=has_profile, family=fam, active="ontdek",
+                           title="Ontdek alles")
 
 
 @bp.route("/verkennen")

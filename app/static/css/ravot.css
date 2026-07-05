@@ -304,3 +304,53 @@ body.met-sfeer {
 /* Inlogcode-invoer: groot en gecentreerd */
 .code-invoer { font-size: 1.8rem; letter-spacing: 8px; text-align: center;
   font-family: monospace; max-width: 240px; }
+
+/* ============ VERFIJNRONDE: nav, dashboard, kaart-acties ============ */
+
+/* Nieuwe warme navigatiebalk met ronde iconen */
+.tabbar { display: flex; justify-content: space-around; align-items: flex-end;
+  background: #fff; border-top: 1px solid var(--lijn);
+  padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); position: sticky; bottom: 0;
+  box-shadow: 0 -2px 12px rgba(31,58,42,.06); z-index: 40; }
+.tabbar a { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  text-decoration: none; color: #8a978d; font-size: .68rem; font-weight: 600;
+  padding: 4px 2px; border-radius: 14px; transition: color .15s; }
+.tabbar a .tab-ico { display: grid; place-items: center; width: 40px; height: 40px;
+  border-radius: 50%; font-size: 1.25rem; background: transparent; transition: background .15s, transform .15s; }
+.tabbar a.on { color: var(--gras-donker); }
+.tabbar a.on .tab-ico { background: var(--creme); transform: translateY(-2px); }
+.tabbar a:active .tab-ico { transform: scale(.9); }
+
+/* Kaart-acties: altijd zichtbaar op elke kaart */
+.kaart-acties { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.mini-actie { flex: 1; min-width: 90px; display: inline-flex; align-items: center;
+  justify-content: center; gap: 4px; background: var(--creme); border: 1.5px solid var(--lijn);
+  border-radius: 999px; padding: 8px 10px; font: 600 .85rem Nunito, sans-serif;
+  color: var(--gras-donker); cursor: pointer; text-decoration: none; }
+.mini-actie:hover { background: #fff; border-color: var(--gras); }
+.mini-actie.aan { background: #FBEAE8; border-color: var(--rood); color: var(--rood); }
+.mini-actie form { display: contents; }
+
+/* Personaliseer-banner op Ontdek */
+.personaliseer-banner { display: flex; align-items: center; gap: 14px; justify-content: space-between;
+  background: linear-gradient(135deg, #E3F1E7, #F1F8F3); border: 1.5px solid #B9DDC2;
+  border-radius: 18px; padding: 14px 16px; margin: 4px 0 14px; }
+.personaliseer-banner strong { color: var(--gras-donker); }
+.personaliseer-banner p { margin: 2px 0 0; font-size: .86rem; color: #4a5850; }
+.personaliseer-banner .btn { flex: 0 0 auto; }
+
+/* Dashboard Mijn Ravot */
+.dash-snel { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 12px 0 20px; }
+.dash-tegel { display: flex; flex-direction: column; align-items: center; gap: 2px;
+  background: #fff; border: 1.5px solid var(--lijn); border-radius: 18px; padding: 12px 6px;
+  text-decoration: none; color: #5f6d63; font-size: .72rem; font-weight: 600; text-align: center; }
+.dash-tegel:hover { border-color: var(--gras); }
+.dash-emoji { font-size: 1.5rem; }
+.dash-cijfer { font-family: Nunito, sans-serif; font-size: 1.3rem; color: var(--gras); line-height: 1; }
+@media (max-width: 380px) { .dash-snel { grid-template-columns: repeat(2, 1fr); } }
+
+.mini-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.mini-card .meta { font-size: .82rem; }
+.badge-leeg { background: #f0efe9; color: #a09a88; }
+
+section h2 { font-size: 1.25rem; margin: 22px 0 8px; }

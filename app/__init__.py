@@ -30,8 +30,18 @@ def create_app(config_object=Config):
         from flask import session
         g = session.get("guest") or {}
         from .vakantie import vakantiecontext
-        return {"guest": g, "has_guest": bool(g.get("postcode")),
-                "vakantie": vakantiecontext()}
+        ctx = {"guest": g, "has_guest": bool(g.get("postcode")),
+               "vakantie": vakantiecontext(), "bewaard_ids": set()}
+        # Welke events heeft dit gezin bewaard? (voor de hartjes op de kaarten)
+        fid = session.get("family_id")
+        if fid:
+            from .models import SavedEvent
+            try:
+                ctx["bewaard_ids"] = {s.event_id for s in
+                                      SavedEvent.query.filter_by(family_id=fid)}
+            except Exception:
+                pass
+        return ctx
 
     # -- Security headers (strategienota §8.2) -------------------------------
     @app.after_request

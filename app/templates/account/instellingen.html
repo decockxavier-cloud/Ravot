@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Gezinsinstellingen ⚙️</h1>
+<p><a class="hint" href="{{ url_for("account.profiel") }}">← Terug naar Mijn Ravot</a></p>
+<div class="card">
+  <h2 style="margin-top:0">Ons gezin</h2>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Hoe oud zijn je kinderen?</label>
+    <div id="kinderen">
+      {% for c in family.children %}
+      <div class="kind-rij">
+        <input type="number" name="age" value="{{ current_year - c.birth_year }}" min="0" max="17" inputmode="numeric">
+        <button type="button" class="kind-weg" aria-label="verwijder">×</button>
+      </div>
+      {% endfor %}
+      <div class="kind-rij">
+        <input type="number" name="age" min="0" max="17" placeholder="leeftijd" inputmode="numeric">
+        <button type="button" class="kind-weg" aria-label="verwijder">×</button>
+      </div>
+    </div>
+    <button type="button" class="kind-toevoegen" data-add-kind>+ nog een kind</button>
+    <p class="hint">Alleen de leeftijd — nooit namen. De leeftijd groeit vanzelf mee.</p>
+    <label for="pc">Postcode</label>
+    <input id="pc" type="text" name="postcode" value="{{ family.postcode }}" maxlength="4" pattern="[0-9]{4}">
+    <label for="rad">Straal</label>
+    <select id="rad" name="radius">
+      {% for km in (10, 25, 50) %}<option value="{{ km }}" {{ 'selected' if family.radius_km == km }}>tot {{ km }} km</option>{% endfor %}
+    </select>
+    <label for="bud">Budget</label>
+    <select id="bud" name="budget">
+      <option value="all" {{ 'selected' if family.budget_pref == 'all' }}>alles mag</option>
+      <option value="low" {{ 'selected' if family.budget_pref == 'low' }}>liefst goedkoop</option>
+      <option value="free" {{ 'selected' if family.budget_pref == 'free' }}>enkel gratis</option>
+    </select>
+    <label for="dn">Naam voor je vrienden</label>
+    <input id="dn" type="text" name="display_name" value="{{ family.display_name or '' }}" maxlength="80">
+    <label class="chip"><input type="checkbox" name="newsletter" {{ 'checked' if family.newsletter_opt_in }}><span>📬 Weekendmail (donderdag)</span></label>
+    <label class="chip"><input type="checkbox" name="monday" {{ 'checked' if family.monday_opt_in }}><span>😄 Maandagvraag na een uitstap</span></label>
+    <div class="acties"><button class="btn" type="submit">Bewaar</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">Vrienden</h2>
+  <p><a href="{{ url_for('account.friends') }}">Gezinnen koppelen en samen op stap →</a></p>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">Jouw gegevens, jouw keuze</h2>
+  <div class="acties">
+    <a class="btn btn-stil" href="{{ url_for('account.export') }}">⬇️ Exporteer mijn gegevens (JSON)</a>
+    <a class="btn btn-stil" href="{{ url_for('auth.logout') }}">Afmelden</a>
+  </div>
+  <form method="post" action="{{ url_for('account.delete_account') }}" onsubmit="return confirm('Zeker? Dit verwijdert jullie profiel definitief. Reviews blijven anoniem bestaan.')" style="margin-top:10px">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-stil" type="submit" style="color:var(--rood);border-color:var(--rood)">Verwijder mijn account definitief</button>
+  </form>
+</div>
+{% endblock %}
