@@ -1,21 +1,27 @@
-RAVOT — Dashboard 500-fout opgelost (JSON-groepering)
+RAVOT — Inloglink (magic link) werkt weer
 
-Oorzaak: het dashboard groepeerde de "geen resultaat"-zoekopdrachten op de
-meta-kolom (type JSON). PostgreSQL kan JSON-waarden niet groeperen ("could not
-identify an equality operator for type json"). Op SQLite (de tests) werkte het
-wel, daarom kwam het pas op de live server naar boven.
+OORZAAK (uit de database bevestigd): je link was NIET verlopen, maar al
+"gebruikt" — enkele seconden na verzending, vóór jij zelf klikte. Dat is een
+automatische e-mailscanner (Gmail/Google) die links in binnenkomende mail
+vooraf bezoekt om ze te controleren. Die klik verbrandde je magic link.
 
-Opgelost: het JSON-veld wordt nu naar tekst gecast vóór het groeperen —
-werkt op zowel PostgreSQL als SQLite.
+OPGELOST met een bevestigingspagina:
+- De link in de mail opent nu een pagina met knop "Meld me aan →".
+- Een automatische scanner doet alleen de GET en klikt de knop NIET, dus de
+  link blijft geldig.
+- Pas als jij (mens) op de knop klikt, wordt de link verbrand en log je in.
 
-Dit was de reden dat /beheer een 500 gaf. Login + 2FA + QR waren allemaal OK;
-de crash zat puur in het dashboard NA het inloggen.
+Zo kan geen enkele scanner je link nog opbranden. De link blijft 15 min geldig,
+werkt één keer.
 
 Op de VPS na git pull:
   docker compose up -d --build
 (geen migratie nodig)
 
-Daarna: ravot.be/beheer/login -> inloggen -> QR scannen -> dashboard laadt.
+TESTEN: vraag op ravot.be een inloglink aan, klik in de mail -> je krijgt nu
+een "Meld me aan"-knop -> klik -> je bent binnen.
 
-Gewijzigd:
-  app/routes/admin.py   (zero-result query: cast JSON naar tekst)
+Gewijzigd/nieuw:
+  app/services/magic.py                    (peek_token: check zonder verbranden)
+  app/routes/auth.py                       (GET = bevestigpagina, POST = inloggen)
+  app/templates/auth/bevestig_login.html   NIEUW (bevestigingsknop)

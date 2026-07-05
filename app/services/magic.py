@@ -35,6 +35,18 @@ def issue_token(email, purpose="login"):
     return token
 
 
+def peek_token(token, purpose="login"):
+    """Retourneert e-mailadres als de token geldig is, ZONDER hem te verbranden.
+    Zo kan een automatische e-mailscanner (die de link vooraf bezoekt) de token
+    niet opbranden — verbranden gebeurt pas bij een bewuste klik (POST)."""
+    row = MagicToken.query.filter_by(token_hash=_hash(token), purpose=purpose).first()
+    if row is None or row.used_at is not None:
+        return None
+    if row.expires_at < datetime.now(timezone.utc).replace(tzinfo=None):
+        return None
+    return row.email
+
+
 def verify_token(token, purpose="login"):
     """Retourneert e-mailadres of None. Token wordt bij succes verbrand."""
     row = MagicToken.query.filter_by(token_hash=_hash(token), purpose=purpose).first()

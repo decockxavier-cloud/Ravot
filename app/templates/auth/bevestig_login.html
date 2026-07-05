@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block body_class %}met-sfeer{% endblock %}
+{% block content %}
+<h1>Welkom terug! 👋</h1>
+<div class="card" style="text-align:center">
+  <p>Klik op de knop om je aan te melden bij Ravot.</p>
+  <form method="post" action="{{ url_for('auth.verify', token=token) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="acties" style="justify-content:center">
+      <button class="btn btn-groot" type="submit">Meld me aan →</button>
+    </div>
+  </form>
+  <p class="hint" style="margin-top:12px">Deze link is 15 minuten geldig en werkt één keer.</p>
+</div>
+{% endblock %}

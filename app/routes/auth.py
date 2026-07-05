@@ -37,8 +37,19 @@ def login():
     return render_template("auth/login.html", title="Aanmelden", family=None, active=None)
 
 
-@bp.route("/login/<token>")
+@bp.route("/login/<token>", methods=["GET", "POST"])
 def verify(token):
+    if request.method == "GET":
+        # Toon een bevestigingsknop zonder de token te verbranden.
+        # Automatische e-mailscanners doen alleen deze GET en klikken de knop niet,
+        # dus de link blijft geldig tot de gebruiker zelf bevestigt.
+        email = magic.peek_token(token)
+        if email is None:
+            flash("Deze link is verlopen of al gebruikt. Vraag een nieuwe aan.", "error")
+            return redirect(url_for("auth.login"))
+        return render_template("auth/bevestig_login.html", token=token,
+                               title="Aanmelden bevestigen", family=None, active=None)
+    # POST: nu pas verbranden en inloggen
     email = magic.verify_token(token)
     if email is None:
         flash("Deze link is verlopen of al gebruikt. Vraag een nieuwe aan.", "error")
