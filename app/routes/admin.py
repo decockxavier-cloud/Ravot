@@ -145,9 +145,10 @@ def dashboard():
             db.func.date(Interaction.created_at) == db.func.current_date()).count(),
         "nieuwsbrief": Family.query.filter_by(newsletter_opt_in=True).count(),
     }
-    zero = db.session.query(Interaction.meta, db.func.count(Interaction.id)) \
+    meta_txt = db.cast(Interaction.meta, db.String)
+    zero = db.session.query(meta_txt, db.func.count(Interaction.id)) \
         .filter(Interaction.type == "zero_result") \
-        .group_by(Interaction.meta).limit(20).all()
+        .group_by(meta_txt).limit(20).all()
     recent_reviews = Review.query.order_by(Review.created_at.desc()).limit(20).all()
     return render_template("admin/dashboard.html", stats=stats, zero=zero,
                            reviews=recent_reviews, title="Ravot Beheer",

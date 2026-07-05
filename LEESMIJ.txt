@@ -1,34 +1,21 @@
-RAVOT — Admin login definitief werkend (QR + geen vastloper)
-=============================================================
+RAVOT — Dashboard 500-fout opgelost (JSON-groepering)
 
-Dit pakket bevat BEIDE laatste fixes samen, zodat je maar één keer hoeft uit te rollen:
+Oorzaak: het dashboard groepeerde de "geen resultaat"-zoekopdrachten op de
+meta-kolom (type JSON). PostgreSQL kan JSON-waarden niet groeperen ("could not
+identify an equality operator for type json"). Op SQLite (de tests) werkte het
+wel, daarom kwam het pas op de live server naar boven.
 
-1) QR-CODE ALS PNG (scanbaar):
-   De QR wordt nu als puur zwart-wit PNG gegenereerd met ruime witrand.
-   Machinaal geverifieerd dat hij correct decodeert naar je TOTP-secret.
-   De vorige SVG (donkergroen op crème) had te weinig contrast om te scannen.
+Opgelost: het JSON-veld wordt nu naar tekst gecast vóór het groeperen —
+werkt op zowel PostgreSQL als SQLite.
 
-2) GEEN INCOGNITO MEER NODIG:
-   Na het vernieuwen van de SECRET_KEY vandaag waren oude sessie-cookies ongeldig,
-   waardoor de adminpagina's vastliepen in je gewone browser.
-   - Login-pagina ruimt een half-ingelogde sessie automatisch op.
-   - Geslaagde login start met een volledig verse sessie.
-   - Een sessie naar een niet-bestaande admin crasht niet meer.
+Dit was de reden dat /beheer een 500 gaf. Login + 2FA + QR waren allemaal OK;
+de crash zat puur in het dashboard NA het inloggen.
 
-UITROLLEN op de VPS na git pull:
+Op de VPS na git pull:
   docker compose up -d --build
 (geen migratie nodig)
 
-DAARNA — gewoon in je NORMALE browser:
-  1. Ga naar ravot.be/beheer
-  2. Log in met e-mail + wachtwoord (decock.xavier@gmail.com)
-  3. Scan de QR met je authenticator-app -> kies TIJDGEBASEERD (TOTP)
-  4. Typ de code -> je bent binnen
-
-TIP: staat de pagina op je telefoon EN je authenticator-app ook? Dan kan de
-camera zijn eigen scherm niet scannen. Zet de pagina dan op je pc open en scan
-met je telefoon (of gebruik de handmatige sleutel als tijdgebaseerd).
+Daarna: ravot.be/beheer/login -> inloggen -> QR scannen -> dashboard laadt.
 
 Gewijzigd:
-  app/routes/admin.py         (PNG-QR + robuuste sessie-afhandeling)
-  app/static/css/ravot.css    (QR gecentreerd)
+  app/routes/admin.py   (zero-result query: cast JSON naar tekst)
