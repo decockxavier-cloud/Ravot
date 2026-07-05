@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+{% endblock %}
+{% block content %}
+<h1>Verkennen</h1>
+<p class="hint">Groen = goed gescoord · geel = gratis. Toevallig ergens anders? Sleep de kaart gewoon.</p>
+<div id="map" role="application" aria-label="Kaart met kinderactiviteiten"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+<script defer>
+window.addEventListener("DOMContentLoaded", () => {
+  const map = L.map("map").setView({{ center|tojson }}, 10);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    { attribution: "© OpenStreetMap" }).addTo(map);
+  const markers = {{ markers|tojson }};
+  markers.forEach(m => {
+    const kleur = m.free ? "#F2B705" : (m.score && m.score >= 4 ? "#2E7D46" : "#5f6d63");
+    L.circleMarker([m.lat, m.lng], { radius: 9, color: kleur, fillColor: kleur, fillOpacity: .85 })
+      .addTo(map)
+      .bindPopup(`<strong><a href="${m.url}">${m.title}</a></strong>` +
+                 (m.score ? `<br>😄 Ravotscore ${m.score}` : "") + (m.free ? "<br>Gratis" : ""));
+  });
+});
+</script>
+{% endblock %}

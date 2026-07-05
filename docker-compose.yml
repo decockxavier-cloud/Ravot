@@ -1,0 +1,19 @@
+# Coolify-compatibel. LET OP: nooit de pgdata-mapnaam wijzigen of wissen.
+services:
+  web:
+    build: .
+    env_file: .env
+    ports: ["8000:8000"]
+    depends_on: [db]
+    restart: unless-stopped
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ravot
+      POSTGRES_PASSWORD: ravot
+      POSTGRES_DB: ravot
+    volumes:
+      - ravot_pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+volumes:
+  ravot_pgdata:

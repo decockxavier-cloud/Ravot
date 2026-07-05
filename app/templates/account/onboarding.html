@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Welkom bij Ravot 🎉</h1>
+<p class="hint">Eén minuut, beloofd. We vragen bewust zo weinig mogelijk: geen namen van je kinderen, geen adres.</p>
+<div class="card">
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Geboortejaar van je kinderen</label>
+    <div class="veldrij">
+      <input type="number" name="birth_year" min="2008" max="2026" placeholder="2021" required>
+      <input type="number" name="birth_year" min="2008" max="2026" placeholder="2018">
+      <input type="number" name="birth_year" min="2008" max="2026" placeholder="">
+    </div>
+    <p class="hint">Enkel het jaartal — meer hebben we niet nodig.</p>
+    <label for="pc">Postcode</label>
+    <input id="pc" type="text" name="postcode" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required placeholder="8800">
+    <label for="rad">Hoe ver willen jullie rijden?</label>
+    <select id="rad" name="radius">
+      <option value="10">tot 10 km</option>
+      <option value="25" selected>tot 25 km</option>
+      <option value="50">tot 50 km</option>
+    </select>
+    <label>Waar worden jullie blij van?</label>
+    <div class="chips">
+      {% for cat in categories %}
+      <label class="chip"><input type="checkbox" name="interest" value="{{ cat }}"><span>{{ cat }}</span></label>
+      {% endfor %}
+    </div>
+    <label for="bud">Budget</label>
+    <select id="bud" name="budget">
+      <option value="all" selected>alles mag</option>
+      <option value="low">liefst goedkoop</option>
+      <option value="free">enkel gratis</option>
+    </select>
+    <label for="dn">Naam voor je vrienden <span class="hint" style="display:inline">(optioneel)</span></label>
+    <input id="dn" type="text" name="display_name" maxlength="80" placeholder="Familie Jansens">
+    <label class="chip" style="margin-top:14px"><input type="checkbox" name="newsletter" checked><span>📬 Stuur me donderdags de weekendmail (altijd 1-klik uitschrijfbaar)</span></label>
+    <div class="acties"><button class="btn" type="submit">Klaar — toon activiteiten</button></div>
+  </form>
+</div>
+{% endblock %}

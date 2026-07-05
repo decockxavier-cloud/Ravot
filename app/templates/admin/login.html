@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Beheer</h1>
+<div class="card"><form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label for="e">E-mailadres</label><input id="e" type="email" name="email" required autocomplete="username">
+  <label for="p">Wachtwoord</label><input id="p" type="password" name="password" required autocomplete="current-password" style="width:100%;min-height:46px;padding:10px 12px;border:1.5px solid var(--lijn);border-radius:12px">
+  <div class="acties"><button class="btn" type="submit">Verder naar tweestapsverificatie</button></div>
+</form></div>
+{% endblock %}

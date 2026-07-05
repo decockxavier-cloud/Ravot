@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ ev.title }}</h1>
+<p class="meta">📍 {{ ev.venue.name if ev.venue else '' }}{% if ev.gemeente %}, <a href="/{{ ev.gemeente|lower }}">{{ ev.gemeente }}</a>{% endif %}
+ {% if ev.start %} · 🕐 {{ ev.start.strftime("%A %d/%m om %H:%M") }}{% endif %}</p>
+<div class="badges">
+  <span class="badge">{{ ev.age_min }}–{{ ev.age_max }} jaar</span>
+  {% if ev.is_free %}<span class="badge badge-free">Gratis</span>
+  {% elif family_total is not none %}<span class="badge">Voor jullie gezin: €{{ "%.0f"|format(family_total) }}</span>{% endif %}
+  {% if euro and not ev.is_free %}<span class="badge">{{ euro }}</span>{% endif %}
+  {% if ev.indoor %}<span class="badge">🌧️ binnen</span>{% endif %}
+  {% if agg %}<span class="badge badge-score">😄 Ravotscore {{ agg.avg }} ({{ agg.count }} gezinnen)</span>{% endif %}
+</div>
+
+{% if ev.image_url %}<img src="{{ ev.image_url }}" alt="" style="width:100%;border-radius:16px;margin:10px 0" loading="lazy">{% endif %}
+{% if ev.description %}<p>{{ ev.description }}</p>{% endif %}
+
+{% if agg and agg.bands %}
+<div class="card">
+  <h2 style="margin-top:0">Ravotscore per leeftijd</h2>
+  <div class="badges">{% for band, s in agg.bands.items() %}<span class="badge">{{ band }} jaar: {{ s }}</span>{% endfor %}</div>
+  {% if agg.typical_cost %}<p class="hint">Gezinnen gaven hier doorgaans <strong>€{{ agg.typical_cost }}</strong> uit in totaal — parking en hapjes meegeteld.</p>{% endif %}
+</div>
+{% endif %}
+
+{% if friends %}
+<div class="card"><h2 style="margin-top:0">Ook geïnteresseerd</h2>
+  {% for f in friends %}<p>👨‍👩‍👧 {{ f }} is geïnteresseerd</p>{% endfor %}
+  <p class="hint">Geïnteresseerd betekent niet zeker dat ze gaan — het gaat om interesse.</p>
+</div>
+{% endif %}
+
+{% if family %}
+<div class="acties">
+  <form method="post" action="{{ url_for('account.save', event_id=ev.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-zon" type="submit">{{ '❤️ Bewaard' if saved else '🤍 Bewaar' }}</button>
+  </form>
+  <form method="post" action="{{ url_for('account.share', event_id=ev.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-stil" type="submit">{{ '✅ Gedeeld met vrienden' if shared else 'Deel mijn interesse met mijn vrienden' }}</button>
+  </form>
+  <a class="btn btn-stil" href="{{ url_for('account.review', event_id=ev.id) }}">😄 Geef een Ravotscore</a>
+</div>
+<p class="hint">Delen staat standaard uit; dit is jouw keuze, per activiteit, enkel zichtbaar voor gekoppelde gezinnen.</p>
+{% else %}
+<div class="acties"><a class="btn" href="{{ url_for('auth.login') }}">Maak een gratis profiel om te bewaren en te scoren</a></div>
+{% endif %}
+
+{% if reviews %}
+<div class="card">
+  <h2 style="margin-top:0">Wat gezinnen ervan vonden</h2>
+  {% for rv in reviews %}
+  <div class="review">
+    <span class="wie">{{ rv.afzender }}</span> —
+    {{ ['','😖','🙁','😐','😄','🤩'][rv.kid_score] }}
+    {% if rv.cost_range %}· gaf €{{ rv.cost_range }} uit{% endif %}
+    {% if rv.tags %}<div class="badges">{% for t in rv.tags %}<span class="badge">{{ t }}</span>{% endfor %}</div>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if ev.series %}<p class="hint">Keert dit jaarlijks terug? Bekijk de <a href="{{ url_for('public.reeks', slug=ev.series.slug) }}">reekspagina met historiek</a>.</p>{% endif %}
+{% endblock %}

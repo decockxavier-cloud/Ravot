@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Ravot Beheer</h1>
+<div class="badges">
+  {% for k, v in stats.items() %}<span class="badge">{{ k }}: <strong>{{ v }}</strong></span>{% endfor %}
+</div>
+<div class="card">
+  <h2 style="margin-top:0">Recentste Ravotscores</h2>
+  <table class="simpel"><tr><th>Event</th><th>Kind</th><th>Ouder</th><th>Kost</th><th></th></tr>
+  {% for rv in reviews %}
+  <tr><td>{{ rv.event.title if rv.event else rv.event_id }}</td><td>{{ rv.kid_score }}/5</td><td>{{ rv.parent_score }}/3</td><td>{{ rv.cost_range or "—" }}</td>
+  <td><form method="post" action="{{ url_for('admin.delete_review', review_id=rv.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-stil btn-klein" type="submit">verwijder</button></form></td></tr>
+  {% endfor %}</table>
+</div>
+<div class="card">
+  <h2 style="margin-top:0">Nulresultaat-zoekopdrachten (onvervulde vraag)</h2>
+  {% for meta, n in zero %}<p class="hint">{{ n }}× — {{ meta }}</p>{% else %}<p class="hint">Nog geen.</p>{% endfor %}
+</div>
+<p><a href="{{ url_for('admin.logout') }}">Afmelden</a></p>
+{% endblock %}

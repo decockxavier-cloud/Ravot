@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Privacy- en cookieverklaring</h1>
+<div class="card">
+<p class="hint">Versie 1.0 — [datum]. Verwerkingsverantwoordelijke: [NAAM RECHTSPERSOON], [ADRES], KBO [KBO-NUMMER] — privacy@ravot.be.</p>
+<h2>Zo weinig mogelijk gegevens</h2>
+<p>Ravot is gebouwd op dataminimalisatie: we vragen géén namen van je kinderen (enkel geboortejaar), géén adres (enkel postcode + straal), géén wachtwoorden (inloggen via e-maillink) en we volgen géén locatie. Reviews tonen we volledig anoniem en we verkopen nooit persoonsgegevens.</p>
+<h2>Wat we verwerken</h2>
+<p>Je e-mailadres (account en inloggen), postcode/straal/budget/interesses en de geboortejaren van je kinderen (om suggesties op maat te tonen), je gebruik van de app (om suggesties te verbeteren en voor anonieme statistieken), en je Ravotscores (anoniem getoond aan andere gezinnen). De weekendmail versturen we enkel met jouw toestemming; uitschrijven kan altijd met één klik onderaan elke mail, zonder je account te verliezen.</p>
+<h2>Delen, bewaren, beveiligen</h2>
+<p>We delen gegevens enkel met onze hosting- en mailprovider (onder verwerkersovereenkomst) en met niemand anders, tenzij de wet het verplicht. Statistieken die we publiceren of delen zijn altijd geaggregeerd en onherleidbaar. Inactieve accounts verwijderen we na 24 maanden (met verwittiging); gebruiksgegevens worden na 36 maanden losgekoppeld van je gezin. De verbinding is overal versleuteld en beheerderstoegang vereist tweestapsverificatie.</p>
+<h2>Jouw rechten</h2>
+<p>In <a href="{{ url_for('account.profiel') }}">Mijn Ravot</a> kan je je gegevens inzien, exporteren (JSON) en je account met één knop definitief verwijderen. Vragen of bezwaar: privacy@ravot.be. Klachten kunnen bij de Gegevensbeschermingsautoriteit (gegevensbeschermingsautoriteit.be).</p>
+<h2>Cookies</h2>
+<p>Ravot gebruikt uitsluitend functionele cookies: een sessiecookie (aangemeld blijven, 12 maanden), een beveiligingstoken voor formulieren, en — als je Ravot zonder account gebruikt — je postcode en leeftijden, lokaal op je toestel. Geen tracking, geen advertentiecookies, geen cookies van derden. Daarom zie je hier ook geen cookiebanner: voor strikt noodzakelijke cookies is geen toestemming vereist.</p>
+</div>
+{% endblock %}

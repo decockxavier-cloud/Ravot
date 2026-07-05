@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Vrienden</h1>
+<div class="card">
+  <h2 style="margin-top:0">Jullie uitnodigingscode</h2>
+  <p style="font-size:1.6rem;font-weight:800;color:var(--gras)">{{ invite_code }}</p>
+  <p class="hint">Geef deze code aan een bevriend gezin. Koppelen kan enkel zo — niemand kan jullie opzoeken. Wat jullie plannen blijft privé, tenzij je bij een activiteit zelf kiest voor "deel met vrienden".</p>
+</div>
+<div class="card">
+  <h2 style="margin-top:0">Code van een vriend?</h2>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="text" name="code" placeholder="RAV00123" maxlength="12">
+    <div class="acties"><button class="btn" type="submit">Koppel gezin</button></div>
+  </form>
+</div>
+<div class="card">
+  <h2 style="margin-top:0">Gekoppelde gezinnen</h2>
+  {% if friends %}{% for f in friends %}<p>👨‍👩‍👧 {{ f }}</p>{% endfor %}
+  {% else %}<p class="hint">Nog geen gekoppelde gezinnen.</p>{% endif %}
+</div>
+{% endblock %}

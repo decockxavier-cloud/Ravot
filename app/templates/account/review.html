@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Ravotscore</h1>
+<p class="hint">Voor: <strong>{{ ev.title }}</strong> ({{ ev.gemeente }}). Jullie score is volledig anoniem — andere gezinnen zien enkel de leeftijden van jullie kinderen.</p>
+{% if existing %}
+<div class="card"><p>Jullie gaven dit al een Ravotscore — bedankt! Eén score per gezin houdt het eerlijk.</p></div>
+{% else %}
+<div class="card">
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Hoe vonden de kinderen het? <span class="hint" style="display:inline">(laat ze zelf tikken!)</span></label>
+    <div class="chips smileys">
+      {% for i, s in [(1,'😖'),(2,'🙁'),(3,'😐'),(4,'😄'),(5,'🤩')] %}
+      <label class="chip"><input type="radio" name="kid_score" value="{{ i }}" required><span>{{ s }}</span></label>
+      {% endfor %}
+    </div>
+    <label>En voor jou als ouder?</label>
+    <div class="chips">
+      <label class="chip"><input type="radio" name="parent_score" value="3" required><span>Vlot 👌</span></label>
+      <label class="chip"><input type="radio" name="parent_score" value="2"><span>Oké</span></label>
+      <label class="chip"><input type="radio" name="parent_score" value="1"><span>Gedoe 😅</span></label>
+    </div>
+    <label>Wat waren jullie ongeveer kwijt in totaal? <span class="hint" style="display:inline">(parking en pannenkoeken meegeteld)</span></label>
+    <div class="chips">
+      {% for c in cost_ranges %}<label class="chip"><input type="radio" name="cost_range" value="{{ c }}"><span>€{{ c }}</span></label>{% endfor %}
+    </div>
+    <label>Herkenbaar? <span class="hint" style="display:inline">(max. 5)</span></label>
+    <div class="chips">
+      {% for t in tags %}<label class="chip"><input type="checkbox" name="tag" value="{{ t }}"><span>{{ t }}</span></label>{% endfor %}
+    </div>
+    <div class="acties"><button class="btn" type="submit">Bewaar Ravotscore</button></div>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Tweestapsverificatie</h1>
+<div class="card"><form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label for="c">Code uit je authenticator-app</label>
+  <input id="c" type="text" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="one-time-code">
+  <div class="acties"><button class="btn" type="submit">Aanmelden</button></div>
+</form></div>
+{% endblock %}

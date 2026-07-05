@@ -1,0 +1,16 @@
+<!doctype html><html lang="nl"><body style="font-family:sans-serif;background:#FAF7F0;padding:24px">
+<div style="max-width:520px;margin:auto;background:#fff;border-radius:16px;padding:24px">
+<h1 style="color:#2E7D46;margin-top:0">Jullie weekend, geregeld 🎈</h1>
+<p>Dag {{ family.display_name or "ravotters" }}! Dit past dit weekend bij jullie gezin:</p>
+{% for p in picks %}{% set e = p.event %}
+<div style="border:1px solid #E5E0D4;border-radius:14px;padding:14px;margin:10px 0">
+  <p style="margin:0 0 4px;font-weight:700"><a href="{{ site }}/e/{{ e.slug }}" style="color:#1F3A2A;text-decoration:none">{{ e.title }}</a></p>
+  <p style="margin:0;color:#5f6d63;font-size:.9rem">📍 {{ e.gemeente }}{% if e.start %} · {{ e.start.strftime("%a %d/%m om %H:%M") }}{% endif %}
+  · {{ e.age_min }}–{{ e.age_max }} jaar
+  {% if e.is_free %} · <strong style="color:#2E7D46">gratis</strong>{% elif p.family_total is not none %} · voor jullie gezin: €{{ "%.0f"|format(p.family_total) }}{% endif %}</p>
+</div>
+{% endfor %}
+<p style="text-align:center;margin:22px 0"><a href="{{ site }}/weekend" style="background:#F2B705;color:#1F3A2A;text-decoration:none;padding:12px 22px;border-radius:999px;font-weight:700">Bekijk alles op Ravot</a></p>
+<p style="color:#777;font-size:.8rem">Je krijgt deze mail omdat je dat aangaf bij Ravot.
+<a href="{{ unsub_url }}" style="color:#777">Schrijf je uit met één klik</a> — je account en profiel blijven gewoon bestaan.</p>
+</div></body></html>

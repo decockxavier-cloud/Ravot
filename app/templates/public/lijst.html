@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ title }}</h1>
+
+{% if not has_profile %}
+  {# Zero-friction anonieme start: geen registratiemuur (strategienota §3.2) #}
+  <div class="card">
+    <h2 style="margin-top:0">Meteen kijken wat er te doen is?</h2>
+    <p class="hint">Geen account nodig — alleen je postcode en de leeftijden van je kinderen.</p>
+    <form method="post" action="{{ url_for('public.vandaag') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label for="pc">Postcode</label>
+      <input id="pc" type="text" name="postcode" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required placeholder="8800">
+      <label>Leeftijden van de kinderen</label>
+      <div class="veldrij">
+        <input type="number" name="age" min="0" max="17" placeholder="4">
+        <input type="number" name="age" min="0" max="17" placeholder="7">
+        <input type="number" name="age" min="0" max="17" placeholder="">
+      </div>
+      <label for="rad">Hoe ver willen jullie rijden?</label>
+      <select id="rad" name="radius">
+        <option value="10">tot 10 km</option>
+        <option value="25" selected>tot 25 km</option>
+        <option value="50">tot 50 km</option>
+      </select>
+      <div class="acties">
+        <button class="btn" type="submit">Toon activiteiten</button>
+        <a class="btn btn-stil" href="{{ url_for('auth.login') }}">Of maak een gratis profiel</a>
+      </div>
+    </form>
+  </div>
+{% else %}
+  {% if answer %}<p class="answer">{{ answer }}</p>{% endif %}
+  <button id="install-cta" class="btn btn-zon btn-klein" hidden>📲 Zet Ravot op je beginscherm</button>
+
+  {% if rows %}
+    {% for r in rows %}
+      {% set e = r.event %}
+      <article class="card">
+        <h3><a href="{{ url_for('public.event', slug=e.slug) }}">{{ e.title }}</a></h3>
+        <p class="meta">📍 {{ e.gemeente }}{% if e.venue %} · {{ e.venue.name }}{% endif %}
+           {% if e.start %} · 🕐 {{ e.start.strftime("%a %d/%m om %H:%M") }}{% endif %}</p>
+        <div class="badges">
+          <span class="badge">{{ e.age_min }}–{{ e.age_max }} jaar</span>
+          {% if e.is_free %}<span class="badge badge-free">Gratis</span>
+          {% elif r.family_total is not none %}<span class="badge">Voor jullie gezin: €{{ "%.0f"|format(r.family_total) }}</span>{% endif %}
+          {% if r.agg %}<span class="badge badge-score">😄 {{ r.agg.avg }} ({{ r.agg.count }})</span>{% endif %}
+          {% if e.indoor %}<span class="badge">🌧️ binnen</span>{% endif %}
+        </div>
+        {% if family %}
+        <div class="acties">
+          <form method="post" action="{{ url_for('account.feedback', event_id=e.id, verdict='like') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-stil btn-klein" type="submit">👍 Leuk</button>
+          </form>
+          <form method="post" action="{{ url_for('account.feedback', event_id=e.id, verdict='dismiss') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-stil btn-klein" type="submit">Niet voor ons</button>
+          </form>
+          <form method="post" action="{{ url_for('account.save', event_id=e.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-zon btn-klein" type="submit">🤍 Bewaar</button>
+          </form>
+        </div>
+        {% endif %}
+      </article>
+    {% endfor %}
+  {% else %}
+    <div class="card">
+      <h2 style="margin-top:0">Nog niets gevonden {{ scope }} 😕</h2>
+      <p>Vergroot je straal, of kijk eens bij <a href="{{ url_for('public.weekend') }}">dit weekend</a>
+      of op de <a href="{{ url_for('public.verkennen') }}">kaart</a>.</p>
+    </div>
+  {% endif %}
+{% endif %}
+{% endblock %}

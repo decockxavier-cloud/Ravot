@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+{% if ok %}
+  <h1>Uitgeschreven ✔️</h1>
+  <div class="card">
+    <p>Je ontvangt deze mail niet meer. <strong>Je account blijft gewoon bestaan</strong> — je kan Ravot blijven gebruiken zoals altijd, en opnieuw inschakelen kan op elk moment in <a href="{{ url_for('account.profiel') }}">Mijn Ravot</a>.</p>
+    <div class="acties"><a class="btn" href="{{ url_for('public.vandaag') }}">Naar vandaag</a></div>
+  </div>
+{% else %}
+  <h1>Deze link werkt niet meer</h1>
+  <div class="card"><p>Je kan je mailvoorkeuren altijd aanpassen in <a href="{{ url_for('account.profiel') }}">Mijn Ravot</a>.</p></div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Mijn Ravot</h1>
+<div class="card">
+  <h2 style="margin-top:0">Ons gezin</h2>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Geboortejaar van je kinderen</label>
+    <div class="veldrij">
+      {% for c in family.children %}<input type="number" name="birth_year" value="{{ c.birth_year }}" min="2008" max="2026">{% endfor %}
+      <input type="number" name="birth_year" min="2008" max="2026" placeholder="+">
+    </div>
+    <label for="pc">Postcode</label>
+    <input id="pc" type="text" name="postcode" value="{{ family.postcode }}" maxlength="4" pattern="[0-9]{4}">
+    <label for="rad">Straal</label>
+    <select id="rad" name="radius">
+      {% for km in (10, 25, 50) %}<option value="{{ km }}" {{ 'selected' if family.radius_km == km }}>tot {{ km }} km</option>{% endfor %}
+    </select>
+    <label for="bud">Budget</label>
+    <select id="bud" name="budget">
+      <option value="all" {{ 'selected' if family.budget_pref == 'all' }}>alles mag</option>
+      <option value="low" {{ 'selected' if family.budget_pref == 'low' }}>liefst goedkoop</option>
+      <option value="free" {{ 'selected' if family.budget_pref == 'free' }}>enkel gratis</option>
+    </select>
+    <label for="dn">Naam voor je vrienden</label>
+    <input id="dn" type="text" name="display_name" value="{{ family.display_name or '' }}" maxlength="80">
+    <label class="chip"><input type="checkbox" name="newsletter" {{ 'checked' if family.newsletter_opt_in }}><span>📬 Weekendmail (donderdag)</span></label>
+    <label class="chip"><input type="checkbox" name="monday" {{ 'checked' if family.monday_opt_in }}><span>😄 Maandagvraag na een uitstap</span></label>
+    <div class="acties"><button class="btn" type="submit">Bewaar</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">Bewaard 🤍</h2>
+  {% if saved %}{% for s in saved %}{% if s.event %}
+    <p>· <a href="{{ url_for('public.event', slug=s.event.slug) }}">{{ s.event.title }}</a>
+    {% if s.event.start %}<span class="hint" style="display:inline">({{ s.event.start.strftime("%d/%m") }})</span>{% endif %}
+    — <a href="{{ url_for('account.review', event_id=s.event.id) }}">geef een Ravotscore</a></p>
+  {% endif %}{% endfor %}{% else %}<p class="hint">Nog niets bewaard. Tik op 🤍 bij een activiteit.</p>{% endif %}
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">Vrienden</h2>
+  <p><a href="{{ url_for('account.friends') }}">Gezinnen koppelen en samen op stap →</a></p>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">Jouw gegevens, jouw keuze</h2>
+  <div class="acties">
+    <a class="btn btn-stil" href="{{ url_for('account.export') }}">⬇️ Exporteer mijn gegevens (JSON)</a>
+    <a class="btn btn-stil" href="{{ url_for('auth.logout') }}">Afmelden</a>
+  </div>
+  <form method="post" action="{{ url_for('account.delete_account') }}" onsubmit="return confirm('Zeker? Dit verwijdert jullie profiel definitief. Reviews blijven anoniem bestaan.')" style="margin-top:10px">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-stil" type="submit" style="color:var(--rood);border-color:var(--rood)">Verwijder mijn account definitief</button>
+  </form>
+</div>
+{% endblock %}
