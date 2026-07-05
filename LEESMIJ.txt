@@ -1,38 +1,15 @@
-RAVOT — 2FA via QR-code (na login, maar 2FA blijft VERPLICHT)
-==============================================================
+RAVOT — QR-code uitlijning fix (cosmetisch)
 
-Lost je 2FA-probleem op: je stelt 2FA nu in door een QR-code op het scherm te
-scannen (geen secret meer overtypen in de terminal). 2FA blijft verplicht —
-je wordt gedwongen het in te stellen bij de eerste login, je kunt het niet
-overslaan. Alleen de MANIER van instellen is nu gebruiksvriendelijk.
+Centreert de QR-code netjes in zijn kader en geeft hem een nette rand
+(quiet zone) zodat scanners hem betrouwbaarder lezen.
 
-HOE HET WERKT:
-1. Ga naar /beheer, log in met e-mail + wachtwoord.
-2. Heb je nog geen 2FA ingesteld? Dan verschijnt een QR-CODE op de pagina.
-   Scan die met je authenticator-app (kies TIJDGEBASEERD / TOTP).
-3. Typ de code ter bevestiging → klaar, je bent binnen.
-4. Vanaf dan vraagt hij bij elke login gewoon je code (zoals het hoort).
+BELANGRIJK: stel eerst je 2FA in met de HUIDIGE (scanbare) QR voordat je dit
+uitrolt — de code werkt al, dit is enkel opmaak. Rol daarna gerust uit.
 
-BELANGRIJK — dit pakket bevat een nieuwe Python-package (segno, voor de QR).
-Daarom MOET je herbouwen én migreren:
+Op de VPS na git pull:
+  docker compose up -d --build
+(geen migratie nodig; puur front-end + één regel in de route)
 
-  cd /srv/ravot && git pull && docker compose up -d --build
-  docker compose exec web flask migrate-db     # voegt admins.totp_confirmed toe (veilig)
-
-Na de migratie staat je BESTAANDE admin automatisch op "nog niet bevestigd",
-dus je doorloopt meteen de QR-flow — dat reset je kapotte 2FA vanzelf. 🎉
-
-Je hoeft dus NIETS met de terminal te doen voor 2FA: gewoon inloggen op /beheer
-en de QR scannen.
-
-BONUS — nieuw commando als je ooit je telefoon kwijt bent:
-  docker compose exec web flask reset-admin-2fa decock.xavier@gmail.com
-  (genereert nieuwe secret; bij volgende login krijg je een verse QR)
-
-Gewijzigd/nieuw:
-  app/models.py                          (Admin.totp_confirmed)
-  app/routes/admin.py                    (login → QR-enrollment of otp; /2fa-instellen)
-  app/__init__.py                        (create-admin + reset-admin-2fa; migrate-db)
-  app/templates/admin/tweefa_instellen.html  NIEUW (QR-pagina)
-  app/static/css/ravot.css               (QR-styling)
-  requirements.txt                       (segno toegevoegd)
+Gewijzigd:
+  app/routes/admin.py         (QR met border, scale 5)
+  app/static/css/ravot.css    (QR gecentreerd)

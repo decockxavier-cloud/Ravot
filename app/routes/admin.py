@@ -81,7 +81,7 @@ def tweefa_instellen():
     uri = pyotp.TOTP(admin.totp_secret).provisioning_uri(
         name=admin.email, issuer_name="Ravot Beheer")
     qr = segno.make(uri, error="m")
-    svg = qr.svg_inline(scale=6, dark="#1F3A2A", light="#ffffff")
+    svg = qr.svg_inline(scale=5, border=2, dark="#1F3A2A", light="#ffffff")
     return render_template("admin/tweefa_instellen.html", qr_svg=svg,
                            secret=admin.totp_secret, title="Stel 2FA in",
                            family=None, active=None)
