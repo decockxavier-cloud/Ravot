@@ -6,6 +6,7 @@ services:
     expose: ["8000"]
     depends_on: [db]
     restart: unless-stopped
+    networks: [internal, proxy]
   db:
     image: postgres:16-alpine
     environment:
@@ -15,6 +16,7 @@ services:
     volumes:
       - ravot_pgdata:/var/lib/postgresql/data
     restart: unless-stopped
+    networks: [internal]
 networks:
   internal:
     name: ravot_internal
