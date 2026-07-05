@@ -216,6 +216,7 @@ class Admin(db.Model):
     email = db.Column(db.String(255), unique=True, nullable=False)
     pw_hash = db.Column(db.String(255), nullable=False)   # scrypt (werkzeug)
     totp_secret = db.Column(db.String(64), nullable=False)  # verplichte 2FA
+    totp_confirmed = db.Column(db.Boolean, default=False, nullable=False)  # QR gescand + code bevestigd
 
 
 class AuditLog(db.Model):

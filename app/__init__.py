@@ -88,6 +88,12 @@ def register_cli(app):
             db.session.execute(text(
                 "ALTER TABLE events ADD COLUMN has_vlieg BOOLEAN DEFAULT FALSE"))
             added.append("events.has_vlieg")
+        # totp_confirmed op admins: bestaande admins op FALSE → doorlopen QR-flow
+        admin_cols = {c["name"] for c in insp.get_columns("admins")}
+        if "totp_confirmed" not in admin_cols:
+            db.session.execute(text(
+                "ALTER TABLE admins ADD COLUMN totp_confirmed BOOLEAN DEFAULT FALSE NOT NULL"))
+            added.append("admins.totp_confirmed")
         # settings-tabel (nieuw in admin-config) — create_all maakt enkel wat ontbreekt
         db.create_all()
         if "settings" not in insp.get_table_names():
@@ -130,16 +136,35 @@ def register_cli(app):
     @click.argument("email")
     @click.password_option()
     def create_admin(email, password):
-        """Admin aanmaken — toont de TOTP-secret voor je authenticator-app."""
+        """Admin aanmaken. 2FA stel je daarna in via QR bij de eerste login."""
         import pyotp
         from argon2 import PasswordHasher
         from .models import Admin
         secret = pyotp.random_base32()
         db.session.add(Admin(email=email.lower(), totp_secret=secret,
-                             pw_hash=PasswordHasher().hash(password)))
+                             pw_hash=PasswordHasher().hash(password),
+                             totp_confirmed=False))
         db.session.commit()
-        uri = pyotp.TOTP(secret).provisioning_uri(name=email, issuer_name="Ravot Beheer")
-        click.echo(f"Admin aangemaakt.\nTOTP-secret: {secret}\nOf scan: {uri}")
+        click.echo(f"Admin '{email}' aangemaakt. ✅\n"
+                   "Ga naar /beheer, log in met e-mail + wachtwoord, "
+                   "en scan dan de QR-code die verschijnt om 2FA in te stellen.")
+
+    @app.cli.command("reset-admin-2fa")
+    @click.argument("email")
+    def reset_admin_2fa(email):
+        """2FA opnieuw instellen: nieuwe secret, QR-flow bij volgende login.
+        Handig als je je authenticator-app of telefoon kwijt bent."""
+        import pyotp
+        from .models import Admin
+        admin = Admin.query.filter_by(email=email.lower()).first()
+        if not admin:
+            click.echo(f"Geen admin met e-mail '{email}'.")
+            return
+        admin.totp_secret = pyotp.random_base32()
+        admin.totp_confirmed = False
+        db.session.commit()
+        click.echo(f"2FA gereset voor '{email}'. ✅\n"
+                   "Log opnieuw in op /beheer; je krijgt een nieuwe QR-code te scannen.")
 
     @app.cli.command("seed-demo")
     def seed_demo():

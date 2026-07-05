@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Stel tweestapsverificatie in 🔐</h1>
+<p class="hint">Nog één keer instellen, dan ben je voortaan veilig beschermd.
+Scan onderstaande QR-code met je authenticator-app (Google Authenticator,
+Microsoft Authenticator, Aegis…) en typ de code die verschijnt.</p>
+
+<div class="card" style="text-align:center">
+  <div class="qr-box">{{ qr_svg|safe }}</div>
+  <p style="margin:12px 0 4px"><strong>Lukt scannen niet?</strong> Voeg handmatig toe
+  als <em>tijdgebaseerd (TOTP)</em> met deze sleutel:</p>
+  <code class="totp-secret">{{ secret }}</code>
+  <p class="hint" style="margin-top:6px">Belangrijk: kies <strong>tijdgebaseerd</strong>, niet "op teller".</p>
+</div>
+
+<div class="card">
+  <form method="post" action="{{ url_for('admin.tweefa_instellen') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="code">Code uit je app (6 cijfers)</label>
+    <input id="code" name="code" inputmode="numeric" pattern="[0-9]*" maxlength="6"
+           autocomplete="one-time-code" required placeholder="123456" autofocus>
+    <div class="acties"><button class="btn" type="submit">Bevestig en ga verder</button></div>
+  </form>
+</div>
+{% endblock %}

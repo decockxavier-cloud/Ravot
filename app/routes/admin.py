@@ -44,9 +44,47 @@ def login():
         if ok:
             session["admin_id"] = admin.id
             session["admin_2fa_ok"] = False
+            # Nog geen bevestigde 2FA → verplichte enrollment met QR-code.
+            if not admin.totp_confirmed:
+                return redirect(url_for("admin.tweefa_instellen"))
             return redirect(url_for("admin.otp"))
         flash("Onjuiste gegevens.", "error")
     return render_template("admin/login.html", title="Beheer", family=None, active=None)
+
+
+@bp.route("/2fa-instellen", methods=["GET", "POST"])
+@limiter.limit("15/hour")
+def tweefa_instellen():
+    """Verplichte 2FA-enrollment: toon QR, bevestig eerste code, dan pas toegang.
+    Bereikbaar na wachtwoord-login, zolang totp_confirmed nog False is."""
+    if not session.get("admin_id"):
+        return redirect(url_for("admin.login"))
+    admin = db.session.get(Admin, session["admin_id"])
+    if admin is None:
+        return redirect(url_for("admin.login"))
+    if admin.totp_confirmed:  # al ingesteld → niets te doen hier
+        return redirect(url_for("admin.otp"))
+
+    if request.method == "POST":
+        totp = pyotp.TOTP(admin.totp_secret)
+        if totp.verify(request.form.get("code", ""), valid_window=1):
+            admin.totp_confirmed = True
+            db.session.commit()
+            session["admin_2fa_ok"] = True
+            audit("2fa ingesteld + login")
+            flash("Tweestapsverificatie is ingesteld. 🎉", "ok")
+            return redirect(url_for("admin.dashboard"))
+        flash("Die code klopt niet. Scan de QR opnieuw en probeer een verse code.", "error")
+
+    # QR-code (SVG) server-side genereren — niets externs, geen tracking.
+    import segno
+    uri = pyotp.TOTP(admin.totp_secret).provisioning_uri(
+        name=admin.email, issuer_name="Ravot Beheer")
+    qr = segno.make(uri, error="m")
+    svg = qr.svg_inline(scale=6, dark="#1F3A2A", light="#ffffff")
+    return render_template("admin/tweefa_instellen.html", qr_svg=svg,
+                           secret=admin.totp_secret, title="Stel 2FA in",
+                           family=None, active=None)
 
 
 @bp.route("/otp", methods=["GET", "POST"])
@@ -54,8 +92,12 @@ def login():
 def otp():
     if not session.get("admin_id"):
         return redirect(url_for("admin.login"))
+    admin = db.session.get(Admin, session["admin_id"])
+    if admin is None:
+        return redirect(url_for("admin.login"))
+    if not admin.totp_confirmed:  # nog niet ingeschreven → naar QR-flow
+        return redirect(url_for("admin.tweefa_instellen"))
     if request.method == "POST":
-        admin = db.session.get(Admin, session["admin_id"])
         totp = pyotp.TOTP(admin.totp_secret)
         if totp.verify(request.form.get("code", ""), valid_window=1):
             session["admin_2fa_ok"] = True
