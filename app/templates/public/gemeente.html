@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block body_class %}met-sfeer{% endblock %}
 {% block content %}
 <h1>Wat te doen met kinderen in {{ gemeente }}{% if facet %} — {{ facets[facet] }}{% endif %}?</h1>
 <p class="answer">{{ answer }}</p>

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block body_class %}met-sfeer{% endblock %}
+{% block content %}
+<section class="hero">
+  <div class="floaties" aria-hidden="true"><span>🎈</span><span>🪁</span><span>🌳</span><span>☀️</span></div>
+  <p style="font-size:.95rem;opacity:.9;margin:0 0 4px">Voor gezinnen met kinderen · heel Vlaanderen</p>
+  <h1>Waar gaan we <span class="accent">vandaag</span><br>ravotten?</h1>
+  <p class="lead">Elke dag de leukste uitstappen in jouw buurt — op maat van de leeftijd van je kinderen, jouw afstand en jouw budget. Zonder eindeloos zoeken.</p>
+  <div class="cta-rij">
+    <a class="btn btn-zon btn-groot" href="{{ url_for('public.proberen') }}">Kijk wat er vandaag kan →</a>
+    <a class="btn btn-stil btn-groot" href="{{ url_for('auth.login') }}">Maak gratis profiel</a>
+  </div>
+  <p class="mini">Gratis · geen reclame · geen account nodig om te proberen</p>
+  <svg class="hero-golf" viewBox="0 0 1440 60" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0,30 C240,60 480,0 720,24 C960,48 1200,10 1440,34 L1440,60 L0,60 Z" fill="#FAF7F0"/>
+  </svg>
+</section>
+
+{% if stats.events %}
+<div class="stat-band">
+  <div class="stat"><b>{{ stats.events }}</b><span>activiteiten</span></div>
+  <div class="stat"><b>{{ stats.gemeenten }}</b><span>gemeenten</span></div>
+  <div class="stat"><b>gratis</b><span>voor gezinnen</span></div>
+</div>
+{% endif %}
+
+<section class="sectie">
+  <h2 class="sectie-titel">Waarom Ravot?</h2>
+  <p class="sectie-sub">Omdat elk weekend opnieuw filteren op leeftijd, afstand en prijs geen hobby zou mogen zijn.</p>
+
+  <div class="feature groen">
+    <div class="emoji">🎯</div>
+    <div><h3>Op maat van jouw gezin</h3>
+    <p>Stel één keer in hoe oud je kinderen zijn en waar je woont. Ravot toont voortaan alleen wat écht past — en groeit mee als je kinderen groter worden.</p></div>
+  </div>
+  <div class="feature geel">
+    <div class="emoji">😄</div>
+    <div><h3>De Ravotscore</h3>
+    <p>Echte beoordelingen van échte gezinnen, apart per leeftijd. Want wat een kleuter geweldig vindt, is voor een tiener saai.</p>
+    <div class="score-demo">
+      <div class="smiles">😄 😄 😄 😄 🤩</div>
+      <div><span class="band">3–5 jaar: 4,8</span><span class="band">8–10 jaar: 3,1</span></div>
+    </div>
+    </div>
+  </div>
+  <div class="feature groen">
+    <div class="emoji">💶</div>
+    <div><h3>De échte kost</h3>
+    <p>“Gratis toegang” en toch €50 kwijt? Ravot toont wat gezinnen er werkelijk uitgaven — parking en pannenkoeken inbegrepen.</p></div>
+  </div>
+  <div class="feature geel">
+    <div class="emoji">🗺️</div>
+    <div><h3>Alles op de kaart</h3>
+    <p>In één oogopslag zien wat er in de buurt te doen is. Toevallig aan zee dit weekend? Sleep de kaart en ontdek ter plaatse.</p></div>
+  </div>
+</section>
+
+<div class="beloftes">
+  <span class="belofte">🆓 Altijd <b>gratis</b></span>
+  <span class="belofte">🚫 <b>Geen</b> reclame</span>
+  <span class="belofte">🔒 <b>Geen</b> namen van kinderen</span>
+</div>
+
+<section class="slot-cta">
+  <h2>Klaar om te ravotten?</h2>
+  <p>Vul je postcode in en zie meteen wat er vandaag te doen is.</p>
+  <a class="btn btn-groot" href="{{ url_for('public.proberen') }}">Start nu — het duurt 20 seconden</a>
+</section>
+
+<p style="text-align:center;color:#77836f;font-size:.82rem;margin:14px 16px">
+  Activiteiten in samenwerking met <a href="https://www.uitdatabank.be" rel="noopener">UiTdatabank</a>.
+  · <a href="{{ url_for('public.over') }}">Over Ravot</a>
+</p>
+{% endblock %}

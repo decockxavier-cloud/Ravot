@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Wat kan er vandaag? 🎈</h1>
+<p class="hint">Geen account nodig — enkel je postcode en de leeftijden van je kinderen. We bewaren geen namen.</p>
+<div class="card">
+  <form method="post" action="{{ url_for('public.proberen') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="pc">Postcode</label>
+    <input id="pc" type="text" name="postcode" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required placeholder="8800">
+    <label>Leeftijden van de kinderen</label>
+    <div class="veldrij">
+      <input type="number" name="age" min="0" max="17" placeholder="4">
+      <input type="number" name="age" min="0" max="17" placeholder="7">
+      <input type="number" name="age" min="0" max="17" placeholder="">
+    </div>
+    <label for="rad">Hoe ver willen jullie rijden?</label>
+    <select id="rad" name="radius">
+      <option value="10">tot 10 km</option>
+      <option value="25" selected>tot 25 km</option>
+      <option value="50">tot 50 km</option>
+    </select>
+    <label for="bud">Budget</label>
+    <select id="bud" name="budget">
+      <option value="all" selected>alles mag</option>
+      <option value="low">liefst goedkoop</option>
+      <option value="free">enkel gratis</option>
+    </select>
+    <div class="acties">
+      <button class="btn btn-groot" type="submit">Toon activiteiten →</button>
+    </div>
+    <p class="hint" style="margin-top:10px">Wil je dat Ravot je onthoudt en je elke donderdag tips mailt? <a href="{{ url_for('auth.login') }}">Maak een gratis profiel.</a></p>
+  </form>
+</div>
+{% endblock %}

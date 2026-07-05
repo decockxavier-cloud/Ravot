@@ -19,7 +19,7 @@
   {% block head %}{% endblock %}
   {% for ld in jsonld or [] %}<script type="application/ld+json">{{ ld | safe }}</script>{% endfor %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
   <header class="topbar">
     <a class="logo" href="{{ url_for('public.vandaag') }}" aria-label="Ravot – naar vandaag">
       Ravot<span class="logo-dot">.</span>

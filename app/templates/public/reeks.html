@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block body_class %}met-sfeer{% endblock %}
 {% block content %}
 <h1>{{ series.name }}</h1>
 {% if series.venue %}<p class="meta">📍 {{ series.venue.name }}, {{ series.venue.gemeente }}</p>{% endif %}

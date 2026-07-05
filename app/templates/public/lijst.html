@@ -1,35 +1,9 @@
 {% extends "base.html" %}
+{% block body_class %}met-sfeer{% endblock %}
 {% block content %}
 <h1>{{ title }}</h1>
 
-{% if not has_profile %}
-  {# Zero-friction anonieme start: geen registratiemuur (strategienota §3.2) #}
-  <div class="card">
-    <h2 style="margin-top:0">Meteen kijken wat er te doen is?</h2>
-    <p class="hint">Geen account nodig — alleen je postcode en de leeftijden van je kinderen.</p>
-    <form method="post" action="{{ url_for('public.vandaag') }}">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <label for="pc">Postcode</label>
-      <input id="pc" type="text" name="postcode" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required placeholder="8800">
-      <label>Leeftijden van de kinderen</label>
-      <div class="veldrij">
-        <input type="number" name="age" min="0" max="17" placeholder="4">
-        <input type="number" name="age" min="0" max="17" placeholder="7">
-        <input type="number" name="age" min="0" max="17" placeholder="">
-      </div>
-      <label for="rad">Hoe ver willen jullie rijden?</label>
-      <select id="rad" name="radius">
-        <option value="10">tot 10 km</option>
-        <option value="25" selected>tot 25 km</option>
-        <option value="50">tot 50 km</option>
-      </select>
-      <div class="acties">
-        <button class="btn" type="submit">Toon activiteiten</button>
-        <a class="btn btn-stil" href="{{ url_for('auth.login') }}">Of maak een gratis profiel</a>
-      </div>
-    </form>
-  </div>
-{% else %}
+
   {% if answer %}<p class="answer">{{ answer }}</p>{% endif %}
   <button id="install-cta" class="btn btn-zon btn-klein" hidden>📲 Zet Ravot op je beginscherm</button>
 
@@ -72,5 +46,4 @@
       of op de <a href="{{ url_for('public.verkennen') }}">kaart</a>.</p>
     </div>
   {% endif %}
-{% endif %}
 {% endblock %}

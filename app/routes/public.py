@@ -117,9 +117,10 @@ def scored_events(profile, scope, extra_filter=None, limit=40):
 
 # --------------------------------------------------------------------- pages --
 
-@bp.route("/", methods=["GET", "POST"])
-def vandaag():
-    if request.method == "POST":  # anonieme snelstart: postcode + leeftijden
+@bp.route("/proberen", methods=["GET", "POST"])
+def proberen():
+    """Anonieme snelstart: postcode + leeftijden, zonder account."""
+    if request.method == "POST":
         ages = [int(a) for a in request.form.getlist("age") if a.strip().isdigit()]
         session["guest"] = {
             "postcode": request.form.get("postcode", "").strip()[:4],
@@ -129,18 +130,35 @@ def vandaag():
         }
         session.permanent = True
         return redirect(url_for("public.vandaag"))
+    return render_template("public/proberen.html", family=None, active=None,
+                           title="Meteen kijken wat er te doen is")
+
+
+@bp.route("/", methods=["GET"])
+def vandaag():
     profile, fam = build_profile()
     has_profile = bool(fam or guest_profile().get("postcode"))
-    rows = scored_events(profile, "vandaag") if has_profile else []
-    if has_profile and not rows:
+    if not has_profile:
+        # Nieuwe bezoeker zonder profiel → landingspagina (website-jas)
+        from ..models import Event, Review
+        stats = {
+            "events": Event.query.count(),
+            "gemeenten": db.session.query(Event.gemeente).filter(
+                Event.gemeente.isnot(None)).distinct().count(),
+            "reviews": Review.query.count(),
+        }
+        return render_template("public/landing.html", stats=stats,
+                               family=None, active=None,
+                               title="Ravot — waar gaan we vandaag ravotten?")
+    rows = scored_events(profile, "vandaag")
+    if not rows:
         log("zero_result", scope="vandaag", postcode=guest_profile().get("postcode")
             or (fam.postcode if fam else None))
     gemeente = (fam.postcode if fam else guest_profile().get("postcode")) or "jouw buurt"
     centroid = db.session.get(PostcodeCentroid, gemeente) if gemeente else None
     plaats = centroid.gemeente if centroid else "jouw buurt"
     answer = seo.answer_block(plaats, "vandaag", [r["event"] for r in rows],
-                              top=(rows[0]["event"], rows[0]["agg"]) if rows else None) \
-        if has_profile else None
+                              top=(rows[0]["event"], rows[0]["agg"]) if rows else None)
     return render_template("public/lijst.html", rows=rows, scope="vandaag",
                            title="Wat gaan we vandaag doen?", answer=answer,
                            has_profile=has_profile, family=fam, active="vandaag")
