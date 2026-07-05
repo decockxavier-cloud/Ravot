@@ -2,13 +2,13 @@
 {% block content %}
 <h1>Aanmelden bij Ravot</h1>
 <div class="card">
-  <p>Geen wachtwoord nodig. Vul je e-mailadres in en je krijgt meteen een inloglink — één tik en je bent binnen.</p>
+  <p>Geen wachtwoord nodig. Vul je e-mailadres in en je krijgt een inlogcode van 6 cijfers in je mailbox.</p>
   <form method="post">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label for="email">E-mailadres</label>
     <input id="email" type="email" name="email" autocomplete="email" required placeholder="jij@voorbeeld.be">
-    <div class="acties"><button class="btn" type="submit">Stuur mijn inloglink</button></div>
+    <div class="acties"><button class="btn" type="submit">Stuur mijn inlogcode</button></div>
   </form>
-  <p class="hint">Nieuw bij Ravot? Zelfde weg: na je eerste link stel je in één minuut je gezin in.</p>
+  <p class="hint">Nieuw bij Ravot? Zelfde weg: na je eerste code stel je in één minuut je gezin in.</p>
 </div>
 {% endblock %}

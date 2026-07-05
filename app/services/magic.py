@@ -22,41 +22,63 @@ def _hash(token):
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-def issue_token(email, purpose="login"):
-    token = secrets.token_urlsafe(32)
+def _hash_code(email, code):
+    """Hash e-mail + code samen: zo is de opgeslagen hash uniek per gebruiker,
+    ook al krijgen twee mensen toevallig dezelfde 6 cijfers."""
+    return hashlib.sha256(f"{email.lower().strip()}:{code}".encode()).hexdigest()
+
+
+MAX_CODE_ATTEMPTS = 5  # brute-force-slot: na 5 foute pogingen is de code dood
+
+
+def issue_code(email, purpose="login"):
+    """Genereer een 6-cijferige inlogcode. Retourneert de code (voor de mail).
+    Enkel de hash (van e-mail+code) wordt opgeslagen."""
+    email = email.lower().strip()
+    code = f"{secrets.randbelow(1_000_000):06d}"  # 000000–999999, altijd 6 cijfers
     minutes = current_app.config["MAGIC_LINK_MINUTES"]
+    # Bestaande openstaande codes voor dit adres ongeldig maken (één actieve code).
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    for oud in MagicToken.query.filter_by(email=email, purpose=purpose, used_at=None):
+        oud.used_at = now
     db.session.add(MagicToken(
-        email=email.lower().strip(),
-        token_hash=_hash(token),
+        email=email,
+        token_hash=_hash_code(email, code),
         purpose=purpose,
-        expires_at=datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=minutes),
+        expires_at=now + timedelta(minutes=minutes),
     ))
     db.session.commit()
-    return token
+    return code
 
 
-def peek_token(token, purpose="login"):
-    """Retourneert e-mailadres als de token geldig is, ZONDER hem te verbranden.
-    Zo kan een automatische e-mailscanner (die de link vooraf bezoekt) de token
-    niet opbranden — verbranden gebeurt pas bij een bewuste klik (POST)."""
-    row = MagicToken.query.filter_by(token_hash=_hash(token), purpose=purpose).first()
-    if row is None or row.used_at is not None:
+def verify_code(email, code, purpose="login"):
+    """Controleer e-mail + code. Retourneert e-mail bij succes (code verbrand),
+    anders None. Telt foute pogingen; na MAX_CODE_ATTEMPTS is de code dood."""
+    email = email.lower().strip()
+    code = (code or "").strip()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    # Zoek de nieuwste openstaande code voor dit adres.
+    row = MagicToken.query.filter_by(email=email, purpose=purpose, used_at=None) \
+        .order_by(MagicToken.id.desc()).first()
+    if row is None:
         return None
-    if row.expires_at < datetime.now(timezone.utc).replace(tzinfo=None):
+    if row.expires_at < now:
         return None
-    return row.email
-
-
-def verify_token(token, purpose="login"):
-    """Retourneert e-mailadres of None. Token wordt bij succes verbrand."""
-    row = MagicToken.query.filter_by(token_hash=_hash(token), purpose=purpose).first()
-    if row is None or row.used_at is not None:
+    if row.attempts >= MAX_CODE_ATTEMPTS:
+        row.used_at = now  # te vaak geprobeerd → definitief dood
+        db.session.commit()
         return None
-    if row.expires_at < datetime.now(timezone.utc).replace(tzinfo=None):
+    if row.token_hash != _hash_code(email, code):
+        row.attempts += 1
+        db.session.commit()
         return None
-    row.used_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    row.used_at = now  # correct → verbranden
     db.session.commit()
-    return row.email
+    return email
+
+
+def _hash_legacy(token):
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
 def recent_requests(email, hours=1):

@@ -94,6 +94,12 @@ def register_cli(app):
             db.session.execute(text(
                 "ALTER TABLE admins ADD COLUMN totp_confirmed BOOLEAN DEFAULT FALSE NOT NULL"))
             added.append("admins.totp_confirmed")
+        # attempts op magic_tokens: brute-force-slot voor inlogcodes
+        mt_cols = {c["name"] for c in insp.get_columns("magic_tokens")}
+        if "attempts" not in mt_cols:
+            db.session.execute(text(
+                "ALTER TABLE magic_tokens ADD COLUMN attempts INTEGER DEFAULT 0 NOT NULL"))
+            added.append("magic_tokens.attempts")
         # settings-tabel (nieuw in admin-config) — create_all maakt enkel wat ontbreekt
         db.create_all()
         if "settings" not in insp.get_table_names():

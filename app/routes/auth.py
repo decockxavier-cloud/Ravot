@@ -23,37 +23,37 @@ def login():
             flash("Dat lijkt geen geldig e-mailadres.", "error")
             return render_template("auth/login.html", title="Aanmelden", family=None, active=None)
         if magic.recent_requests(email) >= current_app.config["MAGIC_REQUESTS_PER_HOUR"]:
-            flash("Er zijn al enkele inloglinks verstuurd. Kijk in je mailbox (ook spam).", "error")
+            flash("Er zijn al enkele codes verstuurd. Kijk in je mailbox (ook spam).", "error")
             return render_template("auth/login.html", title="Aanmelden", family=None, active=None)
-        token = magic.issue_token(email)
-        link = current_app.config["SITE_URL"] + url_for("auth.verify", token=token)
+        code = magic.issue_code(email)
         magic.send_mail(
-            email, "Jouw Ravot-inloglink",
-            render_template("mail/magic_link.html", link=link),
-            text=f"Meld je aan bij Ravot met deze link (15 min geldig): {link}",
+            email, f"Jouw Ravot-inlogcode: {code}",
+            render_template("mail/inlogcode.html", code=code),
+            text=f"Jouw Ravot-inlogcode is {code}. Ze is 15 minuten geldig. "
+                 f"Typ ze in op de website. Heb je dit niet aangevraagd? Negeer deze mail.",
         )
-        return render_template("auth/check_mail.html", email=email,
-                               title="Kijk in je mailbox", family=None, active=None)
+        # Onthoud voor welk adres we een code wachten (voorvullen + veiligheid).
+        session["code_email"] = email
+        return render_template("auth/code_invoeren.html", email=email,
+                               title="Voer je code in", family=None, active=None)
     return render_template("auth/login.html", title="Aanmelden", family=None, active=None)
 
 
-@bp.route("/login/<token>", methods=["GET", "POST"])
-def verify(token):
-    if request.method == "GET":
-        # Toon een bevestigingsknop zonder de token te verbranden.
-        # Automatische e-mailscanners doen alleen deze GET en klikken de knop niet,
-        # dus de link blijft geldig tot de gebruiker zelf bevestigt.
-        email = magic.peek_token(token)
-        if email is None:
-            flash("Deze link is verlopen of al gebruikt. Vraag een nieuwe aan.", "error")
-            return redirect(url_for("auth.login"))
-        return render_template("auth/bevestig_login.html", token=token,
-                               title="Aanmelden bevestigen", family=None, active=None)
-    # POST: nu pas verbranden en inloggen
-    email = magic.verify_token(token)
-    if email is None:
-        flash("Deze link is verlopen of al gebruikt. Vraag een nieuwe aan.", "error")
+@bp.route("/code", methods=["POST"])
+@limiter.limit("20/hour")
+def code_verify():
+    """Controleer de 6-cijferige inlogcode."""
+    email = (request.form.get("email") or session.get("code_email") or "").strip().lower()
+    code = re.sub(r"\D", "", request.form.get("code", ""))  # enkel cijfers
+    if not email:
+        flash("Vraag eerst een inlogcode aan.", "error")
         return redirect(url_for("auth.login"))
+    resultaat = magic.verify_code(email, code)
+    if resultaat is None:
+        flash("Die code klopt niet of is verlopen. Probeer opnieuw of vraag een nieuwe aan.", "error")
+        return render_template("auth/code_invoeren.html", email=email,
+                               title="Voer je code in", family=None, active=None)
+    session.pop("code_email", None)
     family = Family.query.filter_by(email=email).first()
     session.permanent = True
     if family is None:

@@ -1,27 +1,43 @@
-RAVOT — Inloglink (magic link) werkt weer
+RAVOT — Inloggen met CODE i.p.v. link (scanner-probleem definitief weg)
+========================================================================
 
-OORZAAK (uit de database bevestigd): je link was NIET verlopen, maar al
-"gebruikt" — enkele seconden na verzending, vóór jij zelf klikte. Dat is een
-automatische e-mailscanner (Gmail/Google) die links in binnenkomende mail
-vooraf bezoekt om ze te controleren. Die klik verbrandde je magic link.
+De magic LINK is vervangen door een 6-cijferige INLOGCODE. Er is geen link meer
+in de mail, dus geen enkele mailscanner (Gmail, Outlook SafeLinks...) kan je
+inlog nog "opbranden". Dit lost het probleem structureel op.
 
-OPGELOST met een bevestigingspagina:
-- De link in de mail opent nu een pagina met knop "Meld me aan →".
-- Een automatische scanner doet alleen de GET en klikt de knop NIET, dus de
-  link blijft geldig.
-- Pas als jij (mens) op de knop klikt, wordt de link verbrand en log je in.
+HOE HET WERKT:
+1. Gezin vult e-mailadres in op ravot.be.
+2. Krijgt een mail met een code van 6 cijfers (staat ook in het onderwerp).
+3. Typt de code in op de site -> ingelogd.
+De code is 15 min geldig, werkt één keer, en is beveiligd tegen raden
+(max 5 pogingen, dan is de code dood).
 
-Zo kan geen enkele scanner je link nog opbranden. De link blijft 15 min geldig,
-werkt één keer.
+BELANGRIJK — LET OP HET SCHUINE STREEPJE:
+Dit pakket bevat een nieuwe database-kolom. Je MOET migreren:
 
-Op de VPS na git pull:
-  docker compose up -d --build
-(geen migratie nodig)
+  cd /srv/ravot && git pull && docker compose up -d --build
+  docker compose exec web flask migrate-db     # voegt magic_tokens.attempts toe (veilig)
 
-TESTEN: vraag op ravot.be een inloglink aan, klik in de mail -> je krijgt nu
-een "Meld me aan"-knop -> klik -> je bent binnen.
+BELANGRIJK — RUIM OUDE MAGIC-LINK BESTANDEN OP DE VPS OP:
+Deze bestanden zijn verwijderd en mogen ook op de server weg (anders blijven ze
+als dode bestanden staan; ze worden niet meer gebruikt maar geven geen fout):
+  app/templates/auth/bevestig_login.html
+  app/templates/auth/check_mail.html
+  app/templates/mail/magic_link.html
+Als je met 'git pull' werkt worden verwijderde bestanden automatisch mee
+verwijderd, dus normaal hoef je hier niets te doen.
+
+TESTEN:
+  ravot.be -> Aanmelden -> e-mail invoeren -> code uit de mail intypen -> binnen.
+Werkt met elk e-mailadres, ook Hotmail/Outlook.
 
 Gewijzigd/nieuw:
-  app/services/magic.py                    (peek_token: check zonder verbranden)
-  app/routes/auth.py                       (GET = bevestigpagina, POST = inloggen)
-  app/templates/auth/bevestig_login.html   NIEUW (bevestigingsknop)
+  app/services/magic.py                  (issue_code / verify_code, brute-force-slot)
+  app/routes/auth.py                     (login stuurt code; /code verifieert)
+  app/models.py                          (magic_tokens.attempts)
+  app/__init__.py                        (migrate-db: attempts-kolom)
+  app/templates/auth/login.html          (tekst: code i.p.v. link)
+  app/templates/auth/code_invoeren.html  NIEUW (code-invoerpagina)
+  app/templates/mail/inlogcode.html      NIEUW (mail met de code)
+  app/static/css/ravot.css               (code-invoer styling)
+VERWIJDERD: bevestig_login.html, check_mail.html, magic_link.html

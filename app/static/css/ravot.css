@@ -300,3 +300,7 @@ body.met-sfeer {
 .totp-secret { display: inline-block; background: var(--creme); border: 1px solid var(--lijn);
   border-radius: 8px; padding: 8px 14px; font-family: monospace; font-size: 1.05rem;
   letter-spacing: 2px; word-break: break-all; }
+
+/* Inlogcode-invoer: groot en gecentreerd */
+.code-invoer { font-size: 1.8rem; letter-spacing: 8px; text-align: center;
+  font-family: monospace; max-width: 240px; }

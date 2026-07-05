@@ -207,6 +207,7 @@ class MagicToken(db.Model):
     purpose = db.Column(db.String(16), default="login")
     expires_at = db.Column(db.DateTime, nullable=False)
     used_at = db.Column(db.DateTime)
+    attempts = db.Column(db.Integer, default=0, nullable=False)  # brute-force-slot voor codes
     created_at = db.Column(db.DateTime, default=utcnow)
 
 

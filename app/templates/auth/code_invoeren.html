@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block body_class %}met-sfeer{% endblock %}
+{% block content %}
+<h1>Kijk in je mailbox 📬</h1>
+<p class="hint">We stuurden een inlogcode van 6 cijfers naar <strong>{{ email }}</strong>.
+Typ ze hieronder in. De code is 15 minuten geldig.</p>
+<div class="card">
+  <form method="post" action="{{ url_for('auth.code_verify') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="email" value="{{ email }}">
+    <label for="code">Inlogcode</label>
+    <input id="code" name="code" inputmode="numeric" pattern="[0-9]*" maxlength="6"
+           autocomplete="one-time-code" required autofocus placeholder="123456"
+           class="code-invoer">
+    <div class="acties"><button class="btn btn-groot" type="submit">Meld me aan →</button></div>
+  </form>
+  <p class="hint" style="margin-top:12px">Geen code ontvangen? Kijk in je spam, of
+    <a href="{{ url_for('auth.login') }}">vraag een nieuwe aan</a>.</p>
+</div>
+{% endblock %}
