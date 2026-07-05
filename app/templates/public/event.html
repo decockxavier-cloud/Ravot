@@ -10,6 +10,7 @@
   {% elif family_total is not none %}<span class="badge">Voor jullie gezin: €{{ "%.0f"|format(family_total) }}</span>{% endif %}
   {% if euro and not ev.is_free %}<span class="badge">{{ euro }}</span>{% endif %}
   {% if ev.indoor %}<span class="badge">🌧️ binnen</span>{% endif %}
+  {% if ev.has_vlieg %}<span class="badge badge-vlieg">🐛 UiT met Vlieg</span>{% endif %}
   {% if agg %}<span class="badge badge-score">😄 Ravotscore {{ agg.avg }} ({{ agg.count }} gezinnen)</span>{% endif %}
 </div>
 

@@ -108,6 +108,10 @@ def normalise(item):
             terms.append(str(lbl).lower())
     cats = sorted({v for term in terms for k, v in THEME_MAP.items() if k in term}) or ["buiten"]
     indoor = any(t in " ".join(terms) for t in INDOOR_TYPES)
+    labels = item.get("labels") or []
+    hidden = item.get("hiddenLabels") or []
+    all_labels = [str(l).lower() for l in (labels + hidden)]
+    has_vlieg = any("vlieg" in l for l in all_labels)
     lo, hi = parse_age_range(item.get("typicalAgeRange"))
     prices = parse_prices(item.get("priceInfo"))
     is_free = bool(prices) and all(p["price"] == 0 for p in prices)
@@ -143,7 +147,7 @@ def normalise(item):
         "postcode": postcode,
         "lat": geo.get("latitude"), "lng": geo.get("longitude"),
         "age_min": lo, "age_max": hi,
-        "categories": cats, "indoor": indoor,
+        "categories": cats, "indoor": indoor, "has_vlieg": has_vlieg,
         "is_free": is_free, "price_info": prices,
         "image_url": media,
         "venue": {"uit_id": (loc.get("@id") or "").rsplit("/", 1)[-1],
@@ -200,7 +204,7 @@ def upsert_event(data):
         db.session.add(ev)
     for f in ("title", "description", "start", "end", "gemeente", "postcode",
               "lat", "lng", "age_min", "age_max", "categories", "indoor",
-              "is_free", "price_info", "image_url"):
+              "is_free", "price_info", "image_url", "has_vlieg"):
         setattr(ev, f, data[f])
     ev.slug = ev.slug or f"{slugify(data['title'])}-{data['uit_id'][:8]}"
     ev.organizer_id = org.id if org else None

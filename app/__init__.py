@@ -69,6 +69,20 @@ def register_cli(app):
         db.create_all()
         click.echo("Database klaar.")
 
+    @app.cli.command("migrate-db")
+    def migrate_db():
+        """Voegt ontbrekende kolommen toe zonder data te wissen (lichte migratie)."""
+        from sqlalchemy import inspect, text
+        insp = inspect(db.engine)
+        cols = {c["name"] for c in insp.get_columns("events")}
+        added = []
+        if "has_vlieg" not in cols:
+            db.session.execute(text(
+                "ALTER TABLE events ADD COLUMN has_vlieg BOOLEAN DEFAULT FALSE"))
+            added.append("events.has_vlieg")
+        db.session.commit()
+        click.echo("Migratie klaar. Toegevoegd: " + (", ".join(added) or "niets nodig"))
+
     @app.cli.command("sync-uit")
     def sync_uit():
         """Nachtelijke UiT-sync (cron: elke nacht om 03:00)."""

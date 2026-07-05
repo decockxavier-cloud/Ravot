@@ -105,6 +105,7 @@ class Event(db.Model):
     age_max = db.Column(db.Integer, default=99)
     categories = db.Column(db.JSON, default=list)
     indoor = db.Column(db.Boolean, default=False)
+    has_vlieg = db.Column(db.Boolean, default=False)  # UiT met Vlieg-label (publiq)
     is_free = db.Column(db.Boolean, default=False, index=True)
     price_info = db.Column(db.JSON, default=list)  # [{name, price, min_age, max_age}]
     image_url = db.Column(db.String(500))

@@ -36,6 +36,7 @@
           {% elif r.family_total is not none %}<span class="badge">Voor jullie gezin: €{{ "%.0f"|format(r.family_total) }}</span>{% endif %}
           {% if r.agg %}<span class="badge badge-score">😄 {{ r.agg.avg }} ({{ r.agg.count }})</span>{% endif %}
           {% if e.indoor %}<span class="badge">🌧️ binnen</span>{% endif %}
+          {% if e.has_vlieg %}<span class="badge badge-vlieg" title="UiT met Vlieg: activiteit op maat van kinderen">🐛 UiT met Vlieg</span>{% endif %}
         </div>
         {% if family %}
         <div class="acties">
@@ -55,6 +56,9 @@
         {% endif %}
       </article>
     {% endfor %}
+    {% if rows | selectattr('event.has_vlieg') | list %}
+    <p class="vlieg-legende">🐛 <strong>UiT met Vlieg</strong> markeert activiteiten die op maat van kinderen zijn — een label van publiq.</p>
+    {% endif %}
   {% else %}
     <div class="card">
       <h2 style="margin-top:0">Nog niets gevonden {{ scope }} 😕</h2>

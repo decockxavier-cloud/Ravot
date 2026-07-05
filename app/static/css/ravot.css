@@ -245,3 +245,12 @@ body.met-sfeer {
 .thumb-link { display: block; margin: -14px -14px 10px; border-radius: 16px 16px 0 0; overflow: hidden; }
 .thumb { width: 100%; height: 150px; object-fit: cover; display: block; }
 @media (min-width: 720px) { .thumb { height: 180px; } }
+
+/* UiTinVlaanderen-verwijzing (publiq-richtlijn) */
+.uit-verwijzing { border-top: 1px solid var(--lijn); margin-top: 14px; padding-top: 14px; }
+.uit-inspiratie { font-weight: 600; color: var(--gras-donker); margin: 0 0 8px; }
+.uit-inspiratie a { color: var(--gras); }
+.uit-oproep { font-size: .8rem; color: #77836f; margin: 0 0 10px; }
+.badge-vlieg { background: #E8F4EA; border-color: #B9DDC2; color: var(--gras-donker); font-weight: 600; }
+.vlieg-legende { font-size: .82rem; color: #5f6d63; background: #F1F8F3;
+  border-radius: 12px; padding: 8px 12px; margin: 4px 0 12px; }
