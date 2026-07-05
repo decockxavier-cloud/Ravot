@@ -3,14 +3,30 @@
 {% block content %}
 <h1>{{ title }}</h1>
 
-
   {% if answer %}<p class="answer">{{ answer }}</p>{% endif %}
   <button id="install-cta" class="btn btn-zon btn-klein" hidden>📲 Zet Ravot op je beginscherm</button>
+
+  <div class="filterbalk" id="filterbalk" role="group" aria-label="Filters">
+    <span class="filterchip aan" data-filter="alles">Alles</span>
+    <span class="filterchip" data-filter="gratis">Gratis</span>
+    <span class="filterchip" data-filter="binnen">🌧️ Binnen</span>
+    <span class="filterchip" data-filter="buiten">☀️ Buiten</span>
+    <span class="filterchip" data-filter="score">😄 Top gescoord</span>
+  </div>
 
   {% if rows %}
     {% for r in rows %}
       {% set e = r.event %}
-      <article class="card">
+      <article class="card kaart-event"
+               data-free="{{ '1' if e.is_free else '0' }}"
+               data-indoor="{{ '1' if e.indoor else '0' }}"
+               data-score="{{ r.agg.avg if r.agg else 0 }}">
+        {% if e.image_url %}
+        <a href="{{ url_for('public.event', slug=e.slug) }}" class="thumb-link">
+          <img class="thumb" src="{{ e.image_url }}" alt="" loading="lazy"
+               onerror="this.closest('.thumb-link').style.display='none'">
+        </a>
+        {% endif %}
         <h3><a href="{{ url_for('public.event', slug=e.slug) }}">{{ e.title }}</a></h3>
         <p class="meta">📍 {{ e.gemeente }}{% if e.venue %} · {{ e.venue.name }}{% endif %}
            {% if e.start %} · 🕐 {{ e.start.strftime("%a %d/%m om %H:%M") }}{% endif %}</p>

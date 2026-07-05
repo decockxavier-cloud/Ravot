@@ -111,7 +111,14 @@ def normalise(item):
     lo, hi = parse_age_range(item.get("typicalAgeRange"))
     prices = parse_prices(item.get("priceInfo"))
     is_free = bool(prices) and all(p["price"] == 0 for p in prices)
-    media = item.get("image") or None
+    # UiT levert beelden meestal via mediaObject[].contentUrl; 'image' is soms een directe URL.
+    media = None
+    mo = item.get("mediaObject") or []
+    if isinstance(mo, list) and mo:
+        media = mo[0].get("contentUrl") or mo[0].get("thumbnailUrl")
+    if not media:
+        img = item.get("image")
+        media = img if isinstance(img, str) else None
     start = item.get("startDate")
     end = item.get("endDate")
 
@@ -121,13 +128,19 @@ def normalise(item):
         return datetime.fromisoformat(s.replace("Z", "+00:00")).replace(tzinfo=None)
 
     org = item.get("organizer") or {}
+    raw_postcode = addr.get("postalCode")
+    # Sommige (test)events hebben 'B-1853' e.d.; onze kolom is 4 tekens.
+    postcode = None
+    if raw_postcode:
+        digits = re.sub(r"\D", "", str(raw_postcode))
+        postcode = digits[:4] or None
     return {
         "uit_id": uit_id,
         "title": title,
         "description": (_first_nl(item.get("description")) or "")[:2000],
         "start": _dt(start), "end": _dt(end),
         "gemeente": addr.get("addressLocality"),
-        "postcode": addr.get("postalCode"),
+        "postcode": postcode,
         "lat": geo.get("latitude"), "lng": geo.get("longitude"),
         "age_min": lo, "age_max": hi,
         "categories": cats, "indoor": indoor,
@@ -239,9 +252,11 @@ def run_sync(max_pages=200, page_size=50):
         for item in members:
             try:
                 upsert_event(normalise(item))
+                db.session.flush()
                 total += 1
             except Exception as exc:  # één slecht event mag de sync niet breken
-                current_app.logger.warning("sync: event overgeslagen: %s", exc)
+                db.session.rollback()
+                current_app.logger.warning("sync: event overgeslagen: %s", str(exc)[:120])
         db.session.commit()
         if len(members) < page_size:
             break

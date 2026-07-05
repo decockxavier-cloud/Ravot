@@ -5,11 +5,21 @@
   <h2 style="margin-top:0">Ons gezin</h2>
   <form method="post">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <label>Geboortejaar van je kinderen</label>
-    <div class="veldrij">
-      {% for c in family.children %}<input type="number" name="birth_year" value="{{ c.birth_year }}" min="2008" max="2026">{% endfor %}
-      <input type="number" name="birth_year" min="2008" max="2026" placeholder="+">
+    <label>Hoe oud zijn je kinderen?</label>
+    <div id="kinderen">
+      {% for c in family.children %}
+      <div class="kind-rij">
+        <input type="number" name="age" value="{{ current_year - c.birth_year }}" min="0" max="17" inputmode="numeric">
+        <button type="button" class="kind-weg" aria-label="verwijder">×</button>
+      </div>
+      {% endfor %}
+      <div class="kind-rij">
+        <input type="number" name="age" min="0" max="17" placeholder="leeftijd" inputmode="numeric">
+        <button type="button" class="kind-weg" aria-label="verwijder">×</button>
+      </div>
     </div>
+    <button type="button" class="kind-toevoegen" data-add-kind>+ nog een kind</button>
+    <p class="hint">Alleen de leeftijd — nooit namen. De leeftijd groeit vanzelf mee.</p>
     <label for="pc">Postcode</label>
     <input id="pc" type="text" name="postcode" value="{{ family.postcode }}" maxlength="4" pattern="[0-9]{4}">
     <label for="rad">Straal</label>

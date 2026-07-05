@@ -7,12 +7,14 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label for="pc">Postcode</label>
     <input id="pc" type="text" name="postcode" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required placeholder="8800">
-    <label>Leeftijden van de kinderen</label>
-    <div class="veldrij">
-      <input type="number" name="age" min="0" max="17" placeholder="4">
-      <input type="number" name="age" min="0" max="17" placeholder="7">
-      <input type="number" name="age" min="0" max="17" placeholder="">
+    <label>Hoe oud zijn de kinderen?</label>
+    <div id="kinderen">
+      <div class="kind-rij">
+        <input type="number" name="age" min="0" max="17" placeholder="leeftijd" inputmode="numeric">
+        <button type="button" class="kind-weg" aria-label="verwijder">×</button>
+      </div>
     </div>
+    <button type="button" class="kind-toevoegen" data-add-kind>+ nog een kind</button>
     <label for="rad">Hoe ver willen jullie rijden?</label>
     <select id="rad" name="radius">
       <option value="10">tot 10 km</option>

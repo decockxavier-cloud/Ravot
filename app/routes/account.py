@@ -39,10 +39,11 @@ def onboarding():
     if not email and not session.get("family_id"):
         return redirect(url_for("auth.login"))
     if request.method == "POST":
-        years = [int(y) for y in request.form.getlist("birth_year") if y.strip().isdigit()]
+        current_year = datetime.now(timezone.utc).year
+        ages = [int(a) for a in request.form.getlist("age") if a.strip().isdigit()]
         postcode = request.form.get("postcode", "").strip()[:4]
-        if not years or len(postcode) != 4:
-            flash("Vul minstens één geboortejaar en je postcode in.", "error")
+        if not ages or len(postcode) != 4:
+            flash("Vul minstens één leeftijd en je postcode in.", "error")
             return render_template("account/onboarding.html", categories=CATEGORIES,
                                    title="Welkom bij Ravot", family=None, active=None)
         fam = Family(
@@ -55,10 +56,9 @@ def onboarding():
         )
         db.session.add(fam)
         db.session.flush()
-        current_year = datetime.now(timezone.utc).year
-        for y in years[:6]:
-            if 1900 < y <= current_year:
-                db.session.add(Child(family_id=fam.id, birth_year=y))
+        for age in ages[:12]:
+            if 0 <= age <= 17:
+                db.session.add(Child(family_id=fam.id, birth_year=current_year - age))
         for cat in request.form.getlist("interest"):
             if cat in CATEGORIES:
                 db.session.add(Interest(family_id=fam.id, category=cat, weight=1.3))
@@ -86,15 +86,16 @@ def profiel():
         fam.display_name = (request.form.get("display_name") or "").strip()[:80] or None
         Child.query.filter_by(family_id=fam.id).delete()
         current_year = datetime.now(timezone.utc).year
-        for y in request.form.getlist("birth_year"):
-            if y.strip().isdigit() and 1900 < int(y) <= current_year:
-                db.session.add(Child(family_id=fam.id, birth_year=int(y)))
+        for a in request.form.getlist("age"):
+            if a.strip().isdigit() and 0 <= int(a) <= 17:
+                db.session.add(Child(family_id=fam.id, birth_year=current_year - int(a)))
         db.session.commit()
         flash("Profiel bewaard.", "ok")
         return redirect(url_for("account.profiel"))
     saved = SavedEvent.query.filter_by(family_id=fam.id).order_by(SavedEvent.created_at.desc()).all()
     return render_template("account/profiel.html", family=fam, saved=saved,
-                           categories=CATEGORIES, title="Mijn Ravot", active="profiel")
+                           categories=CATEGORIES, current_year=datetime.now(timezone.utc).year,
+                           title="Mijn Ravot", active="profiel")
 
 
 # ------------------------------------------------------- feedback & bewaren --
