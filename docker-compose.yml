@@ -15,5 +15,10 @@ services:
     volumes:
       - ravot_pgdata:/var/lib/postgresql/data
     restart: unless-stopped
+networks:
+  internal:
+    name: ravot_internal
+  proxy:
+    external: true
 volumes:
   ravot_pgdata:
