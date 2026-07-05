@@ -254,3 +254,41 @@ body.met-sfeer {
 .badge-vlieg { background: #E8F4EA; border-color: #B9DDC2; color: var(--gras-donker); font-weight: 600; }
 .vlieg-legende { font-size: .82rem; color: #5f6d63; background: #F1F8F3;
   border-radius: 12px; padding: 8px 12px; margin: 4px 0 12px; }
+
+/* Guest-navigatie (Pas aan / Home) */
+.topnav { display: flex; gap: 4px; align-items: center; }
+.nav-mini { font-size: .85rem; padding: 8px 12px; border-radius: 999px;
+  background: var(--creme); border: 1.5px solid var(--lijn); text-decoration: none;
+  color: var(--gras-donker); font-weight: 600; }
+.nav-mini:hover { background: #fff; }
+
+/* Zoekbalk */
+.zoekrij { margin: 4px 0 10px; }
+.zoekveld { width: 100%; min-height: 48px; padding: 12px 16px; border-radius: 999px;
+  border: 1.5px solid var(--lijn); background: #fff; font: inherit; }
+.zoekveld:focus { outline: none; border-color: var(--gras); box-shadow: 0 0 0 3px rgba(46,125,70,.12); }
+
+/* Resultaatteller (Baymard-inzicht: altijd feedback tonen) */
+.resultaat-teller { color: #5f6d63; font-size: .86rem; font-weight: 600; margin: 2px 0 12px; }
+
+/* Terug-link + event-kop met deelknop */
+.terug-link { display: inline-block; color: var(--gras); font-weight: 600;
+  text-decoration: none; margin: 0 0 6px; font-size: .92rem; }
+.terug-link:hover { text-decoration: underline; }
+.event-kop { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.event-kop h1 { flex: 1; }
+.deel-knop { flex: 0 0 auto; background: var(--gras); color: #fff; border: none;
+  border-radius: 999px; padding: 9px 16px; font: 600 .9rem Nunito, sans-serif;
+  cursor: pointer; min-height: 42px; white-space: nowrap; }
+.deel-knop:hover { background: var(--gras-donker); }
+.deel-knop:focus-visible { outline: 3px solid var(--zon); }
+
+/* Vakantie-banner (fase 2) */
+.vakantie-banner { background: linear-gradient(135deg, #F2B705, #F5C93A); color: #5a4500;
+  border-radius: 16px; padding: 12px 16px; font-weight: 700; margin: 4px 0 12px;
+  box-shadow: 0 3px 10px rgba(242,183,5,.25); }
+
+/* Weer-hint (fase 3) */
+.weer-hint { background: #E8EEF4; color: #2c4a63; border-radius: 14px;
+  padding: 10px 14px; font-weight: 600; font-size: .92rem; margin: 4px 0 12px; }
+.weer-hint.weer-zon { background: #FDF4D6; color: #6b5200; }

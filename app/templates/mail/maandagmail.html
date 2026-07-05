@@ -1,0 +1,16 @@
+<!doctype html><html lang="nl"><body style="font-family:sans-serif;background:#FAF7F0;padding:24px">
+<div style="max-width:520px;margin:auto;background:#fff;border-radius:16px;padding:24px">
+<h1 style="color:#2E7D46;margin-top:0">Zijn jullie geweest? 😊</h1>
+<p>Dag {{ family.display_name or "ravotters" }}! Jullie hadden dit weekend iets bewaard.
+Hoe was het? Eén tik en jullie helpen andere gezinnen kiezen — helemaal anoniem.</p>
+{% for e in events %}
+<div style="border:1px solid #E5E0D4;border-radius:14px;padding:14px;margin:10px 0;text-align:center">
+  <p style="margin:0 0 8px;font-weight:700">{{ e.title }}</p>
+  <a href="{{ site }}{{ url_for('account.review', event_id=e.id) }}"
+     style="background:#F2B705;color:#1F3A2A;text-decoration:none;padding:10px 20px;border-radius:999px;font-weight:700;display:inline-block">
+     😄 Geef een Ravotscore</a>
+</div>
+{% endfor %}
+<p style="color:#777;font-size:.8rem">Niet geweest? Geen probleem, dan mag je deze mail negeren.
+<a href="{{ unsub_url }}" style="color:#777">Geen maandagvraag meer</a> — je account blijft gewoon bestaan.</p>
+</div></body></html>

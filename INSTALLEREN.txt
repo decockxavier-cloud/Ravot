@@ -1,0 +1,60 @@
+RAVOT.BE — VOLLEDIGE FINALE CODEBASE
+=====================================
+
+Dit is de complete, actuele broncode van Ravot met ALLES erin:
+kern-app, landingspagina + warme huisstijl, foto's, filters, zoekbalk,
+publiq-compliance (UiTinVlaanderen + Vlieg), maandagvraag-mail, vakantiemodus,
+weerkoppeling, agenda-export, navigatie-fixes, en het admin-paneel met
+instellingen + verbindingsstatus.
+
+41 tests groen. Secrets zitten NIET in deze zip (geen .env) — enkel .env.example.
+
+------------------------------------------------------------------
+UITROLLEN OVER JE BESTAANDE REPO
+------------------------------------------------------------------
+1) Pak deze zip UIT BOVENOP je lokale repo (mappenstructuur behouden,
+   bestaande bestanden overschrijven). Je .env op de server blijft ongemoeid.
+
+2) Commit + push vanaf je pc:
+     git add -A
+     git commit -m "Ravot compleet: fase 2+3, admin-instellingen, UX, publiq"
+     git push
+
+3) Op de VPS:
+     cd /srv/ravot
+     git pull
+     docker compose up -d --build
+     docker compose exec web flask migrate-db     # veilig: voegt has_vlieg + settings toe, wist NIETS
+     docker compose exec web flask sync-uit         # foto's + Vlieg-label ophalen
+
+------------------------------------------------------------------
+CRON (VPS) — voeg de maandagmail toe als die er nog niet staat
+------------------------------------------------------------------
+  0 2 * * *    backup
+  0 4 * * *    (cd /srv/ravot && docker compose exec -T web flask sync-uit)
+  0 17 * * 4   (cd /srv/ravot && docker compose exec -T web flask send-weekendmail)
+  0 10 * * 1   (cd /srv/ravot && docker compose exec -T web flask send-maandagmail)
+
+------------------------------------------------------------------
+KRITIEKE REGELS (niet vergeten)
+------------------------------------------------------------------
+- Het pgdata-volume NOOIT wissen. Maak een backup VOOR elke wijziging aan
+  docker-compose.yml. Verander nooit de pgdata-mapnaam.
+- Secrets (UIT_API_KEY, SMTP_*) blijven in .env, nooit in de database.
+- migrate-db is additief en veilig; het raakt bestaande data niet aan.
+
+------------------------------------------------------------------
+NA HET UITROLLEN — CONTROLEREN
+------------------------------------------------------------------
+- ravot.be (incognito) -> landingspagina met hero + echte cijfers.
+- Postcode ingeven -> lijst met foto's, filters, zoekbalk, resultaatteller.
+- Logo tikken -> terug naar home. "Pas aan" rechtsboven -> zoekopdracht wijzigen.
+- /beheer -> inloggen -> Instellingen + Verbindingen (test UiT + testmail).
+
+------------------------------------------------------------------
+NOG TE DOEN (aparte ronde, bewust niet vanavond)
+------------------------------------------------------------------
+- Fase 4 (uitbatersportaal + betaling), Fase 5 (Insights), Fase 6 (feestmodule).
+  Raken geld/persoonsgegevens van derden -> doordachte ronde nodig.
+- ECHTE MIJLPAAL: live-activatie aanvragen bij publiq en UIT_SEARCH_URL naar
+  https://search.uitdatabank.be zetten. Pas dan echte, actuele events i.p.v. testdata.

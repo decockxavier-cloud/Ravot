@@ -7,8 +7,13 @@
   <h1>Waar gaan we <span class="accent">vandaag</span><br>ravotten?</h1>
   <p class="lead">Elke dag de leukste uitstappen in jouw buurt — op maat van de leeftijd van je kinderen, jouw afstand en jouw budget. Zonder eindeloos zoeken.</p>
   <div class="cta-rij">
+    {% if family or has_guest %}
+    <a class="btn btn-zon btn-groot" href="{{ url_for('public.vandaag') }}">Naar mijn activiteiten →</a>
+    <a class="btn btn-stil btn-groot" href="{{ url_for('public.proberen') }}">Andere postcode</a>
+    {% else %}
     <a class="btn btn-zon btn-groot" href="{{ url_for('public.proberen') }}">Kijk wat er vandaag kan →</a>
     <a class="btn btn-stil btn-groot" href="{{ url_for('auth.login') }}">Maak gratis profiel</a>
+    {% endif %}
   </div>
   <p class="mini">Gratis · geen reclame · geen account nodig om te proberen</p>
   <svg class="hero-golf" viewBox="0 0 1440 60" preserveAspectRatio="none" aria-hidden="true">

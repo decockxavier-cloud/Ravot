@@ -3,16 +3,30 @@
 {% block content %}
 <h1>{{ title }}</h1>
 
+  {% if vakantie.banner %}<div class="vakantie-banner">{{ vakantie.banner }}</div>{% endif %}
+  {% if regen is defined and regen is not none and regen >= 50 %}
+  <div class="weer-hint">🌧️ Kans op regen ({{ regen }}%) — we zetten binnen-activiteiten bovenaan.</div>
+  {% elif regen is defined and regen is not none and regen <= 20 %}
+  <div class="weer-hint weer-zon">☀️ Mooi weer op komst — tijd om naar buiten te ravotten!</div>
+  {% endif %}
   {% if answer %}<p class="answer">{{ answer }}</p>{% endif %}
   <button id="install-cta" class="btn btn-zon btn-klein" hidden>📲 Zet Ravot op je beginscherm</button>
 
+  {% if rows %}
+  <div class="zoekrij">
+    <input type="search" id="zoek" class="zoekveld" placeholder="🔍 Zoek op naam of gemeente…"
+           aria-label="Zoek in activiteiten" autocomplete="off">
+  </div>
   <div class="filterbalk" id="filterbalk" role="group" aria-label="Filters">
     <span class="filterchip aan" data-filter="alles">Alles</span>
     <span class="filterchip" data-filter="gratis">Gratis</span>
     <span class="filterchip" data-filter="binnen">🌧️ Binnen</span>
     <span class="filterchip" data-filter="buiten">☀️ Buiten</span>
     <span class="filterchip" data-filter="score">😄 Top gescoord</span>
+    <span class="filterchip" data-filter="vandaag-gratis" hidden></span>
   </div>
+  <p class="resultaat-teller" id="teller" aria-live="polite"></p>
+  {% endif %}
 
   {% if rows %}
     {% for r in rows %}
@@ -20,7 +34,8 @@
       <article class="card kaart-event"
                data-free="{{ '1' if e.is_free else '0' }}"
                data-indoor="{{ '1' if e.indoor else '0' }}"
-               data-score="{{ r.agg.avg if r.agg else 0 }}">
+               data-score="{{ r.agg.avg if r.agg else 0 }}"
+               data-zoek="{{ (e.title ~ ' ' ~ (e.gemeente or '') ~ ' ' ~ (e.venue.name if e.venue else '')) | lower }}">
         {% if e.image_url %}
         <a href="{{ url_for('public.event', slug=e.slug) }}" class="thumb-link">
           <img class="thumb" src="{{ e.image_url }}" alt="" loading="lazy"
@@ -59,6 +74,10 @@
     {% if rows | selectattr('event.has_vlieg') | list %}
     <p class="vlieg-legende">🐛 <strong>UiT met Vlieg</strong> markeert activiteiten die op maat van kinderen zijn — een label van publiq.</p>
     {% endif %}
+    <div class="card leeg" id="geen-resultaat" style="display:none">
+      <span class="groot-emoji">🔍</span>
+      <p>Niets gevonden met deze filter of zoekterm.<br>Probeer iets anders of <a href="#" onclick="document.querySelector('.filterchip[data-filter=alles]').click();document.getElementById('zoek').value='';document.getElementById('zoek').dispatchEvent(new Event('input'));return false">wis alles</a>.</p>
+    </div>
   {% else %}
     <div class="card">
       <h2 style="margin-top:0">Nog niets gevonden {{ scope }} 😕</h2>

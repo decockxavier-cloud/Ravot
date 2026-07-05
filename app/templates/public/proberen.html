@@ -6,9 +6,15 @@
   <form method="post" action="{{ url_for('public.proberen') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label for="pc">Postcode</label>
-    <input id="pc" type="text" name="postcode" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required placeholder="8800">
+    <input id="pc" type="text" name="postcode" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required placeholder="8800" value="{{ guest.postcode or '' }}">
     <label>Hoe oud zijn de kinderen?</label>
     <div id="kinderen">
+      {% for a in guest.ages or [] %}
+      <div class="kind-rij">
+        <input type="number" name="age" min="0" max="17" value="{{ a }}" inputmode="numeric">
+        <button type="button" class="kind-weg" aria-label="verwijder">×</button>
+      </div>
+      {% endfor %}
       <div class="kind-rij">
         <input type="number" name="age" min="0" max="17" placeholder="leeftijd" inputmode="numeric">
         <button type="button" class="kind-weg" aria-label="verwijder">×</button>
@@ -17,15 +23,19 @@
     <button type="button" class="kind-toevoegen" data-add-kind>+ nog een kind</button>
     <label for="rad">Hoe ver willen jullie rijden?</label>
     <select id="rad" name="radius">
-      <option value="10">tot 10 km</option>
-      <option value="25" selected>tot 25 km</option>
-      <option value="50">tot 50 km</option>
+      {% set g_rad = (guest.radius or 25)|string %}
+      <option value="5"  {{ 'selected' if g_rad == '5' }}>tot 5 km (dichtbij)</option>
+      <option value="10" {{ 'selected' if g_rad == '10' }}>tot 10 km</option>
+      <option value="25" {{ 'selected' if g_rad in ('25','') }}>tot 25 km</option>
+      <option value="50" {{ 'selected' if g_rad == '50' }}>tot 50 km</option>
+      <option value="100" {{ 'selected' if g_rad == '100' }}>tot 100 km (heel de regio)</option>
     </select>
     <label for="bud">Budget</label>
     <select id="bud" name="budget">
-      <option value="all" selected>alles mag</option>
-      <option value="low">liefst goedkoop</option>
-      <option value="free">enkel gratis</option>
+      {% set g_bud = guest.budget or 'all' %}
+      <option value="all" {{ 'selected' if g_bud == 'all' }}>alles mag</option>
+      <option value="low" {{ 'selected' if g_bud == 'low' }}>liefst goedkoop</option>
+      <option value="free" {{ 'selected' if g_bud == 'free' }}>enkel gratis</option>
     </select>
     <div class="acties">
       <button class="btn btn-groot" type="submit">Toon activiteiten →</button>

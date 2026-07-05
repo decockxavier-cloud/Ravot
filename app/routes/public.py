@@ -90,12 +90,19 @@ def window(scope):
     return now, now + timedelta(days=30)
 
 
-def scored_events(profile, scope, extra_filter=None, limit=40):
+def scored_events(profile, scope, extra_filter=None, limit=40, weer=True):
     start, end = window(scope)
     q = Event.query.filter(Event.start <= end, (Event.end >= start) | (Event.start >= start))
     if extra_filter is not None:
         q = extra_filter(q)
     candidates = q.limit(2000).all()
+    # Weer één keer ophalen voor het profiel-zwaartepunt (niet per event)
+    regen = None
+    if weer and profile.lat is not None:
+        from ..models import get_bool
+        if get_bool("weer_aan"):
+            from ..weer import regenkans
+            regen = regenkans(profile.lat, profile.lng, start.date() if start else None)
     agg_cache = {}
     rows = []
     for e in candidates:
@@ -108,14 +115,76 @@ def scored_events(profile, scope, extra_filter=None, limit=40):
         agg = agg or None
         s = score_event(e, profile, ravot_avg=agg["avg"] if agg else None)
         if s > 0:
+            # weerbonus: bij regen binnen omhoog, buiten omlaag
+            if regen is not None:
+                if regen >= 50:
+                    s *= 1.3 if e.indoor else 0.85
+                elif regen <= 20 and not e.indoor:
+                    s *= 1.1
             total, _ = family_price(e.price_info, profile.child_ages)
             rows.append({"event": e, "score": s, "agg": agg,
-                         "family_total": total, "euro": euro_indicator(total)})
+                         "family_total": total, "euro": euro_indicator(total),
+                         "regen": regen})
     rows.sort(key=lambda r: r["score"], reverse=True)
     return rows[:limit]
 
 
 # --------------------------------------------------------------------- pages --
+
+@bp.route("/e/<slug>.ics")
+def event_ics(slug):
+    """Agenda-export (fase 3): 'zet in agenda' voor één activiteit."""
+    from ..models import Event
+    ev = Event.query.filter_by(slug=slug).first_or_404()
+
+    def esc(t):
+        return (t or "").replace("\\", "\\\\").replace(",", "\\,").replace(";", "\\;").replace("\n", "\\n")
+
+    def fmt(dt):
+        return dt.strftime("%Y%m%dT%H%M%S") if dt else ""
+
+    start = ev.start
+    end = ev.end or (ev.start + timedelta(hours=2) if ev.start else None)
+    loc = ", ".join(p for p in [ev.venue.name if ev.venue else None, ev.gemeente] if p)
+    lines = [
+        "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Ravot//NL", "CALSCALE:GREGORIAN",
+        "BEGIN:VEVENT",
+        f"UID:ravot-{ev.id}@ravot.be",
+        f"DTSTAMP:{fmt(datetime.utcnow())}Z",
+        f"DTSTART:{fmt(start)}" if start else "",
+        f"DTEND:{fmt(end)}" if end else "",
+        f"SUMMARY:{esc(ev.title)}",
+        f"LOCATION:{esc(loc)}",
+        f"DESCRIPTION:{esc((ev.description or '')[:300])}\\n\\nVia Ravot.be",
+        f"URL:{current_app.config['SITE_URL']}/e/{ev.slug}",
+        "END:VEVENT", "END:VCALENDAR",
+    ]
+    ics = "\r\n".join(l for l in lines if l)
+    return Response(ics, mimetype="text/calendar",
+                    headers={"Content-Disposition": f"attachment; filename=ravot-{ev.slug}.ics"})
+
+
+@bp.route("/welkom")
+def welkom():
+    """Landingspagina, ook zichtbaar mét actieve zoekopdracht/profiel."""
+    from ..models import Event, Review
+    stats = {
+        "events": Event.query.count(),
+        "gemeenten": db.session.query(Event.gemeente).filter(
+            Event.gemeente.isnot(None)).distinct().count(),
+        "reviews": Review.query.count(),
+    }
+    return render_template("public/landing.html", stats=stats,
+                           family=current_family(), active=None,
+                           title="Ravot — waar gaan we vandaag ravotten?")
+
+
+@bp.route("/opnieuw")
+def opnieuw():
+    """Wis de anonieme zoekopdracht → terug naar de landingspagina."""
+    session.pop("guest", None)
+    return redirect(url_for("public.vandaag"))
+
 
 @bp.route("/proberen", methods=["GET", "POST"])
 def proberen():
@@ -161,6 +230,7 @@ def vandaag():
                               top=(rows[0]["event"], rows[0]["agg"]) if rows else None)
     return render_template("public/lijst.html", rows=rows, scope="vandaag",
                            title="Wat gaan we vandaag doen?", answer=answer,
+                           regen=rows[0].get("regen") if rows else None,
                            has_profile=has_profile, family=fam, active="vandaag")
 
 
@@ -171,6 +241,7 @@ def weekend():
     rows = scored_events(profile, "weekend") if has_profile else []
     return render_template("public/lijst.html", rows=rows, scope="dit weekend",
                            title="Dit weekend", answer=None,
+                           regen=rows[0].get("regen") if rows else None,
                            has_profile=has_profile, family=fam, active="weekend")
 
 
