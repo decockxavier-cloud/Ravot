@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Verbindingen</h1>
+<p class="hint">Statusoverzicht van externe diensten. Geheimen worden nooit getoond —
+je ziet alleen of alles correct is ingesteld en werkt.</p>
+
+<div class="card">
+  <h2 style="margin-top:0">UiTdatabank (Search API)</h2>
+  <p>Status:
+    {% if status.uit.geconfigureerd %}<strong style="color:var(--gras)">✅ key aanwezig</strong>
+    {% else %}<strong style="color:var(--rood)">⚠️ geen key in .env</strong>{% endif %}
+  </p>
+  <div class="badges">
+    <span class="badge">Omgeving: <strong>{{ status.uit.omgeving }}</strong></span>
+    <span class="badge">Events in databank: {{ status.uit.aantal_events }}</span>
+    {% if status.uit.laatste_event %}<span class="badge">Laatste sync: {{ status.uit.laatste_event.strftime('%d/%m %H:%M') }}</span>{% endif %}
+  </div>
+  {% if status.uit.omgeving == 'test' %}
+  <p class="hint">Je draait op de <strong>testomgeving</strong>. Vraag de live-activatie aan
+  in het publiq-portaal en zet <code>UIT_SEARCH_URL</code> in .env op productie voor echte data.</p>
+  {% endif %}
+  <form method="post" action="{{ url_for('admin.test_uit') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="acties"><button class="btn btn-stil" type="submit">🔌 Test UiT-verbinding</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">E-mail (SMTP)</h2>
+  <p>Status:
+    {% if status.smtp.geconfigureerd %}<strong style="color:var(--gras)">✅ ingesteld</strong>
+    {% else %}<strong style="color:#b8860b">⚠️ console-modus</strong>{% endif %}
+  </p>
+  <div class="badges">
+    <span class="badge">Server: {{ status.smtp.host }}</span>
+    <span class="badge">Afzender: {{ status.smtp.afzender }}</span>
+  </div>
+  {% if not status.smtp.geconfigureerd %}
+  <p class="hint">Zonder SMTP_HOST in .env gaan mails naar de console-log (handig bij ontwikkeling,
+  maar gebruikers ontvangen dan niets). Vul de SMTP-gegevens in .env in voor echte verzending.</p>
+  {% endif %}
+  <form method="post" action="{{ url_for('admin.test_smtp') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="acties"><button class="btn btn-stil" type="submit">✉️ Stuur testmail naar mezelf</button></div>
+  </form>
+</div>
+<p><a href="{{ url_for('admin.dashboard') }}">← Terug naar dashboard</a></p>
+{% endblock %}

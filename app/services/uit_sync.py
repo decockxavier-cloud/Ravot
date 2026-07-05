@@ -29,13 +29,15 @@ def fetch_events(page_start=0, limit=50):
     """Eén pagina uit de Search API. Query: goedgekeurd, toekomstig,
     gezinsgericht (Vlieg-label OF typicalAgeRange die kinderen dekt)."""
     cfg = current_app.config
+    from ..models import get_setting
+    query = get_setting("uit_query") or "typicalAgeRange:[0 TO 12]"
     params = {
         "clientId": cfg["UIT_API_KEY"],  # publiq Search API: client id als query-param
         "start": page_start,
         "limit": limit,
         "embed": "true",
         "addressCountry": "BE",
-        "q": "typicalAgeRange:[0 TO 12]",  # gezinsgericht; Vlieg-label bestaat niet op test
+        "q": query,
     }
     headers = {"Accept": "application/ld+json"}
     resp = requests.get(f"{cfg['UIT_SEARCH_URL']}/events", params=params,
@@ -245,7 +247,10 @@ def backfill_geo_from_postcode():
     return filled
 
 
-def run_sync(max_pages=200, page_size=50):
+def run_sync(max_pages=None, page_size=50):
+    from ..models import get_int
+    if max_pages is None:
+        max_pages = get_int("sync_max_pages", 200) or 200
     """Volledige nachtelijke sync. Retourneert aantal verwerkte events."""
     total = 0
     for page in range(max_pages):

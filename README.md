@@ -1,82 +1,63 @@
-# Ravot.be — MVP
+# Ravot.be — gezinsuitstappen voor Vlaanderen
 
-Gezinsuitstappen voor Vlaanderen: gepersonaliseerd op kinderleeftijd, afstand en budget.
-App = kern (Vandaag / Weekend / Kaart), donderdagmail = retentiekanaal.
-Zie `Ravot_Strategienota.docx` en `Ravot_SEO_GEO_Plan.docx` voor het volledige plan.
+Gepersonaliseerde uitstapsuggesties voor gezinnen met kinderen (2–12 jaar),
+op maat van kinderleeftijd, afstand en budget. App = kern (Vandaag / Weekend /
+Kaart), mails = retentiekanaal. Gratis, advertentievrij, privacy-by-design.
 
-## Snel starten (lokaal)
+Staat volledig los van Cluma.
 
-```bash
-pip install -r requirements.txt
-export FLASK_APP=run.py FLASK_ENV=development
-flask init-db
-flask seed-demo          # 40 demo-events in 5 gemeenten (geen UiT-key nodig)
-flask run --port 8000
-```
+## Stack
+Flask + SQLAlchemy + PostgreSQL, server-side gerenderde Jinja2-templates,
+mobile-first (PWA). Docker Compose op Hostinger VPS, Nginx Proxy Manager ervoor.
+Data uit de UiTdatabank Search API (publiq).
 
-Open http://localhost:8000 — probeer de anonieme modus (postcode 8800, leeftijden 4 en 7).
-Mails (magic links, weekendmail) verschijnen in de console zolang SMTP_HOST leeg is.
+## Wat werkt (live)
+- Kern-app: Vandaag / Weekend / Kaart, gepersonaliseerde scoring (leeftijd,
+  afstand, budget), anonieme snelstart en accounts met magic links.
+- Landingspagina (warme, speelse huisstijl) voor nieuwe bezoekers; wie een
+  profiel/zoekopdracht heeft gaat direct naar de app. Logo -> altijd terug home.
+- Ravotscore: anonieme reviews per gezin, gesplitst per leeftijd; echte-kost
+  crowdsourcing. Privacy-by-design (enkel leeftijden, geen namen; postcode i.p.v. adres).
+- Foto's uit UiTdatabank (mediaObject), filters (gratis/binnen/buiten/top),
+  zoekbalk op naam/gemeente, resultaatteller, deel-knop, "zet in agenda" (.ics).
+- publiq-compliance: UiTinVlaanderen-verwijzing (met UTM), organisator-oproep,
+  UiT-met-Vlieg-label + legende.
+- Mails: weekendmail (donderdag), maandagvraag-mail (maandag - scores binnenhalen).
+- Vakantiemodus (Vlaamse schoolvakanties t/m 2027) + weerkoppeling
+  (regen -> binnen-activiteiten omhoog, via Open-Meteo, gratis).
+- Admin (/beheer): Argon2id + verplichte TOTP-2FA, dashboard, audit log,
+  instellingen (niet-geheime config) en verbindingsstatus (UiT + SMTP testen).
 
-## Productie (Hostinger VPS + Coolify)
+## Configuratie (.env - NOOIT in git of database)
+Secrets blijven bewust in .env: DATABASE_URL, SECRET_KEY, UIT_API_KEY,
+UIT_SEARCH_URL (test vs productie), SITE_URL, SMTP_*, MAIL_FROM.
+Niet-geheime instellingen (UiT-query, sync-omvang, mails/weer aan-uit, radius)
+beheer je in /beheer/instellingen.
 
-1. `.env` aanmaken op basis van `.env.example` (sterke SECRET_KEY!).
-2. Coolify: nieuw project op deze repo → docker-compose wordt herkend.
-   **Belangrijk:** het volume `ravot_pgdata` nooit hernoemen of wissen; back-up vóór elke compose-wijziging.
-3. Eerste keer, in de web-container:
-   ```bash
-   flask init-db
-   flask create-admin jij@ravot.be     # toont de TOTP-secret voor je authenticator-app
-   ```
-4. Cron (host of Coolify scheduled tasks):
-   ```
-   0 3 * * *   docker compose exec -T web flask sync-uit          # nachtelijke UiT-sync
-   0 17 * * 4  docker compose exec -T web flask send-weekendmail  # donderdag 17u
-   0 2 * * *   pg_dump ... | gpg ... > backup  # versleutelde nachtelijke back-up
-   ```
+## CLI
+  flask init-db            tabellen aanmaken (verse installatie)
+  flask migrate-db         ontbrekende kolommen/tabellen toevoegen (veilig)
+  flask create-admin <e>   admin aanmaken (toont TOTP-secret)
+  flask sync-uit           events + foto's + Vlieg-label ophalen
+  flask send-weekendmail   donderdagmail
+  flask send-maandagmail   maandagvraag (scores binnenhalen)
 
-## publiq / UiTdatabank
+## Deploy (VPS)
+  cd /srv/ravot && git pull && docker compose up -d --build
+  docker compose exec web flask migrate-db   # enkel bij nieuwe kolommen/tabellen
+  docker compose exec web flask sync-uit      # enkel bij data-wijzigingen
+KRITIEK: pgdata-volume nooit wissen; backup voor elke compose-wijziging.
 
-- Key aanvragen via platform.publiq.be (UiTiD-account). Test-URL staat al in `.env.example`;
-  na goedkeuring `UIT_SEARCH_URL` op productie zetten.
-- De sync haalt enkel gezinsrelevante events (Vlieg-label of leeftijd 0–12), filtert
-  contactgegevens van organisatoren weg (voorwaarde publiq) en synct 1×/nacht —
-  ruim binnen de limiet van 60.000 calls/dag.
-- Bronvermelding UiTdatabank staat in de footer.
+## Cron (VPS)
+  0 2 * * *    backup
+  0 4 * * *    sync-uit
+  0 17 * * 4   send-weekendmail
+  0 10 * * 1   send-maandagmail
 
-## Beveiliging & privacy (samengevat)
-
-- Gebruikers: magic links (15 min, eenmalig, enkel sha256-hash opgeslagen), geen 2FA (bewust).
-- Admin (/beheer): Argon2id-wachtwoord + **verplichte** TOTP-2FA, audit log.
-- CSRF op elk formulier, security headers + CSP, rate limits op alle schrijf-endpoints.
-- Dataminimalisatie: kinderen = enkel geboortejaar; postcode i.p.v. adres; reviews anoniem;
-  delen van interesse per event en standaard uit; export + verwijderen self-service in /mijn/profiel.
-- Enkel functionele cookies → geen cookiebanner nodig.
-
-## Testen
-
-```bash
-python -m pytest tests/ -q     # 32 tests: scoring, magic links, reviews, privacy, SEO, sync
-```
-
-De privacytests zijn de belangrijkste: gezin A kan nooit data van gezin B zien,
-delen staat standaard uit (ook voor vrienden), en accountverwijdering is volledig.
-
-## Structuur
-
-```
-app/
-  models.py        alle tabellen (GDPR-minimaal by design)
-  scoring.py       scoringsengine: leeftijd × afstand × interesse × budget
-  pricing.py       gezinsprijs, €-indicator, Ravotscore-aggregatie per leeftijd
-  seo.py           JSON-LD, meta-templates, antwoordblokken (AI-citeerbaar)
-  routes/          public (incl. programmatic gemeentepagina's), auth, account, admin
-  services/        uit_sync (nachtelijk), magic (links+mail), weekendmail
-  templates/       SSR — Jinja2, mobile-first
-  static/          huisstijl-CSS, PWA (manifest + service worker)
-tests/             pytest-suite
-```
-
-## Bewuste beperkingen MVP (zie strategienota)
-
-Fase 2+: maandagvraag-mail, vakantiemodus, weerkoppeling, horeca-laag, Insights.
-De tabellen en instrumentatie daarvoor zitten er al in (interactions logt alles vanaf dag één).
+## Roadmap (nog te bouwen - aparte, doordachte ronde)
+- Fase 4: uitbatersportaal + betaling.
+- Fase 5: Ravot Insights (gap-index, k-anonimiteit >= 20) voor gemeenten/CC's.
+- Fase 6: feest- & verjaardagsmodule met offerte-leadgeneratie (consent-gated).
+Deze raken geld en/of persoonsgegevens van derden en worden pas echt bruikbaar
+op live data. Eerstvolgende echte mijlpaal: live-activatie bij publiq aanvragen
+en UIT_SEARCH_URL naar productie zetten.

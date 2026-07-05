@@ -38,20 +38,70 @@ document.addEventListener("click", function (e) {
   if (rows.length > 1) x.closest(".kind-rij").remove();
 });
 
-// Live filteren van de lijst (Vandaag/Weekend) — puur client-side
-document.addEventListener("click", function (e) {
-  var chip = e.target.closest(".filterchip");
-  if (!chip) return;
-  var balk = chip.closest(".filterbalk");
-  balk.querySelectorAll(".filterchip").forEach(function (c) { c.classList.remove("aan"); });
-  chip.classList.add("aan");
-  var f = chip.dataset.filter;
-  document.querySelectorAll(".kaart-event").forEach(function (card) {
-    var toon = true;
-    if (f === "gratis") toon = card.dataset.free === "1";
-    else if (f === "binnen") toon = card.dataset.indoor === "1";
-    else if (f === "buiten") toon = card.dataset.indoor === "0";
-    else if (f === "score") toon = parseFloat(card.dataset.score || "0") >= 4;
-    card.style.display = toon ? "" : "none";
+// Live filteren + zoeken van de lijst (Vandaag/Weekend) — puur client-side
+(function () {
+  var actiefFilter = "alles";
+  var zoekterm = "";
+
+  function pasToe() {
+    var kaarten = document.querySelectorAll(".kaart-event");
+    var zichtbaar = 0;
+    kaarten.forEach(function (card) {
+      var toonF = true;
+      if (actiefFilter === "gratis") toonF = card.dataset.free === "1";
+      else if (actiefFilter === "binnen") toonF = card.dataset.indoor === "1";
+      else if (actiefFilter === "buiten") toonF = card.dataset.indoor === "0";
+      else if (actiefFilter === "score") toonF = parseFloat(card.dataset.score || "0") >= 4;
+      var toonZ = !zoekterm || (card.dataset.zoek || "").indexOf(zoekterm) !== -1;
+      var toon = toonF && toonZ;
+      card.style.display = toon ? "" : "none";
+      if (toon) zichtbaar++;
+    });
+    var teller = document.getElementById("teller");
+    if (teller) {
+      var totaal = kaarten.length;
+      if (zichtbaar === totaal) teller.textContent = totaal + " activiteiten";
+      else if (zichtbaar === 0) teller.textContent = "Geen resultaten — probeer een andere filter of zoekterm";
+      else teller.textContent = zichtbaar + " van " + totaal + " activiteiten";
+    }
+    // lege-staat kaart tonen/verbergen
+    var leeg = document.getElementById("geen-resultaat");
+    if (leeg) leeg.style.display = zichtbaar === 0 ? "" : "none";
+  }
+
+  document.addEventListener("click", function (e) {
+    var chip = e.target.closest(".filterchip");
+    if (!chip) return;
+    chip.closest(".filterbalk").querySelectorAll(".filterchip").forEach(function (c) {
+      c.classList.remove("aan");
+    });
+    chip.classList.add("aan");
+    actiefFilter = chip.dataset.filter;
+    pasToe();
   });
+
+  document.addEventListener("input", function (e) {
+    if (e.target.id !== "zoek") return;
+    zoekterm = e.target.value.trim().toLowerCase();
+    pasToe();
+  });
+
+  if (document.getElementById("filterbalk")) pasToe();
+})();
+
+// Deelknop op eventpagina (native share, met kopieer-fallback)
+document.addEventListener("click", function (e) {
+  var btn = e.target.closest("#deel");
+  if (!btn) return;
+  var data = { title: btn.dataset.titel, text: "Leuk voor het gezin: " + btn.dataset.titel, url: btn.dataset.url };
+  if (navigator.share) {
+    navigator.share(data).catch(function () {});
+  } else if (navigator.clipboard) {
+    navigator.clipboard.writeText(btn.dataset.url).then(function () {
+      btn.textContent = "✓ Link gekopieerd";
+      setTimeout(function () { btn.textContent = "📤 Deel"; }, 2000);
+    });
+  } else {
+    window.open("https://wa.me/?text=" + encodeURIComponent(data.text + " " + data.url), "_blank");
+  }
 });

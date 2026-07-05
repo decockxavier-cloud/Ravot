@@ -227,6 +227,49 @@ class AuditLog(db.Model):
     created_at = db.Column(db.DateTime, default=utcnow)
 
 
+class Setting(db.Model):
+    """Niet-geheime, in-app aanpasbare configuratie (key-value).
+    BEWUST GEEN secrets hier: API-keys en SMTP-wachtwoorden blijven in .env.
+    """
+    __tablename__ = "settings"
+    key = db.Column(db.String(64), primary_key=True)
+    value = db.Column(db.Text)
+    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
+
+
+# Toegestane, niet-geheime instellingen met hun default + omschrijving.
+# (key: (default, label, type)) — type: 'bool' | 'int' | 'text' | 'choice:a,b,c'
+SETTING_DEFS = {
+    "uit_query": ("typicalAgeRange:[0 TO 12]", "UiT-zoekquery (Search API q-parameter)", "text"),
+    "sync_max_pages": ("200", "Max. pagina's per sync (×50 events)", "int"),
+    "weekendmail_aan": ("1", "Weekendmail (donderdag) versturen", "bool"),
+    "maandagmail_aan": ("1", "Maandagvraag-mail versturen", "bool"),
+    "weer_aan": ("1", "Weerkoppeling gebruiken (regen → binnen omhoog)", "bool"),
+    "default_radius": ("25", "Standaard actieradius voor nieuwe bezoekers (km)", "int"),
+}
+
+
+def get_setting(key):
+    """Waarde uit DB, of de default. Nooit een exception."""
+    default = SETTING_DEFS.get(key, ("", "", "text"))[0]
+    try:
+        row = db.session.get(Setting, key)
+        return row.value if row and row.value is not None else default
+    except Exception:
+        return default
+
+
+def get_bool(key):
+    return str(get_setting(key)).lower() in ("1", "true", "on", "yes")
+
+
+def get_int(key, fallback=0):
+    try:
+        return int(get_setting(key))
+    except (ValueError, TypeError):
+        return fallback
+
+
 class PostcodeCentroid(db.Model):
     """Zwaartepunt per postcode, afgeleid uit gesynchroniseerde events —
     zo hebben we afstandsberekening zonder externe geocoding of adresdata."""

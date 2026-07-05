@@ -1,42 +1,42 @@
 # Ravot — roadmap / to-do's
 
-Volgorde volgens de strategienota; elke fase maakt de vorige waardevoller.
+## ✅ Gereed (live-baar)
+- Kern-app: Vandaag/Weekend/Kaart, scoring, anonieme modus, accounts (magic links)
+- Ravotscore (anoniem, leeftijdsgesplitst), echte-kost, foto's
+- Zoekbalk + filters met resultaatteller, PWA, landingspagina + warme huisstijl
+- Weekendmail + maandagvraag-mail
+- Vakantiemodus (banner + kampdetectie)
+- Weerkoppeling (regen → binnen), agenda-export (.ics)
+- SEO/GEO (gemeentepagina's, editie-reeksen, JSON-LD, sitemap, llms.txt)
+- publiq-compliance (UiTinVlaanderen-verwijzing, organisator-oproep, Vlieg-label)
+- Admin: instellingen + verbindingsstatus (secrets veilig in .env)
+- Deployment: VPS + Docker + NPM + SSL, backups, cron
 
-## Fase 2 — Ravotscore volledig + sociaal
-- [ ] Maandagvraag-mail ("Zijn jullie geweest?") met eigen opt-in
-- [ ] Echte-kost-weergave en €-indicator combineren (budget laag 2+3 op eventpagina's)
-- [ ] Vakantiemodus (schoolvakantiekalender, kampen prominenter)
-- [ ] "Stel voor aan vrienden" (uitnodiging = groeimotor)
-
-## Fase 3 — Horeca
-- [ ] OSM-seed kindvriendelijke zaken (changing_table, kids_area, playground, highchair)
-- [ ] Faciliteiten-checkboxes crowdsourcen + verificatiestatus
-- [ ] "Maak er een dag van": event + restaurant + vrienden bundelen
-- [ ] Weerkoppeling (regen → binnen omhoog in score) + iCal-export
+## 🔜 Eerstvolgende echte mijlpaal
+- [ ] **Live-activatie publiq** aanvragen → UIT_SEARCH_URL naar productie
+      (dan echte, actuele events i.p.v. testdata)
 
 ## Fase 4 — Uitbatersportaal
-- [ ] Fiche claimen/aanvullen, eerste betaalde zichtbaarheid (horeca)
+- [ ] Fiche claimen/aanvullen door organisator/uitbater
+- [ ] Eerste betaalde zichtbaarheid (horeca/attracties)
 
 ## Fase 5 — Ravot Insights
 - [ ] Gap-index vraag/aanbod (k-anonimiteit ≥ 20), kwartaalrapport + dashboard
 - [ ] Vooraf afstemmen met publiq over geaggregeerde aanbodstatistiek
 
-## Fase 6 — Feest & verjaardag  ← NIEUW
-Eigen dataset (zit niet in UiTdatabank) + leadgeneratie via offerte-knop.
-- [ ] `suppliers`-tabel: feestzalen (huur), traiteurs, springkastelen/feestmateriaal,
-      verjaardagsanimatie, aanbod communies & lentefeesten (type, gemeente, coörd.,
-      prijsindicatie, capaciteit)
-- [ ] Fichepagina's per aanbieder mét Ravotscore (zelfde anonieme aggregatie)
-- [ ] Overal één eenvoudige knop **"Vraag offerte aan"**: kort formulier
-      (datum feest, aantal kinderen, budgetrange, bericht)
-- [ ] `quote_requests`-tabel met consent-vlag + timestamp — doorgifte van
-      contactgegevens aan de aanbieder ENKEL na expliciete toestemmingsstap
-      in het formulier zelf; privacyverklaring aanvullen (doorgifte op eigen initiatief)
-- [ ] Levenscyclus-suggesties: kind wordt 6 of 12 → feestmodule discreet tonen
-- [ ] Aanbiedersportaal: leads ontvangen/beantwoorden; facturatie per lead of abonnement
-- [ ] SEO: /feest/<gemeente>-pagina's ("springkasteel huren [gemeente]",
-      "feestzaal communie [gemeente]") — zelfde programmatic aanpak als gemeentepagina's
+## Fase 6 — Feest & verjaardag (leadgeneratie)
+- [ ] suppliers-tabel: feestzalen, traiteurs, springkastelen, animatie
+- [ ] Fichepagina's met Ravotscore
+- [ ] "Vraag offerte aan"-knop (kort formulier)
+- [ ] quote_requests met consent-vlag + timestamp; privacyverklaring aanvullen
+- [ ] Levenscyclus-suggesties (kind wordt 6/12)
+- [ ] Aanbiedersportaal: leads ontvangen, facturatie per lead/abonnement
+- [ ] SEO: /feest/<gemeente>-pagina's
+
+## Overige verbeteringen (later)
+- [ ] Rijkere filters (rolstoelvriendelijk, verzorgingstafel, picknick) — komt uit review-tags
+- [ ] Redis voor rate-limiting (nu in-memory; ~3× ruimer met 3 workers)
+- [ ] db-wachtwoord verstevigen via ALTER USER
 
 ## Doorlopend
-- [ ] publiq: Basic-plan (€125/jaar) activeren zodra we van test- naar echte data gaan
 - [ ] Gezinsbarometer (kwartaalpublicatie echte-kostdata) zodra volume volstaat

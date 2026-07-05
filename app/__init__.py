@@ -25,6 +25,14 @@ def create_app(config_object=Config):
     app.register_blueprint(admin_bp)
     app.register_blueprint(public_bp)
 
+    @app.context_processor
+    def inject_guest():
+        from flask import session
+        g = session.get("guest") or {}
+        from .vakantie import vakantiecontext
+        return {"guest": g, "has_guest": bool(g.get("postcode")),
+                "vakantie": vakantiecontext()}
+
     # -- Security headers (strategienota §8.2) -------------------------------
     @app.after_request
     def headers(resp):
@@ -71,15 +79,19 @@ def register_cli(app):
 
     @app.cli.command("migrate-db")
     def migrate_db():
-        """Voegt ontbrekende kolommen toe zonder data te wissen (lichte migratie)."""
+        """Voegt ontbrekende kolommen/tabellen toe zonder data te wissen."""
         from sqlalchemy import inspect, text
         insp = inspect(db.engine)
-        cols = {c["name"] for c in insp.get_columns("events")}
         added = []
+        cols = {c["name"] for c in insp.get_columns("events")}
         if "has_vlieg" not in cols:
             db.session.execute(text(
                 "ALTER TABLE events ADD COLUMN has_vlieg BOOLEAN DEFAULT FALSE"))
             added.append("events.has_vlieg")
+        # settings-tabel (nieuw in admin-config) — create_all maakt enkel wat ontbreekt
+        db.create_all()
+        if "settings" not in insp.get_table_names():
+            added.append("settings (tabel)")
         db.session.commit()
         click.echo("Migratie klaar. Toegevoegd: " + (", ".join(added) or "niets nodig"))
 
@@ -93,10 +105,26 @@ def register_cli(app):
     @app.cli.command("send-weekendmail")
     def send_weekendmail():
         """Donderdagmail (cron: donderdag 17:00)."""
+        from .models import get_bool
+        if not get_bool("weekendmail_aan"):
+            click.echo("Weekendmail staat uit in de instellingen.")
+            return
         from .services.magic import send_mail
         from .services.weekendmail import send_all
         n = send_all(send_mail)
         click.echo(f"Weekendmail verstuurd naar {n} gezinnen.")
+
+    @app.cli.command("send-maandagmail")
+    def send_maandagmail():
+        """Maandagvraag: scores binnenhalen (cron: maandag 10:00)."""
+        from .models import get_bool
+        if not get_bool("maandagmail_aan"):
+            click.echo("Maandagmail staat uit in de instellingen.")
+            return
+        from .services.magic import send_mail
+        from .services.maandagmail import send_all
+        n = send_all(send_mail)
+        click.echo(f"Maandagmail verstuurd naar {n} gezinnen.")
 
     @app.cli.command("create-admin")
     @click.argument("email")
