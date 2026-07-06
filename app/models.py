@@ -26,6 +26,7 @@ class Family(db.Model):
     budget_pref = db.Column(db.String(10), default="all")  # all|free|low
     newsletter_opt_in = db.Column(db.Boolean, default=False, nullable=False)
     monday_opt_in = db.Column(db.Boolean, default=True, nullable=False)
+    active = db.Column(db.Boolean, default=True, nullable=False)  # admin kan deactiveren
     created_at = db.Column(db.DateTime, default=utcnow)
     last_seen = db.Column(db.DateTime, default=utcnow)
 
@@ -267,6 +268,17 @@ SETTING_DEFS = {
     "maandagmail_aan": ("1", "Maandagvraag-mail versturen", "bool"),
     "weer_aan": ("1", "Weerkoppeling gebruiken (regen → binnen omhoog)", "bool"),
     "default_radius": ("25", "Standaard actieradius voor nieuwe bezoekers (km)", "int"),
+    # Tijdvenster: hoe ver vooruit tonen we activiteiten
+    "toon_maanden_vooruit": ("24", "Toon activiteiten tot X maanden vooruit", "int"),
+    # Weer-drempels
+    "regen_drempel": ("50", "Regenkans (%) vanaf wanneer binnen-activiteiten voorrang krijgen", "int"),
+    "zon_drempel": ("20", "Regenkans (%) waaronder buiten-activiteiten voorrang krijgen", "int"),
+    # Ravotscore (Bayesiaans gewogen gemiddelde — wraak-preventie)
+    "score_prior_n": ("3", "Score-demping: aantal 'onzichtbare' basisreviews", "int"),
+    "score_prior_waarde": ("3.0", "Score-demping: basiswaarde (1-5)", "text"),
+    # Beveiliging / limieten
+    "codes_per_uur": ("3", "Max. inlogcodes per e-mailadres per uur", "int"),
+    "ontdek_per_pagina": ("24", "Activiteiten per pagina op Ontdek", "int"),
 }
 
 
@@ -289,6 +301,43 @@ def get_int(key, fallback=0):
         return int(get_setting(key))
     except (ValueError, TypeError):
         return fallback
+
+
+class ContentPage(db.Model):
+    """Bewerkbare inhoudspagina (privacy, over-ons, voorwaarden, hoe-werkt-het).
+    Inhoud als Markdown — veilig, geen rauwe HTML van de gebruiker."""
+    __tablename__ = "content_pages"
+    slug = db.Column(db.String(40), primary_key=True)   # 'privacy', 'over', ...
+    titel = db.Column(db.String(120), nullable=False)
+    inhoud_md = db.Column(db.Text, default="")          # Markdown
+    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
+
+
+# Standaardpagina's die in de admin verschijnen (slug: titel).
+CONTENT_PAGES = {
+    "over": "Over Ravot",
+    "privacy": "Privacy- en cookieverklaring",
+    "voorwaarden": "Gebruiksvoorwaarden",
+    "hoe": "Zo werkt Ravot",
+}
+
+
+class MailTemplate(db.Model):
+    """Bewerkbare mailtekst. {placeholders} blijven behouden."""
+    __tablename__ = "mail_templates"
+    slug = db.Column(db.String(40), primary_key=True)   # 'inlogcode', 'weekend', 'maandag'
+    naam = db.Column(db.String(120), nullable=False)
+    onderwerp = db.Column(db.String(200), default="")
+    inhoud_md = db.Column(db.Text, default="")
+    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
+
+
+# Mailsjablonen die in de admin verschijnen, met hun beschikbare placeholders.
+MAIL_TEMPLATES = {
+    "inlogcode": ("Inlogcode", "{code}"),
+    "weekend": ("Weekendmail", "{naam}, {activiteiten}"),
+    "maandag": ("Maandagvraag", "{naam}"),
+}
 
 
 class PostcodeCentroid(db.Model):

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Gezinnen 👨‍👩‍👧</h1>
+<p><a class="hint" href="{{ url_for('admin.dashboard') }}">← Terug naar dashboard</a></p>
+<form method="get" class="zoekrij">
+  <input type="search" name="q" value="{{ zoek }}" placeholder="Zoek op e-mailadres…" class="zoekveld">
+  <button class="btn btn-klein" type="submit">Zoek</button>
+</form>
+<p class="hint">{{ gezinnen|length }} gezin(nen){% if zoek %} voor "{{ zoek }}"{% endif %}</p>
+<table class="admin-tabel">
+  <tr><th>E-mail</th><th>Postcode</th><th>Kinderen</th><th>Status</th><th></th></tr>
+  {% for f in gezinnen %}
+  <tr>
+    <td>{{ f.email }}</td>
+    <td>{{ f.postcode }}</td>
+    <td>{{ f.children|length }}</td>
+    <td>{% if f.active %}<span class="pil groen">actief</span>{% else %}<span class="pil grijs">inactief</span>{% endif %}</td>
+    <td><a class="btn btn-klein btn-stil" href="{{ url_for('admin.family_detail', fid=f.id) }}">Beheer</a></td>
+  </tr>
+  {% else %}<tr><td colspan="5" class="hint">Geen gezinnen gevonden.</td></tr>{% endfor %}
+</table>
+{% endblock %}

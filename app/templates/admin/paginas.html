@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Inhoudspagina's 📄</h1>
+<p><a class="hint" href="{{ url_for('admin.dashboard') }}">← Terug naar dashboard</a></p>
+<p class="hint">Bewerk de teksten van je publieke pagina's. Leeg = het standaardsjabloon wordt getoond.</p>
+<table class="admin-tabel">
+  <tr><th>Pagina</th><th>Laatst bewerkt</th><th></th></tr>
+  {% for p in pages %}
+  <tr><td>{{ p.titel }}</td>
+    <td>{{ p.bewerkt.strftime('%d/%m/%Y') if p.bewerkt else '— standaard' }}</td>
+    <td><a class="btn btn-klein btn-stil" href="{{ url_for('admin.pagina_bewerk', slug=p.slug) }}">Bewerk</a></td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

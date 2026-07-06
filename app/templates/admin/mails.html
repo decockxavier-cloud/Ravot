@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Mailteksten ✉️</h1>
+<p><a class="hint" href="{{ url_for('admin.dashboard') }}">← Terug naar dashboard</a></p>
+<p class="hint">Pas de teksten van de automatische mails aan. Placeholders zoals {code} blijven behouden.</p>
+<table class="admin-tabel">
+  <tr><th>Mail</th><th>Placeholders</th><th>Laatst bewerkt</th><th></th></tr>
+  {% for t in templates %}
+  <tr><td>{{ t.naam }}</td><td><code>{{ t.placeholders }}</code></td>
+    <td>{{ t.bewerkt.strftime('%d/%m/%Y') if t.bewerkt else '— standaard' }}</td>
+    <td><a class="btn btn-klein btn-stil" href="{{ url_for('admin.mail_bewerk', slug=t.slug) }}">Bewerk</a></td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

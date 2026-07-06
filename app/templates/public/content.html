@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block body_class %}met-sfeer{% endblock %}
+{% block content %}
+<h1>{{ paginatitel }}</h1>
+<div class="content-body">{{ inhoud_html | safe }}</div>
+{% endblock %}

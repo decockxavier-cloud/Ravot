@@ -24,18 +24,17 @@ from .. import seo
 
 bp = Blueprint("public", __name__)
 
-# Hoe ver vooruit tonen we activiteiten? Ruimt kapotte testdata op (jaar 2999,
-# 1900...) en houdt de app relevant. Voorbije events (en events die net bezig
-# waren) vallen buiten dit venster.
-TOON_MAANDEN_VOORUIT = 12
+# Het tijdvenster (hoe ver vooruit) is instelbaar via de admin: 'toon_maanden_vooruit'.
 
 
 def geldig_venster(now=None):
     """(ondergrens, bovengrens) voor events die getoond mogen worden.
     Ondergrens: 6u geleden (nog-bezige events tellen mee).
-    Bovengrens: TOON_MAANDEN_VOORUIT maanden vooruit."""
+    Bovengrens: instelbaar via de admin (default 24 maanden vooruit)."""
+    from ..models import get_int
     now = now or datetime.utcnow()
-    return now - timedelta(hours=6), now + timedelta(days=TOON_MAANDEN_VOORUIT * 31)
+    maanden = get_int("toon_maanden_vooruit", 24) or 24
+    return now - timedelta(hours=6), now + timedelta(days=maanden * 31)
 
 
 def geldige_events(query, now=None):
@@ -302,11 +301,18 @@ def weekend():
 @bp.route("/ontdek")
 def ontdek():
     """Alle gezinsactiviteiten, zichtbaar ZONDER postcode of profiel.
-    Personaliseren kan met één tik (de banner bovenaan)."""
+    Met zoeken, filters en paginering (want het zijn er veel)."""
+    from ..models import get_int
     profile, fam = build_profile()
     has_profile = bool(fam or guest_profile().get("postcode"))
-    sort = request.args.get("sort", "score")  # score | datum | gratis
+    sort = request.args.get("sort", "score")       # score | datum | gratis
     zoek = (request.args.get("q") or "").strip().lower()
+    filter_type = request.args.get("filter", "")   # ''|gratis|binnen|buiten
+    try:
+        pagina = max(1, int(request.args.get("p", 1)))
+    except ValueError:
+        pagina = 1
+    per_pagina = get_int("ontdek_per_pagina", 24) or 24
     now = datetime.utcnow()
 
     q = geldige_events(Event.query, now)
@@ -314,7 +320,13 @@ def ontdek():
         like = f"%{zoek}%"
         q = q.filter(db.or_(db.func.lower(Event.title).like(like),
                             db.func.lower(Event.gemeente).like(like)))
-    candidates = q.order_by(Event.start.asc()).limit(500).all()
+    if filter_type == "gratis":
+        q = q.filter(Event.is_free.is_(True))
+    elif filter_type == "binnen":
+        q = q.filter(Event.indoor.is_(True))
+    elif filter_type == "buiten":
+        q = q.filter(Event.indoor.is_(False))
+    candidates = q.order_by(Event.start.asc()).limit(1000).all()
 
     # Ravotscore per reeks ophalen (voor tonen + sorteren)
     rows, agg_cache = [], {}
@@ -332,28 +344,52 @@ def ontdek():
     if sort == "score":
         rows.sort(key=lambda r: ((r["agg"] or {}).get("avg") or 0, r["event"].start or now),
                   reverse=True)
-    elif sort == "gratis":
-        rows = [r for r in rows if r["event"].is_free]
-        rows.sort(key=lambda r: r["event"].start or now)
     else:  # datum
         rows.sort(key=lambda r: r["event"].start or now)
 
-    return render_template("public/ontdek.html", rows=rows[:120], sort=sort, zoek=zoek,
-                           has_profile=has_profile, family=fam, active="ontdek",
-                           title="Ontdek alles")
+    totaal = len(rows)
+    max_pagina = max(1, (totaal + per_pagina - 1) // per_pagina)
+    pagina = min(pagina, max_pagina)
+    begin = (pagina - 1) * per_pagina
+    pagina_rows = rows[begin:begin + per_pagina]
+
+    return render_template("public/ontdek.html", rows=pagina_rows, sort=sort, zoek=zoek,
+                           filter_type=filter_type, pagina=pagina, max_pagina=max_pagina,
+                           totaal=totaal, has_profile=has_profile, family=fam,
+                           active="ontdek", title="Ontdek alles")
 
 
 @bp.route("/verkennen")
 def verkennen():
     profile, fam = build_profile()
+    zoek = (request.args.get("q") or "").strip().lower()
+    filter_type = request.args.get("filter", "")
+    now = datetime.utcnow()
+
     if fam or guest_profile().get("postcode"):
-        rows = scored_events(profile, "maand", limit=200)
+        rows = scored_events(profile, "maand", limit=400)
     else:
-        # Geen profiel? Toon toch alle komende events met geo, zoals Ontdek.
-        now = datetime.utcnow()
         evs = geldige_events(Event.query, now).filter(
-            Event.lat.isnot(None)).order_by(Event.start).limit(200).all()
+            Event.lat.isnot(None)).order_by(Event.start).limit(400).all()
         rows = [{"event": e, "agg": None} for e in evs]
+
+    # Filteren op zoekterm en type (gemeente/titel, gratis, binnen/buiten)
+    def _past(r):
+        e = r["event"]
+        if e.lat is None:
+            return False
+        if zoek:
+            hooi = f"{e.title} {e.gemeente or ''}".lower()
+            if zoek not in hooi:
+                return False
+        if filter_type == "gratis" and not e.is_free:
+            return False
+        if filter_type == "binnen" and not e.indoor:
+            return False
+        if filter_type == "buiten" and e.indoor:
+            return False
+        return True
+    rows = [r for r in rows if _past(r)]
 
     def _marker(r):
         e = r["event"]
@@ -371,9 +407,10 @@ def verkennen():
             "indoor": bool(e.indoor),
             "img": e.image_url or None,
         }
-    markers = [_marker(r) for r in rows if r["event"].lat]
+    markers = [_marker(r) for r in rows]
     center = [profile.lat or 50.85, profile.lng or 4.35]
     return render_template("public/verkennen.html", markers=markers, center=center,
+                           zoek=zoek, filter_type=filter_type, aantal=len(markers),
                            family=fam, active="verkennen", title="Verkennen")
 
 
@@ -537,25 +574,34 @@ def manifest():
     }), mimetype="application/manifest+json")
 
 
+def _content_of_template(slug, fallback_template, titel):
+    """Toon de in de admin bewerkte pagina, of val terug op het vaste template."""
+    from ..models import ContentPage
+    cp = db.session.get(ContentPage, slug)
+    if cp and cp.inhoud_md.strip():
+        from ..content import render_markdown
+        return render_template("public/content.html",
+                               paginatitel=cp.titel, inhoud_html=render_markdown(cp.inhoud_md),
+                               family=current_family(), active=None, title=cp.titel)
+    return render_template(fallback_template, family=current_family(),
+                           active=None, title=titel)
+
+
 @bp.route("/over")
 def over():
-    return render_template("public/over.html", family=current_family(),
-                           active=None, title="Over Ravot")
+    return _content_of_template("over", "public/over.html", "Over Ravot")
 
 
 @bp.route("/hoe-werkt-het")
 def hoe_werkt_het():
-    return render_template("public/hoe.html", family=current_family(),
-                           active=None, title="Zo werkt Ravot")
+    return _content_of_template("hoe", "public/hoe.html", "Zo werkt Ravot")
 
 
 @bp.route("/privacy")
 def privacy():
-    return render_template("public/privacy.html", family=current_family(),
-                           active=None, title="Privacy- en cookieverklaring")
+    return _content_of_template("privacy", "public/privacy.html", "Privacy- en cookieverklaring")
 
 
 @bp.route("/voorwaarden")
 def voorwaarden():
-    return render_template("public/voorwaarden.html", family=current_family(),
-                           active=None, title="Gebruiksvoorwaarden")
+    return _content_of_template("voorwaarden", "public/voorwaarden.html", "Gebruiksvoorwaarden")

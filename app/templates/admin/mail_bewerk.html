@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Bewerk mail: {{ naam }}</h1>
+<p><a class="hint" href="{{ url_for('admin.mails') }}">← Terug naar mailteksten</a></p>
+<div class="card" style="background:#FDF0C8">
+  <p style="margin:0"><strong>Beschikbare placeholders:</strong> <code>{{ placeholders }}</code><br>
+  <span class="hint">Deze worden automatisch vervangen. Laat ze exact zo staan.</span></p>
+</div>
+<form method="post" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label>Onderwerp</label>
+  <input type="text" name="onderwerp" value="{{ onderwerp }}" maxlength="200">
+  <label style="margin-top:12px">Inhoud</label>
+  {% include "admin/_md_editor.html" %}
+  <div class="acties" style="margin-top:14px"><button class="btn" type="submit">Bewaar mailtekst</button></div>
+</form>
+{% endblock %}

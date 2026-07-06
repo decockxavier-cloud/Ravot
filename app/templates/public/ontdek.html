@@ -13,18 +13,27 @@
 </div>
 {% endif %}
 
-<form method="get" action="{{ url_for('public.ontdek') }}" class="zoekrij" id="ontdek-zoek">
+<form method="get" action="{{ url_for('public.ontdek') }}" class="zoekrij">
   <input type="search" name="q" value="{{ zoek }}" class="zoekveld"
          placeholder="🔍 Zoek op naam of gemeente…" aria-label="Zoek">
   <input type="hidden" name="sort" value="{{ sort }}">
+  <input type="hidden" name="filter" value="{{ filter_type }}">
+  <button class="btn btn-klein" type="submit">Zoek</button>
 </form>
 
 <div class="filterbalk" role="group" aria-label="Sorteren">
-  <a class="filterchip {{ 'aan' if sort=='score' }}" href="{{ url_for('public.ontdek', sort='score', q=zoek) }}">😄 Best gescoord</a>
-  <a class="filterchip {{ 'aan' if sort=='datum' }}" href="{{ url_for('public.ontdek', sort='datum', q=zoek) }}">📅 Eerst gepland</a>
-  <a class="filterchip {{ 'aan' if sort=='gratis' }}" href="{{ url_for('public.ontdek', sort='gratis', q=zoek) }}">🆓 Gratis</a>
+  <span class="filter-label">Sorteer:</span>
+  <a class="filterchip {{ 'aan' if sort=='score' }}" href="{{ url_for('public.ontdek', sort='score', filter=filter_type, q=zoek) }}">😄 Best gescoord</a>
+  <a class="filterchip {{ 'aan' if sort=='datum' }}" href="{{ url_for('public.ontdek', sort='datum', filter=filter_type, q=zoek) }}">📅 Eerst gepland</a>
 </div>
-<p class="resultaat-teller">{{ rows|length }} activiteiten</p>
+<div class="filterbalk" role="group" aria-label="Filteren">
+  <span class="filter-label">Toon:</span>
+  <a class="filterchip {{ 'aan' if not filter_type }}" href="{{ url_for('public.ontdek', sort=sort, q=zoek) }}">Alles</a>
+  <a class="filterchip {{ 'aan' if filter_type=='gratis' }}" href="{{ url_for('public.ontdek', sort=sort, filter='gratis', q=zoek) }}">🆓 Gratis</a>
+  <a class="filterchip {{ 'aan' if filter_type=='binnen' }}" href="{{ url_for('public.ontdek', sort=sort, filter='binnen', q=zoek) }}">🏠 Binnen</a>
+  <a class="filterchip {{ 'aan' if filter_type=='buiten' }}" href="{{ url_for('public.ontdek', sort=sort, filter='buiten', q=zoek) }}">🌳 Buiten</a>
+</div>
+<p class="resultaat-teller">{{ totaal }} activiteiten{% if max_pagina > 1 %} · pagina {{ pagina }}/{{ max_pagina }}{% endif %}</p>
 
 {% if rows %}
   <div class="kaarten-raster">
@@ -32,6 +41,18 @@
     {% include "public/_kaart.html" %}
   {% endfor %}
   </div>
+
+  {% if max_pagina > 1 %}
+  <nav class="paginering" aria-label="Pagina's">
+    {% if pagina > 1 %}
+      <a class="btn btn-stil btn-klein" href="{{ url_for('public.ontdek', sort=sort, filter=filter_type, q=zoek, p=pagina-1) }}">← Vorige</a>
+    {% endif %}
+    <span class="pag-teller">{{ pagina }} / {{ max_pagina }}</span>
+    {% if pagina < max_pagina %}
+      <a class="btn btn-klein" href="{{ url_for('public.ontdek', sort=sort, filter=filter_type, q=zoek, p=pagina+1) }}">Volgende →</a>
+    {% endif %}
+  </nav>
+  {% endif %}
 {% else %}
   <div class="card leeg"><span class="groot-emoji">🔍</span>
     <p>Niets gevonden. Probeer een andere zoekterm of <a href="{{ url_for('public.ontdek') }}">toon alles</a>.</p></div>

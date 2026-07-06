@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Gezin beheren</h1>
+<p><a class="hint" href="{{ url_for('admin.families') }}">← Terug naar gezinnen</a></p>
+
+<div class="card">
+  <h2 style="margin-top:0">{{ fam.email }}</h2>
+  <p class="hint">Postcode {{ fam.postcode }} · {{ fam.children|length }} kind(eren) ·
+  {{ aantal_reviews }} scores · {{ aantal_bewaard }} bewaard ·
+  {% if fam.active %}actief{% else %}gedeactiveerd{% endif %}</p>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0">E-mailadres aanpassen</h3>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="actie" value="email">
+    <input type="email" name="email" value="{{ fam.email }}" required>
+    <div class="acties"><button class="btn btn-klein" type="submit">Opslaan</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0">Status</h3>
+  <form method="post" style="display:inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="actie" value="deactiveer">
+    <button class="btn btn-klein btn-stil" type="submit">
+      {{ 'Deactiveren' if fam.active else 'Heractiveren' }}</button>
+  </form>
+</div>
+
+<div class="card" style="border:1.5px solid var(--rood)">
+  <h3 style="margin-top:0">Verwijderen (GDPR)</h3>
+  <p class="hint">Verwijdert het gezin én alle scores, bewaarde items en gegevens. Onomkeerbaar.</p>
+  <form method="post" onsubmit="return confirm('Zeker? Dit verwijdert alles onomkeerbaar.')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="actie" value="verwijder">
+    <button class="btn btn-klein" type="submit" style="background:var(--rood);color:#fff">Definitief verwijderen</button>
+  </form>
+</div>
+{% endblock %}

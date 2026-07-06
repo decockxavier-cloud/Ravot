@@ -127,3 +127,39 @@ def test_kaart_markers_bevatten_ficheinfo(client, app):
     assert "Kaartfeest" in html
     assert "Brugge" in html
     assert "gemeente" in html and "leeftijd" in html and "datum" in html
+
+
+def test_geen_voorbije_of_verre_events(client, app):
+    """Ontdek en Kaart tonen geen voorbije events en geen absurd-verre (2999)."""
+    from app.models import Event
+    with app.app_context():
+        now = datetime.utcnow()
+        # een geldig event (volgende week)
+        db.session.add(Event(uit_id="geldig", slug="geldig", title="GeldigEvent",
+            start=now+timedelta(days=7), end=now+timedelta(days=7, hours=2),
+            gemeente="Gent", postcode="9000", lat=51.05, lng=3.72,
+            age_min=3, age_max=10, categories=[], is_free=True,
+            price_info=[{"name":"basis","price":0}]))
+        # een voorbij event (vorig jaar)
+        db.session.add(Event(uit_id="oud", slug="oud", title="VoorbijEvent",
+            start=now-timedelta(days=400), end=now-timedelta(days=400),
+            gemeente="Gent", postcode="9000", lat=51.05, lng=3.72,
+            age_min=3, age_max=10, categories=[], is_free=True,
+            price_info=[{"name":"basis","price":0}]))
+        # een absurd ver event (jaar 2999)
+        from datetime import datetime as dt
+        db.session.add(Event(uit_id="ver", slug="ver", title="VerEvent",
+            start=dt(2999,1,1), end=dt(2999,1,1),
+            gemeente="Gent", postcode="9000", lat=51.05, lng=3.72,
+            age_min=3, age_max=10, categories=[], is_free=True,
+            price_info=[{"name":"basis","price":0}]))
+        db.session.commit()
+    html = client.get("/ontdek").get_data(as_text=True)
+    assert "GeldigEvent" in html       # geldig event wél
+    assert "VoorbijEvent" not in html  # voorbij event niet
+    assert "VerEvent" not in html      # 2999-event niet
+    # zelfde op de kaart
+    kaart = client.get("/verkennen").get_data(as_text=True)
+    assert "GeldigEvent" in kaart
+    assert "VoorbijEvent" not in kaart
+    assert "VerEvent" not in kaart

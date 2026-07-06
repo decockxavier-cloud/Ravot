@@ -118,3 +118,34 @@ document.addEventListener("click", function (e) {
     });
   }
 })();
+
+// Cookiebanner — echte werking, keuze bewaard in een cookie (1 jaar)
+(function () {
+  function getCookie(naam) {
+    var m = document.cookie.match("(^|;)\\s*" + naam + "\\s*=\\s*([^;]+)");
+    return m ? m.pop() : null;
+  }
+  function setCookie(naam, waarde, dagen) {
+    var d = new Date();
+    d.setTime(d.getTime() + dagen * 864e5);
+    document.cookie = naam + "=" + waarde + ";expires=" + d.toUTCString() +
+                      ";path=/;SameSite=Lax";
+  }
+  var banner = document.getElementById("cookiebanner");
+  if (!banner) return;
+  // Al een keuze gemaakt? Dan banner niet tonen.
+  if (getCookie("cookie_keuze")) return;
+  banner.hidden = false;
+
+  function bewaar(analytisch) {
+    setCookie("cookie_keuze", analytisch ? "alles" : "functioneel", 365);
+    banner.hidden = true;
+    // Analytische scripts zou je hier kunnen activeren als cookie_keuze=alles.
+  }
+  var a = document.getElementById("cb-analytisch");
+  document.getElementById("cb-alles").addEventListener("click", function () { bewaar(true); });
+  document.getElementById("cb-weiger").addEventListener("click", function () { bewaar(false); });
+  document.getElementById("cb-bewaar").addEventListener("click", function () {
+    bewaar(a && a.checked);
+  });
+})();

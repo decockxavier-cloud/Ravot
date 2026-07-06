@@ -18,7 +18,11 @@
   <h2 style="margin-top:0">Nulresultaat-zoekopdrachten (onvervulde vraag)</h2>
   {% for meta, n in zero %}<p class="hint">{{ n }}× — {{ meta }}</p>{% else %}<p class="hint">Nog geen.</p>{% endfor %}
 </div>
-<p><a href="{{ url_for('admin.instellingen') }}">⚙️ Instellingen</a> ·
+<p class="admin-nav">
+   <a href="{{ url_for('admin.instellingen') }}">⚙️ Instellingen</a> ·
+   <a href="{{ url_for('admin.families') }}">👨‍👩‍👧 Gezinnen</a> ·
+   <a href="{{ url_for('admin.paginas') }}">📄 Pagina's</a> ·
+   <a href="{{ url_for('admin.mails') }}">✉️ Mailteksten</a> ·
    <a href="{{ url_for('admin.verbindingen') }}">🔌 Verbindingen</a> ·
    <a href="{{ url_for('admin.logout') }}">Afmelden</a></p>
 {% endblock %}

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Bewerk: {{ titel }}</h1>
+<p><a class="hint" href="{{ url_for('admin.paginas') }}">← Terug naar pagina's</a></p>
+<form method="post" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label>Titel</label>
+  <input type="text" name="titel" value="{{ titel }}" maxlength="120">
+  <label style="margin-top:12px">Inhoud</label>
+  {% include "admin/_md_editor.html" %}
+  <div class="acties" style="margin-top:14px">
+    <a class="btn btn-stil btn-klein" href="/{{ 'hoe-werkt-het' if slug=='hoe' else slug }}" target="_blank">Bekijk pagina ↗</a>
+    <button class="btn" type="submit">Bewaar pagina</button>
+  </div>
+</form>
+{% endblock %}

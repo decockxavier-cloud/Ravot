@@ -95,6 +95,23 @@
     <a href="{{ url_for('public.over') }}">Over Ravot</a> ·
     <a href="/privacy">Privacy</a> · <a href="/voorwaarden">Voorwaarden</a></p>
   </footer>
+  <div id="cookiebanner" class="cookiebanner" hidden role="dialog" aria-label="Cookievoorkeuren">
+    <div class="cb-inhoud">
+      <p class="cb-tekst"><strong>Cookies op Ravot 🍪</strong><br>
+      We gebruiken enkel functionele cookies om de site te laten werken. Analytische
+      cookies (om Ravot te verbeteren) zijn optioneel — jij kiest.</p>
+      <div class="cb-keuzes">
+        <label class="cb-optie"><input type="checkbox" checked disabled> Functioneel <span class="cb-verplicht">(nodig)</span></label>
+        <label class="cb-optie"><input type="checkbox" id="cb-analytisch"> Analytisch</label>
+      </div>
+      <div class="cb-knoppen">
+        <button class="btn btn-klein btn-stil" id="cb-weiger">Enkel functioneel</button>
+        <button class="btn btn-klein" id="cb-bewaar">Bewaar keuze</button>
+        <button class="btn btn-klein btn-zon" id="cb-alles">Alles accepteren</button>
+      </div>
+    </div>
+  </div>
+
   <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
 </body>
 </html>

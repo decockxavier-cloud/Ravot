@@ -131,6 +131,12 @@ def register_cli(app):
         if "requested_by" not in conn_cols:
             db.session.execute(text("ALTER TABLE connections ADD COLUMN requested_by INTEGER"))
             added.append("connections.requested_by")
+        # Family: active-vlag (admin kan deactiveren)
+        fam_cols = {c["name"] for c in insp.get_columns("families")}
+        if "active" not in fam_cols:
+            db.session.execute(text(
+                "ALTER TABLE families ADD COLUMN active BOOLEAN DEFAULT TRUE NOT NULL"))
+            added.append("families.active")
         # settings-tabel (nieuw in admin-config) — create_all maakt enkel wat ontbreekt
         db.create_all()  # maakt ook friend_invites-tabel aan
         if "settings" not in insp.get_table_names():

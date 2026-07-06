@@ -270,6 +270,131 @@ def test_smtp():
     return redirect(url_for("admin.verbindingen"))
 
 
+@bp.route("/families")
+@admin_required
+def families():
+    """Overzicht van gezinnen met zoeken."""
+    from ..models import Family
+    zoek = (request.args.get("q") or "").strip().lower()
+    q = Family.query
+    if zoek:
+        q = q.filter(db.func.lower(Family.email).like(f"%{zoek}%"))
+    gezinnen = q.order_by(Family.created_at.desc()).limit(200).all()
+    return render_template("admin/families.html", gezinnen=gezinnen, zoek=zoek,
+                           title="Gezinnen", family=None, active=None)
+
+
+@bp.route("/families/<int:fid>", methods=["GET", "POST"])
+@admin_required
+def family_detail(fid):
+    from ..models import Family, Review, SavedEvent, Interaction
+    fam = db.session.get(Family, fid) or abort(404)
+    if request.method == "POST":
+        actie = request.form.get("actie")
+        if actie == "email":
+            nieuw = (request.form.get("email") or "").strip().lower()
+            if nieuw and "@" in nieuw:
+                fam.email = nieuw
+                db.session.commit()
+                audit(f"e-mail gezin {fid} gewijzigd")
+                flash("E-mailadres aangepast.", "ok")
+        elif actie == "deactiveer":
+            fam.active = not fam.active
+            db.session.commit()
+            audit(f"gezin {fid} {'geactiveerd' if fam.active else 'gedeactiveerd'}")
+            flash("Gezin " + ("geactiveerd." if fam.active else "gedeactiveerd."), "ok")
+        elif actie == "verwijder":
+            # GDPR: alle gekoppelde data mee verwijderen
+            Review.query.filter_by(family_id=fid).delete()
+            SavedEvent.query.filter_by(family_id=fid).delete()
+            Interaction.query.filter_by(family_id=fid).delete()
+            db.session.delete(fam)
+            db.session.commit()
+            audit(f"gezin {fid} volledig verwijderd (GDPR)")
+            flash("Gezin en alle gekoppelde data verwijderd.", "ok")
+            return redirect(url_for("admin.families"))
+        return redirect(url_for("admin.family_detail", fid=fid))
+    aantal_reviews = Review.query.filter_by(family_id=fid).count()
+    aantal_bewaard = SavedEvent.query.filter_by(family_id=fid).count()
+    return render_template("admin/family_detail.html", fam=fam,
+                           aantal_reviews=aantal_reviews, aantal_bewaard=aantal_bewaard,
+                           title=f"Gezin {fam.email}", family=None, active=None)
+
+
+@bp.route("/paginas", methods=["GET"])
+@admin_required
+def paginas():
+    from ..models import ContentPage, CONTENT_PAGES
+    pages = []
+    for slug, titel in CONTENT_PAGES.items():
+        cp = db.session.get(ContentPage, slug)
+        pages.append({"slug": slug, "titel": titel, "bewerkt": cp.updated_at if cp else None})
+    return render_template("admin/paginas.html", pages=pages,
+                           title="Inhoudspagina's", family=None, active=None)
+
+
+@bp.route("/paginas/<slug>", methods=["GET", "POST"])
+@admin_required
+def pagina_bewerk(slug):
+    from ..models import ContentPage, CONTENT_PAGES
+    if slug not in CONTENT_PAGES:
+        abort(404)
+    cp = db.session.get(ContentPage, slug)
+    if request.method == "POST":
+        if cp is None:
+            cp = ContentPage(slug=slug, titel=CONTENT_PAGES[slug])
+            db.session.add(cp)
+        cp.titel = (request.form.get("titel") or CONTENT_PAGES[slug]).strip()[:120]
+        cp.inhoud_md = request.form.get("inhoud_md") or ""
+        db.session.commit()
+        audit(f"pagina '{slug}' bewerkt")
+        flash("Pagina bewaard.", "ok")
+        return redirect(url_for("admin.pagina_bewerk", slug=slug))
+    inhoud = cp.inhoud_md if cp else ""
+    titel = cp.titel if cp else CONTENT_PAGES[slug]
+    return render_template("admin/pagina_bewerk.html", slug=slug, titel=titel,
+                           inhoud=inhoud, title=f"Bewerk: {CONTENT_PAGES[slug]}",
+                           family=None, active=None)
+
+
+@bp.route("/mails", methods=["GET"])
+@admin_required
+def mails():
+    from ..models import MailTemplate, MAIL_TEMPLATES
+    templates = []
+    for slug, (naam, placeholders) in MAIL_TEMPLATES.items():
+        mt = db.session.get(MailTemplate, slug)
+        templates.append({"slug": slug, "naam": naam, "placeholders": placeholders,
+                          "bewerkt": mt.updated_at if mt else None})
+    return render_template("admin/mails.html", templates=templates,
+                           title="Mailteksten", family=None, active=None)
+
+
+@bp.route("/mails/<slug>", methods=["GET", "POST"])
+@admin_required
+def mail_bewerk(slug):
+    from ..models import MailTemplate, MAIL_TEMPLATES
+    if slug not in MAIL_TEMPLATES:
+        abort(404)
+    naam, placeholders = MAIL_TEMPLATES[slug]
+    mt = db.session.get(MailTemplate, slug)
+    if request.method == "POST":
+        if mt is None:
+            mt = MailTemplate(slug=slug, naam=naam)
+            db.session.add(mt)
+        mt.onderwerp = (request.form.get("onderwerp") or "").strip()[:200]
+        mt.inhoud_md = request.form.get("inhoud_md") or ""
+        db.session.commit()
+        audit(f"mailtekst '{slug}' bewerkt")
+        flash("Mailtekst bewaard.", "ok")
+        return redirect(url_for("admin.mail_bewerk", slug=slug))
+    return render_template("admin/mail_bewerk.html", slug=slug, naam=naam,
+                           placeholders=placeholders,
+                           onderwerp=mt.onderwerp if mt else "",
+                           inhoud=mt.inhoud_md if mt else "",
+                           title=f"Bewerk mail: {naam}", family=None, active=None)
+
+
 @bp.route("/logout")
 def logout():
     if session.get("admin_id"):

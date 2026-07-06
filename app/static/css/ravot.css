@@ -508,3 +508,46 @@ section h2 { font-size: 1.25rem; margin: 22px 0 8px; }
 .kaart-legende span { display: inline-flex; align-items: center; gap: 5px; }
 .leg-bol { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #fff;
   box-shadow: 0 1px 3px rgba(0,0,0,.2); display: inline-block; }
+
+/* ============ COOKIEBANNER ============ */
+.cookiebanner { position: fixed; left: 0; right: 0; bottom: 0; z-index: 200;
+  background: #fff; border-top: 2px solid var(--lijn); box-shadow: 0 -4px 20px rgba(31,58,42,.12);
+  padding: 16px calc(16px + env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) 16px; }
+.cb-inhoud { max-width: 800px; margin: 0 auto; }
+.cb-tekst { margin: 0 0 10px; font-size: .9rem; color: #3d4a42; line-height: 1.5; }
+.cb-keuzes { display: flex; gap: 18px; margin-bottom: 12px; flex-wrap: wrap; }
+.cb-optie { display: inline-flex; align-items: center; gap: 6px; font-size: .88rem; color: var(--gras-donker); font-weight: 600; }
+.cb-verplicht { color: #a09a88; font-weight: 400; font-size: .8rem; }
+.cb-knoppen { display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 480px) { .cb-knoppen .btn { flex: 1; } }
+
+/* ============ ADMIN: tabellen, editor, nav ============ */
+.admin-tabel { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: .9rem; }
+.admin-tabel th, .admin-tabel td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--lijn); }
+.admin-tabel th { color: #5f6d63; font-size: .8rem; text-transform: uppercase; letter-spacing: .03em; }
+.pil { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .75rem; font-weight: 600; }
+.pil.groen { background: #E3F1E7; color: var(--gras-donker); }
+.pil.grijs { background: #f0efe9; color: #a09a88; }
+.admin-nav { display: flex; flex-wrap: wrap; gap: 6px 4px; margin-top: 16px; font-size: .92rem; }
+
+/* Markdown-editor */
+.md-editor { border: 1.5px solid var(--lijn); border-radius: 12px; overflow: hidden; }
+.md-knoppen { display: flex; gap: 2px; background: var(--creme); padding: 6px; border-bottom: 1px solid var(--lijn); }
+.md-knoppen button { width: 34px; height: 32px; border: 1px solid var(--lijn); background: #fff;
+  border-radius: 8px; cursor: pointer; font-size: .95rem; }
+.md-knoppen button:hover { background: #E3F1E7; border-color: var(--gras); }
+.md-tekst { width: 100%; border: none; padding: 12px; font-family: ui-monospace, monospace;
+  font-size: .92rem; line-height: 1.6; resize: vertical; }
+.md-tekst:focus { outline: none; }
+
+/* Bewerkte content-pagina weergave */
+.content-body h1, .content-body h2, .content-body h3 { color: var(--gras-donker); }
+.content-body p { line-height: 1.65; margin: 0 0 12px; }
+.content-body ul, .content-body ol { padding-left: 22px; line-height: 1.65; }
+.content-body a { color: var(--gras); }
+
+/* ============ PAGINERING + FILTER-LABELS ============ */
+.paginering { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 20px 0; }
+.pag-teller { font-weight: 600; color: #5f6d63; font-size: .9rem; }
+.filter-label { font-size: .82rem; color: #8a978d; align-self: center; margin-right: 2px; }
+.filterbalk { margin-bottom: 8px; }
