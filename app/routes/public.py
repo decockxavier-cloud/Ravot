@@ -24,6 +24,25 @@ from .. import seo
 
 bp = Blueprint("public", __name__)
 
+# Hoe ver vooruit tonen we activiteiten? Ruimt kapotte testdata op (jaar 2999,
+# 1900...) en houdt de app relevant. Voorbije events (en events die net bezig
+# waren) vallen buiten dit venster.
+TOON_MAANDEN_VOORUIT = 12
+
+
+def geldig_venster(now=None):
+    """(ondergrens, bovengrens) voor events die getoond mogen worden.
+    Ondergrens: 6u geleden (nog-bezige events tellen mee).
+    Bovengrens: TOON_MAANDEN_VOORUIT maanden vooruit."""
+    now = now or datetime.utcnow()
+    return now - timedelta(hours=6), now + timedelta(days=TOON_MAANDEN_VOORUIT * 31)
+
+
+def geldige_events(query, now=None):
+    """Beperk een Event-query tot het geldige venster (niet voorbij, niet absurd ver)."""
+    onder, boven = geldig_venster(now)
+    return query.filter(Event.start >= onder, Event.start <= boven)
+
 FACETS = {
     "vandaag": "vandaag", "dit-weekend": "dit weekend", "gratis": "gratis",
     "binnen": "binnen (regenweer)", "peuters": "voor peuters",
@@ -100,7 +119,15 @@ def s_helper(event, profile, agg):
 
 def scored_events(profile, scope, extra_filter=None, limit=40, weer=True):
     start, end = window(scope)
-    q = Event.query.filter(Event.start <= end, (Event.end >= start) | (Event.start >= start))
+    now = datetime.utcnow()
+    onder, boven = geldig_venster(now)
+    # Harde grenzen: nooit voorbije events, nooit absurd ver in de toekomst.
+    q = Event.query.filter(
+        Event.start <= end,
+        (Event.end >= start) | (Event.start >= start),
+        Event.start >= onder,   # niet voorbij
+        Event.start <= boven,   # niet verder dan het venster
+    )
     if extra_filter is not None:
         q = extra_filter(q)
     candidates = q.limit(2000).all()
@@ -282,7 +309,7 @@ def ontdek():
     zoek = (request.args.get("q") or "").strip().lower()
     now = datetime.utcnow()
 
-    q = Event.query.filter(Event.start >= now - timedelta(hours=6))
+    q = geldige_events(Event.query, now)
     if zoek:
         like = f"%{zoek}%"
         q = q.filter(db.or_(db.func.lower(Event.title).like(like),
@@ -324,8 +351,8 @@ def verkennen():
     else:
         # Geen profiel? Toon toch alle komende events met geo, zoals Ontdek.
         now = datetime.utcnow()
-        evs = Event.query.filter(Event.start >= now - timedelta(hours=6),
-                                 Event.lat.isnot(None)).order_by(Event.start).limit(200).all()
+        evs = geldige_events(Event.query, now).filter(
+            Event.lat.isnot(None)).order_by(Event.start).limit(200).all()
         rows = [{"event": e, "agg": None} for e in evs]
 
     def _marker(r):
@@ -410,9 +437,11 @@ def reeks(slug):
 def _gemeente_events(gemeente, facet=None):
     scope = "vandaag" if facet == "vandaag" else "weekend" if facet in (None, "dit-weekend") else "maand"
     start, end = window(scope)
+    onder, boven = geldig_venster()
     q = Event.query.filter(db.func.lower(Event.gemeente) == gemeente.lower(),
                            Event.start <= end,
-                           (Event.end >= start) | (Event.start >= start))
+                           (Event.end >= start) | (Event.start >= start),
+                           Event.start >= onder, Event.start <= boven)
     if facet == "gratis":
         q = q.filter(Event.is_free.is_(True))
     if facet == "binnen":
