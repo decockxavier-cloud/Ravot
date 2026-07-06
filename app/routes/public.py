@@ -38,9 +38,12 @@ def geldig_venster(now=None):
 
 
 def geldige_events(query, now=None):
-    """Beperk een Event-query tot het geldige venster (niet voorbij, niet absurd ver)."""
+    """Beperk een Event-query tot het geldige venster (niet voorbij, niet absurd ver).
+    Een event is 'voorbij' als zijn EINDE achter de ondergrens ligt — zo blijven
+    lopende activiteiten (bv. hele-dag, al bezig) gewoon zichtbaar."""
     onder, boven = geldig_venster(now)
-    return query.filter(Event.start >= onder, Event.start <= boven)
+    return query.filter((Event.end >= onder) | (Event.start >= onder),
+                        Event.start <= boven)
 
 
 def _zoek_centrum(zoek):
@@ -164,12 +167,13 @@ def scored_events(profile, scope, extra_filter=None, limit=40, weer=True):
     start, end = window(scope)
     now = datetime.utcnow()
     onder, boven = geldig_venster(now)
-    # Harde grenzen: nooit voorbije events, nooit absurd ver in de toekomst.
+    # Harde grenzen: nooit afgelopen events, nooit absurd ver in de toekomst.
+    # 'Afgelopen' = het EINDE ligt achter de ondergrens (lopende events tellen mee).
     q = Event.query.filter(
         Event.start <= end,
         (Event.end >= start) | (Event.start >= start),
-        Event.start >= onder,   # niet voorbij
-        Event.start <= boven,   # niet verder dan het venster
+        (Event.end >= onder) | (Event.start >= onder),   # niet afgelopen
+        Event.start <= boven,                            # niet verder dan het venster
     )
     if extra_filter is not None:
         q = extra_filter(q)
@@ -538,7 +542,8 @@ def _gemeente_events(gemeente, facet=None):
     q = Event.query.filter(db.func.lower(Event.gemeente) == gemeente.lower(),
                            Event.start <= end,
                            (Event.end >= start) | (Event.start >= start),
-                           Event.start >= onder, Event.start <= boven)
+                           (Event.end >= onder) | (Event.start >= onder),
+                           Event.start <= boven)
     if facet == "gratis":
         q = q.filter(Event.is_free.is_(True))
     if facet == "binnen":
