@@ -27,7 +27,7 @@
 <div id="map" role="application" aria-label="Kaart met kinderactiviteiten"
      data-center="{{ center|tojson|forceescape }}"
      data-markers="{{ markers|tojson|forceescape }}"></div>
-<script type="application/json" id="map-data">{{ {"center": center, "markers": markers}|tojson|safe }}</script>
+<script type="application/json" id="map-data">{{ {"center": center, "zoom": zoom, "markers": markers}|tojson|safe }}</script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="{{ url_for('static', filename='js/verkennen.js') }}" defer></script>
 {% endblock %}

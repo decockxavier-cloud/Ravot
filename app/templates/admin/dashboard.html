@@ -1,28 +1,91 @@
-{% extends "base.html" %}
-{% block content %}
-<h1>Ravot Beheer</h1>
-<div class="badges">
-  {% for k, v in stats.items() %}<span class="badge">{{ k }}: <strong>{{ v }}</strong></span>{% endfor %}
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<h1>Dashboard 📊</h1>
+<p class="hint">Een overzicht van hoe Ravot ervoor staat.</p>
+
+<div class="stat-raster">
+  <div class="stat-tegel">
+    <span class="stat-cijfer">{{ stats.gezinnen }}</span>
+    <span class="stat-label">Gezinnen</span>
+    <span class="stat-sub">{{ stats.gezinnen_actief }} actief</span>
+  </div>
+  <div class="stat-tegel">
+    <span class="stat-cijfer">{{ stats.nieuw_deze_week }}</span>
+    <span class="stat-label">Nieuw deze week</span>
+    <span class="stat-sub">nieuwe aanmeldingen</span>
+  </div>
+  <div class="stat-tegel">
+    <span class="stat-cijfer">{{ stats.events_komend }}</span>
+    <span class="stat-label">Komende activiteiten</span>
+    <span class="stat-sub">van {{ stats.events_totaal }} totaal</span>
+  </div>
+  <div class="stat-tegel">
+    <span class="stat-cijfer">{{ stats.events_deze_week }}</span>
+    <span class="stat-label">Activiteiten deze week</span>
+    <span class="stat-sub">t.e.m. zondag</span>
+  </div>
+  <div class="stat-tegel">
+    <span class="stat-cijfer">{{ stats.reviews }}</span>
+    <span class="stat-label">Ravotscores</span>
+    <span class="stat-sub">gegeven door gezinnen</span>
+  </div>
+  <div class="stat-tegel">
+    <span class="stat-cijfer">{{ stats.bewaard }}</span>
+    <span class="stat-label">Bewaarde activiteiten</span>
+    <span class="stat-sub">totaal opgeslagen</span>
+  </div>
+  <div class="stat-tegel">
+    <span class="stat-cijfer">{{ stats.nieuwsbrief }}</span>
+    <span class="stat-label">Nieuwsbrief-abonnees</span>
+    <span class="stat-sub">willen de weekendmail</span>
+  </div>
 </div>
-<div class="card">
+
+<div class="admin-kolommen">
+  <section class="card">
+    <h2 style="margin-top:0">Populairste gemeenten</h2>
+    <p class="hint">Waar staan de meeste komende activiteiten?</p>
+    {% if top_gemeenten %}
+    <table class="admin-tabel">
+      <tr><th>Gemeente</th><th>Activiteiten</th></tr>
+      {% for gem, n in top_gemeenten %}
+      <tr><td>{{ gem }}</td><td>{{ n }}</td></tr>
+      {% endfor %}
+    </table>
+    {% else %}<p class="hint">Nog geen data.</p>{% endif %}
+  </section>
+
+  <section class="card">
+    <h2 style="margin-top:0">Nieuwste gezinnen</h2>
+    {% if nieuwste_gezinnen %}
+    <table class="admin-tabel">
+      <tr><th>E-mail</th><th>Sinds</th></tr>
+      {% for f in nieuwste_gezinnen %}
+      <tr><td><a href="{{ url_for('admin.family_detail', fid=f.id) }}">{{ f.email }}</a></td>
+        <td>{{ f.created_at.strftime('%d/%m/%Y') if f.created_at }}</td></tr>
+      {% endfor %}
+    </table>
+    {% else %}<p class="hint">Nog geen aanmeldingen.</p>{% endif %}
+  </section>
+</div>
+
+<section class="card">
   <h2 style="margin-top:0">Recentste Ravotscores</h2>
-  <table class="simpel"><tr><th>Event</th><th>Kind</th><th>Ouder</th><th>Kost</th><th></th></tr>
-  {% for rv in reviews %}
-  <tr><td>{{ rv.event.title if rv.event else rv.event_id }}</td><td>{{ rv.kid_score }}/5</td><td>{{ rv.parent_score }}/3</td><td>{{ rv.cost_range or "—" }}</td>
-  <td><form method="post" action="{{ url_for('admin.delete_review', review_id=rv.id) }}">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button class="btn btn-stil btn-klein" type="submit">verwijder</button></form></td></tr>
-  {% endfor %}</table>
-</div>
-<div class="card">
-  <h2 style="margin-top:0">Nulresultaat-zoekopdrachten (onvervulde vraag)</h2>
-  {% for meta, n in zero %}<p class="hint">{{ n }}× — {{ meta }}</p>{% else %}<p class="hint">Nog geen.</p>{% endfor %}
-</div>
-<p class="admin-nav">
-   <a href="{{ url_for('admin.instellingen') }}">⚙️ Instellingen</a> ·
-   <a href="{{ url_for('admin.families') }}">👨‍👩‍👧 Gezinnen</a> ·
-   <a href="{{ url_for('admin.paginas') }}">📄 Pagina's</a> ·
-   <a href="{{ url_for('admin.mails') }}">✉️ Mailteksten</a> ·
-   <a href="{{ url_for('admin.verbindingen') }}">🔌 Verbindingen</a> ·
-   <a href="{{ url_for('admin.logout') }}">Afmelden</a></p>
+  {% if reviews %}
+  <table class="admin-tabel">
+    <tr><th>Activiteit</th><th>Kind</th><th>Ouder</th><th></th></tr>
+    {% for rv in reviews %}
+    <tr>
+      <td>{{ rv.event.title if rv.event else rv.event_id }}</td>
+      <td>{{ rv.kid_score }}/5</td>
+      <td>{{ rv.parent_score }}/3</td>
+      <td><form method="post" action="{{ url_for('admin.delete_review', review_id=rv.id) }}"
+                onsubmit="return confirm('Deze score verwijderen?')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-klein btn-stil" type="submit">Verwijder</button></form></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="hint">Nog geen scores.</p>{% endif %}
+</section>
 {% endblock %}

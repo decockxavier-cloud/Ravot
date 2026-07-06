@@ -4,7 +4,7 @@
     var el = document.getElementById("map-data");
     if (!el || typeof L === "undefined") { setTimeout(init, 50); return; }
     var data = JSON.parse(el.textContent);
-    var map = L.map("map").setView(data.center, 10);
+    var map = L.map("map").setView(data.center, data.zoom || 10);
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
       { attribution: "© OpenStreetMap", maxZoom: 19 }).addTo(map);
     (data.markers || []).forEach(function (m) {

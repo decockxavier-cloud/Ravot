@@ -1,6 +1,7 @@
 """Adminpaneel — afgeschermd pad, wachtwoord (Argon2id) + verplichte TOTP-2FA,
 aparte sessievlag, alle acties in de audit log (strategienota §8.1)."""
 from functools import wraps
+from datetime import datetime, timedelta
 
 import pyotp
 from flask import (Blueprint, abort, flash, redirect, render_template, request,
@@ -137,22 +138,38 @@ def otp():
 @bp.route("/")
 @admin_required
 def dashboard():
+    from ..routes.public import window
+    from ..models import SavedEvent
+    now = datetime.utcnow()
+    week_start, week_end = window("deze-week")
+
     stats = {
         "gezinnen": Family.query.count(),
-        "events": Event.query.count(),
+        "gezinnen_actief": Family.query.filter_by(active=True).count(),
+        "events_totaal": Event.query.count(),
+        "events_komend": Event.query.filter(Event.start >= now).count(),
+        "events_deze_week": Event.query.filter(
+            Event.start >= week_start, Event.start <= week_end).count(),
         "reviews": Review.query.count(),
-        "interacties_vandaag": Interaction.query.filter(
-            db.func.date(Interaction.created_at) == db.func.current_date()).count(),
+        "bewaard": SavedEvent.query.count(),
         "nieuwsbrief": Family.query.filter_by(newsletter_opt_in=True).count(),
+        "nieuw_deze_week": Family.query.filter(Family.created_at >= week_start).count(),
     }
-    meta_txt = db.cast(Interaction.meta, db.String)
-    zero = db.session.query(meta_txt, db.func.count(Interaction.id)) \
-        .filter(Interaction.type == "zero_result") \
-        .group_by(meta_txt).limit(20).all()
-    recent_reviews = Review.query.order_by(Review.created_at.desc()).limit(20).all()
-    return render_template("admin/dashboard.html", stats=stats, zero=zero,
-                           reviews=recent_reviews, title="Ravot Beheer",
-                           family=None, active=None)
+
+    # Populairste gemeenten (naar aantal komende events)
+    top_gemeenten = db.session.query(
+        Event.gemeente, db.func.count(Event.id).label("n")) \
+        .filter(Event.start >= now, Event.gemeente.isnot(None)) \
+        .group_by(Event.gemeente).order_by(db.text("n DESC")).limit(8).all()
+
+    # Recentste aanmeldingen
+    nieuwste_gezinnen = Family.query.order_by(Family.created_at.desc()).limit(5).all()
+    recent_reviews = Review.query.order_by(Review.created_at.desc()).limit(10).all()
+
+    return render_template("admin/dashboard.html", stats=stats,
+                           top_gemeenten=top_gemeenten, nieuwste_gezinnen=nieuwste_gezinnen,
+                           reviews=recent_reviews, title="Dashboard",
+                           family=None, active="dashboard")
 
 
 @bp.route("/review/<int:review_id>/verwijder", methods=["POST"])

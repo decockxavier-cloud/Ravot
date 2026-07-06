@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="admin-layout">
+  <aside class="admin-sidebar">
+    <div class="admin-merk">Ravot <span>beheer</span></div>
+    <nav class="admin-menu">
+      <a href="{{ url_for('admin.dashboard') }}" class="{{ 'on' if active=='dashboard' }}">📊 Dashboard</a>
+      <a href="{{ url_for('admin.families') }}" class="{{ 'on' if active=='families' }}">👨‍👩‍👧 Gezinnen</a>
+      <a href="{{ url_for('admin.paginas') }}" class="{{ 'on' if active=='paginas' }}">📄 Pagina's</a>
+      <a href="{{ url_for('admin.mails') }}" class="{{ 'on' if active=='mails' }}">✉️ Mailteksten</a>
+      <a href="{{ url_for('admin.instellingen') }}" class="{{ 'on' if active=='instellingen' }}">⚙️ Instellingen</a>
+      <a href="{{ url_for('admin.verbindingen') }}" class="{{ 'on' if active=='verbindingen' }}">🔌 Verbindingen</a>
+      <a href="{{ url_for('admin.logout') }}" class="admin-uit">↩ Afmelden</a>
+    </nav>
+  </aside>
+  <main class="admin-inhoud">
+    {% block admin_content %}{% endblock %}
+  </main>
+</div>
+{% endblock %}

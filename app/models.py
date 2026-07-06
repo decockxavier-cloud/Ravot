@@ -316,8 +316,10 @@ class ContentPage(db.Model):
 # Standaardpagina's die in de admin verschijnen (slug: titel).
 CONTENT_PAGES = {
     "over": "Over Ravot",
-    "privacy": "Privacy- en cookieverklaring",
+    "privacy": "Privacyverklaring",
+    "cookies": "Cookiebeleid",
     "voorwaarden": "Gebruiksvoorwaarden",
+    "contact": "Contact",
     "hoe": "Zo werkt Ravot",
 }
 

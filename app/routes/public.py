@@ -42,6 +42,45 @@ def geldige_events(query, now=None):
     onder, boven = geldig_venster(now)
     return query.filter(Event.start >= onder, Event.start <= boven)
 
+
+def _zoek_centrum(zoek):
+    """Zet een zoekterm (gemeente of postcode) om naar een (lat, lng)-middelpunt,
+    zodat we 'in de buurt' kunnen tonen i.p.v. enkel exacte naam-matches.
+    Geeft None als de term geen bekende plaats is."""
+    from ..models import PostcodeCentroid
+    if not zoek:
+        return None
+    z = zoek.strip().lower()
+    # Postcode?
+    if z.isdigit() and len(z) == 4:
+        pc = db.session.get(PostcodeCentroid, z)
+        if pc:
+            return (pc.lat, pc.lng)
+    # Gemeentenaam?
+    pc = PostcodeCentroid.query.filter(db.func.lower(PostcodeCentroid.gemeente) == z).first()
+    if pc:
+        return (pc.lat, pc.lng)
+    # Deel van een naam (bv. 'roesel')
+    pc = PostcodeCentroid.query.filter(
+        db.func.lower(PostcodeCentroid.gemeente).like(f"{z}%")).first()
+    if pc:
+        return (pc.lat, pc.lng)
+    return None
+
+
+def _filter_buurt(rows, centrum, straal_km=20):
+    """Houd enkel events binnen straal_km rond het centrum (op afstand, niet op naam)."""
+    from ..scoring import haversine_km
+    lat0, lng0 = centrum
+    uit = []
+    for r in rows:
+        e = r["event"] if isinstance(r, dict) else r
+        if e.lat is None or e.lng is None:
+            continue
+        if haversine_km(lat0, lng0, e.lat, e.lng) <= straal_km:
+            uit.append(r)
+    return uit
+
 FACETS = {
     "vandaag": "vandaag", "dit-weekend": "dit weekend", "gratis": "gratis",
     "binnen": "binnen (regenweer)", "peuters": "voor peuters",
@@ -99,6 +138,11 @@ def window(scope):
     if scope == "vandaag":
         end = now.replace(hour=23, minute=59, second=59)
         return now - timedelta(hours=12), end  # nog-bezige events tellen mee
+    if scope == "deze-week":
+        # Van nu tot en met zondag (einde van de lopende week).
+        days_to_sun = (6 - now.weekday()) % 7
+        end = (now + timedelta(days=days_to_sun)).replace(hour=23, minute=59, second=59)
+        return now - timedelta(hours=12), end
     if scope == "weekend":
         days_to_sat = (5 - now.weekday()) % 7
         sat = (now + timedelta(days=days_to_sat)).replace(hour=0, minute=0)
@@ -287,6 +331,17 @@ def vandaag():
                            has_profile=has_profile, family=fam, active="vandaag")
 
 
+@bp.route("/deze-week")
+def deze_week():
+    profile, fam = build_profile()
+    has_profile = bool(fam or guest_profile().get("postcode"))
+    rows = scored_events(profile, "deze-week") if has_profile else []
+    return render_template("public/lijst.html", rows=rows, scope="deze week",
+                           title="Deze week", answer=None,
+                           regen=rows[0].get("regen") if rows else None,
+                           has_profile=has_profile, family=fam, active="deze-week")
+
+
 @bp.route("/weekend")
 def weekend():
     profile, fam = build_profile()
@@ -316,7 +371,9 @@ def ontdek():
     now = datetime.utcnow()
 
     q = geldige_events(Event.query, now)
-    if zoek:
+    centrum = _zoek_centrum(zoek) if zoek else None
+    if zoek and not centrum:
+        # Geen bekende plaats → zoek op tekst (titel/gemeente)
         like = f"%{zoek}%"
         q = q.filter(db.or_(db.func.lower(Event.title).like(like),
                             db.func.lower(Event.gemeente).like(like)))
@@ -327,6 +384,10 @@ def ontdek():
     elif filter_type == "buiten":
         q = q.filter(Event.indoor.is_(False))
     candidates = q.order_by(Event.start.asc()).limit(1000).all()
+    # Bekende plaats gezocht? Filter op afstand (buurgemeenten mee).
+    if centrum:
+        candidates = _filter_buurt([{"event": e} for e in candidates], centrum, 20)
+        candidates = [r["event"] for r in candidates]
 
     # Ravotscore per reeks ophalen (voor tonen + sorteren)
     rows, agg_cache = [], {}
@@ -366,22 +427,23 @@ def verkennen():
     filter_type = request.args.get("filter", "")
     now = datetime.utcnow()
 
-    if fam or guest_profile().get("postcode"):
-        rows = scored_events(profile, "maand", limit=400)
+    # Waar centreren we de kaart? Gezochte plaats > profiel > België.
+    centrum = _zoek_centrum(zoek) if zoek else None
+    if centrum:
+        center = [centrum[0], centrum[1]]
+        zoom = 12
+    elif profile.lat:
+        center = [profile.lat, profile.lng]
+        zoom = 11
     else:
-        evs = geldige_events(Event.query, now).filter(
-            Event.lat.isnot(None)).order_by(Event.start).limit(400).all()
-        rows = [{"event": e, "agg": None} for e in evs]
+        center = [50.85, 4.35]
+        zoom = 9
 
-    # Filteren op zoekterm en type (gemeente/titel, gratis, binnen/buiten)
-    def _past(r):
-        e = r["event"]
-        if e.lat is None:
-            return False
-        if zoek:
-            hooi = f"{e.title} {e.gemeente or ''}".lower()
-            if zoek not in hooi:
-                return False
+    evs = geldige_events(Event.query, now).filter(
+        Event.lat.isnot(None)).order_by(Event.start).limit(800).all()
+
+    # Filter op type en (indien gezocht) op buurt rond de plaats
+    def _past(e):
         if filter_type == "gratis" and not e.is_free:
             return False
         if filter_type == "binnen" and not e.indoor:
@@ -389,29 +451,27 @@ def verkennen():
         if filter_type == "buiten" and e.indoor:
             return False
         return True
-    rows = [r for r in rows if _past(r)]
+    evs = [e for e in evs if _past(e)]
+    if centrum:
+        from ..scoring import haversine_km
+        evs = [e for e in evs if haversine_km(centrum[0], centrum[1], e.lat, e.lng) <= 30]
 
-    def _marker(r):
-        e = r["event"]
-        agg = r.get("agg")
-        return {
-            "lat": e.lat, "lng": e.lng,
-            "title": e.title,
-            "url": url_for("public.event", slug=e.slug),
-            "score": (agg or {}).get("avg") if agg else None,
-            "count": (agg or {}).get("count") if agg else None,
-            "free": e.is_free,
-            "gemeente": e.gemeente,
-            "datum": e.start.strftime("%a %d/%m") if e.start else None,
-            "leeftijd": f"{e.age_min}\u2013{e.age_max} jaar" if e.age_min is not None else None,
-            "indoor": bool(e.indoor),
-            "img": e.image_url or None,
-        }
-    markers = [_marker(r) for r in rows]
-    center = [profile.lat or 50.85, profile.lng or 4.35]
+    markers = [_kaart_marker(e) for e in evs]
     return render_template("public/verkennen.html", markers=markers, center=center,
-                           zoek=zoek, filter_type=filter_type, aantal=len(markers),
+                           zoom=zoom, zoek=zoek, filter_type=filter_type, aantal=len(markers),
                            family=fam, active="verkennen", title="Verkennen")
+
+
+def _kaart_marker(e):
+    return {
+        "lat": e.lat, "lng": e.lng, "title": e.title,
+        "url": url_for("public.event", slug=e.slug),
+        "free": e.is_free, "gemeente": e.gemeente,
+        "datum": e.start.strftime("%a %d/%m") if e.start else None,
+        "leeftijd": f"{e.age_min}\u2013{e.age_max} jaar" if e.age_min is not None else None,
+        "indoor": bool(e.indoor), "img": e.image_url or None,
+        "score": None, "count": None,
+    }
 
 
 @bp.route("/e/<slug>")
@@ -583,8 +643,14 @@ def _content_of_template(slug, fallback_template, titel):
         return render_template("public/content.html",
                                paginatitel=cp.titel, inhoud_html=render_markdown(cp.inhoud_md),
                                family=current_family(), active=None, title=cp.titel)
-    return render_template(fallback_template, family=current_family(),
-                           active=None, title=titel)
+    # Geen db-inhoud: probeer het vaste template, anders een nette lege pagina.
+    try:
+        return render_template(fallback_template, family=current_family(),
+                               active=None, title=titel)
+    except Exception:
+        return render_template("public/content.html", paginatitel=titel,
+                               inhoud_html="<p>Deze pagina wordt binnenkort ingevuld.</p>",
+                               family=current_family(), active=None, title=titel)
 
 
 @bp.route("/over")
@@ -605,3 +671,13 @@ def privacy():
 @bp.route("/voorwaarden")
 def voorwaarden():
     return _content_of_template("voorwaarden", "public/voorwaarden.html", "Gebruiksvoorwaarden")
+
+
+@bp.route("/cookies")
+def cookies():
+    return _content_of_template("cookies", "public/content.html", "Cookiebeleid")
+
+
+@bp.route("/contact")
+def contact():
+    return _content_of_template("contact", "public/content.html", "Contact")

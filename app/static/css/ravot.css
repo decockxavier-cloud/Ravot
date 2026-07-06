@@ -551,3 +551,38 @@ section h2 { font-size: 1.25rem; margin: 22px 0 8px; }
 .pag-teller { font-weight: 600; color: #5f6d63; font-size: .9rem; }
 .filter-label { font-size: .82rem; color: #8a978d; align-self: center; margin-right: 2px; }
 .filterbalk { margin-bottom: 8px; }
+
+/* ============ ADMIN-LAYOUT met vaste linker-navigatie ============ */
+.admin-layout { display: flex; gap: 24px; align-items: flex-start; }
+.admin-sidebar { flex: 0 0 200px; position: sticky; top: 16px; }
+.admin-merk { font-family: Nunito, sans-serif; font-weight: 800; font-size: 1.2rem;
+  color: var(--gras-donker); margin-bottom: 14px; }
+.admin-merk span { color: var(--gras); font-weight: 600; }
+.admin-menu { display: flex; flex-direction: column; gap: 2px; }
+.admin-menu a { display: block; padding: 10px 14px; border-radius: 10px; text-decoration: none;
+  color: #3d4a42; font-weight: 600; font-size: .92rem; transition: background .12s; }
+.admin-menu a:hover { background: #EFEAE0; }
+.admin-menu a.on { background: var(--gras); color: #fff; }
+.admin-menu .admin-uit { margin-top: 10px; color: #a05; }
+.admin-inhoud { flex: 1; min-width: 0; }
+
+@media (max-width: 720px) {
+  .admin-layout { flex-direction: column; }
+  .admin-sidebar { position: static; flex: none; width: 100%; }
+  .admin-menu { flex-direction: row; flex-wrap: wrap; }
+  .admin-menu a { font-size: .85rem; padding: 8px 11px; }
+}
+
+/* Statistiek-tegels */
+.stat-raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px; margin: 16px 0 24px; }
+.stat-tegel { background: #fff; border: 1.5px solid var(--lijn); border-radius: 14px;
+  padding: 16px; display: flex; flex-direction: column; }
+.stat-cijfer { font-family: Nunito, sans-serif; font-size: 2rem; font-weight: 800;
+  color: var(--gras); line-height: 1; }
+.stat-label { font-weight: 700; color: var(--gras-donker); margin-top: 6px; font-size: .92rem; }
+.stat-sub { color: #8a978d; font-size: .78rem; margin-top: 2px; }
+
+.admin-kolommen { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 720px) { .admin-kolommen { grid-template-columns: 1fr; } }
+.foot-bedrijf { color: #a09a88; font-size: .78rem; margin-top: 6px; }

@@ -143,6 +143,11 @@ def register_cli(app):
             added.append("settings (tabel)")
         if "friend_invites" not in insp.get_table_names():
             added.append("friend_invites (tabel)")
+        # Standaard mail- en contentteksten inladen (alleen als ze nog niet bestaan)
+        from .seed_content import seed_standaard_content
+        n_content = seed_standaard_content()
+        if n_content:
+            added.append(f"{n_content} standaardteksten")
         db.session.commit()
         click.echo("Migratie klaar. Toegevoegd: " + (", ".join(added) or "niets nodig"))
 

@@ -30,6 +30,7 @@
     <nav class="desktop-nav" aria-label="Hoofdnavigatie">
       <a href="{{ url_for('public.ontdek') }}" class="{{ 'on' if active=='ontdek' }}">Ontdek</a>
       <a href="{{ url_for('public.vandaag') }}" class="{{ 'on' if active=='vandaag' }}">Vandaag</a>
+      <a href="{{ url_for('public.deze_week') }}" class="{{ 'on' if active=='deze-week' }}">Deze week</a>
       <a href="{{ url_for('public.weekend') }}" class="{{ 'on' if active=='weekend' }}">Weekend</a>
       <a href="{{ url_for('public.verkennen') }}" class="{{ 'on' if active=='verkennen' }}">Kaart</a>
       {% if family %}
@@ -49,6 +50,7 @@
   <nav class="mobiel-menu" id="mobiel-menu" aria-label="Menu">
     <a href="{{ url_for('public.ontdek') }}" class="{{ 'on' if active=='ontdek' }}">🔭 Ontdek</a>
     <a href="{{ url_for('public.vandaag') }}" class="{{ 'on' if active=='vandaag' }}">☀️ Vandaag</a>
+    <a href="{{ url_for('public.deze_week') }}" class="{{ 'on' if active=='deze-week' }}">📆 Deze week</a>
     <a href="{{ url_for('public.weekend') }}" class="{{ 'on' if active=='weekend' }}">🎈 Weekend</a>
     <a href="{{ url_for('public.verkennen') }}" class="{{ 'on' if active=='verkennen' }}">🗺️ Kaart</a>
     {% if family %}
@@ -93,7 +95,9 @@
     <p>Activiteiten in samenwerking met <a href="https://www.uitdatabank.be" rel="noopener">UiTdatabank</a>.
     Gratis en zonder reclame. · <a href="{{ url_for('public.hoe_werkt_het') }}">Zo werkt het</a> ·
     <a href="{{ url_for('public.over') }}">Over Ravot</a> ·
-    <a href="/privacy">Privacy</a> · <a href="/voorwaarden">Voorwaarden</a></p>
+    <a href="{{ url_for('public.contact') }}">Contact</a> ·
+    <a href="/privacy">Privacy</a> · <a href="/cookies">Cookies</a> · <a href="/voorwaarden">Voorwaarden</a></p>
+    <p class="foot-bedrijf">Ravot is een initiatief van YAMY BV · Klaproosstraat 36, 8800 Roeselare · BTW BE 0505.624.079</p>
   </footer>
   <div id="cookiebanner" class="cookiebanner" hidden role="dialog" aria-label="Cookievoorkeuren">
     <div class="cb-inhoud">
