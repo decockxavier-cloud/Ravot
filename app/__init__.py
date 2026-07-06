@@ -31,14 +31,16 @@ def create_app(config_object=Config):
         g = session.get("guest") or {}
         from .vakantie import vakantiecontext
         ctx = {"guest": g, "has_guest": bool(g.get("postcode")),
-               "vakantie": vakantiecontext(), "bewaard_ids": set()}
+               "vakantie": vakantiecontext(), "bewaard_ids": set(), "geliked_ids": set()}
         # Welke events heeft dit gezin bewaard? (voor de hartjes op de kaarten)
         fid = session.get("family_id")
         if fid:
-            from .models import SavedEvent
+            from .models import SavedEvent, Interaction
             try:
                 ctx["bewaard_ids"] = {s.event_id for s in
                                       SavedEvent.query.filter_by(family_id=fid)}
+                ctx["geliked_ids"] = {i.event_id for i in
+                    Interaction.query.filter_by(family_id=fid, type="like")}
             except Exception:
                 pass
         return ctx
@@ -110,10 +112,31 @@ def register_cli(app):
             db.session.execute(text(
                 "ALTER TABLE magic_tokens ADD COLUMN attempts INTEGER DEFAULT 0 NOT NULL"))
             added.append("magic_tokens.attempts")
+        # Karakter-schuifjes op reviews (nieuwe Ravotscore)
+        rev_cols = {c["name"] for c in insp.get_columns("reviews")}
+        for kol in ("sfeer_rustig_actief", "sfeer_prijs", "sfeer_leeftijd"):
+            if kol not in rev_cols:
+                db.session.execute(text(f"ALTER TABLE reviews ADD COLUMN {kol} INTEGER"))
+                added.append(f"reviews.{kol}")
+        # SavedEvent: intentie- en geweest-status (voor 'heen willen' → 'geweest?')
+        se_cols = {c["name"] for c in insp.get_columns("saved_events")}
+        for kol, default in (("wil_heen", "TRUE"), ("geweest", "FALSE"),
+                             ("gevraagd_geweest", "FALSE")):
+            if kol not in se_cols:
+                db.session.execute(text(
+                    f"ALTER TABLE saved_events ADD COLUMN {kol} BOOLEAN DEFAULT {default} NOT NULL"))
+                added.append(f"saved_events.{kol}")
+        # Connection: wederzijds akkoord (status + requested_by)
+        conn_cols = {c["name"] for c in insp.get_columns("connections")}
+        if "requested_by" not in conn_cols:
+            db.session.execute(text("ALTER TABLE connections ADD COLUMN requested_by INTEGER"))
+            added.append("connections.requested_by")
         # settings-tabel (nieuw in admin-config) — create_all maakt enkel wat ontbreekt
-        db.create_all()
+        db.create_all()  # maakt ook friend_invites-tabel aan
         if "settings" not in insp.get_table_names():
             added.append("settings (tabel)")
+        if "friend_invites" not in insp.get_table_names():
+            added.append("friend_invites (tabel)")
         db.session.commit()
         click.echo("Migratie klaar. Toegevoegd: " + (", ".join(added) or "niets nodig"))
 

@@ -21,21 +21,43 @@
 </head>
 <body class="{% block body_class %}{% endblock %}">
   <header class="topbar">
-    <a class="logo" href="{{ url_for('public.welkom') }}" aria-label="Ravot – naar home">
+    <a class="logo" href="{{ url_for('public.home') }}" aria-label="Ravot – naar home">
       Ravot<span class="logo-dot">.</span>
       <svg class="gras" viewBox="0 0 60 10" aria-hidden="true"><path d="M2 9 C6 2 8 2 10 9 C13 1 15 1 18 9 C21 3 23 3 26 9 C29 1 31 1 34 9 C37 3 39 3 42 9 C45 1 47 1 50 9 C53 4 55 4 58 9" fill="none" stroke="var(--zon)" stroke-width="2" stroke-linecap="round"/></svg>
     </a>
-    <nav class="topnav">
+
+    {# Desktop: volwaardige navigatiebalk bovenaan #}
+    <nav class="desktop-nav" aria-label="Hoofdnavigatie">
+      <a href="{{ url_for('public.ontdek') }}" class="{{ 'on' if active=='ontdek' }}">Ontdek</a>
+      <a href="{{ url_for('public.vandaag') }}" class="{{ 'on' if active=='vandaag' }}">Vandaag</a>
+      <a href="{{ url_for('public.weekend') }}" class="{{ 'on' if active=='weekend' }}">Weekend</a>
+      <a href="{{ url_for('public.verkennen') }}" class="{{ 'on' if active=='verkennen' }}">Kaart</a>
       {% if family %}
-        <a href="{{ url_for('account.profiel') }}">{{ family.display_name or "Mijn Ravot" }}</a>
-      {% elif has_guest %}
-        <a href="{{ url_for('public.proberen') }}" class="nav-mini">✏️ Pas aan</a>
-        <a href="{{ url_for('public.opnieuw') }}" class="nav-mini">Home</a>
+        <a href="{{ url_for('account.profiel') }}" class="nav-cta {{ 'on' if active=='profiel' }}">🏠 {{ family.display_name or "Mijn Ravot" }}</a>
       {% else %}
-        <a href="{{ url_for('auth.login') }}">Aanmelden</a>
+        <a href="{{ url_for('auth.login') }}" class="nav-cta">Aanmelden</a>
       {% endif %}
     </nav>
+
+    {# Mobiel: hamburger die een dropdown opent #}
+    <button class="hamburger" id="hamburger" aria-label="Menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
   </header>
+
+  {# Mobiele dropdown (verborgen tot hamburger-klik) #}
+  <nav class="mobiel-menu" id="mobiel-menu" aria-label="Menu">
+    <a href="{{ url_for('public.ontdek') }}" class="{{ 'on' if active=='ontdek' }}">🔭 Ontdek</a>
+    <a href="{{ url_for('public.vandaag') }}" class="{{ 'on' if active=='vandaag' }}">☀️ Vandaag</a>
+    <a href="{{ url_for('public.weekend') }}" class="{{ 'on' if active=='weekend' }}">🎈 Weekend</a>
+    <a href="{{ url_for('public.verkennen') }}" class="{{ 'on' if active=='verkennen' }}">🗺️ Kaart</a>
+    {% if family %}
+      <a href="{{ url_for('account.profiel') }}" class="{{ 'on' if active=='profiel' }}">🏠 {{ family.display_name or "Mijn Ravot" }}</a>
+      <a href="{{ url_for('account.instellingen') }}">⚙️ Instellingen</a>
+    {% else %}
+      <a href="{{ url_for('auth.login') }}">👋 Aanmelden</a>
+    {% endif %}
+  </nav>
 
   {% with msgs = get_flashed_messages(with_categories=true) %}
     {% if msgs %}<div class="flashes">
@@ -45,6 +67,7 @@
 
   <main class="page">{% block content %}{% endblock %}</main>
 
+  {# Mobiel: onderbalk blijft voor snelle navigatie #}
   <nav class="tabbar" aria-label="Hoofdnavigatie">
     <a href="{{ url_for('public.ontdek') }}" class="{{ 'on' if active=='ontdek' }}">
       <span class="tab-ico">🔭</span><span class="tab-tekst">Ontdek</span></a>

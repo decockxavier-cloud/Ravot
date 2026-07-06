@@ -6,25 +6,44 @@
 
 <div class="card" style="background:#F1F8F3;border:1.5px solid #B9DDC2">
   <h2 style="margin-top:0">Hoe werkt dit?</h2>
-  <p>Koppel je met bevriende gezinnen via een code. Daarna kun je bij een activiteit
-  kiezen voor <strong>"Deel met vrienden"</strong> — die gezinnen zien dan dat jullie
-  interesse hebben, zodat je makkelijk samen iets plant. Zonder die keuze blijft alles privé.</p>
+  <p>Koppelen gebeurt met wederzijds akkoord: je deelt je code, en <strong>allebei</strong>
+  moeten de code van de ander invoeren. Zo kan niemand jullie zomaar toevoegen.
+  Daarna kun je bij een activiteit kiezen voor <strong>"Deel met vrienden"</strong> —
+  die gezinnen zien dan dat jullie interesse hebben. Zonder die keuze blijft alles privé.</p>
 </div>
 
 <div class="card">
-  <h2 style="margin-top:0">Jullie uitnodigingscode</h2>
-  <p style="font-size:1.8rem;font-weight:800;color:var(--gras);letter-spacing:2px">{{ invite_code }}</p>
-  <p class="hint">Geef deze code aan een bevriend gezin. Koppelen kan enkel zo — niemand kan jullie opzoeken.</p>
+  <h2 style="margin-top:0">Jullie code</h2>
+  <p style="font-size:1.9rem;font-weight:800;color:var(--gras);letter-spacing:4px;font-family:monospace">{{ invite_code }}</p>
+  <p class="hint">Geef deze code aan één bevriend gezin. <strong>Ze vervalt na 24 uur</strong> —
+  ververs deze pagina voor een nieuwe. Zo kan een oude code niet misbruikt worden.</p>
 </div>
 
 <div class="card">
   <h2 style="margin-top:0">Code van een vriend invoeren</h2>
   <form method="post">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input type="text" name="code" placeholder="RAV00123" maxlength="12" style="text-transform:uppercase">
+    <input type="text" name="code" placeholder="ABC123" maxlength="8"
+           style="text-transform:uppercase;font-family:monospace;letter-spacing:2px">
     <div class="acties"><button class="btn" type="submit">Koppel gezin</button></div>
   </form>
 </div>
+
+{% if inkomend %}
+<div class="card" style="border:1.5px solid var(--zon)">
+  <h2 style="margin-top:0">Wachten op jullie akkoord ⏳</h2>
+  <p class="hint">Deze gezinnen willen koppelen. Voer hún code in om te bevestigen.</p>
+  {% for f in inkomend %}<p>👋 {{ f }}</p>{% endfor %}
+</div>
+{% endif %}
+
+{% if uitgaand %}
+<div class="card">
+  <h2 style="margin-top:0">Jouw aanvragen ⏳</h2>
+  <p class="hint">Wacht tot dit gezin jouw code invoert.</p>
+  {% for f in uitgaand %}<p>📤 {{ f }}</p>{% endfor %}
+</div>
+{% endif %}
 
 <div class="card">
   <h2 style="margin-top:0">Gekoppelde gezinnen</h2>

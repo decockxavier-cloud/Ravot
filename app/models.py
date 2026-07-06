@@ -136,15 +136,18 @@ class SavedEvent(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     family_id = db.Column(db.Integer, db.ForeignKey("families.id"), nullable=False, index=True)
     event_id = db.Column(db.Integer, db.ForeignKey("events.id"), nullable=False, index=True)
+    wil_heen = db.Column(db.Boolean, default=True, nullable=False)   # "we willen hierheen"
+    geweest = db.Column(db.Boolean, default=False, nullable=False)   # bevestigd bezoek
+    gevraagd_geweest = db.Column(db.Boolean, default=False, nullable=False)  # al eens "waren jullie er?" getoond
     created_at = db.Column(db.DateTime, default=utcnow)
     __table_args__ = (db.UniqueConstraint("family_id", "event_id"),)
     event = db.relationship("Event")
 
 
 REVIEW_TAGS = [
-    "goed bij regen", "lange wachtrijen", "gratis parking", "betalende parking",
-    "picknick toegelaten", "drankjes duur", "leuk voor kleuters", "verzorgingstafel",
-    "duurder dan verwacht", "vlot met buggy",
+    "mooie natuur", "veel te doen", "top voor kleuters", "lekker eten",
+    "dichtbij", "goed bij regen", "gratis parking", "verzorgingstafel",
+    "vlot met buggy", "leuk voor tieners",
 ]
 COST_RANGES = ["0", "<20", "20-50", "50-100", ">100"]
 
@@ -158,6 +161,10 @@ class Review(db.Model):
     kid_score = db.Column(db.Integer, nullable=False)      # 1..5 (smileys)
     parent_score = db.Column(db.Integer, nullable=False)   # 1=gedoe 2=oké 3=vlot
     cost_range = db.Column(db.String(8))                   # zie COST_RANGES
+    # Karakter-schuifjes (1..5, neutraal — geen goed/fout):
+    sfeer_rustig_actief = db.Column(db.Integer)            # 1=rustig .. 5=actief
+    sfeer_prijs = db.Column(db.Integer)                    # 1=betaalbaar .. 5=prijzig
+    sfeer_leeftijd = db.Column(db.Integer)                 # 1=kleuters .. 5=tieners
     tags = db.Column(db.JSON, default=list)
     child_ages = db.Column(db.JSON, default=list)          # snapshot leeftijden, anoniem
     created_at = db.Column(db.DateTime, default=utcnow)
@@ -179,14 +186,26 @@ class Review(db.Model):
 
 
 class Connection(db.Model):
-    """Koppeling tussen gezinnen — enkel via uitnodigingscode."""
+    """Koppeling tussen gezinnen — enkel via uitnodiging + wederzijds akkoord."""
     __tablename__ = "connections"
     id = db.Column(db.Integer, primary_key=True)
     family_a = db.Column(db.Integer, db.ForeignKey("families.id"), nullable=False, index=True)
     family_b = db.Column(db.Integer, db.ForeignKey("families.id"), nullable=False, index=True)
-    status = db.Column(db.String(12), default="accepted")
+    status = db.Column(db.String(12), default="pending")   # pending -> accepted
+    requested_by = db.Column(db.Integer, db.ForeignKey("families.id"))  # wie stuurde de aanvraag
     created_at = db.Column(db.DateTime, default=utcnow)
     __table_args__ = (db.UniqueConstraint("family_a", "family_b"),)
+
+
+class FriendInvite(db.Model):
+    """Vervallende uitnodigingscode. Enkel de hash wordt bewaard."""
+    __tablename__ = "friend_invites"
+    id = db.Column(db.Integer, primary_key=True)
+    family_id = db.Column(db.Integer, db.ForeignKey("families.id"), nullable=False, index=True)
+    code_hash = db.Column(db.String(64), nullable=False, unique=True)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    used_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=utcnow)
 
 
 class Share(db.Model):

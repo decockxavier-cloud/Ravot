@@ -21,12 +21,16 @@
   </div>
   {% if family %}
   <div class="kaart-acties">
+    <form method="post" action="{{ url_for('account.feedback', event_id=e.id, verdict='like') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="mini-actie {{ 'aan-groen' if e.id in geliked_ids|default([]) }}" type="submit"
+              title="Leuk">{{ '💚 Leuk' if e.id in geliked_ids|default([]) else '👍 Leuk' }}</button>
+    </form>
     <form method="post" action="{{ url_for('account.save', event_id=e.id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button class="mini-actie {{ 'aan' if e.id in bewaard_ids|default([]) }}" type="submit"
-              title="Bewaren">{{ '❤️' if e.id in bewaard_ids|default([]) else '🤍' }} Bewaar</button>
+              title="Bewaren">{{ '❤️ Bewaard' if e.id in bewaard_ids|default([]) else '🤍 Bewaar' }}</button>
     </form>
-    <a class="mini-actie" href="{{ url_for('account.review', event_id=e.id) }}" title="Geef een score">😄 Score</a>
     <button class="mini-actie deel-knop" type="button"
             data-titel="{{ e.title }}" data-url="{{ url_for('public.event', slug=e.slug, _external=True) }}"
             title="Delen">📤 Deel</button>

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block body_class %}met-sfeer{% endblock %}
+{% block content %}
+<h1>Waren jullie erbij? 🤔</h1>
+<div class="card" style="text-align:center">
+  <p style="font-size:1.05rem"><strong>{{ ev.title }}</strong>{% if ev.gemeente %}<br><span class="hint">📍 {{ ev.gemeente }}</span>{% endif %}</p>
+  <p>Een Ravotscore kun je pas geven nadat jullie er echt waren.
+  Zo blijven de scores eerlijk en betrouwbaar voor alle gezinnen.</p>
+  <div class="acties" style="justify-content:center;gap:10px;margin-top:16px">
+    <form method="post" action="{{ url_for('account.geweest', event_id=ev.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="antwoord" value="ja">
+      <button class="btn btn-groot" type="submit">Ja, we waren er → score geven</button>
+    </form>
+  </div>
+  <form method="post" action="{{ url_for('account.geweest', event_id=ev.id) }}" style="margin-top:10px">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="antwoord" value="nee">
+    <button class="btn btn-stil btn-klein" type="submit">Nog niet geweest</button>
+  </form>
+</div>
+{% endblock %}

@@ -212,6 +212,25 @@ def proberen():
 
 
 @bp.route("/", methods=["GET"])
+def home():
+    """Home. Uitgelogde bezoekers zien de landingspagina; ingelogde gezinnen
+    gaan direct naar hun app (Vandaag)."""
+    fam = current_family()
+    if fam:
+        return redirect(url_for("public.vandaag"))
+    from ..models import Event, Review
+    stats = {
+        "events": Event.query.count(),
+        "gemeenten": db.session.query(Event.gemeente).filter(
+            Event.gemeente.isnot(None)).distinct().count(),
+        "reviews": Review.query.count(),
+    }
+    return render_template("public/landing.html", stats=stats,
+                           family=None, active=None,
+                           title="Ravot — waar gaan we vandaag ravotten?")
+
+
+@bp.route("/vandaag", methods=["GET"])
 def vandaag():
     profile, fam = build_profile()
     has_profile = bool(fam or guest_profile().get("postcode"))
@@ -300,12 +319,32 @@ def ontdek():
 @bp.route("/verkennen")
 def verkennen():
     profile, fam = build_profile()
-    rows = scored_events(profile, "maand", limit=200) if (fam or guest_profile()) else []
-    markers = [{
-        "lat": r["event"].lat, "lng": r["event"].lng,
-        "title": r["event"].title, "url": url_for("public.event", slug=r["event"].slug),
-        "score": (r["agg"] or {}).get("avg"), "free": r["event"].is_free,
-    } for r in rows if r["event"].lat]
+    if fam or guest_profile().get("postcode"):
+        rows = scored_events(profile, "maand", limit=200)
+    else:
+        # Geen profiel? Toon toch alle komende events met geo, zoals Ontdek.
+        now = datetime.utcnow()
+        evs = Event.query.filter(Event.start >= now - timedelta(hours=6),
+                                 Event.lat.isnot(None)).order_by(Event.start).limit(200).all()
+        rows = [{"event": e, "agg": None} for e in evs]
+
+    def _marker(r):
+        e = r["event"]
+        agg = r.get("agg")
+        return {
+            "lat": e.lat, "lng": e.lng,
+            "title": e.title,
+            "url": url_for("public.event", slug=e.slug),
+            "score": (agg or {}).get("avg") if agg else None,
+            "count": (agg or {}).get("count") if agg else None,
+            "free": e.is_free,
+            "gemeente": e.gemeente,
+            "datum": e.start.strftime("%a %d/%m") if e.start else None,
+            "leeftijd": f"{e.age_min}\u2013{e.age_max} jaar" if e.age_min is not None else None,
+            "indoor": bool(e.indoor),
+            "img": e.image_url or None,
+        }
+    markers = [_marker(r) for r in rows if r["event"].lat]
     center = [profile.lat or 50.85, profile.lng or 4.35]
     return render_template("public/verkennen.html", markers=markers, center=center,
                            family=fam, active="verkennen", title="Verkennen")
@@ -473,6 +512,12 @@ def manifest():
 def over():
     return render_template("public/over.html", family=current_family(),
                            active=None, title="Over Ravot")
+
+
+@bp.route("/hoe-werkt-het")
+def hoe_werkt_het():
+    return render_template("public/hoe.html", family=current_family(),
+                           active=None, title="Zo werkt Ravot")
 
 
 @bp.route("/privacy")

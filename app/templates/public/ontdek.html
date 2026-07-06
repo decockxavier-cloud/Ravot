@@ -27,9 +27,11 @@
 <p class="resultaat-teller">{{ rows|length }} activiteiten</p>
 
 {% if rows %}
+  <div class="kaarten-raster">
   {% for r in rows %}{% set e = r.event %}
     {% include "public/_kaart.html" %}
   {% endfor %}
+  </div>
 {% else %}
   <div class="card leeg"><span class="groot-emoji">🔍</span>
     <p>Niets gevonden. Probeer een andere zoekterm of <a href="{{ url_for('public.ontdek') }}">toon alles</a>.</p></div>

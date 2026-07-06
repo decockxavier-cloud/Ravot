@@ -5,9 +5,11 @@
 
   {% if vakantie.banner %}<div class="vakantie-banner">{{ vakantie.banner }}</div>{% endif %}
   {% if regen is defined and regen is not none and regen >= 50 %}
-  <div class="weer-hint">🌧️ Kans op regen ({{ regen }}%) — we zetten binnen-activiteiten bovenaan.</div>
+  <div class="weer-hint">🌧️ Kans op regen ({{ regen }}%) — we zetten binnen-activiteiten bovenaan.
+    <span class="weer-uitleg" title="We halen de weersverwachting op voor de locatie en datum van elke activiteit (via Open-Meteo). Bij regen krijgen overdekte activiteiten voorrang.">ⓘ hoe werkt dit?</span></div>
   {% elif regen is defined and regen is not none and regen <= 20 %}
-  <div class="weer-hint weer-zon">☀️ Mooi weer op komst — tijd om naar buiten te ravotten!</div>
+  <div class="weer-hint weer-zon">☀️ Mooi weer op komst — tijd om naar buiten te ravotten!
+    <span class="weer-uitleg" title="We halen de weersverwachting op voor de locatie en datum van elke activiteit (via Open-Meteo). Bij mooi weer krijgen buitenactiviteiten voorrang.">ⓘ hoe werkt dit?</span></div>
   {% endif %}
   {% if answer %}<p class="answer">{{ answer }}</p>{% endif %}
   <button id="install-cta" class="btn btn-zon btn-klein" hidden>📲 Zet Ravot op je beginscherm</button>
@@ -29,6 +31,7 @@
   {% endif %}
 
   {% if rows %}
+    <div class="kaarten-raster">
     {% for r in rows %}
       {% set e = r.event %}
       <article class="card kaart-event"
@@ -57,7 +60,8 @@
         <div class="acties">
           <form method="post" action="{{ url_for('account.feedback', event_id=e.id, verdict='like') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button class="btn btn-stil btn-klein" type="submit">👍 Leuk</button>
+            <button class="btn btn-klein {{ 'actie-aan' if e.id in geliked_ids|default([]) else 'btn-stil' }}" type="submit">
+              {{ '💚 Leuk gevonden' if e.id in geliked_ids|default([]) else '👍 Leuk' }}</button>
           </form>
           <form method="post" action="{{ url_for('account.feedback', event_id=e.id, verdict='dismiss') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -65,12 +69,14 @@
           </form>
           <form method="post" action="{{ url_for('account.save', event_id=e.id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button class="btn btn-zon btn-klein" type="submit">🤍 Bewaar</button>
+            <button class="btn btn-klein {{ 'actie-aan' if e.id in bewaard_ids|default([]) else 'btn-zon' }}" type="submit">
+              {{ '❤️ Bewaard' if e.id in bewaard_ids|default([]) else '🤍 Bewaar' }}</button>
           </form>
         </div>
         {% endif %}
       </article>
     {% endfor %}
+    </div>
     {% if rows | selectattr('event.has_vlieg') | list %}
     <p class="vlieg-legende">🐛 <strong>UiT met Vlieg</strong> markeert activiteiten die op maat van kinderen zijn — een label van publiq.</p>
     {% endif %}

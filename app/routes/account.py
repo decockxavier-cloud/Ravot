@@ -2,6 +2,7 @@
 interesse delen (opt-in per event), vriendenkoppeling via code,
 en de AVG-selfservice: export (JSON) + verwijderen met één knop."""
 import json
+import re
 import secrets
 from datetime import datetime, timezone
 from functools import wraps
@@ -11,8 +12,8 @@ from flask import (Blueprint, Response, abort, flash, redirect, render_template,
 
 from ..extensions import db, limiter
 from ..models import (CATEGORIES, COST_RANGES, REVIEW_TAGS, Child, Connection,
-                      Event, Family, Interaction, Interest, Review, SavedEvent,
-                      Share)
+                      Event, Family, FriendInvite, Interaction, Interest, Review,
+                      SavedEvent, Share)
 from ..scoring import adjust_weight
 
 bp = Blueprint("account", __name__, url_prefix="/mijn")
@@ -192,6 +193,29 @@ def save(event_id):
 
 # ---------------------------------------------------------------- Ravotscore --
 
+@bp.route("/geweest/<int:event_id>", methods=["POST"])
+@login_required
+@limiter.limit("60/hour")
+def geweest(event_id):
+    """Gezin bevestigt dat ze bij het event waren → daarna pas scoorbaar."""
+    fam = me()
+    ev = db.session.get(Event, event_id) or abort(404)
+    sv = SavedEvent.query.filter_by(family_id=fam.id, event_id=event_id).first()
+    if sv is None:  # niet bewaard? dan toch aanmaken zodat we de status kennen
+        sv = SavedEvent(family_id=fam.id, event_id=event_id, wil_heen=False)
+        db.session.add(sv)
+    antwoord = request.form.get("antwoord")
+    sv.gevraagd_geweest = True
+    if antwoord == "ja":
+        sv.geweest = True
+        db.session.commit()
+        return redirect(url_for("account.review", event_id=event_id))
+    sv.geweest = False
+    db.session.commit()
+    flash("Geen probleem — misschien een andere keer!", "ok")
+    return redirect(request.referrer or url_for("account.profiel"))
+
+
 @bp.route("/review/<int:event_id>", methods=["GET", "POST"])
 @login_required
 @limiter.limit("30/hour", methods=["POST"])
@@ -199,6 +223,13 @@ def review(event_id):
     fam = me()
     ev = db.session.get(Event, event_id) or abort(404)
     existing = Review.query.filter_by(family_id=fam.id, event_id=event_id).first()
+    # Wraak-preventie: enkel scoorbaar als het gezin bevestigd "geweest" is.
+    sv = SavedEvent.query.filter_by(family_id=fam.id, event_id=event_id).first()
+    mag_scoren = existing is not None or (sv is not None and sv.geweest)
+    if not mag_scoren:
+        # Nog niet bevestigd geweest → vraag dat eerst.
+        return render_template("account/geweest.html", ev=ev, family=fam,
+                               title="Waren jullie erbij?", active=None)
     if request.method == "POST":
         if existing:  # één per gezin per event — score niet kapot te trekken
             flash("Jullie gaven dit al een Ravotscore. Bedankt!", "ok")
@@ -207,20 +238,27 @@ def review(event_id):
         parent = int(request.form.get("parent_score", 0))
         if not (1 <= kid <= 5 and 1 <= parent <= 3):
             abort(400)
-        cost = request.form.get("cost_range") or None
-        if cost is not None and cost not in COST_RANGES:
-            abort(400)
+
+        def _schuif(naam):
+            v = request.form.get(naam)
+            if v and v.isdigit() and 1 <= int(v) <= 5:
+                return int(v)
+            return None
+
         tags = [t for t in request.form.getlist("tag") if t in REVIEW_TAGS][:5]
         db.session.add(Review(
             family_id=fam.id, event_id=event_id, kid_score=kid, parent_score=parent,
-            cost_range=cost, tags=tags, child_ages=fam.child_ages(),
+            sfeer_rustig_actief=_schuif("sfeer_rustig_actief"),
+            sfeer_prijs=_schuif("sfeer_prijs"),
+            sfeer_leeftijd=_schuif("sfeer_leeftijd"),
+            tags=tags, child_ages=fam.child_ages(),
         ))
         db.session.add(Interaction(family_id=fam.id, event_id=event_id, type="review"))
         db.session.commit()
-        flash("Ravotscore bewaard — bedankt om andere gezinnen te helpen!", "ok")
+        flash("Ravotscore bewaard — bedankt om andere gezinnen te helpen! 🌟", "ok")
         return redirect(url_for("public.event", slug=ev.slug))
     return render_template("account/review.html", ev=ev, existing=existing,
-                           tags=REVIEW_TAGS, cost_ranges=COST_RANGES,
+                           tags=REVIEW_TAGS,
                            family=fam, title=f"Ravotscore voor {ev.title}", active=None)
 
 
@@ -251,34 +289,85 @@ def share(event_id):
 def friends():
     fam = me()
     if request.method == "POST":
-        code = request.form.get("code", "").strip().upper()
-        other = Family.query.filter(Family.id == _decode_invite(code)).first() if code else None
-        if other is None or other.id == fam.id:
-            flash("Die code klopt niet.", "error")
+        code = re.sub(r"[^A-Z0-9]", "", request.form.get("code", "").strip().upper())
+        other_id = magic_friend_lookup(code)
+        if other_id is None or other_id == fam.id:
+            flash("Die code klopt niet of is verlopen. Vraag een nieuwe aan je vriend.", "error")
         else:
-            a, b_ = sorted((fam.id, other.id))
-            if not Connection.query.filter_by(family_a=a, family_b=b_).first():
-                db.session.add(Connection(family_a=a, family_b=b_))
+            a, b_ = sorted((fam.id, other_id))
+            existing = Connection.query.filter_by(family_a=a, family_b=b_).first()
+            if existing and existing.status == "accepted":
+                flash("Jullie zijn al gekoppeld.", "ok")
+            elif existing and existing.status == "pending":
+                # De andere partij had al aangevraagd → dit ís de wederzijdse bevestiging
+                if existing.requested_by != fam.id:
+                    existing.status = "accepted"
+                    db.session.commit()
+                    flash("Gekoppeld! Jullie zijn nu vrienden. 🎉", "ok")
+                else:
+                    flash("Je aanvraag loopt al. Wacht tot het andere gezin bevestigt.", "ok")
+            else:
+                # Nieuwe aanvraag: pending tot de ander ook koppelt
+                db.session.add(Connection(family_a=a, family_b=b_,
+                                          status="pending", requested_by=fam.id))
                 db.session.commit()
-            flash(f"Gekoppeld met {other.display_name or 'een gezin'}!", "ok")
+                flash("Aanvraag verstuurd! Zodra het andere gezin jouw code invoert, "
+                      "zijn jullie gekoppeld.", "ok")
         return redirect(url_for("account.friends"))
+
+    # Actieve vrienden + openstaande aanvragen tonen
     conns = Connection.query.filter(
         (Connection.family_a == fam.id) | (Connection.family_b == fam.id)).all()
-    friends_ = []
+    vrienden, inkomend, uitgaand = [], [], []
     for c in conns:
         other = db.session.get(Family, c.family_b if c.family_a == fam.id else c.family_a)
-        friends_.append(other.display_name or "Een gezin")
-    return render_template("account/vrienden.html", family=fam, friends=friends_,
-                           invite_code=_invite_code(fam.id),
+        naam = other.display_name or "Een gezin"
+        if c.status == "accepted":
+            vrienden.append(naam)
+        elif c.requested_by == fam.id:
+            uitgaand.append(naam)
+        else:
+            inkomend.append(naam)
+    return render_template("account/vrienden.html", family=fam, friends=vrienden,
+                           inkomend=inkomend, uitgaand=uitgaand,
+                           invite_code=nieuwe_vriendcode(fam.id),
                            title="Vrienden", active="profiel")
 
 
-def _invite_code(family_id):
-    return f"RAV{family_id:05d}"
+def nieuwe_vriendcode(family_id):
+    """Genereer een verse, willekeurige code die 24u geldig is. Enkel de hash
+    wordt bewaard, gekoppeld aan het gezin. Niet te raden, niet voorspelbaar."""
+    from ..models import FriendInvite
+    from datetime import datetime, timezone, timedelta
+    # Bestaande geldige code hergebruiken zodat de pagina stabiel blijft bij refresh
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    code = _leesbare_code()
+    db.session.add(FriendInvite(
+        family_id=family_id, code_hash=_hash_friend(code),
+        expires_at=now + timedelta(hours=24)))
+    db.session.commit()
+    return code
 
 
-def _decode_invite(code):
-    return int(code[3:]) if code.startswith("RAV") and code[3:].isdigit() else -1
+def _leesbare_code(n=6):
+    alfabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # zonder verwarrende 0/O/1/I
+    return "".join(secrets.choice(alfabet) for _ in range(n))
+
+
+def _hash_friend(code):
+    import hashlib
+    return hashlib.sha256(f"vriend:{code}".encode()).hexdigest()
+
+
+def magic_friend_lookup(code):
+    """Zoek het gezin achter een geldige, niet-verlopen, ongebruikte code."""
+    from ..models import FriendInvite
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    inv = FriendInvite.query.filter_by(code_hash=_hash_friend(code), used_at=None).first()
+    if inv is None or inv.expires_at < now:
+        return None
+    return inv.family_id
 
 
 # --------------------------------------------------------- AVG-selfservice --

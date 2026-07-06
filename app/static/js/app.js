@@ -105,3 +105,16 @@ document.addEventListener("click", function (e) {
     window.open("https://wa.me/?text=" + encodeURIComponent(data.text + " " + data.url), "_blank");
   }
 });
+
+// Hamburger-menu (mobiel)
+(function(){
+  var h = document.getElementById("hamburger");
+  var m = document.getElementById("mobiel-menu");
+  if (h && m) {
+    h.addEventListener("click", function(){
+      var open = m.classList.toggle("open");
+      h.classList.toggle("open", open);
+      h.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+  }
+})();

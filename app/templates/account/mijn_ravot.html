@@ -18,7 +18,9 @@
 {% if te_reviewen %}
 <section id="reviewen">
   <h2>Waren jullie hierbij? 😊</h2>
-  <p class="hint">Geef een Ravotscore en help andere gezinnen kiezen.</p>
+  <p class="hint">Geef een Ravotscore en help andere gezinnen kiezen. <strong>Hoe meer jullie
+  scoren, hoe beter Ravot begrijpt wat bij jullie past</strong> — zo krijgen jullie
+  gerichtere tips.</p>
   {% for e in te_reviewen %}
   <div class="card mini-card">
     <div><strong>{{ e.title }}</strong><br><span class="meta">📍 {{ e.gemeente }} · {{ e.start.strftime('%d/%m') if e.start }}</span></div>

@@ -1,35 +1,70 @@
 {% extends "base.html" %}
+{% block body_class %}met-sfeer{% endblock %}
 {% block content %}
-<h1>Ravotscore</h1>
-<p class="hint">Voor: <strong>{{ ev.title }}</strong> ({{ ev.gemeente }}). Jullie score is volledig anoniem — andere gezinnen zien enkel de leeftijden van jullie kinderen.</p>
+<h1>Ravotscore 🌟</h1>
+<p class="hint">Voor <strong>{{ ev.title }}</strong>{% if ev.gemeente %} ({{ ev.gemeente }}){% endif %}.
+Jullie score is volledig anoniem — privacy gegarandeerd, andere gezinnen zien enkel de leeftijden van jullie kinderen.</p>
+
 {% if existing %}
-<div class="card"><p>Jullie gaven dit al een Ravotscore — bedankt! Eén score per gezin houdt het eerlijk.</p></div>
+<div class="card"><p>Jullie gaven dit al een Ravotscore. Bedankt! 🌟</p>
+  <a class="btn btn-stil" href="{{ url_for('public.event', slug=ev.slug) }}">← Terug naar de activiteit</a></div>
 {% else %}
-<div class="card">
-  <form method="post">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <label>Hoe vonden de kinderen het? <span class="hint" style="display:inline">(laat ze zelf tikken!)</span></label>
-    <div class="chips smileys">
-      {% for i, s in [(1,'😖'),(2,'🙁'),(3,'😐'),(4,'😄'),(5,'🤩')] %}
-      <label class="chip"><input type="radio" name="kid_score" value="{{ i }}" required><span>{{ s }}</span></label>
+<form method="post" class="card" id="score-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <div class="score-blok">
+    <label class="score-vraag">Hoe leuk vonden de kinderen het? <span class="hint">(laat ze zelf tikken!)</span></label>
+    <div class="emoji-rij" role="radiogroup" aria-label="Kinderscore">
+      {% for waarde, emo, woord in [(1,'😖','niet zo'),(2,'😕','matig'),(3,'😐','oké'),(4,'😄','leuk'),(5,'🤩','super')] %}
+      <label class="emoji-keuze">
+        <input type="radio" name="kid_score" value="{{ waarde }}" required {{ 'checked' if waarde==4 }}>
+        <span class="emoji-bol">{{ emo }}</span><span class="emoji-woord">{{ woord }}</span>
+      </label>
       {% endfor %}
     </div>
-    <label>En voor jou als ouder?</label>
-    <div class="chips">
-      <label class="chip"><input type="radio" name="parent_score" value="3" required><span>Vlot 👌</span></label>
-      <label class="chip"><input type="radio" name="parent_score" value="2"><span>Oké</span></label>
-      <label class="chip"><input type="radio" name="parent_score" value="1"><span>Gedoe 😅</span></label>
+  </div>
+
+  <div class="score-blok">
+    <label class="score-vraag">En voor jou als ouder?</label>
+    <div class="keuze-rij" role="radiogroup" aria-label="Ouderscore">
+      {% for waarde, woord in [(3,'Vlot 👌'),(2,'Oké'),(1,'Gedoe')] %}
+      <label class="chip-keuze">
+        <input type="radio" name="parent_score" value="{{ waarde }}" required {{ 'checked' if waarde==3 }}>
+        <span>{{ woord }}</span>
+      </label>
+      {% endfor %}
     </div>
-    <label>Wat waren jullie ongeveer kwijt in totaal? <span class="hint" style="display:inline">(parking en pannenkoeken meegeteld)</span></label>
-    <div class="chips">
-      {% for c in cost_ranges %}<label class="chip"><input type="radio" name="cost_range" value="{{ c }}"><span>€{{ c }}</span></label>{% endfor %}
+  </div>
+
+  <div class="score-blok">
+    <label class="score-vraag">Wat voor uitje was het? <span class="hint">geen goed of fout — gewoon het karakter</span></label>
+    {% for naam, links, rechts in [
+        ('sfeer_rustig_actief','Rustig','Actief'),
+        ('sfeer_prijs','Betaalbaar','Prijzig'),
+        ('sfeer_leeftijd','Kleuters','Tieners')] %}
+    <div class="schuif-blok">
+      <div class="schuif-labels"><span>{{ links }}</span>
+        <span class="schuif-cijfer" id="{{ naam }}-uit">3</span><span>{{ rechts }}</span></div>
+      <input type="range" name="{{ naam }}" min="1" max="5" step="1" value="3"
+             class="sfeer-schuif" oninput="document.getElementById('{{ naam }}-uit').textContent=this.value">
     </div>
-    <label>Herkenbaar? <span class="hint" style="display:inline">(max. 5)</span></label>
-    <div class="chips">
-      {% for t in tags %}<label class="chip"><input type="checkbox" name="tag" value="{{ t }}"><span>{{ t }}</span></label>{% endfor %}
+    {% endfor %}
+  </div>
+
+  <div class="score-blok">
+    <label class="score-vraag">Wat maakte het leuk? <span class="hint">tik wat past — enkel pluspunten (max 5)</span></label>
+    <div class="tag-rij">
+      {% for tag in tags %}
+      <label class="tag-keuze">
+        <input type="checkbox" name="tag" value="{{ tag }}">
+        <span>{{ tag }}</span>
+      </label>
+      {% endfor %}
     </div>
-    <div class="acties"><button class="btn" type="submit">Bewaar Ravotscore</button></div>
-  </form>
-</div>
+  </div>
+
+  <div class="acties"><button class="btn btn-groot" type="submit">Bewaar Ravotscore 🌟</button></div>
+  <p class="hint" style="text-align:center;margin-top:8px">Eén score per gezin · anoniem · helpt andere gezinnen kiezen</p>
+</form>
 {% endif %}
 {% endblock %}

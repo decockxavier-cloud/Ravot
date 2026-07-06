@@ -56,9 +56,15 @@ def euro_indicator(total):
 
 def aggregate_ravotscore(reviews):
     """Leeftijdsgesplitste aggregatie — dé differentiator.
-    reviews: iterabele met .kid_score en .child_ages (lijst)."""
+    reviews: iterabele met .kid_score en .child_ages (lijst).
+
+    Wraak-preventie: we tonen een GEWOGEN gemiddelde (Bayesiaans). Met weinig
+    reviews wordt de score naar een neutraal midden (3.0) getrokken, zodat één
+    extreme score een event niet kan maken of kraken. Pas bij meer reviews telt
+    het echte gemiddelde volledig mee."""
     overall, per_band = [], defaultdict(list)
     costs = defaultdict(int)
+    sfeer = {"rustig_actief": [], "prijs": [], "leeftijd": []}
     for rv in reviews:
         overall.append(rv.kid_score)
         for age in rv.child_ages or []:
@@ -67,6 +73,12 @@ def aggregate_ravotscore(reviews):
                     per_band[label].append(rv.kid_score)
         if rv.cost_range:
             costs[rv.cost_range] += 1
+        if getattr(rv, "sfeer_rustig_actief", None):
+            sfeer["rustig_actief"].append(rv.sfeer_rustig_actief)
+        if getattr(rv, "sfeer_prijs", None):
+            sfeer["prijs"].append(rv.sfeer_prijs)
+        if getattr(rv, "sfeer_leeftijd", None):
+            sfeer["leeftijd"].append(rv.sfeer_leeftijd)
     if not overall:
         return None
     bands = {
@@ -74,9 +86,17 @@ def aggregate_ravotscore(reviews):
         for label, v in per_band.items()
     }
     top_cost = max(costs, key=costs.get) if costs else None
+    # Bayesiaans gewogen gemiddelde: PRIOR_N "onzichtbare" reviews op het midden.
+    PRIOR_N, PRIOR_SCORE = 3, 3.0
+    n = len(overall)
+    ruw = sum(overall) / n
+    gewogen = (PRIOR_N * PRIOR_SCORE + sum(overall)) / (PRIOR_N + n)
+    sfeer_avg = {k: round(sum(v) / len(v), 1) for k, v in sfeer.items() if v}
     return {
-        "avg": round(sum(overall) / len(overall), 1),
-        "count": len(overall),
+        "avg": round(gewogen, 1),        # getoonde score (wraakbestendig)
+        "avg_ruw": round(ruw, 1),        # kaal gemiddelde (intern/admin)
+        "count": n,
         "bands": bands,
         "typical_cost": top_cost,
+        "sfeer": sfeer_avg,
     }

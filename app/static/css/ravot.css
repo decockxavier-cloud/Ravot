@@ -354,3 +354,138 @@ body.met-sfeer {
 .badge-leeg { background: #f0efe9; color: #a09a88; }
 
 section h2 { font-size: 1.25rem; margin: 22px 0 8px; }
+
+/* ============ RESPONSIVE NAV + DESKTOP-LAYOUT ============ */
+
+/* Desktop-nav en hamburger standaard verborgen; tabbar zichtbaar (mobile-first) */
+.desktop-nav { display: none; }
+.hamburger { display: none; }
+.mobiel-menu { display: none; }
+
+/* Hamburger-knop (mobiel) */
+.hamburger { background: none; border: none; cursor: pointer; padding: 8px;
+  flex-direction: column; gap: 5px; width: 44px; height: 44px; align-items: center; justify-content: center; }
+.hamburger span { display: block; width: 24px; height: 2.5px; background: var(--gras-donker);
+  border-radius: 2px; transition: transform .2s, opacity .2s; }
+.hamburger.open span:nth-child(1) { transform: translateY(7.5px) rotate(45deg); }
+.hamburger.open span:nth-child(2) { opacity: 0; }
+.hamburger.open span:nth-child(3) { transform: translateY(-7.5px) rotate(-45deg); }
+
+/* Mobiel dropdown-menu */
+.mobiel-menu { flex-direction: column; background: #fff; border-bottom: 1px solid var(--lijn);
+  padding: 8px 16px 14px; box-shadow: 0 6px 16px rgba(31,58,42,.08); }
+.mobiel-menu.open { display: flex; }
+.mobiel-menu a { padding: 12px 8px; text-decoration: none; color: var(--gras-donker);
+  font-weight: 600; border-radius: 10px; font-size: 1.05rem; }
+.mobiel-menu a.on { background: var(--creme); }
+
+@media (max-width: 720px) {
+  .hamburger { display: flex; }
+}
+
+/* ===== DESKTOP (breed scherm) ===== */
+@media (min-width: 721px) {
+  /* Onderbalk weg op desktop, bovenbalk-nav aan */
+  .tabbar { display: none; }
+  .desktop-nav { display: flex; align-items: center; gap: 6px; }
+  .desktop-nav a { padding: 8px 14px; text-decoration: none; color: #5f6d63;
+    font-weight: 600; border-radius: 999px; font-size: .98rem; transition: background .15s, color .15s; }
+  .desktop-nav a:hover { background: var(--creme); color: var(--gras-donker); }
+  .desktop-nav a.on { color: var(--gras-donker); background: var(--creme); }
+  .desktop-nav a.nav-cta { background: var(--gras); color: #fff; }
+  .desktop-nav a.nav-cta:hover { background: var(--gras-donker); color: #fff; }
+  .desktop-nav a.nav-cta.on { background: var(--gras-donker); }
+
+  .topbar { max-width: 1100px; margin: 0 auto; padding-left: 24px; padding-right: 24px; }
+
+  /* Bredere content: kaarten in een raster i.p.v. één smalle kolom */
+  .page { max-width: 1100px; }
+  .page .card.kaart-event,
+  .page article.card.kaart-event { }
+  /* Lijst/ontdek: events in een grid van 2-3 kolommen op desktop */
+  .lijst-grid, .page:has(.kaart-event) { }
+}
+
+/* Kaartenraster op brede schermen — toegepast op de lijst-containers */
+@media (min-width: 721px) {
+  .kaarten-raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px; align-items: start; }
+  .kaarten-raster .card { margin: 0; }
+}
+
+/* ============ NIEUWE RAVOTSCORE (emoji + schuifjes + tags) ============ */
+.score-blok { margin-bottom: 22px; }
+.score-vraag { display: block; font-weight: 700; color: var(--gras-donker); margin-bottom: 10px; font-size: 1.02rem; }
+.score-vraag .hint { font-weight: 400; display: inline; }
+
+/* Emoji-knoppen voor kinderscore */
+.emoji-rij { display: flex; gap: 8px; justify-content: space-between; }
+.emoji-keuze { flex: 1; cursor: pointer; }
+.emoji-keuze input { position: absolute; opacity: 0; width: 0; height: 0; }
+.emoji-bol { display: flex; align-items: center; justify-content: center; font-size: 1.9rem;
+  aspect-ratio: 1; border: 2px solid var(--lijn); border-radius: 16px; background: #fff;
+  transition: border-color .15s, background .15s, transform .1s; }
+.emoji-woord { display: block; text-align: center; font-size: .68rem; color: #8a978d; margin-top: 3px; }
+.emoji-keuze input:checked + .emoji-bol { border-color: var(--gras); background: #E3F1E7; transform: scale(1.08); }
+.emoji-keuze input:focus-visible + .emoji-bol { box-shadow: 0 0 0 3px rgba(46,125,70,.3); }
+
+/* Chip-keuze (ouderscore) */
+.keuze-rij { display: flex; gap: 8px; }
+.chip-keuze { flex: 1; cursor: pointer; }
+.chip-keuze input { position: absolute; opacity: 0; }
+.chip-keuze span { display: block; text-align: center; padding: 12px 8px; border: 2px solid var(--lijn);
+  border-radius: 999px; font-weight: 600; color: var(--gras-donker); background: #fff; transition: all .15s; }
+.chip-keuze input:checked + span { border-color: var(--gras); background: #E3F1E7; }
+
+/* Karakter-schuifjes */
+.schuif-blok { margin-bottom: 14px; }
+.schuif-labels { display: flex; justify-content: space-between; font-size: .82rem;
+  color: #5f6d63; margin-bottom: 2px; }
+.schuif-cijfer { font-weight: 800; color: var(--gras); font-family: Nunito, sans-serif; }
+.sfeer-schuif { width: 100%; accent-color: var(--gras); }
+
+/* Pluspunt-tags */
+.tag-rij { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag-keuze { cursor: pointer; }
+.tag-keuze input { position: absolute; opacity: 0; }
+.tag-keuze span { display: inline-block; padding: 8px 12px; border: 1.5px solid var(--lijn);
+  border-radius: 999px; font-size: .88rem; color: #5f6d63; background: #fff; transition: all .15s; }
+.tag-keuze input:checked + span { border-color: var(--gras); background: #E3F1E7; color: var(--gras-donker); }
+
+/* Actie-aan-status (Leuk blijft zichtbaar) */
+.btn.actie-aan { background: #E3F1E7; border-color: var(--gras); color: var(--gras-donker); }
+.mini-actie.aan-groen { background: #E3F1E7; border-color: var(--gras); color: var(--gras-donker); }
+
+/* Weer-uitleg */
+.weer-uitleg { font-size: .8rem; opacity: .8; cursor: help; text-decoration: underline dotted; margin-left: 6px; }
+
+/* ============ HOMEPAGINA: 3 stappen ============ */
+.stappen { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 8px; }
+@media (min-width: 600px) { .stappen { grid-template-columns: repeat(3, 1fr); } }
+.stap { background: #fff; border: 1.5px solid var(--lijn); border-radius: 16px; padding: 18px 16px; text-align: center; }
+.stap-nr { display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 50%;
+  background: var(--gras); color: #fff; font-weight: 800; font-family: Nunito, sans-serif; font-size: 1.2rem; margin-bottom: 8px; }
+.stap h3 { margin: 4px 0; color: var(--gras-donker); }
+.stap p { margin: 0; font-size: .9rem; color: #5f6d63; }
+
+/* Clickable kaart-titels in dashboard */
+.mini-card a { text-decoration: none; color: var(--gras-donker); }
+.mini-card a:hover { text-decoration: underline; }
+
+/* ============ KAART-FICHE (popup bij klik op bolletje) ============ */
+.fiche-popup .leaflet-popup-content-wrapper { border-radius: 16px; padding: 0; overflow: hidden;
+  box-shadow: 0 8px 28px rgba(31,58,42,.18); }
+.fiche-popup .leaflet-popup-content { margin: 0; width: auto !important; }
+.kaart-fiche { font-family: Nunito, sans-serif; }
+.fiche-img { width: 100%; height: 120px; object-fit: cover; display: block; }
+.fiche-body { padding: 12px 14px 14px; }
+.fiche-titel { display: block; font-size: 1.02rem; color: var(--gras-donker); line-height: 1.25; margin-bottom: 4px; }
+.fiche-meta { font-size: .82rem; color: #5f6d63; margin-bottom: 8px; }
+.fiche-badges { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
+.fiche-badge { font-size: .72rem; padding: 3px 9px; border-radius: 999px; background: #f0efe9; color: #5f6d63; font-weight: 600; }
+.fiche-badge.groen { background: #E3F1E7; color: var(--gras-donker); }
+.fiche-badge.geel { background: #FDF0C8; color: #7a5c00; }
+.fiche-badge.grijs { background: #f0efe9; color: #a09a88; }
+.fiche-knop { display: block; text-align: center; background: var(--gras); color: #fff !important;
+  padding: 9px 12px; border-radius: 999px; font-weight: 700; text-decoration: none; font-size: .9rem; }
+.fiche-knop:hover { background: var(--gras-donker); }
