@@ -19,6 +19,7 @@ def test_event_page_leaks_no_identity(client, seed):
     """Reviews en pagina's tonen nooit e-mail of naam van een reviewer."""
     fam, ev = seed["fam_a"], seed["events"][0]
     login_as(client, fam)
+    client.post(f"/mijn/geweest/{ev.id}", data={"antwoord": "ja"})
     client.post(f"/mijn/review/{ev.id}", data={"kid_score": "5", "parent_score": "3"})
     with client.session_transaction() as s:
         s.clear()                                    # bekijk als anonieme bezoeker
@@ -52,6 +53,7 @@ def test_account_delete_is_complete(client, seed):
     login_as(client, fam)
     client.post(f"/mijn/bewaar/{ev.id}")
     client.post(f"/mijn/deel/{ev.id}")
+    client.post(f"/mijn/geweest/{ev.id}", data={"antwoord": "ja"})
     client.post(f"/mijn/review/{ev.id}", data={"kid_score": "4", "parent_score": "2"})
     fid = fam.id
     resp = client.post("/mijn/verwijderen", follow_redirects=True)

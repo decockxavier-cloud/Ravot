@@ -60,8 +60,9 @@
         <div class="acties">
           <form method="post" action="{{ url_for('account.feedback', event_id=e.id, verdict='like') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button class="btn btn-klein {{ 'actie-aan' if e.id in geliked_ids|default([]) else 'btn-stil' }}" type="submit">
-              {{ '💚 Leuk gevonden' if e.id in geliked_ids|default([]) else '👍 Leuk' }}</button>
+            <button class="btn btn-klein {{ 'actie-aan' if e.id in geliked_ids|default([]) else 'btn-stil' }}" type="submit"
+                    title="{{ 'Klik om leuk weg te halen' if e.id in geliked_ids|default([]) else 'Markeer als leuk' }}">
+              {{ '💚 Leuk ✕' if e.id in geliked_ids|default([]) else '🤍 Leuk' }}</button>
           </form>
           <form method="post" action="{{ url_for('account.feedback', event_id=e.id, verdict='dismiss') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

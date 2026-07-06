@@ -1,1 +1,23 @@
+# Secrets — NOOIT committen
 .env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+
+# Database / lokale data
+*.db
+*.sqlite
+*.sqlite3
+instance/
+
+# Diversen
+.DS_Store
+*.zip
+node_modules/

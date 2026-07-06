@@ -489,3 +489,20 @@ section h2 { font-size: 1.25rem; margin: 22px 0 8px; }
 .fiche-knop { display: block; text-align: center; background: var(--gras); color: #fff !important;
   padding: 9px 12px; border-radius: 999px; font-weight: 700; text-decoration: none; font-size: .9rem; }
 .fiche-knop:hover { background: var(--gras-donker); }
+
+/* ============ KAART-PINS (mooie speldjes i.p.v. kale bolletjes) ============ */
+.rv-pin-wrap { background: none; border: none; }
+.rv-pin { position: relative; width: 34px; height: 44px;
+  filter: drop-shadow(0 3px 4px rgba(31,58,42,.28)); }
+.rv-pin::before { content: ""; position: absolute; left: 50%; top: 0; transform: translateX(-50%);
+  width: 34px; height: 34px; background: var(--pin); border-radius: 50% 50% 50% 0;
+  transform: translateX(-50%) rotate(-45deg); border: 2.5px solid #fff; }
+.rv-pin-ico { position: absolute; left: 50%; top: 15px; transform: translate(-50%, -50%);
+  font-size: 15px; line-height: 1; z-index: 1; }
+
+/* Legende onder de kaart */
+.kaart-legende { display: flex; flex-wrap: wrap; gap: 10px 16px; margin: 10px 0 4px;
+  font-size: .82rem; color: #5f6d63; }
+.kaart-legende span { display: inline-flex; align-items: center; gap: 5px; }
+.leg-bol { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2); display: inline-block; }

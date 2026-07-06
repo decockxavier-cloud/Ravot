@@ -158,6 +158,15 @@ def feedback(event_id, verdict):
         abort(400)
     fam = me()
     ev = db.session.get(Event, event_id) or abort(404)
+    if verdict == "like":
+        bestaand = Interaction.query.filter_by(
+            family_id=fam.id, event_id=event_id, type="like").first()
+        if bestaand:  # al leuk → toggle uit
+            db.session.delete(bestaand)
+            db.session.commit()
+            flash("Niet meer als leuk gemarkeerd.", "ok")
+            return redirect(request.referrer or url_for("public.vandaag"))
+    # smaakprofiel bijwerken
     for cat in ev.categories or []:
         interest = Interest.query.filter_by(family_id=fam.id, category=cat).first()
         if interest is None:
@@ -167,7 +176,7 @@ def feedback(event_id, verdict):
     db.session.add(Interaction(family_id=fam.id, event_id=event_id, type=verdict))
     db.session.commit()
     if verdict == "like":
-        flash("Genoteerd — we tonen je meer van dit soort activiteiten. 👍", "ok")
+        flash("Leuk gevonden! We tonen je meer van dit soort activiteiten. 💚", "ok")
     else:
         flash("Genoteerd — dit tonen we je minder. Je vindt het niet meer in je suggesties.", "ok")
     return redirect(request.referrer or url_for("public.vandaag"))

@@ -9,13 +9,30 @@
       { attribution: "© OpenStreetMap", maxZoom: 19 }).addTo(map);
     (data.markers || []).forEach(function (m) {
       if (m.lat == null || m.lng == null) return;
-      var kleur = m.free ? "#F2B705" : (m.score && m.score >= 4 ? "#2E7D46" : "#5f6d63");
 
       function esc(s) {
         return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
           return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
         });
       }
+
+      // Kleur + icoon op basis van type activiteit
+      var kleur, ico;
+      if (m.score && m.score >= 4) { kleur = "#2E7D46"; ico = "😄"; }       // goed gescoord
+      else if (m.free) { kleur = "#F4B233"; ico = "🎈"; }                    // gratis
+      else if (m.indoor) { kleur = "#5B8DEF"; ico = "🏠"; }                  // binnen
+      else { kleur = "#EE8035"; ico = "📍"; }                                // overig
+
+      // Custom pin: een druppel met een wit rondje en het icoon erin
+      var html = '<div class="rv-pin" style="--pin:' + kleur + '">' +
+                 '<span class="rv-pin-ico">' + ico + '</span></div>';
+      var icon = L.divIcon({
+        className: "rv-pin-wrap",
+        html: html,
+        iconSize: [34, 44],
+        iconAnchor: [17, 44],
+        popupAnchor: [0, -40],
+      });
 
       var fiche = '<div class="kaart-fiche">';
       if (m.img) {
@@ -41,8 +58,7 @@
       fiche += '<a class="fiche-knop" href="' + esc(m.url) + '">Bekijk activiteit →</a>';
       fiche += "</div></div>";
 
-      L.circleMarker([m.lat, m.lng],
-        { radius: 9, color: kleur, fillColor: kleur, fillOpacity: 0.85 })
+      L.marker([m.lat, m.lng], { icon: icon })
         .addTo(map)
         .bindPopup(fiche, { minWidth: 220, maxWidth: 260, className: "fiche-popup" });
     });

@@ -59,3 +59,18 @@ def test_verbindingen_toont_geen_secrets(client, app):
 def test_instellingen_vereist_admin(client):
     # niet ingelogd → redirect naar login
     assert client.get("/beheer/instellingen").status_code == 302
+
+
+def test_dashboard_rendert_met_zero_results(client, app):
+    """Dashboard mag niet crashen op de zero-result groepering (JSON-cast)."""
+    from app.models import Interaction
+    with app.app_context():
+        # een paar zero_result-interacties met JSON-meta
+        db.session.add(Interaction(type="zero_result", meta={"postcode": "9000"}))
+        db.session.add(Interaction(type="zero_result", meta={"postcode": "9000"}))
+        db.session.add(Interaction(type="zero_result", meta={"postcode": "8500"}))
+        db.session.commit()
+    _login(client, app)
+    r = client.get("/beheer/")
+    assert r.status_code == 200
+    assert "9000" in r.get_data(as_text=True)  # gegroepeerd getoond

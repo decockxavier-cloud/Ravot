@@ -23,7 +23,7 @@
   gerichtere tips.</p>
   {% for e in te_reviewen %}
   <div class="card mini-card">
-    <div><strong>{{ e.title }}</strong><br><span class="meta">📍 {{ e.gemeente }} · {{ e.start.strftime('%d/%m') if e.start }}</span></div>
+    <div><a href="{{ url_for('public.event', slug=e.slug) }}"><strong>{{ e.title }}</strong></a><br><span class="meta">📍 {{ e.gemeente }} · {{ e.start.strftime('%d/%m') if e.start }}</span></div>
     <a class="btn btn-zon btn-klein" href="{{ url_for('account.review', event_id=e.id) }}">Geef score</a>
   </div>
   {% endfor %}
@@ -48,7 +48,7 @@
   <h2>Al geweest 🕰️</h2>
   {% for e in bewaard_voorbij %}
   <div class="card mini-card">
-    <div><strong>{{ e.title }}</strong><br><span class="meta">{{ e.start.strftime('%d/%m') if e.start }}</span></div>
+    <div><a href="{{ url_for('public.event', slug=e.slug) }}"><strong>{{ e.title }}</strong></a><br><span class="meta">{{ e.start.strftime('%d/%m') if e.start }}</span></div>
     <a class="btn btn-stil btn-klein" href="{{ url_for('account.review', event_id=e.id) }}">Score geven</a>
   </div>
   {% endfor %}
@@ -60,8 +60,8 @@
   <h2>Mijn Ravotscores 😄</h2>
   {% for rv in mijn_reviews %}
   <div class="card mini-card">
-    <div><strong>{{ rv.event.title if rv.event else 'Activiteit' }}</strong><br>
-      <span class="meta">kind {{ rv.kid_score }}/5 · jij {{ rv.parent_score }}/5</span></div>
+    <div>{% if rv.event %}<a href="{{ url_for('public.event', slug=rv.event.slug) }}"><strong>{{ rv.event.title }}</strong></a>{% else %}<strong>Activiteit</strong>{% endif %}<br>
+      <span class="meta">kind {{ rv.kid_score }}/5 · jij {{ rv.parent_score }}/3</span></div>
   </div>
   {% endfor %}
 </section>

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block body_class %}met-sfeer{% endblock %}
+{% block content %}
+<h1>Zo werkt Ravot 🦊</h1>
+<p class="hint">Alles wat je moet weten om vlot op pad te gaan.</p>
+
+<div class="card">
+  <h2 style="margin-top:0">🔭 Ontdekken zonder gedoe</h2>
+  <p>Je kunt meteen alle activiteiten bekijken — geen account of postcode nodig.
+  Wil je zien wat écht bij jouw gezin past? Vul dan je postcode en de leeftijd van
+  je kinderen in via <strong>Personaliseer</strong>. Dan sorteren we op maat: dichtbij,
+  op de juiste leeftijd, en binnen je budget.</p>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">❤️ Bewaren &amp; 💚 Leuk</h2>
+  <p><strong>Bewaar</strong> een activiteit (het hartje) om ze later terug te vinden onder
+  <em>Mijn Ravot</em>. Nog eens tikken haalt ze er weer uit.<br>
+  <strong>Leuk</strong> (het groene hartje) vertelt ons wat je smaak is — zo tonen we
+  je voortaan meer van wat je aanspreekt, en minder van wat je wegklikt met
+  <em>Niet voor ons</em>.</p>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">🌟 De Ravotscore</h2>
+  <p>Na een bezoek geef je een Ravotscore: hoe leuk vonden de kinderen het, wat voor
+  soort uitje was het, en wat de pluspunten waren. <strong>Waarom dit telt:</strong> hoe meer
+  gezinnen scoren, hoe beter iedereen kan kiezen — en hoe gerichter wij jóú kunnen
+  aanraden wat past.</p>
+  <p class="hint">Je kunt pas scoren nadat je bevestigt dat je er echt was. Zo blijven
+  de scores eerlijk. En één gezin kan een activiteit niet maken of kraken: we tonen
+  een gewogen gemiddelde, dus één extreme score weegt licht.</p>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">🔒 Jullie privacy</h2>
+  <p>Ravotscores zijn volledig anoniem — <strong>privacy gegarandeerd</strong>. Andere gezinnen
+  zien enkel de leeftijden van de kinderen (handig om in te schatten of iets past),
+  nooit namen of e-mailadressen. Je logt in met een code per mail, zonder wachtwoord.</p>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">☀️ Het weer denkt mee</h2>
+  <p>We halen de weersverwachting op voor de <strong>locatie en datum van elke activiteit</strong>
+  (via Open-Meteo). Regent het? Dan zetten we overdekte activiteiten bovenaan. Mooi
+  weer? Dan krijgen buitenactiviteiten voorrang.</p>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">👨‍👩‍👧 Vrienden</h2>
+  <p>Koppel met bevriende gezinnen via een code die na 24 uur vervalt. <strong>Allebei</strong>
+  moeten elkaars code invoeren — zo kan niemand jullie zomaar toevoegen. Daarna kun
+  je bij een activiteit kiezen om je interesse te delen, zodat je samen kunt plannen.</p>
+</div>
+
+<p style="text-align:center;margin-top:20px">
+  <a class="btn btn-groot" href="{{ url_for('public.ontdek') }}">Aan de slag → Ontdek activiteiten</a></p>
+{% endblock %}

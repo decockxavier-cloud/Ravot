@@ -4,9 +4,12 @@ from app.models import Event
 
 
 def test_gemeente_page_and_answer_block(client, seed):
-    html = client.get("/roeselare").get_data(as_text=True)
+    resp = client.get("/roeselare")
+    assert resp.status_code == 200
+    html = resp.get_data(as_text=True)
     assert "Wat te doen met kinderen in Roeselare" in html
-    assert "activiteiten voor kinderen" in html        # het antwoordblok
+    assert 'class="answer"' in html        # het antwoordblok is aanwezig
+    assert "Roeselare" in html
 
 
 def test_gemeente_unknown_404(client, seed):

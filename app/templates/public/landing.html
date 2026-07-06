@@ -63,8 +63,22 @@
 <div class="beloftes">
   <span class="belofte">🆓 Altijd <b>gratis</b></span>
   <span class="belofte">🚫 <b>Geen</b> reclame</span>
-  <span class="belofte">🔒 <b>Geen</b> namen van kinderen</span>
+  <span class="belofte">🔒 <b>Privacy</b> gegarandeerd</span>
 </div>
+
+<section class="sectie">
+  <h2 class="sectie-titel">Zo simpel gaat het 🦊</h2>
+  <div class="stappen">
+    <div class="stap"><span class="stap-nr">1</span>
+      <h3>Ontdek</h3><p>Bekijk meteen alle activiteiten — of vul je postcode in voor tips op maat.</p></div>
+    <div class="stap"><span class="stap-nr">2</span>
+      <h3>Bewaar &amp; ga</h3><p>Bewaar wat je leuk vindt, plan je uitstap en trek erop uit.</p></div>
+    <div class="stap"><span class="stap-nr">3</span>
+      <h3>Scoor</h3><p>Geef achteraf een Ravotscore en help andere gezinnen kiezen.</p></div>
+  </div>
+  <p style="text-align:center;margin-top:14px">
+    <a href="{{ url_for('public.hoe_werkt_het') }}">Lees hoe alles precies werkt →</a></p>
+</section>
 
 <section class="slot-cta">
   <h2>Klaar om te ravotten?</h2>
@@ -75,5 +89,6 @@
 <p style="text-align:center;color:#77836f;font-size:.82rem;margin:14px 16px">
   Activiteiten in samenwerking met <a href="https://www.uitdatabank.be" rel="noopener">UiTdatabank</a>.
   · <a href="{{ url_for('public.over') }}">Over Ravot</a>
+  · <a href="{{ url_for('public.hoe_werkt_het') }}">Zo werkt het</a>
 </p>
 {% endblock %}
