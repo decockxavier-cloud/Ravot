@@ -60,7 +60,7 @@
 
       L.marker([m.lat, m.lng], { icon: icon })
         .addTo(map)
-        .bindPopup(fiche, { minWidth: 220, maxWidth: 260, className: "fiche-popup" });
+        .bindPopup(fiche, { minWidth: 250, maxWidth: 300, className: "fiche-popup" });
     });
     if (data.markers && data.markers.length) {
       var pts = data.markers.filter(function (m) { return m.lat != null; })
