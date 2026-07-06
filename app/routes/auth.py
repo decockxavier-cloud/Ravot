@@ -22,7 +22,9 @@ def login():
         if not EMAIL_RE.match(email):
             flash("Dat lijkt geen geldig e-mailadres.", "error")
             return render_template("auth/login.html", title="Aanmelden", family=None, active=None)
-        if magic.recent_requests(email) >= current_app.config["MAGIC_REQUESTS_PER_HOUR"]:
+        from ..models import get_int
+        max_codes = get_int("codes_per_uur", 0) or current_app.config["MAGIC_REQUESTS_PER_HOUR"]
+        if magic.recent_requests(email) >= max_codes:
             flash("Er zijn al enkele codes verstuurd. Kijk in je mailbox (ook spam).", "error")
             return render_template("auth/login.html", title="Aanmelden", family=None, active=None)
         code = magic.issue_code(email)

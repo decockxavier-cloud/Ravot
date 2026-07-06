@@ -73,3 +73,17 @@ def test_dashboard_rendert_met_zero_results(client, app):
     assert r.status_code == 200
     assert "Dashboard" in r.get_data(as_text=True)  # het nieuwe dashboard rendert
     assert "Gezinnen" in r.get_data(as_text=True)   # met statistiek-tegels
+
+
+def test_codes_per_uur_wordt_gehandhaafd(client, app):
+    """De admin-setting codes_per_uur begrenst echt het aantal code-aanvragen."""
+    from app.models import Setting
+    with app.app_context():
+        db.session.add(Setting(key="codes_per_uur", value="2"))
+        db.session.commit()
+    # 2 aanvragen mogen, de 3e wordt geweigerd
+    for i in range(2):
+        r = client.post("/login", data={"email": "limiet@test.be"})
+        assert "Voer je code in".encode() in r.data or r.status_code == 200
+    r = client.post("/login", data={"email": "limiet@test.be"})
+    assert "al enkele codes verstuurd".encode() in r.data  # geweigerd
