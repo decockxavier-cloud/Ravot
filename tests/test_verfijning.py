@@ -179,3 +179,20 @@ def test_lopend_event_blijft_zichtbaar(client, app):
         db.session.commit()
     html = client.get("/ontdek").get_data(as_text=True)
     assert "NogBezigEvent" in html
+
+
+def test_vandaag_toont_lijst_voor_gasten(client, app):
+    """Regressie: /vandaag toont voor bezoekers zonder profiel de dag-lijst,
+    niet de landingspagina (die staat op /)."""
+    from app.models import Event
+    with app.app_context():
+        now = datetime.utcnow()
+        db.session.add(Event(uit_id="gst", slug="gst", title="GastEvent",
+            start=now+timedelta(hours=1), end=now+timedelta(hours=3),
+            gemeente="Gent", postcode="9000", lat=51.05, lng=3.72,
+            age_min=3, age_max=10, categories=[], is_free=True,
+            price_info=[{"name":"b","price":0}]))
+        db.session.commit()
+    html = client.get("/vandaag").get_data(as_text=True)
+    assert "GastEvent" in html                 # de lijst
+    assert "Maak gratis profiel" not in html   # niet de landing

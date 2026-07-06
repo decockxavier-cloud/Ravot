@@ -3,6 +3,16 @@
 {% block content %}
 <h1>{{ title }}</h1>
 
+  {% if has_profile is defined and not has_profile %}
+  <div class="personaliseer-banner">
+    <div>
+      <strong>Zie wat bij jouw gezin past</strong>
+      <p>Vul je postcode en de leeftijd van je kinderen in — dan sorteren we op maat.</p>
+    </div>
+    <a class="btn btn-zon" href="{{ url_for('public.proberen') }}">Personaliseer →</a>
+  </div>
+  {% endif %}
+
   {% if vakantie.banner %}<div class="vakantie-banner">{{ vakantie.banner }}</div>{% endif %}
   {% if regen is defined and regen is not none and regen >= 50 %}
   <div class="weer-hint">🌧️ Kans op regen ({{ regen }}%) — we zetten binnen-activiteiten bovenaan.

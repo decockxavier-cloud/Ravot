@@ -163,6 +163,16 @@ def s_helper(event, profile, agg):
         return 0
 
 
+def _gast_rows(scope, limit=60):
+    """Events voor bezoekers ZONDER profiel: het tijdvenster van de scope,
+    gesorteerd op start. Geen personalisatie, wel meteen bruikbaar."""
+    start, end = window(scope)
+    q = geldige_events(Event.query).filter(
+        Event.start <= end, (Event.end >= start) | (Event.start >= start))
+    evs = q.order_by(Event.start.asc()).limit(limit).all()
+    return [{"event": e, "agg": None, "family_total": None} for e in evs]
+
+
 def scored_events(profile, scope, extra_filter=None, limit=40, weer=True):
     start, end = window(scope)
     now = datetime.utcnow()
@@ -308,19 +318,12 @@ def home():
 def vandaag():
     profile, fam = build_profile()
     has_profile = bool(fam or guest_profile().get("postcode"))
-    if not has_profile:
-        # Nieuwe bezoeker zonder profiel → landingspagina (website-jas)
-        from ..models import Event, Review
-        stats = {
-            "events": Event.query.count(),
-            "gemeenten": db.session.query(Event.gemeente).filter(
-                Event.gemeente.isnot(None)).distinct().count(),
-            "reviews": Review.query.count(),
-        }
-        return render_template("public/landing.html", stats=stats,
-                               family=None, active=None,
-                               title="Ravot — waar gaan we vandaag ravotten?")
-    rows = scored_events(profile, "vandaag")
+    if has_profile:
+        rows = scored_events(profile, "vandaag")
+    else:
+        # Bezoeker zonder profiel: toon gewoon wat er vandaag te doen is.
+        # (De landingspagina staat op "/" — de Vandaag-tab hoort de lijst te tonen.)
+        rows = _gast_rows("vandaag")
     if not rows:
         log("zero_result", scope="vandaag", postcode=guest_profile().get("postcode")
             or (fam.postcode if fam else None))
@@ -339,7 +342,7 @@ def vandaag():
 def deze_week():
     profile, fam = build_profile()
     has_profile = bool(fam or guest_profile().get("postcode"))
-    rows = scored_events(profile, "deze-week") if has_profile else []
+    rows = scored_events(profile, "deze-week") if has_profile else _gast_rows("deze-week")
     return render_template("public/lijst.html", rows=rows, scope="deze week",
                            title="Deze week", answer=None,
                            regen=rows[0].get("regen") if rows else None,
@@ -350,7 +353,7 @@ def deze_week():
 def weekend():
     profile, fam = build_profile()
     has_profile = bool(fam or guest_profile().get("postcode"))
-    rows = scored_events(profile, "weekend") if has_profile else []
+    rows = scored_events(profile, "weekend") if has_profile else _gast_rows("weekend")
     return render_template("public/lijst.html", rows=rows, scope="dit weekend",
                            title="Dit weekend", answer=None,
                            regen=rows[0].get("regen") if rows else None,
