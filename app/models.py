@@ -385,3 +385,13 @@ class SyncStatus(db.Model):
     last_result = db.Column(db.String(200))
     last_error = db.Column(db.String(300))
     updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
+
+
+class GeoCache(db.Model):
+    """Gecachte geocoding (plaatsnaam -> coördinaten), zodat we per plaats maar
+    één keer een externe geocoder bevragen."""
+    __tablename__ = "geo_cache"
+    term = db.Column(db.String(120), primary_key=True)
+    lat = db.Column(db.Float)
+    lng = db.Column(db.Float)
+    created_at = db.Column(db.DateTime, default=utcnow)

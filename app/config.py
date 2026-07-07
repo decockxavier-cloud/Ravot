@@ -43,6 +43,9 @@ class Config:
     # Wikidata SPARQL — geen key nodig (wel een nette User-Agent).
     WIKIDATA_SPARQL_URL = os.environ.get(
         "WIKIDATA_SPARQL_URL", "https://query.wikidata.org/sparql")
+    # Nominatim (OSM-geocoder) voor plaatsnaam -> coördinaten. Geen key nodig.
+    NOMINATIM_URL = os.environ.get(
+        "NOMINATIM_URL", "https://nominatim.openstreetmap.org/search")
 
     # -- Site ------------------------------------------------------------------
     SITE_URL = os.environ.get("SITE_URL", "http://localhost:5000")

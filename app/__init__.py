@@ -194,6 +194,8 @@ def register_cli(app):
             added.append("friend_invites (tabel)")
         if "sync_status" not in insp.get_table_names():
             added.append("sync_status (tabel)")
+        if "geo_cache" not in insp.get_table_names():
+            added.append("geo_cache (tabel)")
         # Standaard mail- en contentteksten inladen (alleen als ze nog niet bestaan)
         from .seed_content import seed_standaard_content
         n_content = seed_standaard_content()

@@ -55,28 +55,11 @@ def geldige_events(query, now=None):
 
 
 def _zoek_centrum(zoek):
-    """Zet een zoekterm (gemeente of postcode) om naar een (lat, lng)-middelpunt,
-    zodat we 'in de buurt' kunnen tonen i.p.v. enkel exacte naam-matches.
-    Geeft None als de term geen bekende plaats is."""
-    from ..models import PostcodeCentroid
-    if not zoek:
-        return None
-    z = zoek.strip().lower()
-    # Postcode?
-    if z.isdigit() and len(z) == 4:
-        pc = db.session.get(PostcodeCentroid, z)
-        if pc:
-            return (pc.lat, pc.lng)
-    # Gemeentenaam?
-    pc = PostcodeCentroid.query.filter(db.func.lower(PostcodeCentroid.gemeente) == z).first()
-    if pc:
-        return (pc.lat, pc.lng)
-    # Deel van een naam (bv. 'roesel')
-    pc = PostcodeCentroid.query.filter(
-        db.func.lower(PostcodeCentroid.gemeente).like(f"{z}%")).first()
-    if pc:
-        return (pc.lat, pc.lng)
-    return None
+    """Zet een zoekterm (gemeente of postcode) om naar een (lat, lng)-middelpunt.
+    Robuust: postcodes uit de statische tabel, plaatsnamen via centroids of
+    (als laatste redmiddel) een geocoder met cache. None als er niets past."""
+    from .. import geo
+    return geo.zoek_centrum(zoek)
 
 
 def _filter_buurt(rows, centrum, straal_km=20):
@@ -113,23 +96,24 @@ def guest_profile():
 
 
 def build_profile():
+    from ..geo import postcode_coord
     fam = current_family()
     if fam:
-        centroid = db.session.get(PostcodeCentroid, fam.postcode)
+        coord = postcode_coord(fam.postcode)
         return Profile(
             child_ages=fam.child_ages(),
-            lat=centroid.lat if centroid else None,
-            lng=centroid.lng if centroid else None,
+            lat=coord[0] if coord else None,
+            lng=coord[1] if coord else None,
             radius_km=fam.radius_km, budget_pref=fam.budget_pref,
             interest_weights={i.category: i.weight for i in fam.interests},
         ), fam
     guest = guest_profile()
-    centroid = db.session.get(PostcodeCentroid, guest.get("postcode", "")) if guest else None
+    coord = postcode_coord(guest.get("postcode", "")) if guest else None
     ages = guest.get("ages", [])
     return Profile(
         child_ages=ages,
-        lat=centroid.lat if centroid else None,
-        lng=centroid.lng if centroid else None,
+        lat=coord[0] if coord else None,
+        lng=coord[1] if coord else None,
         radius_km=int(guest.get("radius", 25)),
         budget_pref=guest.get("budget", "all"),
     ), None

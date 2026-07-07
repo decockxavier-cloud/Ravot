@@ -46,6 +46,9 @@ REGIOS = {
 
 UA = "Ravot/1.0 (+https://ravot.be; gezinsuitstappen)"
 
+# Servers die ons net afremden (429/503/504) even overslaan binnen dit proces.
+_cooldown = {}   # url -> epoch tot wanneer we hem mijden
+
 
 def _endpoints():
     primair = current_app.config["OVERPASS_URL"]
@@ -71,19 +74,27 @@ def _grid(bbox, step=0.7):
 def _query(tag, bbox):
     s, w, n, e = bbox
     key = OSM_KEY[tag]
-    return (f'[out:json][timeout:120];'
+    return (f'[out:json][timeout:90];'
             f'(nwr["{key}"="{tag}"]({s},{w},{n},{e}););out center tags;')
 
 
 def _run(query):
-    """Voer één query uit; probeer de servers op volgorde. Faalt een stuk,
-    dan geven we [] terug (de rest van de sync loopt gewoon door)."""
+    """Voer één query uit; probeer de servers op volgorde, maar sla servers over
+    die ons recent afremden (429/503/504). Faalt alles, dan geven we [] terug."""
     headers = {"User-Agent": UA, "Accept": "application/json"}
-    for url in _endpoints():
+    nu = time.time()
+    kandidaten = [u for u in _endpoints() if _cooldown.get(u, 0) < nu] or _endpoints()
+    for url in kandidaten:
         try:
-            r = requests.post(url, data={"data": query}, headers=headers, timeout=150)
+            r = requests.post(url, data={"data": query}, headers=headers, timeout=90)
             if r.status_code == 200:
                 return r.json().get("elements") or []
+            if r.status_code in (429, 503, 504):   # afgeremd/overbelast -> 2 min mijden
+                _cooldown[url] = time.time() + 120
+                current_app.logger.warning("overpass %s -> %s (2 min afkoelen)",
+                                           url, r.status_code)
+                time.sleep(3)
+                continue
             current_app.logger.warning("overpass %s -> status %s", url, r.status_code)
         except Exception as exc:
             current_app.logger.warning("overpass %s -> %s", url, str(exc)[:100])
