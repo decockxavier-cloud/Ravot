@@ -137,6 +137,7 @@ def register_cli(app):
             ("hidden",
              "ALTER TABLE events ADD COLUMN hidden BOOLEAN DEFAULT FALSE NOT NULL"),
             ("dupe_of", "ALTER TABLE events ADD COLUMN dupe_of INTEGER"),
+            ("adres", "ALTER TABLE events ADD COLUMN adres VARCHAR(255)"),
         ):
             if kol not in cols:
                 db.session.execute(text(ddl))

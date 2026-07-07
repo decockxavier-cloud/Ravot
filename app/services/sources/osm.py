@@ -145,6 +145,8 @@ def normalise(el):
         "is_permanent": True,
         "gemeente": tags.get("addr:city"),
         "postcode": clean_postcode(tags.get("addr:postcode")),
+        "adres": " ".join(p for p in (tags.get("addr:street"),
+                                       tags.get("addr:housenumber")) if p) or None,
         "lat": float(lat), "lng": float(lng),
         "age_min": age_min, "age_max": age_max,
         "categories": [cat],

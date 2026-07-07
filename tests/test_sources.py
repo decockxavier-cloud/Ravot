@@ -435,3 +435,26 @@ def test_verborgen_dubbel_niet_in_ontdek(client, app):
         postcode="9000", lat=51.05, lng=3.72, age_min=1, age_max=12, categories=["buiten"]))
     _db.session.commit()
     assert "Verborgen Dubbel" not in client.get("/ontdek").get_data(as_text=True)
+
+
+def test_osm_volledig_adres(app):
+    """OSM addr:street + housenumber worden tot een volledig adres samengevoegd."""
+    from app.services.sources import osm
+    d = osm.normalise({"type": "node", "id": 30, "lat": 51.05, "lon": 3.72,
+                       "tags": {"tourism": "museum", "name": "Design Museum",
+                                "addr:street": "Jan Breydelstraat", "addr:housenumber": "5",
+                                "addr:postcode": "9000", "addr:city": "Gent"}})
+    assert d["adres"] == "Jan Breydelstraat 5"
+    assert d["postcode"] == "9000" and d["gemeente"] == "Gent"
+
+
+def test_osm_adres_getoond_op_fiche(client, app):
+    from app.models import Event
+    from app.extensions import db as _db
+    _db.session.add(Event(source="osm", ext_id="node/31", slug="museum-adres",
+        title="Design Museum", is_permanent=True, gemeente="Gent", postcode="9000",
+        adres="Jan Breydelstraat 5", lat=51.05, lng=3.72, age_min=4, age_max=12,
+        categories=["cultuur"], indoor=True))
+    _db.session.commit()
+    html = client.get("/e/museum-adres").get_data(as_text=True)
+    assert "Jan Breydelstraat 5" in html

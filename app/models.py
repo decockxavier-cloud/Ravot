@@ -107,6 +107,7 @@ class Event(db.Model):
     end = db.Column(db.DateTime, index=True)
     gemeente = db.Column(db.String(80), index=True)
     postcode = db.Column(db.String(4), index=True)
+    adres = db.Column(db.String(255))   # straat + huisnummer (bv. uit OSM addr:*)
     lat = db.Column(db.Float)
     lng = db.Column(db.Float)
     age_min = db.Column(db.Integer, default=0)

@@ -8,7 +8,7 @@
           data-titel="{{ ev.title }}" data-url="{{ request.url }}"
           aria-label="Deel deze activiteit">📤 Deel</button>
 </div>
-<p class="meta">📍 {{ ev.venue.name if ev.venue else '' }}{% if ev.gemeente %}, <a href="/{{ ev.gemeente|lower }}">{{ ev.gemeente }}</a>{% endif %}
+<p class="meta">📍 {{ ev.venue.name if ev.venue else '' }}{% if ev.adres %} · {{ ev.adres }}{% endif %}{% if ev.postcode %} · {{ ev.postcode }}{% endif %}{% if ev.gemeente %} <a href="/{{ ev.gemeente|lower }}">{{ ev.gemeente }}</a>{% endif %}
  {% if ev.start %} · 🕐 {{ ev.start.strftime("%A %d/%m om %H:%M") }}{% endif %}</p>
 <div class="badges">
   <span class="badge">{{ ev.age_min }}–{{ ev.age_max }} jaar</span>

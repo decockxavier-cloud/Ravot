@@ -111,7 +111,7 @@ def upsert_event(data):
         ev = Event(source=source, ext_id=ext_id)
         db.session.add(ev)
     for f in ("title", "description", "start", "end", "is_permanent",
-              "gemeente", "postcode", "lat", "lng", "age_min", "age_max",
+              "gemeente", "postcode", "adres", "lat", "lng", "age_min", "age_max",
               "categories", "indoor", "is_free", "price_info", "image_url",
               "source_url", "attribution"):
         if f in data:

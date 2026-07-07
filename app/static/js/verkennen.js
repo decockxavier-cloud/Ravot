@@ -42,7 +42,8 @@
       fiche += '<div class="fiche-body">';
       fiche += '<strong class="fiche-titel">' + esc(m.title) + "</strong>";
       var meta = [];
-      if (m.gemeente) meta.push("📍 " + esc(m.gemeente));
+      if (m.adres) meta.push("📍 " + esc(m.adres) + (m.gemeente ? ", " + esc(m.gemeente) : ""));
+      else if (m.gemeente) meta.push("📍 " + esc(m.gemeente));
       if (m.datum) meta.push("🕐 " + esc(m.datum));
       if (meta.length) fiche += '<div class="fiche-meta">' + meta.join(" · ") + "</div>";
 
