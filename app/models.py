@@ -366,3 +366,15 @@ class PostcodeCentroid(db.Model):
     lat = db.Column(db.Float, nullable=False)
     lng = db.Column(db.Float, nullable=False)
     n_events = db.Column(db.Integer, default=0)
+
+
+class SyncStatus(db.Model):
+    """Status van elke databron, zodat sync/verwijderen vanuit de admin kan
+    en de beheerder de laatste run + resultaat ziet."""
+    __tablename__ = "sync_status"
+    source = db.Column(db.String(16), primary_key=True)   # uit|tm|tv|osm
+    state = db.Column(db.String(12), default="idle", nullable=False)  # idle|running|done|error
+    last_run = db.Column(db.DateTime)
+    last_result = db.Column(db.String(200))
+    last_error = db.Column(db.String(300))
+    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)

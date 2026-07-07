@@ -298,3 +298,13 @@ def test_poi_image_fallback(app):
         assert poi_image(binnen).endswith("cat-binnen.svg")
         metfoto = Event(source="tm", image_url="https://x/foto.jpg", categories=["cultuur"])
         assert poi_image(metfoto) == "https://x/foto.jpg"
+
+
+def test_osm_query_builder(app):
+    """De per-provincie/per-tag query is geldige Overpass QL."""
+    from app.services.sources import osm
+    with app.app_context():
+        q = osm._query("playground", osm.PROVINCIE_BBOXES[0])
+        assert q.startswith("[out:json]") and "leisure" in q and "out center tags" in q
+        qz = osm._query("zoo", osm.PROVINCIE_BBOXES[2])
+        assert '"tourism"="zoo"' in qz

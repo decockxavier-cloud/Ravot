@@ -242,6 +242,11 @@ def verbindingen():
     if laatste:
         status["uit"]["laatste_event"] = laatste.updated_at
 
+    # Sync-status per bron + of er iets loopt (voor de knoppen in de admin)
+    from ..services.sources import get_statuses, is_sync_running
+    syncstatus = get_statuses()
+    sync_bezig = is_sync_running()
+
     # Extra bronnen: aan/uit + eventueel een key + aantal events per bron.
     from ..models import get_bool as _gb
     status["uit"]["aan"] = _gb("bron_uit_aan")
@@ -257,6 +262,7 @@ def verbindingen():
          "aantal": Event.query.filter_by(source="osm").count(), "test": False},
     ]
     return render_template("admin/verbindingen.html", status=status,
+                           syncstatus=syncstatus, sync_bezig=sync_bezig,
                            title="Verbindingen", family=None, active=None)
 
 
@@ -280,6 +286,60 @@ def test_uit():
     except Exception as exc:
         flash(f"UiT niet bereikbaar: {str(exc)[:120]}", "error")
     audit("UiT-verbinding getest")
+    return redirect(url_for("admin.verbindingen"))
+
+
+@bp.route("/sync/<naam>", methods=["POST"])
+@admin_required
+@limiter.limit("30/hour")
+def sync_bron(naam):
+    """Start een sync in de achtergrond (bron of 'all'). De webrequest keert
+    meteen terug; de status volg je op deze pagina (herladen)."""
+    import threading
+    from flask import current_app
+    from ..services.sources import REGISTRY, is_sync_running, sync_one, sync_all
+    if naam != "all" and naam not in REGISTRY:
+        flash("Onbekende bron.", "error")
+        return redirect(url_for("admin.verbindingen"))
+    if is_sync_running():
+        flash("Er loopt al een sync. Even geduld en herlaad de pagina.", "error")
+        return redirect(url_for("admin.verbindingen"))
+    app_obj = current_app._get_current_object()
+
+    def _job():
+        with app_obj.app_context():
+            try:
+                sync_all() if naam == "all" else sync_one(naam)
+            except Exception as exc:
+                app_obj.logger.warning("admin-sync %s faalde: %s", naam, str(exc)[:160])
+
+    if current_app.testing:
+        _job()                       # deterministisch in tests, geen thread
+    else:
+        threading.Thread(target=_job, daemon=True).start()
+    audit(f"Sync gestart via admin: {naam}")
+    flash(f"Sync gestart voor '{naam}'. Herlaad de pagina om de voortgang te zien.", "ok")
+    return redirect(url_for("admin.verbindingen"))
+
+
+@bp.route("/purge/<naam>", methods=["POST"])
+@admin_required
+@limiter.limit("10/hour")
+def purge_bron(naam):
+    """Verwijder alle data van één bron. Vereist een expliciete bevestiging."""
+    from ..services.sources import REGISTRY, purge_source, is_sync_running
+    if naam not in REGISTRY:
+        flash("Onbekende bron.", "error")
+        return redirect(url_for("admin.verbindingen"))
+    if request.form.get("bevestig") != "ja":
+        flash("Vink eerst 'Ja, verwijder' aan om te bevestigen.", "error")
+        return redirect(url_for("admin.verbindingen"))
+    if is_sync_running():
+        flash("Er loopt een sync — wacht tot die klaar is voor je verwijdert.", "error")
+        return redirect(url_for("admin.verbindingen"))
+    n = purge_source(naam)
+    audit(f"Bron verwijderd via admin: {naam} ({n} events)")
+    flash(f"Bron '{naam}' verwijderd: {n} activiteiten weg.", "ok")
     return redirect(url_for("admin.verbindingen"))
 
 

@@ -187,6 +187,8 @@ def register_cli(app):
             added.append("settings (tabel)")
         if "friend_invites" not in insp.get_table_names():
             added.append("friend_invites (tabel)")
+        if "sync_status" not in insp.get_table_names():
+            added.append("sync_status (tabel)")
         # Standaard mail- en contentteksten inladen (alleen als ze nog niet bestaan)
         from .seed_content import seed_standaard_content
         n_content = seed_standaard_content()
@@ -255,10 +257,8 @@ def register_cli(app):
     def purge_bron(naam, ja):
         """Verwijder ALLE events van één bron (bv. de UiT-testdata).
         NAAM = uit | tm | tv | osm. Ruimt ook verweesde locaties/reeksen op."""
-        from .models import (Event, Venue, Organizer, EditionSeries,
-                             SavedEvent, Review, Share, Interaction,
-                             PostcodeCentroid)
-        from .services.uit_sync import update_centroids
+        from .models import Event
+        from .services.sources import purge_source
         n = Event.query.filter_by(source=naam).count()
         if n == 0:
             click.echo(f"Geen events met bron '{naam}'. Niets te doen.")
@@ -266,30 +266,9 @@ def register_cli(app):
         if not ja:
             click.confirm(f"{n} events van bron '{naam}' definitief verwijderen?",
                           abort=True)
-        ids = [e.id for e in Event.query.filter_by(source=naam).with_entities(Event.id)]
-        # Afhankelijke rijen eerst (anders FK-conflict op Postgres)
-        for model in (SavedEvent, Review, Share, Interaction):
-            model.query.filter(model.event_id.in_(ids)).delete(synchronize_session=False)
-        Event.query.filter_by(source=naam).delete(synchronize_session=False)
-        db.session.commit()
-        # Verweesde reeksen/locaties/organisatoren opruimen
-        verweesd_series = EditionSeries.query.filter(~EditionSeries.events.any()).all()
-        for s in verweesd_series:
-            db.session.delete(s)
-        used_venues = {v for (v,) in db.session.query(Event.venue_id).distinct() if v}
-        used_orgs = {o for (o,) in db.session.query(Event.organizer_id).distinct() if o}
-        Venue.query.filter(~Venue.id.in_(used_venues or {-1})).delete(synchronize_session=False)
-        Organizer.query.filter(~Organizer.id.in_(used_orgs or {-1})).delete(synchronize_session=False)
-        db.session.commit()
-        # Verweesde postcode-zwaartepunten: postcodes zonder enig event meer
-        gebruikte_pc = {p for (p,) in db.session.query(Event.postcode).distinct() if p}
-        PostcodeCentroid.query.filter(
-            ~PostcodeCentroid.postcode.in_(gebruikte_pc or {"__none__"})
-        ).delete(synchronize_session=False)
-        db.session.commit()
-        update_centroids()
-        db.session.commit()
-        click.echo(f"Bron '{naam}' opgeruimd: {n} events + verweesde locaties/reeksen verwijderd.")
+        verwijderd = purge_source(naam)
+        click.echo(f"Bron '{naam}' opgeruimd: {verwijderd} events + verweesde "
+                   "locaties/reeksen verwijderd.")
 
     @app.cli.command("create-admin")
     @click.argument("email")

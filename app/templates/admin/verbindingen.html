@@ -1,27 +1,73 @@
 {% extends "admin/admin_base.html" %}
 {% block admin_content %}
 <h1>Verbindingen</h1>
-<p class="hint">Statusoverzicht van externe diensten. Geheimen worden nooit getoond —
-je ziet alleen of alles correct is ingesteld en werkt.</p>
+<p class="hint">Statusoverzicht van externe diensten en databronnen. Geheimen worden
+nooit getoond. Syncen en verwijderen kan hier rechtstreeks — daarnaast draait er
+elke nacht automatisch een sync (cron).</p>
+
+{% if sync_bezig %}
+<div class="card" style="border-left:4px solid var(--zon)">
+  <strong>⏳ Er loopt momenteel een sync.</strong>
+  <span class="hint">Herlaad deze pagina om de voortgang te zien.</span>
+</div>
+{% endif %}
+
+{% macro sync_controls(code) %}
+  {% set st = syncstatus.get(code) %}
+  {% if st %}
+    <span class="badge">
+      {% if st.state == 'running' %}⏳ bezig…
+      {% elif st.state == 'done' %}✅ {{ st.last_result }}
+      {% elif st.state == 'error' %}⚠️ fout
+      {% else %}{{ st.last_result or 'nog niet gedraaid' }}{% endif %}
+      {% if st.last_run %} · {{ st.last_run.strftime('%d/%m %H:%M') }}{% endif %}
+    </span>
+    {% if st.state == 'error' and st.last_error %}
+    <div class="hint" style="color:var(--rood)">{{ st.last_error }}</div>{% endif %}
+  {% else %}<span class="badge">nog niet gesynct</span>{% endif %}
+  <div class="acties" style="margin-top:6px">
+    <form method="post" action="{{ url_for('admin.sync_bron', naam=code) }}" style="display:inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-stil" type="submit"{{ ' disabled' if sync_bezig else '' }}>🔄 Nu syncen</button>
+    </form>
+    <form method="post" action="{{ url_for('admin.purge_bron', naam=code) }}" style="display:inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label class="hint" style="display:inline-block;margin-right:6px">
+        <input type="checkbox" name="bevestig" value="ja"> bevestig</label>
+      <button class="btn btn-stil" type="submit"{{ ' disabled' if sync_bezig else '' }}>🗑️ Verwijder</button>
+    </form>
+  </div>
+{% endmacro %}
 
 <div class="card">
-  <h2 style="margin-top:0">UiTdatabank (Search API)</h2>
-  <p>Status:
-    {% if status.uit.geconfigureerd %}<strong style="color:var(--gras)">✅ key aanwezig</strong>
-    {% else %}<strong style="color:var(--rood)">⚠️ geen key in .env</strong>{% endif %}
-  </p>
+  <div class="acties">
+    <form method="post" action="{{ url_for('admin.sync_bron', naam='all') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-zon" type="submit"{{ ' disabled' if sync_bezig else '' }}>🔄 Alle ingeschakelde bronnen nu syncen</button>
+    </form>
+  </div>
+  <p class="hint">Dit doet hetzelfde als de nachtelijke cron: enkel bronnen die
+  aanstaan bij <a href="{{ url_for('admin.instellingen') }}">Instellingen</a> worden opgehaald.</p>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">UiTdatabank (publiq)</h2>
   <div class="badges">
+    {% if status.uit.geconfigureerd %}<span class="badge" style="color:var(--gras)">🔑 key aanwezig</span>
+    {% else %}<span class="badge" style="color:var(--rood)">⚠️ geen key in .env</span>{% endif %}
     <span class="badge">Omgeving: <strong>{{ status.uit.omgeving }}</strong></span>
-    <span class="badge">Events in databank: {{ status.uit.aantal_events }}</span>
-    {% if status.uit.laatste_event %}<span class="badge">Laatste sync: {{ status.uit.laatste_event.strftime('%d/%m %H:%M') }}</span>{% endif %}
+    {% if status.uit.aan %}<span class="badge" style="color:var(--gras)">✅ aan</span>
+    {% else %}<span class="badge" style="color:#b8860b">⏸️ uit (tot go-live)</span>{% endif %}
+    <span class="badge">In databank: {{ status.uit.aantal_events }}</span>
   </div>
   {% if status.uit.omgeving == 'test' %}
   <p class="hint">Je draait op de <strong>testomgeving</strong>. Vraag de live-activatie aan
   in het publiq-portaal en zet <code>UIT_SEARCH_URL</code> in .env op productie voor echte data.</p>
   {% endif %}
-  <form method="post" action="{{ url_for('admin.test_uit') }}">
+  {{ sync_controls('uit') }}
+  <form method="post" action="{{ url_for('admin.test_uit') }}" style="margin-top:6px">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="acties"><button class="btn btn-stil" type="submit">🔌 Test UiT-verbinding</button></div>
+    <button class="btn btn-stil" type="submit">🔌 Test UiT-verbinding</button>
   </form>
 </div>
 
@@ -31,25 +77,25 @@ je ziet alleen of alles correct is ingesteld en werkt.</p>
   Elke bron heeft een strikte kindvriendelijk-filter — niet-geschikt aanbod wordt bij
   het syncen weggegooid en komt de databank nooit in.</p>
   {% for b in status.bronnen %}
-  <div class="badges" style="margin-bottom:8px">
-    <span class="badge">{{ b.naam }}</span>
-    {% if b.aan %}<span class="badge" style="color:var(--gras)">✅ aan</span>
-    {% else %}<span class="badge" style="color:#b8860b">⏸️ uit</span>{% endif %}
-    {% if b.key_nodig %}
-      {% if b.geconfigureerd %}<span class="badge">🔑 key aanwezig</span>
-      {% else %}<span class="badge" style="color:var(--rood)">⚠️ geen key in .env</span>{% endif %}
-    {% else %}<span class="badge">geen key nodig</span>{% endif %}
-    <span class="badge">In databank: {{ b.aantal }}</span>
-    {% if b.test %}
-    <form method="post" action="{{ url_for('admin.test_tm') }}" style="display:inline">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button class="btn btn-stil" type="submit">🔌 Test</button>
-    </form>
-    {% endif %}
+  <div style="padding:10px 0;border-top:1px solid #eee">
+    <div class="badges">
+      <span class="badge"><strong>{{ b.naam }}</strong></span>
+      {% if b.aan %}<span class="badge" style="color:var(--gras)">✅ aan</span>
+      {% else %}<span class="badge" style="color:#b8860b">⏸️ uit</span>{% endif %}
+      {% if b.key_nodig %}
+        {% if b.geconfigureerd %}<span class="badge">🔑 key aanwezig</span>
+        {% else %}<span class="badge" style="color:var(--rood)">⚠️ geen key in .env</span>{% endif %}
+      {% else %}<span class="badge">geen key nodig</span>{% endif %}
+      <span class="badge">In databank: {{ b.aantal }}</span>
+      {% if b.test %}
+      <form method="post" action="{{ url_for('admin.test_tm') }}" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-stil" type="submit">🔌 Test</button>
+      </form>{% endif %}
+    </div>
+    {{ sync_controls(b.code) }}
   </div>
   {% endfor %}
-  <p class="hint">Syncen: <code>flask sync-all</code> (alle ingeschakelde bronnen) of
-  <code>flask sync-bron tm|tv|osm</code> voor één bron.</p>
 </div>
 
 <div class="card">

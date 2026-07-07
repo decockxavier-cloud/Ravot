@@ -7,6 +7,8 @@ tags op, dus alles wat terugkomt hoort thuis in Ravot.
 Data © OpenStreetMap-bijdragers, licentie ODbL — bronvermelding verplicht
 (zie 'attribution' + de footer/over-pagina).
 """
+import time
+
 import requests
 from flask import current_app
 
@@ -19,37 +21,64 @@ TAG_CATEGORIE = {
     "water_park": ("sport", (3, 12), False),
     "zoo": ("natuur", (1, 12), False),
 }
-# Vlaamse + Brusselse bounding box (zuid,west,noord,oost)
-BBOX_VL = (50.67, 2.53, 51.51, 5.94)
+
+# Per provincie een bbox (zuid,west,noord,oost). Kleine stukken i.p.v. één
+# reuzenquery over heel Vlaanderen -> veel minder kans op een 504-timeout.
+PROVINCIE_BBOXES = [
+    (50.68, 2.53, 51.38, 3.56),   # West-Vlaanderen
+    (50.72, 3.35, 51.27, 4.30),   # Oost-Vlaanderen
+    (50.95, 4.00, 51.51, 5.36),   # Antwerpen
+    (50.66, 3.90, 51.10, 5.12),   # Vlaams-Brabant + Brussel
+    (50.68, 4.88, 51.35, 5.94),   # Limburg
+]
+
+# Overpass-servers: primair (uit config) + mirrors als terugval.
+def _endpoints():
+    primair = current_app.config["OVERPASS_URL"]
+    mirrors = ["https://overpass.kumi.systems/api/interpreter",
+               "https://overpass.private.coffee/api/interpreter"]
+    return [primair] + [m for m in mirrors if m != primair]
 
 
-def _tag_query(tags):
-    """Overpass QL voor de gekozen tags binnen Vlaanderen/Brussel."""
-    s, w, n, e = BBOX_VL
-    parts = []
-    for t in tags:
-        if t == "playground":
-            parts.append(f'nwr["leisure"="playground"]({s},{w},{n},{e});')
-        elif t in ("theme_park", "water_park", "zoo"):
-            parts.append(f'nwr["tourism"="{t}"]({s},{w},{n},{e});')
-    return f"[out:json][timeout:60];({''.join(parts)});out center tags;"
+UA = "Ravot/1.0 (+https://ravot.be; gezinsuitstappen)"
+
+
+def _query(tag, bbox):
+    s, w, n, e = bbox
+    if tag == "playground":
+        sel = f'nwr["leisure"="playground"]({s},{w},{n},{e});'
+    else:
+        sel = f'nwr["tourism"="{tag}"]({s},{w},{n},{e});'
+    return f"[out:json][timeout:120];({sel});out center tags;"
+
+
+def _run(query):
+    """Voer één query uit; probeer de servers op volgorde. Faalt een stuk,
+    dan geven we [] terug (de rest van de sync loopt gewoon door)."""
+    headers = {"User-Agent": UA, "Accept": "application/json"}
+    for url in _endpoints():
+        try:
+            r = requests.post(url, data={"data": query}, headers=headers, timeout=150)
+            if r.status_code == 200:
+                return r.json().get("elements") or []
+            current_app.logger.warning("overpass %s -> status %s", url, r.status_code)
+        except Exception as exc:
+            current_app.logger.warning("overpass %s -> %s", url, str(exc)[:100])
+        time.sleep(1)  # even ademen voor de volgende server
+    return []
 
 
 def fetch():
-    cfg = current_app.config
     from ...models import get_setting
     tags = [t.strip() for t in (get_setting("osm_tags") or "").split(",") if t.strip()]
     tags = [t for t in tags if t in TAG_CATEGORIE]
     if not tags:
         return
-    # Overpass blokkeert requests zonder net User-Agent (vandaar soms een 406).
-    headers = {"User-Agent": "Ravot/1.0 (+https://ravot.be; gezinsuitstappen)",
-               "Accept": "application/json"}
-    resp = requests.post(cfg["OVERPASS_URL"], data={"data": _tag_query(tags)},
-                         headers=headers, timeout=90)
-    resp.raise_for_status()
-    for el in resp.json().get("elements") or []:
-        yield el
+    for tag in tags:
+        for bbox in PROVINCIE_BBOXES:
+            for el in _run(_query(tag, bbox)):
+                yield el
+            time.sleep(0.5)  # vriendelijk blijven voor de gratis servers
 
 
 def normalise(el):
