@@ -36,17 +36,18 @@ def create_app(config_object=Config):
         "tv": ("Toerisme Vlaanderen", "https://www.toerismevlaanderen.be"),
         "tm": ("Ticketmaster", "https://www.ticketmaster.be"),
         "osm": ("OpenStreetMap-bijdragers", "https://www.openstreetmap.org/copyright"),
+        "wd": ("Wikidata", "https://www.wikidata.org"),
     }
 
     @app.context_processor
     def inject_bronnen():
         from .models import get_bool
         try:
-            actief = {k: get_bool(f"bron_{k}_aan") for k in ("uit", "tv", "tm", "osm")}
+            actief = {k: get_bool(f"bron_{k}_aan") for k in ("uit", "tv", "tm", "osm", "wd")}
         except Exception:
-            actief = {k: False for k in ("uit", "tv", "tm", "osm")}
+            actief = {k: False for k in ("uit", "tv", "tm", "osm", "wd")}
         verm = [{"code": k, "naam": BRON_INFO[k][0], "url": BRON_INFO[k][1]}
-                for k in ("uit", "tv", "tm", "osm") if actief.get(k)]
+                for k in ("uit", "tv", "tm", "osm", "wd") if actief.get(k)]
         return {"uit_actief": actief.get("uit", False),
                 "bron_actief": actief, "bron_vermeldingen": verm}
 

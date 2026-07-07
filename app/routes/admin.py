@@ -257,9 +257,12 @@ def verbindingen():
         {"code": "tv", "naam": "Toerisme Vlaanderen", "aan": _gb("bron_tv_aan"),
          "key_nodig": False, "geconfigureerd": True,
          "aantal": Event.query.filter_by(source="tv").count(), "test": False},
-        {"code": "osm", "naam": "OpenStreetMap (speeltuinen e.d.)", "aan": _gb("bron_osm_aan"),
+        {"code": "osm", "naam": "OpenStreetMap (speeltuinen, musea e.d.)", "aan": _gb("bron_osm_aan"),
          "key_nodig": False, "geconfigureerd": True,
          "aantal": Event.query.filter_by(source="osm").count(), "test": False},
+        {"code": "wd", "naam": "Wikidata (musea/attracties met foto's)", "aan": _gb("bron_wd_aan"),
+         "key_nodig": False, "geconfigureerd": True,
+         "aantal": Event.query.filter_by(source="wd").count(), "test": False},
     ]
     return render_template("admin/verbindingen.html", status=status,
                            syncstatus=syncstatus, sync_bezig=sync_bezig,

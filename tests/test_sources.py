@@ -301,10 +301,76 @@ def test_poi_image_fallback(app):
 
 
 def test_osm_query_builder(app):
-    """De per-provincie/per-tag query is geldige Overpass QL."""
+    """De per-cel/per-tag query is geldige Overpass QL."""
     from app.services.sources import osm
     with app.app_context():
-        q = osm._query("playground", osm.PROVINCIE_BBOXES[0])
-        assert q.startswith("[out:json]") and "leisure" in q and "out center tags" in q
-        qz = osm._query("zoo", osm.PROVINCIE_BBOXES[2])
-        assert '"tourism"="zoo"' in qz
+        cel = next(osm._grid(osm.REGIOS["vlaanderen"]))
+        q = osm._query("playground", cel)
+        assert q.startswith("[out:json]") and '"leisure"="playground"' in q
+        qm = osm._query("museum", cel)
+        assert '"tourism"="museum"' in qm and "out center tags" in qm
+
+
+def test_osm_museum(app):
+    """Een museum komt binnen als binnen-cultuur POI."""
+    from app.services.sources import osm
+    d = osm.normalise({"type": "way", "id": 20, "center": {"lat": 51.05, "lon": 3.72},
+                       "tags": {"tourism": "museum", "name": "Kindermuseum",
+                                "opening_hours": "Tu-Su 10:00-17:00",
+                                "website": "https://kindermuseum.be"}})
+    assert d["categories"] == ["cultuur"] and d["indoor"] is True
+    assert d["source_url"] == "https://kindermuseum.be"
+    assert "Openingsuren" in d["description"]
+
+
+def test_osm_erotisch_museum_geweerd(app):
+    """Duidelijk niet-kindvriendelijke musea worden geweigerd."""
+    from app.services.sources import osm
+    d = osm.normalise({"type": "node", "id": 21, "lat": 51.0, "lon": 3.7,
+                       "tags": {"tourism": "museum", "name": "Erotisch Museum"}})
+    assert d is None
+
+
+# --------------------------------------------------------------- Wikidata --
+
+def _wd_row(soort="museum", label="Museum M", coord="Point(3.72 51.05)",
+            website="https://m.be", image="http://commons.wikimedia.org/wiki/Special:FilePath/M.jpg"):
+    row = {"_soort": soort,
+           "item": {"value": "http://www.wikidata.org/entity/Q42"},
+           "itemLabel": {"value": label},
+           "coord": {"value": coord}}
+    if website:
+        row["website"] = {"value": website}
+    if image:
+        row["image"] = {"value": image}
+    return row
+
+
+def test_wikidata_museum_met_foto_en_site(app):
+    from app.services.sources import wikidata
+    d = wikidata.normalise(_wd_row())
+    assert d is not None
+    assert d["source"] == "wd" and d["ext_id"] == "Q42"
+    assert d["is_permanent"] is True and d["categories"] == ["cultuur"]
+    assert abs(d["lat"] - 51.05) < 1e-6 and abs(d["lng"] - 3.72) < 1e-6   # lat/lng juist
+    assert d["source_url"] == "https://m.be"
+    assert d["image_url"].endswith("?width=800")                         # Commons-thumbnail
+    assert d["attribution"] == "via Wikidata"
+
+
+def test_wikidata_zonder_naam_of_coord_verworpen(app):
+    from app.services.sources import wikidata
+    assert wikidata.normalise(_wd_row(label="Q42")) is None              # label = QID = geen naam
+    assert wikidata.normalise(_wd_row(coord="")) is None                 # geen coördinaat
+
+
+def test_wikidata_erotisch_museum_geweerd(app):
+    from app.services.sources import wikidata
+    assert wikidata.normalise(_wd_row(label="Erotisch Museum")) is None
+
+
+def test_wikidata_regio_scopes_ontdubbeld(app):
+    """Vlaanderen+Brussel+Wallonië => één keer België."""
+    from app.services.sources import wikidata
+    scopes = wikidata._regio_scopes(["vlaanderen", "brussel", "wallonie", "nederland"])
+    assert len(scopes) == 2                                              # België (1x) + NL

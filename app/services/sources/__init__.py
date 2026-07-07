@@ -9,7 +9,7 @@ from flask import current_app
 
 from ...extensions import db
 from ...models import get_bool
-from . import ticketmaster, toerisme, osm
+from . import ticketmaster, toerisme, osm, wikidata
 from .base import run_source
 
 # naam -> (setting-key, label, adaptermodule)
@@ -18,6 +18,7 @@ REGISTRY = {
     "tm": ("bron_tm_aan", "Ticketmaster (Family)", ticketmaster),
     "tv": ("bron_tv_aan", "Toerisme Vlaanderen", toerisme),
     "osm": ("bron_osm_aan", "OpenStreetMap", osm),
+    "wd": ("bron_wd_aan", "Wikidata", wikidata),
 }
 
 

@@ -40,6 +40,9 @@ class Config:
     # OpenStreetMap Overpass — geen key nodig.
     OVERPASS_URL = os.environ.get(
         "OVERPASS_URL", "https://overpass-api.de/api/interpreter")
+    # Wikidata SPARQL — geen key nodig (wel een nette User-Agent).
+    WIKIDATA_SPARQL_URL = os.environ.get(
+        "WIKIDATA_SPARQL_URL", "https://query.wikidata.org/sparql")
 
     # -- Site ------------------------------------------------------------------
     SITE_URL = os.environ.get("SITE_URL", "http://localhost:5000")

@@ -291,9 +291,13 @@ SETTING_DEFS = {
     "bron_uit_aan": ("0", "Bron: UiTdatabank (publiq) — pas AAN zetten bij go-live", "bool"),
     "bron_tm_aan": ("0", "Bron: Ticketmaster — enkel Family-segment (BE)", "bool"),
     "bron_tv_aan": ("0", "Bron: Toerisme Vlaanderen — kindvriendelijke attracties", "bool"),
-    "bron_osm_aan": ("0", "Bron: OpenStreetMap — speeltuinen, zoo, pretpark", "bool"),
+    "bron_osm_aan": ("0", "Bron: OpenStreetMap — speeltuinen, zoo, pretpark, musea", "bool"),
+    "bron_wd_aan": ("0", "Bron: Wikidata — musea/attracties met officiële foto's", "bool"),
     "tv_max": ("2000", "Toerisme Vlaanderen: max. attracties per sync", "int"),
-    "osm_tags": ("playground,theme_park,water_park,zoo", "OSM: kindvriendelijke tags (komma-gescheiden)", "text"),
+    "osm_tags": ("playground,theme_park,water_park,zoo,museum,aquarium",
+                 "OSM: soorten (playground,theme_park,water_park,zoo,museum,aquarium)", "text"),
+    "osm_regios": ("vlaanderen",
+                   "OSM: regio's (vlaanderen,brussel,wallonie,nederland,fr-nord)", "text"),
 }
 
 
