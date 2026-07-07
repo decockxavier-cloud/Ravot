@@ -20,6 +20,7 @@ from ..models import (Event, Family, Interaction, PostcodeCentroid, Review,
                       SavedEvent, Share, Connection)
 from ..pricing import aggregate_ravotscore, euro_indicator, family_price
 from ..scoring import Profile, score_event
+from ..media import poi_image
 from .. import seo
 
 bp = Blueprint("public", __name__)
@@ -491,7 +492,7 @@ def _kaart_marker(e):
         "free": e.is_free, "gemeente": e.gemeente,
         "datum": e.start.strftime("%a %d/%m") if e.start else None,
         "leeftijd": f"{e.age_min}\u2013{e.age_max} jaar" if e.age_min is not None else None,
-        "indoor": bool(e.indoor), "img": e.image_url or None,
+        "indoor": bool(e.indoor), "img": poi_image(e),
         "score": None, "count": None,
     }
 

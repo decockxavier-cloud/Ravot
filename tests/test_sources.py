@@ -265,3 +265,36 @@ def test_tv_lodging_wordt_geweigerd(app):
     row = {"id": "abc", "type": "lodgings",
            "attributes": {"name": [{"content": "Kinderboerderij Vakantiehuis", "language": "nl"}]}}
     assert toerisme.normalise(row) is None                # type-guard grijpt in
+
+
+def test_osm_geen_website_geen_link(app):
+    """Zonder echte website: geen source_url (dus geen lelijke osm.org-link)."""
+    from app.services.sources import osm
+    d = osm.normalise({"type": "node", "id": 5, "lat": 51, "lon": 3.7,
+                       "tags": {"leisure": "playground"}})
+    assert d["source_url"] is None
+
+
+def test_osm_website_en_foto(app):
+    """Echte website + image-tag worden overgenomen."""
+    from app.services.sources import osm
+    d = osm.normalise({"type": "node", "id": 6, "lat": 51, "lon": 3.7,
+                       "tags": {"leisure": "playground", "name": "Speelburcht",
+                                "website": "https://speelburcht.be",
+                                "image": "https://speelburcht.be/foto.jpg"}})
+    assert d["source_url"] == "https://speelburcht.be"
+    assert d["image_url"] == "https://speelburcht.be/foto.jpg"
+
+
+def test_poi_image_fallback(app):
+    """Zonder foto valt een POI terug op een categorie-illustratie; met foto
+    krijg je de echte foto."""
+    from app.media import poi_image
+    from app.models import Event
+    with app.test_request_context():
+        buiten = Event(source="osm", categories=["buiten"], indoor=False)
+        assert poi_image(buiten).endswith("cat-buiten.svg")
+        binnen = Event(source="osm", categories=["buiten"], indoor=True)
+        assert poi_image(binnen).endswith("cat-binnen.svg")
+        metfoto = Event(source="tm", image_url="https://x/foto.jpg", categories=["cultuur"])
+        assert poi_image(metfoto) == "https://x/foto.jpg"

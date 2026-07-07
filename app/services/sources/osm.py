@@ -70,6 +70,17 @@ def normalise(el):
               "water_park": "Waterpretpark", "zoo": "Dierenpark"}
     title = naam or labels.get(kind, "Speelplek")
 
+    # Echte website enkel als die er is — NOOIT terugvallen op osm.org (lelijk).
+    website = tags.get("website") or tags.get("contact:website") or None
+
+    # Foto: sommige OSM-plekken hebben een image- of wikimedia_commons-tag.
+    from urllib.parse import quote
+    beeld = tags.get("image")
+    wm = tags.get("wikimedia_commons")
+    if not beeld and wm and wm.lower().startswith("file:"):
+        beeld = ("https://commons.wikimedia.org/wiki/Special:FilePath/"
+                 + quote(wm[5:]) + "?width=800")
+
     return {
         "source": "osm",
         "ext_id": ext_id,
@@ -85,9 +96,8 @@ def normalise(el):
         "indoor": indoor,
         "is_free": kind == "playground",  # speeltuinen zijn doorgaans gratis
         "price_info": [{"name": "basis", "price": 0}] if kind == "playground" else [],
-        "image_url": None,
-        "source_url": tags.get("website") or tags.get("contact:website")
-                      or f"https://www.openstreetmap.org/{ext_id}",
+        "image_url": beeld,
+        "source_url": website,            # None => geen (lelijke) link op de fiche
         "attribution": "© OpenStreetMap-bijdragers (ODbL)",
         "venue_ext_id": ext_id,
         "venue_name": title,

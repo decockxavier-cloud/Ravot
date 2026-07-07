@@ -21,13 +21,14 @@
   {% if agg %}<span class="badge badge-score">😄 Ravotscore {{ agg.avg }} ({{ agg.count }} gezinnen)</span>{% endif %}
 </div>
 
-{% if ev.image_url %}<img src="{{ ev.image_url }}" alt="" style="width:100%;border-radius:16px;margin:10px 0" loading="lazy">{% endif %}
+<img src="{{ poi_image(ev) }}" alt="" style="width:100%;border-radius:16px;margin:10px 0" loading="lazy"
+     onerror="this.src='{{ url_for('static', filename='img/cat-buiten.svg') }}'">
 {% if ev.description %}<p>{{ ev.description }}</p>{% endif %}
 
 <div class="acties">
   <a class="btn btn-stil" href="{{ url_for('public.event_ics', slug=ev.slug) }}">📅 Zet in agenda</a>
   {% if ev.uit_id %}<a class="btn btn-stil" href="https://www.uitinvlaanderen.be/agenda/e/x/{{ ev.uit_id }}?utm_source=ravot" rel="noopener" target="_blank">ℹ️ Meer info & tickets</a>
-  {% elif ev.source_url %}<a class="btn btn-stil" href="{{ ev.source_url }}" rel="noopener nofollow" target="_blank">ℹ️ Meer info & tickets</a>{% endif %}
+  {% elif ev.source_url %}<a class="btn btn-stil" href="{{ ev.source_url }}" rel="noopener nofollow" target="_blank">🔗 Naar de website</a>{% endif %}
 </div>
 {% if ev.attribution %}<p class="hint">Bron: {{ ev.attribution }}</p>{% endif %}
 

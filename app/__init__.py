@@ -15,6 +15,10 @@ def create_app(config_object=Config):
     csrf.init_app(app)
     limiter.init_app(app)
 
+    from .media import poi_image, has_echte_foto
+    app.jinja_env.globals["poi_image"] = poi_image
+    app.jinja_env.globals["has_echte_foto"] = has_echte_foto
+
     from .routes.public import bp as public_bp
     from .routes.auth import bp as auth_bp
     from .routes.account import bp as account_bp
