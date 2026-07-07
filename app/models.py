@@ -285,7 +285,10 @@ SETTING_DEFS = {
     "codes_per_uur": ("3", "Max. inlogcodes per e-mailadres per uur", "int"),
     "ontdek_per_pagina": ("24", "Activiteiten per pagina op Ontdek", "int"),
     # Bronnen (welke datastromen syncen we?) — enkel kindvriendelijk aanbod
-    "bron_uit_aan": ("1", "Bron: UiTdatabank (publiq) — gedateerde events", "bool"),
+    # LET OP: publiq staat standaard UIT tot de live-koppeling is aangevraagd.
+    # Deze schakelaar stuurt zowel het syncen ALS alle UiT/UiTinVlaanderen-
+    # vermeldingen op de site (publiq-voorwaarden: attributie enkel bij live data).
+    "bron_uit_aan": ("0", "Bron: UiTdatabank (publiq) — pas AAN zetten bij go-live", "bool"),
     "bron_tm_aan": ("0", "Bron: Ticketmaster — enkel Family-segment (BE)", "bool"),
     "bron_tv_aan": ("0", "Bron: Toerisme Vlaanderen — kindvriendelijke attracties", "bool"),
     "bron_osm_aan": ("0", "Bron: OpenStreetMap — speeltuinen, zoo, pretpark", "bool"),

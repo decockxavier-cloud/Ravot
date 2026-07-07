@@ -175,3 +175,52 @@ def test_vandaag_feed_blijft_gedateerd(app):
     titels = {r["event"].title for r in rows}
     assert "Poppentheater Vandaag" in titels
     assert "Speeltuin Altijd Open" not in titels          # geen datum => niet in Vandaag
+
+
+# ------------------------------------ publiq-vermeldingen zichtbaarheid --
+
+def _zet(app, key, waarde):
+    from app.models import Setting
+    from app.extensions import db as _db
+    row = _db.session.get(Setting, key) or Setting(key=key)
+    row.value = waarde
+    _db.session.add(row); _db.session.commit()
+
+
+def test_geen_uit_vermelding_als_publiq_uit(client, app):
+    """Standaard staat publiq uit -> nergens UiT/UiTinVlaanderen op de site."""
+    for pad in ("/", "/over", "/voorwaarden"):
+        html = client.get(pad).get_data(as_text=True).lower()
+        assert "uitinvlaanderen" not in html, pad
+        assert "uitdatabank" not in html, pad
+
+
+def test_uit_vermelding_verschijnt_bij_go_live(client, app):
+    """Zodra publiq aanstaat, komen de verplichte verwijzingen terug."""
+    _zet(app, "bron_uit_aan", "1")
+    html = client.get("/").get_data(as_text=True).lower()
+    assert "uitinvlaanderen" in html          # referral-blok terug
+    assert "uitdatabank" in html              # bronvermelding terug
+
+
+def test_niet_uit_bronnen_wel_vermeld(client, app):
+    """Toegelaten bronnen (bv. Toerisme Vlaanderen) worden wél vermeld,
+    ook als publiq uit staat."""
+    _zet(app, "bron_tv_aan", "1")
+    html = client.get("/").get_data(as_text=True)
+    assert "Toerisme Vlaanderen" in html
+    assert "uitinvlaanderen" not in html.lower()   # publiq blijft weg
+
+
+# ------------------------------------------------------------ purge-bron --
+
+def test_purge_bron_verwijdert_events(app):
+    """purge-bron haalt de testdata van een bron eruit, andere bronnen blijven."""
+    from app.models import Event
+    _add_dated_and_permanent()                 # 1 uit-event ('d1') + 1 osm-POI
+    assert Event.query.filter_by(source="uit").count() == 1
+    runner = app.test_cli_runner()
+    res = runner.invoke(args=["purge-bron", "uit", "--ja"])
+    assert "opgeruimd" in res.output
+    assert Event.query.filter_by(source="uit").count() == 0
+    assert Event.query.filter_by(source="osm").count() == 1   # osm ongemoeid

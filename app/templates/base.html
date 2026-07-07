@@ -84,6 +84,7 @@
   </nav>
 
   <footer class="foot">
+    {% if uit_actief %}
     <div class="uit-verwijzing">
       <p class="uit-inspiratie">Meer inspiratie voor je vrije tijd?<br>
         Ga naar <a href="https://www.uitinvlaanderen.be/?utm_source=ravot&utm_medium=referral&utm_campaign=agenda"
@@ -92,10 +93,8 @@
         <a href="https://www.uitdatabank.be" rel="noopener" target="_blank">www.UiTdatabank.be</a> —
         ze verschijnt dan ook op UiTinVlaanderen.be en tal van andere agenda's.</p>
     </div>
-    <p>Activiteiten in samenwerking met <a href="https://www.uitdatabank.be" rel="noopener">UiTdatabank</a>,
-    <a href="https://www.toerismevlaanderen.be" rel="noopener">Toerisme Vlaanderen</a>, Ticketmaster en
-    <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap</a>-bijdragers (ODbL).
-    Gratis en zonder reclame. · <a href="{{ url_for('public.hoe_werkt_het') }}">Zo werkt het</a> ·
+    {% endif %}
+    <p>{% if bron_vermeldingen %}Activiteiten in samenwerking met {% for b in bron_vermeldingen %}<a href="{{ b.url }}" rel="noopener">{{ b.naam }}</a>{% if not loop.last %}, {% endif %}{% endfor %}. {% endif %}Gratis en zonder reclame. · <a href="{{ url_for('public.hoe_werkt_het') }}">Zo werkt het</a> ·
     <a href="{{ url_for('public.over') }}">Over Ravot</a> ·
     <a href="{{ url_for('public.contact') }}">Contact</a> ·
     <a href="/privacy">Privacy</a> · <a href="/cookies">Cookies</a> · <a href="/voorwaarden">Voorwaarden</a></p>

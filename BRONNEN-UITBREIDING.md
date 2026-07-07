@@ -53,7 +53,44 @@ bronnen krijgen hun eigen "meer info"-link en een correcte bronvermelding
 Bekijk per bron de status en aantallen in **/beheer → Verbindingen**; daar zit
 ook een "Test"-knop voor Ticketmaster.
 
-## Terugdraaien
+## Publiq (UiTdatabank) staat standaard UIT tot go-live
+
+Zolang je op de **testdatabank** zit, hoort publiq nergens te verschijnen — niet
+als data en niet als verplichte UiTinVlaanderen/UiTdatabank-vermelding. Daarom:
+
+- `bron_uit_aan` staat **standaard uit**. Eén schakelaar stuurt zowel het syncen
+  als álle publiq-vermeldingen op de site (footer, landing, over, voorwaarden,
+  gemeentepagina's, llms.txt, Vlieg-labels, de "meer info"-link).
+- Zet `bron_uit_aan` pas AAN in **/beheer → Instellingen** wanneer je live-toegang
+  van publiq hebt én `UIT_SEARCH_URL` in `.env` op productie staat. Dan komen alle
+  verwijzingen vanzelf terug — precies zoals publiq het vraagt.
+- De bronvermelding onderaan toont enkel de bronnen die effectief aanstaan.
+  Staat alleen Toerisme Vlaanderen aan, dan lees je "in samenwerking met Toerisme
+  Vlaanderen" — zonder publiq.
+
+## De UiT-testdata verwijderen
+
+De events uit de testdatabank haal je er in één keer uit:
+
+```
+docker compose exec web flask purge-bron uit --ja
+```
+
+Dit verwijdert alle events met bron `uit` plus verweesde locaties/reeksen en
+herberekent de postcode-zwaartepunten. Werkt ook voor `tm`/`tv`/`osm`. Zonder
+`--ja` vraagt het commando eerst een bevestiging.
+
+## Aanbevolen volgorde voor NU (nog niet live bij publiq)
+
+1. Backup → `git pull && docker compose up -d --build` → `flask migrate-db`
+2. Testdata weg: `flask purge-bron uit --ja`
+3. Toegelaten bronnen aanzetten in **/beheer → Instellingen**:
+   `bron_tv_aan` en `bron_osm_aan` (en `bron_tm_aan` als je een Ticketmaster-key
+   in `.env` zet). Publiq laat je **uit**.
+4. `flask sync-all` → enkel het toegelaten, kindvriendelijke aanbod verschijnt.
+5. Later, bij go-live publiq: `bron_uit_aan` aan + `UIT_SEARCH_URL` op productie +
+   `flask sync-bron uit`. Alle UiT-vermeldingen komen dan automatisch terug.
+
 
 Niets aan de bestaande data wijzigt. Wil je een bron terug weg: zet ze uit in de
 instellingen en verwijder haar rijen met `DELETE FROM events WHERE source='tm';`

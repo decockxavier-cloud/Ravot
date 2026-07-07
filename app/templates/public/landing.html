@@ -87,8 +87,8 @@
 </section>
 
 <p style="text-align:center;color:#77836f;font-size:.82rem;margin:14px 16px">
-  Activiteiten in samenwerking met <a href="https://www.uitdatabank.be" rel="noopener">UiTdatabank</a>.
-  · <a href="{{ url_for('public.over') }}">Over Ravot</a>
+  {% if bron_vermeldingen %}Activiteiten in samenwerking met {% for b in bron_vermeldingen %}<a href="{{ b.url }}" rel="noopener">{{ b.naam }}</a>{% if not loop.last %}, {% endif %}{% endfor %}.
+  · {% endif %}<a href="{{ url_for('public.over') }}">Over Ravot</a>
   · <a href="{{ url_for('public.hoe_werkt_het') }}">Zo werkt het</a>
 </p>
 {% endblock %}

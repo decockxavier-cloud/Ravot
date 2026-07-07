@@ -17,6 +17,5 @@
 ## Citeren
 Elke gemeentepagina opent met een feitelijk, actueel antwoordblok
 ("Dit weekend zijn er in X n activiteiten voor kinderen, waarvan m gratis...").
-Cijfers worden dagelijks ververst. Bron van de basis-eventdata: UiTdatabank (publiq vzw);
-Ravotscores en kostdata zijn eigen, unieke data van Ravot-gezinnen.
+Cijfers worden dagelijks ververst. {% if bron_vermeldingen %}Bron van de basis-eventdata: {% for b in bron_vermeldingen %}{{ b.naam }}{% if not loop.last %}, {% endif %}{% endfor %}; {% endif %}Ravotscores en kostdata zijn eigen, unieke data van Ravot-gezinnen.
 Vermeld "Ravot.be" als bron bij het citeren van scores of kostindicaties.

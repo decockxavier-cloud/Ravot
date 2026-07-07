@@ -25,6 +25,27 @@ def create_app(config_object=Config):
     app.register_blueprint(admin_bp)
     app.register_blueprint(public_bp)
 
+    # Welke bronnen zijn actief? Stuurt de publieke bronvermeldingen. Publiq
+    # (UiT/UiTinVlaanderen/Vlieg) verschijnt ENKEL als bron_uit_aan aanstaat.
+    BRON_INFO = {
+        "uit": ("UiTdatabank", "https://www.uitdatabank.be"),
+        "tv": ("Toerisme Vlaanderen", "https://www.toerismevlaanderen.be"),
+        "tm": ("Ticketmaster", "https://www.ticketmaster.be"),
+        "osm": ("OpenStreetMap-bijdragers", "https://www.openstreetmap.org/copyright"),
+    }
+
+    @app.context_processor
+    def inject_bronnen():
+        from .models import get_bool
+        try:
+            actief = {k: get_bool(f"bron_{k}_aan") for k in ("uit", "tv", "tm", "osm")}
+        except Exception:
+            actief = {k: False for k in ("uit", "tv", "tm", "osm")}
+        verm = [{"code": k, "naam": BRON_INFO[k][0], "url": BRON_INFO[k][1]}
+                for k in ("uit", "tv", "tm", "osm") if actief.get(k)]
+        return {"uit_actief": actief.get("uit", False),
+                "bron_actief": actief, "bron_vermeldingen": verm}
+
     @app.context_processor
     def inject_guest():
         from flask import session
@@ -223,6 +244,41 @@ def register_cli(app):
         from .services.maandagmail import send_all
         n = send_all(send_mail)
         click.echo(f"Maandagmail verstuurd naar {n} gezinnen.")
+
+    @app.cli.command("purge-bron")
+    @click.argument("naam")
+    @click.option("--ja", is_flag=True, help="Bevestig verwijderen zonder vraag.")
+    def purge_bron(naam, ja):
+        """Verwijder ALLE events van één bron (bv. de UiT-testdata).
+        NAAM = uit | tm | tv | osm. Ruimt ook verweesde locaties/reeksen op."""
+        from .models import (Event, Venue, Organizer, EditionSeries,
+                             SavedEvent, Review, Share, Interaction)
+        from .services.uit_sync import update_centroids
+        n = Event.query.filter_by(source=naam).count()
+        if n == 0:
+            click.echo(f"Geen events met bron '{naam}'. Niets te doen.")
+            return
+        if not ja:
+            click.confirm(f"{n} events van bron '{naam}' definitief verwijderen?",
+                          abort=True)
+        ids = [e.id for e in Event.query.filter_by(source=naam).with_entities(Event.id)]
+        # Afhankelijke rijen eerst (anders FK-conflict op Postgres)
+        for model in (SavedEvent, Review, Share, Interaction):
+            model.query.filter(model.event_id.in_(ids)).delete(synchronize_session=False)
+        Event.query.filter_by(source=naam).delete(synchronize_session=False)
+        db.session.commit()
+        # Verweesde reeksen/locaties/organisatoren opruimen
+        verweesd_series = EditionSeries.query.filter(~EditionSeries.events.any()).all()
+        for s in verweesd_series:
+            db.session.delete(s)
+        used_venues = {v for (v,) in db.session.query(Event.venue_id).distinct() if v}
+        used_orgs = {o for (o,) in db.session.query(Event.organizer_id).distinct() if o}
+        Venue.query.filter(~Venue.id.in_(used_venues or {-1})).delete(synchronize_session=False)
+        Organizer.query.filter(~Organizer.id.in_(used_orgs or {-1})).delete(synchronize_session=False)
+        db.session.commit()
+        update_centroids()
+        db.session.commit()
+        click.echo(f"Bron '{naam}' opgeruimd: {n} events + verweesde locaties/reeksen verwijderd.")
 
     @app.cli.command("create-admin")
     @click.argument("email")

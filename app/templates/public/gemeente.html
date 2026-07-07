@@ -19,5 +19,5 @@
 <h2>Ook dichtbij</h2>
 <div class="badges">{% for b in buren %}<a class="badge" href="/{{ b|lower }}">{{ b }}</a>{% endfor %}</div>
 {% endif %}
-<p class="hint">Activiteiten in samenwerking met UiTdatabank; Ravotscores en kostindicaties door gezinnen zelf.</p>
+<p class="hint">{% if bron_vermeldingen %}Activiteiten in samenwerking met {% for b in bron_vermeldingen %}{{ b.naam }}{% if not loop.last %}, {% endif %}{% endfor %}; {% endif %}Ravotscores en kostindicaties door gezinnen zelf.</p>
 {% endblock %}
