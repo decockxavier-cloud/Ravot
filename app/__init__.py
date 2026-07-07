@@ -252,7 +252,8 @@ def register_cli(app):
         """Verwijder ALLE events van één bron (bv. de UiT-testdata).
         NAAM = uit | tm | tv | osm. Ruimt ook verweesde locaties/reeksen op."""
         from .models import (Event, Venue, Organizer, EditionSeries,
-                             SavedEvent, Review, Share, Interaction)
+                             SavedEvent, Review, Share, Interaction,
+                             PostcodeCentroid)
         from .services.uit_sync import update_centroids
         n = Event.query.filter_by(source=naam).count()
         if n == 0:
@@ -275,6 +276,12 @@ def register_cli(app):
         used_orgs = {o for (o,) in db.session.query(Event.organizer_id).distinct() if o}
         Venue.query.filter(~Venue.id.in_(used_venues or {-1})).delete(synchronize_session=False)
         Organizer.query.filter(~Organizer.id.in_(used_orgs or {-1})).delete(synchronize_session=False)
+        db.session.commit()
+        # Verweesde postcode-zwaartepunten: postcodes zonder enig event meer
+        gebruikte_pc = {p for (p,) in db.session.query(Event.postcode).distinct() if p}
+        PostcodeCentroid.query.filter(
+            ~PostcodeCentroid.postcode.in_(gebruikte_pc or {"__none__"})
+        ).delete(synchronize_session=False)
         db.session.commit()
         update_centroids()
         db.session.commit()

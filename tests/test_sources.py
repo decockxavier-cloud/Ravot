@@ -224,3 +224,19 @@ def test_purge_bron_verwijdert_events(app):
     assert "opgeruimd" in res.output
     assert Event.query.filter_by(source="uit").count() == 0
     assert Event.query.filter_by(source="osm").count() == 1   # osm ongemoeid
+
+
+def test_purge_ruimt_verweesde_zwaartepunten_op(app):
+    """Een postcode die enkel UiT-events had, verliest na purge ook zijn centroid."""
+    from app.models import Event, PostcodeCentroid
+    from app.extensions import db as _db
+    ev = Event(source="uit", uit_id="only-uit", slug="only-uit",
+               title="Enkel hier", gemeente="Testdorp", postcode="9999",
+               lat=51.0, lng=3.5, age_min=0, age_max=12, categories=["buiten"])
+    _db.session.add(ev)
+    _db.session.add(PostcodeCentroid(postcode="9999", gemeente="Testdorp",
+                                     lat=51.0, lng=3.5, n_events=1))
+    _db.session.commit()
+    app.test_cli_runner().invoke(args=["purge-bron", "uit", "--ja"])
+    assert _db.session.get(PostcodeCentroid, "9999") is None   # verweesde centroid weg
+    assert Event.query.filter_by(source="uit").count() == 0
