@@ -374,3 +374,16 @@ def test_wikidata_regio_scopes_ontdubbeld(app):
     from app.services.sources import wikidata
     scopes = wikidata._regio_scopes(["vlaanderen", "brussel", "wallonie", "nederland"])
     assert len(scopes) == 2                                              # België (1x) + NL
+
+
+def test_vandaag_valt_terug_op_permanente_pois(client, app):
+    """Zonder gedateerde events tonen Vandaag/Weekend toch permanente plekken."""
+    from app.models import Event
+    from app.extensions import db as _db
+    _db.session.add(Event(source="osm", ext_id="node/9", slug="speeltuin-fallback",
+        title="Speeltuin Fallback", is_permanent=True, gemeente="Gent", postcode="9000",
+        lat=51.05, lng=3.72, age_min=1, age_max=12, categories=["buiten"], is_free=True))
+    _db.session.commit()
+    for pad in ("/vandaag", "/weekend"):
+        html = client.get(pad).get_data(as_text=True)
+        assert "Speeltuin Fallback" in html, pad

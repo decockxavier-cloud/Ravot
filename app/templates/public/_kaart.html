@@ -15,6 +15,7 @@
     {% if r is defined and r.agg %}<span class="badge badge-score">😄 {{ r.agg.avg }} ({{ r.agg.count }})</span>
     {% else %}<span class="badge badge-leeg" title="Nog geen Ravotscore">nog geen score</span>{% endif %}
     {% if e.indoor %}<span class="badge">🌧️ binnen</span>{% endif %}
+    {% if e.is_permanent %}<span class="badge">📍 altijd open</span>{% endif %}
     {% if e.has_vlieg %}<span class="badge badge-vlieg">🐛 Vlieg</span>{% endif %}
   </div>
   {% if family %}

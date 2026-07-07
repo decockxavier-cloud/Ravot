@@ -179,6 +179,36 @@ def _gast_rows(scope, limit=60):
     return [{"event": e, "agg": None, "family_total": None} for e in evs]
 
 
+# Onder deze drempel vullen we de dag/weekend-feed aan met permanente plekken,
+# zodat de app nooit leeg oogt (bv. zolang publiq nog uit staat).
+MIN_FEED = 6
+
+
+def permanente_pois(profile, limit=24):
+    """Gescoorde permanente plekken (speeltuinen, musea, attracties) in de buurt.
+    Fallback zodat Vandaag/Weekend niet leeg zijn als er weinig gedateerde events zijn."""
+    candidates = Event.query.filter(Event.is_permanent.is_(True)).limit(3000).all()
+    rows = []
+    for e in candidates:
+        s = score_event(e, profile)
+        if s > 0:
+            total, _ = family_price(e.price_info, profile.child_ages)
+            rows.append({"event": e, "score": s, "agg": None,
+                         "family_total": total, "euro": euro_indicator(total),
+                         "regen": None, "permanent": True})
+    rows.sort(key=lambda r: r["score"], reverse=True)
+    return rows[:limit]
+
+
+def vul_aan_met_permanente(rows, profile):
+    """Vul een gedateerde feed aan met permanente POI's als hij (bijna) leeg is."""
+    if len(rows) >= MIN_FEED:
+        return rows
+    extra = permanente_pois(profile, limit=24 - len(rows))
+    bestaande = {r["event"].id for r in rows}
+    return rows + [r for r in extra if r["event"].id not in bestaande]
+
+
 def scored_events(profile, scope, extra_filter=None, limit=40, weer=True):
     start, end = window(scope)
     now = datetime.utcnow()
@@ -330,6 +360,7 @@ def vandaag():
         # Bezoeker zonder profiel: toon gewoon wat er vandaag te doen is.
         # (De landingspagina staat op "/" — de Vandaag-tab hoort de lijst te tonen.)
         rows = _gast_rows("vandaag")
+    rows = vul_aan_met_permanente(rows, profile)
     if not rows:
         log("zero_result", scope="vandaag", postcode=guest_profile().get("postcode")
             or (fam.postcode if fam else None))
@@ -349,6 +380,7 @@ def deze_week():
     profile, fam = build_profile()
     has_profile = bool(fam or guest_profile().get("postcode"))
     rows = scored_events(profile, "deze-week") if has_profile else _gast_rows("deze-week")
+    rows = vul_aan_met_permanente(rows, profile)
     return render_template("public/lijst.html", rows=rows, scope="deze week",
                            title="Deze week", answer=None,
                            regen=rows[0].get("regen") if rows else None,
@@ -360,6 +392,7 @@ def weekend():
     profile, fam = build_profile()
     has_profile = bool(fam or guest_profile().get("postcode"))
     rows = scored_events(profile, "weekend") if has_profile else _gast_rows("weekend")
+    rows = vul_aan_met_permanente(rows, profile)
     return render_template("public/lijst.html", rows=rows, scope="dit weekend",
                            title="Dit weekend", answer=None,
                            regen=rows[0].get("regen") if rows else None,
