@@ -100,6 +100,25 @@ def register_cli(app):
             db.session.execute(text(
                 "ALTER TABLE events ADD COLUMN has_vlieg BOOLEAN DEFAULT FALSE"))
             added.append("events.has_vlieg")
+        # Meerdere bronnen: externe id, canonieke link, bronvermelding, POI-vlag.
+        # Additief en veilig — bestaande UiT-rijen blijven ongewijzigd.
+        for kol, ddl in (
+            ("ext_id", "ALTER TABLE events ADD COLUMN ext_id VARCHAR(120)"),
+            ("source_url", "ALTER TABLE events ADD COLUMN source_url VARCHAR(500)"),
+            ("attribution", "ALTER TABLE events ADD COLUMN attribution VARCHAR(120)"),
+            ("is_permanent",
+             "ALTER TABLE events ADD COLUMN is_permanent BOOLEAN DEFAULT FALSE NOT NULL"),
+        ):
+            if kol not in cols:
+                db.session.execute(text(ddl))
+                added.append(f"events.{kol}")
+        # index op (source, ext_id) voor snelle upserts — genegeerd als hij al bestaat
+        try:
+            db.session.execute(text(
+                "CREATE INDEX IF NOT EXISTS ix_events_source_ext "
+                "ON events (source, ext_id)"))
+        except Exception:
+            pass
         # totp_confirmed op admins: bestaande admins op FALSE → doorlopen QR-flow
         admin_cols = {c["name"] for c in insp.get_columns("admins")}
         if "totp_confirmed" not in admin_cols:
@@ -157,6 +176,29 @@ def register_cli(app):
         from .services.uit_sync import run_sync
         n = run_sync()
         click.echo(f"Sync klaar: {n} events verwerkt.")
+
+    @app.cli.command("sync-all")
+    def sync_all_cmd():
+        """Alle INGESCHAKELDE bronnen syncen (UiT + Ticketmaster + Toerisme Vl. + OSM)."""
+        from .services.sources import sync_all
+        for r in sync_all():
+            fout = f" — FOUT: {r['fout']}" if r.get("fout") else ""
+            click.echo(f"  {r['bron']}: {r['verwerkt']} verwerkt, "
+                       f"{r['verworpen']} verworpen (niet kindvriendelijk){fout}")
+        click.echo("Sync-all klaar.")
+
+    @app.cli.command("sync-bron")
+    @click.argument("naam")
+    def sync_bron(naam):
+        """Eén bron syncen. NAAM = uit | tm | tv | osm."""
+        from .services.sources import sync_one, REGISTRY
+        if naam not in REGISTRY:
+            click.echo(f"Onbekende bron '{naam}'. Kies uit: {', '.join(REGISTRY)}.")
+            return
+        r = sync_one(naam)
+        fout = f" — FOUT: {r['fout']}" if r.get("fout") else ""
+        click.echo(f"{r['bron']}: {r['verwerkt']} verwerkt, "
+                   f"{r.get('verworpen', 0)} verworpen{fout}")
 
     @app.cli.command("send-weekendmail")
     def send_weekendmail():

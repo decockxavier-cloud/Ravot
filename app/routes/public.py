@@ -42,8 +42,13 @@ def geldige_events(query, now=None):
     Een event is 'voorbij' als zijn EINDE achter de ondergrens ligt — zo blijven
     lopende activiteiten (bv. hele-dag, al bezig) gewoon zichtbaar."""
     onder, boven = geldig_venster(now)
-    return query.filter((Event.end >= onder) | (Event.start >= onder),
-                        Event.start <= boven)
+    # Permanente POI's (speeltuinen, attracties) hebben geen datum en zijn
+    # altijd geldig; gedateerde events moeten binnen het venster vallen.
+    return query.filter(db.or_(
+        Event.is_permanent.is_(True),
+        db.and_((Event.end >= onder) | (Event.start >= onder),
+                Event.start <= boven),
+    ))
 
 
 def _zoek_centrum(zoek):
@@ -390,7 +395,10 @@ def ontdek():
         q = q.filter(Event.indoor.is_(True))
     elif filter_type == "buiten":
         q = q.filter(Event.indoor.is_(False))
-    candidates = q.order_by(Event.start.asc()).limit(1000).all()
+    # Gedateerde events eerst (permanente POI's met start=None achteraan), zodat
+    # de 1000-cap niet volloopt met permanente plekken.
+    candidates = q.order_by(Event.start.is_(None).asc(),
+                            Event.start.asc()).limit(1000).all()
     # Bekende plaats gezocht? Filter op afstand (buurgemeenten mee).
     if centrum:
         candidates = _filter_buurt([{"event": e} for e in candidates], centrum, 20)
@@ -446,8 +454,15 @@ def verkennen():
         center = [50.85, 4.35]
         zoom = 9
 
-    evs = geldige_events(Event.query, now).filter(
-        Event.lat.isnot(None)).order_by(Event.start).limit(800).all()
+    # Gebalanceerd: gedateerde events én permanente POI's krijgen elk een
+    # eigen deel van de kaart (anders verdringen 1000en speeltuinen de agenda).
+    gedateerd = geldige_events(Event.query, now).filter(
+        Event.lat.isnot(None), Event.is_permanent.is_(False)
+    ).order_by(Event.start).limit(500).all()
+    permanent = Event.query.filter(
+        Event.lat.isnot(None), Event.is_permanent.is_(True)
+    ).order_by(Event.title).limit(500).all()
+    evs = gedateerd + permanent
 
     # Filter op type en (indien gezocht) op buurt rond de plaats
     def _past(e):
@@ -542,11 +557,15 @@ def _gemeente_events(gemeente, facet=None):
     scope = "vandaag" if facet == "vandaag" else "weekend" if facet in (None, "dit-weekend") else "maand"
     start, end = window(scope)
     onder, boven = geldig_venster()
-    q = Event.query.filter(db.func.lower(Event.gemeente) == gemeente.lower(),
-                           Event.start <= end,
-                           (Event.end >= start) | (Event.start >= start),
-                           (Event.end >= onder) | (Event.start >= onder),
-                           Event.start <= boven)
+    q = Event.query.filter(
+        db.func.lower(Event.gemeente) == gemeente.lower(),
+        db.or_(
+            Event.is_permanent.is_(True),
+            db.and_(Event.start <= end,
+                    (Event.end >= start) | (Event.start >= start),
+                    (Event.end >= onder) | (Event.start >= onder),
+                    Event.start <= boven),
+        ))
     if facet == "gratis":
         q = q.filter(Event.is_free.is_(True))
     if facet == "binnen":
@@ -554,7 +573,7 @@ def _gemeente_events(gemeente, facet=None):
     if facet in FACET_AGES:
         lo, hi = FACET_AGES[facet]
         q = q.filter(Event.age_min <= hi, Event.age_max >= lo)
-    return q.order_by(Event.start).limit(100).all()
+    return q.order_by(Event.start.is_(None).asc(), Event.start).limit(100).all()
 
 
 @bp.route("/<gemeente>")

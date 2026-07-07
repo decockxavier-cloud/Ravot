@@ -91,8 +91,13 @@ class EditionSeries(db.Model):
 class Event(db.Model):
     __tablename__ = "events"
     id = db.Column(db.Integer, primary_key=True)
-    uit_id = db.Column(db.String(64), unique=True, index=True)
-    source = db.Column(db.String(16), default="uit", nullable=False)  # 2e bron later
+    uit_id = db.Column(db.String(64), unique=True, index=True)  # ENKEL publiq (UiTinVlaanderen-link)
+    # Meerdere bronnen. source: uit | tm (Ticketmaster) | tv (Toerisme Vlaanderen) | osm
+    source = db.Column(db.String(16), default="uit", nullable=False, index=True)
+    ext_id = db.Column(db.String(120), index=True)   # externe id binnen de bron (app-uniek per bron)
+    source_url = db.Column(db.String(500))           # canonieke "meer info & tickets"-link (niet-UiT)
+    attribution = db.Column(db.String(120))          # korte bronvermelding (licentie-compliance)
+    is_permanent = db.Column(db.Boolean, default=False, nullable=False, index=True)  # POI zonder vaste datum
     slug = db.Column(db.String(300), unique=True, index=True)
     title = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text)
@@ -279,6 +284,13 @@ SETTING_DEFS = {
     # Beveiliging / limieten
     "codes_per_uur": ("3", "Max. inlogcodes per e-mailadres per uur", "int"),
     "ontdek_per_pagina": ("24", "Activiteiten per pagina op Ontdek", "int"),
+    # Bronnen (welke datastromen syncen we?) — enkel kindvriendelijk aanbod
+    "bron_uit_aan": ("1", "Bron: UiTdatabank (publiq) — gedateerde events", "bool"),
+    "bron_tm_aan": ("0", "Bron: Ticketmaster — enkel Family-segment (BE)", "bool"),
+    "bron_tv_aan": ("0", "Bron: Toerisme Vlaanderen — kindvriendelijke attracties", "bool"),
+    "bron_osm_aan": ("0", "Bron: OpenStreetMap — speeltuinen, zoo, pretpark", "bool"),
+    "tv_max": ("2000", "Toerisme Vlaanderen: max. attracties per sync", "int"),
+    "osm_tags": ("playground,theme_park,water_park,zoo", "OSM: kindvriendelijke tags (komma-gescheiden)", "text"),
 }
 
 

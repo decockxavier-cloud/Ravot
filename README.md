@@ -9,7 +9,9 @@ Staat volledig los van Cluma.
 ## Stack
 Flask + SQLAlchemy + PostgreSQL, server-side gerenderde Jinja2-templates,
 mobile-first (PWA). Docker Compose op Hostinger VPS, Nginx Proxy Manager ervoor.
-Data uit de UiTdatabank Search API (publiq).
+Data uit meerdere bronnen — allemaal streng gefilterd op kindvriendelijkheid:
+UiTdatabank (publiq), Ticketmaster (enkel Family-segment), Toerisme Vlaanderen
+(attracties) en OpenStreetMap (speeltuinen e.d.).
 
 ## Wat werkt (live)
 - Kern-app: Vandaag / Weekend / Kaart, gepersonaliseerde scoring (leeftijd,
@@ -22,6 +24,13 @@ Data uit de UiTdatabank Search API (publiq).
   zoekbalk op naam/gemeente, resultaatteller, deel-knop, "zet in agenda" (.ics).
 - publiq-compliance: UiTinVlaanderen-verwijzing (met UTM), organisator-oproep,
   UiT-met-Vlieg-label + legende.
+- Meerdere bronnen via één adapter-laag (app/services/sources/). Elke bron heeft
+  een HARDE kindvriendelijk-poort: niet-geschikt aanbod wordt bij het syncen
+  weggegooid en komt de databank nooit in. Permanente POI's (attracties,
+  speeltuinen) tonen op Kaart/Ontdek/gemeente; Vandaag/Weekend blijven gedateerd.
+  Vlieg-label en UiTinVlaanderen-link blijven exclusief voor UiT; andere bronnen
+  krijgen hun eigen 'meer info'-link + bronvermelding (ODbL/Ticketmaster/Gratis
+  Hergebruik). Aan/uit per bron in /beheer/instellingen.
 - Mails: weekendmail (donderdag), maandagvraag-mail (maandag - scores binnenhalen).
 - Vakantiemodus (Vlaamse schoolvakanties t/m 2027) + weerkoppeling
   (regen -> binnen-activiteiten omhoog, via Open-Meteo, gratis).
@@ -30,7 +39,8 @@ Data uit de UiTdatabank Search API (publiq).
 
 ## Configuratie (.env - NOOIT in git of database)
 Secrets blijven bewust in .env: DATABASE_URL, SECRET_KEY, UIT_API_KEY,
-UIT_SEARCH_URL (test vs productie), SITE_URL, SMTP_*, MAIL_FROM.
+UIT_SEARCH_URL (test vs productie), TICKETMASTER_API_KEY (optioneel),
+SITE_URL, SMTP_*, MAIL_FROM.
 Niet-geheime instellingen (UiT-query, sync-omvang, mails/weer aan-uit, radius)
 beheer je in /beheer/instellingen.
 
@@ -38,19 +48,21 @@ beheer je in /beheer/instellingen.
   flask init-db            tabellen aanmaken (verse installatie)
   flask migrate-db         ontbrekende kolommen/tabellen toevoegen (veilig)
   flask create-admin <e>   admin aanmaken (toont TOTP-secret)
-  flask sync-uit           events + foto's + Vlieg-label ophalen
+  flask sync-uit           enkel UiT: events + foto's + Vlieg-label ophalen
+  flask sync-all           alle INGESCHAKELDE bronnen (UiT + TM + TV + OSM)
+  flask sync-bron <naam>   één bron: uit | tm | tv | osm
   flask send-weekendmail   donderdagmail
   flask send-maandagmail   maandagvraag (scores binnenhalen)
 
 ## Deploy (VPS)
   cd /srv/ravot && git pull && docker compose up -d --build
   docker compose exec web flask migrate-db   # enkel bij nieuwe kolommen/tabellen
-  docker compose exec web flask sync-uit      # enkel bij data-wijzigingen
+  docker compose exec web flask sync-all      # enkel bij data-wijzigingen
 KRITIEK: pgdata-volume nooit wissen; backup voor elke compose-wijziging.
 
 ## Cron (VPS)
   0 2 * * *    backup
-  0 4 * * *    sync-uit
+  0 4 * * *    sync-all      (of sync-uit als je enkel publiq draait)
   0 17 * * 4   send-weekendmail
   0 10 * * 1   send-maandagmail
 

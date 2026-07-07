@@ -26,6 +26,33 @@ je ziet alleen of alles correct is ingesteld en werkt.</p>
 </div>
 
 <div class="card">
+  <h2 style="margin-top:0">Extra bronnen (enkel kindvriendelijk aanbod)</h2>
+  <p class="hint">Aan/uit zet je bij <a href="{{ url_for('admin.instellingen') }}">Instellingen</a>.
+  Elke bron heeft een strikte kindvriendelijk-filter — niet-geschikt aanbod wordt bij
+  het syncen weggegooid en komt de databank nooit in.</p>
+  {% for b in status.bronnen %}
+  <div class="badges" style="margin-bottom:8px">
+    <span class="badge">{{ b.naam }}</span>
+    {% if b.aan %}<span class="badge" style="color:var(--gras)">✅ aan</span>
+    {% else %}<span class="badge" style="color:#b8860b">⏸️ uit</span>{% endif %}
+    {% if b.key_nodig %}
+      {% if b.geconfigureerd %}<span class="badge">🔑 key aanwezig</span>
+      {% else %}<span class="badge" style="color:var(--rood)">⚠️ geen key in .env</span>{% endif %}
+    {% else %}<span class="badge">geen key nodig</span>{% endif %}
+    <span class="badge">In databank: {{ b.aantal }}</span>
+    {% if b.test %}
+    <form method="post" action="{{ url_for('admin.test_tm') }}" style="display:inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-stil" type="submit">🔌 Test</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endfor %}
+  <p class="hint">Syncen: <code>flask sync-all</code> (alle ingeschakelde bronnen) of
+  <code>flask sync-bron tm|tv|osm</code> voor één bron.</p>
+</div>
+
+<div class="card">
   <h2 style="margin-top:0">E-mail (SMTP)</h2>
   <p>Status:
     {% if status.smtp.geconfigureerd %}<strong style="color:var(--gras)">✅ ingesteld</strong>

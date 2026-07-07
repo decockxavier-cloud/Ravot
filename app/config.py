@@ -29,6 +29,18 @@ class Config:
         "UIT_SEARCH_URL", "https://search-test.uitdatabank.be"
     )  # productie: https://search.uitdatabank.be
 
+    # -- Extra bronnen (allemaal optioneel; enkel kindvriendelijk aanbod) -----
+    # Ticketmaster Discovery API — enkel Family-segment, landcode BE.
+    TICKETMASTER_API_KEY = os.environ.get("TICKETMASTER_API_KEY", "")
+    TICKETMASTER_URL = os.environ.get(
+        "TICKETMASTER_URL", "https://app.ticketmaster.com/discovery/v2")
+    # Toerisme Vlaanderen Linked Open Data — JSON:API, geen key nodig.
+    TOERISME_URL = os.environ.get(
+        "TOERISME_URL", "https://linked.toerismevlaanderen.be")
+    # OpenStreetMap Overpass — geen key nodig.
+    OVERPASS_URL = os.environ.get(
+        "OVERPASS_URL", "https://overpass-api.de/api/interpreter")
+
     # -- Site ------------------------------------------------------------------
     SITE_URL = os.environ.get("SITE_URL", "http://localhost:5000")
     MAGIC_LINK_MINUTES = 15

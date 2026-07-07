@@ -241,6 +241,21 @@ def verbindingen():
     laatste = Event.query.order_by(Event.updated_at.desc()).first()
     if laatste:
         status["uit"]["laatste_event"] = laatste.updated_at
+
+    # Extra bronnen: aan/uit + eventueel een key + aantal events per bron.
+    from ..models import get_bool as _gb
+    status["uit"]["aan"] = _gb("bron_uit_aan")
+    status["bronnen"] = [
+        {"code": "tm", "naam": "Ticketmaster (Family)", "aan": _gb("bron_tm_aan"),
+         "key_nodig": True, "geconfigureerd": bool(cfg.get("TICKETMASTER_API_KEY")),
+         "aantal": Event.query.filter_by(source="tm").count(), "test": True},
+        {"code": "tv", "naam": "Toerisme Vlaanderen", "aan": _gb("bron_tv_aan"),
+         "key_nodig": False, "geconfigureerd": True,
+         "aantal": Event.query.filter_by(source="tv").count(), "test": False},
+        {"code": "osm", "naam": "OpenStreetMap (speeltuinen e.d.)", "aan": _gb("bron_osm_aan"),
+         "key_nodig": False, "geconfigureerd": True,
+         "aantal": Event.query.filter_by(source="osm").count(), "test": False},
+    ]
     return render_template("admin/verbindingen.html", status=status,
                            title="Verbindingen", family=None, active=None)
 
@@ -265,6 +280,35 @@ def test_uit():
     except Exception as exc:
         flash(f"UiT niet bereikbaar: {str(exc)[:120]}", "error")
     audit("UiT-verbinding getest")
+    return redirect(url_for("admin.verbindingen"))
+
+
+@bp.route("/test-tm", methods=["POST"])
+@admin_required
+@limiter.limit("10/hour")
+def test_tm():
+    """Test de Ticketmaster-verbinding met één kale call (Family, BE)."""
+    import requests
+    from flask import current_app
+    cfg = current_app.config
+    if not cfg.get("TICKETMASTER_API_KEY"):
+        flash("Geen TICKETMASTER_API_KEY in .env. Vraag een gratis key aan "
+              "op developer.ticketmaster.com.", "error")
+        return redirect(url_for("admin.verbindingen"))
+    try:
+        r = requests.get(f"{cfg['TICKETMASTER_URL'].rstrip('/')}/events.json",
+                         params={"apikey": cfg["TICKETMASTER_API_KEY"],
+                                 "countryCode": "BE", "classificationName": "family",
+                                 "size": 1}, timeout=8)
+        if r.status_code == 200:
+            n = (r.json().get("page") or {}).get("totalElements", "?")
+            flash(f"Ticketmaster OK ✅ — {n} Family-events in BE beschikbaar.", "ok")
+        else:
+            flash(f"Ticketmaster antwoordde met status {r.status_code}. "
+                  "Controleer de key in .env.", "error")
+    except Exception as exc:
+        flash(f"Ticketmaster niet bereikbaar: {str(exc)[:120]}", "error")
+    audit("Ticketmaster-verbinding getest")
     return redirect(url_for("admin.verbindingen"))
 
 
