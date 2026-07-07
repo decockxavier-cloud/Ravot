@@ -9,18 +9,12 @@ POI's zonder vaste datum => is_permanent=True (zichtbaar op Kaart/Ontdek/gemeent
 niet in de gedateerde Vandaag/Weekend-feeds).
 """
 import requests
+from urllib.parse import urljoin, urlparse
 from flask import current_app
 
 from .base import child_safe, clean_postcode
 
-# Trefwoord -> Ravot-categorie voor attractie-typering.
-TYPE_MAP = {
-    "speeltuin": "buiten", "playground": "buiten", "speelbos": "buiten",
-    "zoo": "natuur", "dieren": "natuur", "boerderij": "natuur", "natuur": "natuur",
-    "pretpark": "buiten", "attractiepark": "buiten", "avontuur": "buiten",
-    "museum": "cultuur", "science": "leren", "wetenschap": "leren",
-    "zwem": "sport", "water": "sport", "klim": "sport",
-}
+UA = "Ravot/1.0 (+https://ravot.be; gezinsuitstappen)"
 
 
 def _txt(v):
@@ -38,11 +32,13 @@ def fetch():
     """Yield ruwe attractie-resources uit de JSON:API, gepagineerd."""
     cfg = current_app.config
     from ...models import get_int
-    base = cfg["TOERISME_URL"].rstrip("/")
+    base = (cfg.get("TOERISME_URL") or "https://linked.toerismevlaanderen.be").rstrip("/")
+    if not urlparse(base).scheme:            # scheme-guard: nooit een relatieve base
+        base = "https://linked.toerismevlaanderen.be"
     want = get_int("tv_max", 2000) or 2000
     url = f"{base}/tourist-attractions"
     params = {"page[size]": 100, "sort": "name"}
-    headers = {"Accept": "application/vnd.api+json"}
+    headers = {"Accept": "application/vnd.api+json", "User-Agent": UA}
     seen = 0
     while url and seen < want:
         resp = requests.get(url, params=params, headers=headers, timeout=30)
@@ -53,8 +49,17 @@ def fetch():
             seen += 1
             if seen >= want:
                 return
-        url = ((payload.get("links") or {}).get("next")) or None
-        params = None  # 'next' bevat al de querystring
+        nxt = (payload.get("links") or {}).get("next")
+        # 'next' kan absoluut of relatief zijn -> altijd absoluut maken
+        url = urljoin(f"{base}/", nxt) if nxt else None
+        params = None  # 'next' bevat de querystring al
+TYPE_MAP = {
+    "speeltuin": "buiten", "playground": "buiten", "speelbos": "buiten",
+    "zoo": "natuur", "dieren": "natuur", "boerderij": "natuur", "natuur": "natuur",
+    "pretpark": "buiten", "attractiepark": "buiten", "avontuur": "buiten",
+    "museum": "cultuur", "science": "leren", "wetenschap": "leren",
+    "zwem": "sport", "water": "sport", "klim": "sport",
+}
 
 
 def normalise(row):

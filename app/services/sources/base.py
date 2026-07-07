@@ -127,23 +127,33 @@ def upsert_event(data):
 def run_source(adapter, commit_every=50):
     """Draai één adapter: haal op, gate op kindvriendelijkheid, upsert.
     `adapter.fetch()` levert ruwe items; `adapter.normalise(item)` levert een
-    genormaliseerde dict of None (= verworpen). Retourneert (verwerkt, verworpen)."""
+    genormaliseerde dict of None (= verworpen). Retourneert (verwerkt, verworpen).
+
+    Een fout tijdens het ophalen (bv. een pagina die faalt) mag NOOIT de reeds
+    verwerkte items weggooien: we committen wat we hebben en stoppen netjes."""
+    from flask import current_app
     processed = rejected = 0
-    for item in adapter.fetch():
-        try:
-            data = adapter.normalise(item)
-        except Exception:  # één slecht item mag de sync niet breken
-            data = None
-        if not data:
-            rejected += 1
-            continue
-        try:
-            upsert_event(data)
-            processed += 1
-            if processed % commit_every == 0:
-                db.session.commit()
-        except Exception:
-            db.session.rollback()
-            rejected += 1
+    try:
+        for item in adapter.fetch():
+            try:
+                data = adapter.normalise(item)
+            except Exception:  # één slecht item mag de sync niet breken
+                data = None
+            if not data:
+                rejected += 1
+                continue
+            try:
+                upsert_event(data)
+                processed += 1
+                if processed % commit_every == 0:
+                    db.session.commit()
+            except Exception:
+                db.session.rollback()
+                rejected += 1
+    except Exception as exc:
+        db.session.commit()  # behoud alles wat tot hiertoe verwerkt is
+        current_app.logger.warning("ophalen afgebroken na %d items: %s",
+                                   processed, str(exc)[:160])
+        return processed, rejected
     db.session.commit()
     return processed, rejected

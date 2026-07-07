@@ -42,7 +42,11 @@ def fetch():
     tags = [t for t in tags if t in TAG_CATEGORIE]
     if not tags:
         return
-    resp = requests.post(cfg["OVERPASS_URL"], data={"data": _tag_query(tags)}, timeout=90)
+    # Overpass blokkeert requests zonder net User-Agent (vandaar soms een 406).
+    headers = {"User-Agent": "Ravot/1.0 (+https://ravot.be; gezinsuitstappen)",
+               "Accept": "application/json"}
+    resp = requests.post(cfg["OVERPASS_URL"], data={"data": _tag_query(tags)},
+                         headers=headers, timeout=90)
     resp.raise_for_status()
     for el in resp.json().get("elements") or []:
         yield el
