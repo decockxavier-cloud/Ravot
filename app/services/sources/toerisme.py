@@ -64,7 +64,12 @@ TYPE_MAP = {
 
 def normalise(row):
     """Eén attractie -> genormaliseerde dict, of None als ze niet duidelijk
-    kindvriendelijk is (kindveiligheidspoort: strikte whitelist)."""
+    kindvriendelijk is (kindveiligheidspoort: strikte whitelist).
+
+    LET OP: het endpoint levert ook 'lodgings' (logies) — die horen NIET in
+    Ravot en worden hier hard geweigerd."""
+    if (row.get("type") or "").lower() in ("lodgings", "lodging", "accommodation"):
+        return None  # geen logies
     attrs = row.get("attributes") or row
     name = _txt(attrs.get("name")).strip()
     if not name:

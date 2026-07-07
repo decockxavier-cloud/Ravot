@@ -240,3 +240,28 @@ def test_purge_ruimt_verweesde_zwaartepunten_op(app):
     app.test_cli_runner().invoke(args=["purge-bron", "uit", "--ja"])
     assert _db.session.get(PostcodeCentroid, "9999") is None   # verweesde centroid weg
     assert Event.query.filter_by(source="uit").count() == 0
+
+
+def test_naamloze_osm_pois_krijgen_unieke_slug(app):
+    """Twee naamloze speeltuinen met verschillende id's mogen niet botsen
+    (regressie: slug werd afgekapt op 8 tekens van de id)."""
+    from app.models import Event
+    from app.services.sources.base import upsert_event
+    for nid in (1234567, 1234568, 1234569):   # zelfde eerste 3 cijfers
+        upsert_event({"source": "osm", "ext_id": f"node/{nid}", "title": "Speeltuin",
+                      "is_permanent": True, "lat": 51.0, "lng": 3.7, "age_min": 1,
+                      "age_max": 12, "categories": ["buiten"], "is_free": True,
+                      "venue_name": "Speeltuin", "venue_ext_id": f"node/{nid}"})
+    from app.extensions import db as _db
+    _db.session.commit()
+    evs = Event.query.filter_by(source="osm").all()
+    assert len(evs) == 3                                  # alle drie bewaard
+    assert len({e.slug for e in evs}) == 3                # elk een unieke slug
+
+
+def test_tv_lodging_wordt_geweigerd(app):
+    """Logies (lodgings) mogen nooit als attractie binnenkomen."""
+    from app.services.sources import toerisme
+    row = {"id": "abc", "type": "lodgings",
+           "attributes": {"name": [{"content": "Kinderboerderij Vakantiehuis", "language": "nl"}]}}
+    assert toerisme.normalise(row) is None                # type-guard grijpt in

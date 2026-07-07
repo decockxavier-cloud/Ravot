@@ -118,7 +118,8 @@ def upsert_event(data):
             setattr(ev, f, data[f])
     ev.has_vlieg = False  # Vlieg is een publiq-label; nooit op andere bronnen
     if not ev.slug:
-        ev.slug = f"{slugify(data['title'])}-{source}-{str(ext_id)[:8]}"
+        # Volledige ext_id in de slug -> geen botsingen bij naamloze POI's.
+        ev.slug = f"{slugify(data['title'])}-{source}-{slugify(str(ext_id))}"[:290]
     ev.venue_id = venue.id if venue else None
     db.session.flush()
     return ev
@@ -143,12 +144,14 @@ def run_source(adapter, commit_every=50):
                 rejected += 1
                 continue
             try:
-                upsert_event(data)
+                # Savepoint per item: een fout rolt enkel DIT item terug,
+                # niet de al-verwerkte items in dezelfde batch.
+                with db.session.begin_nested():
+                    upsert_event(data)
                 processed += 1
                 if processed % commit_every == 0:
                     db.session.commit()
             except Exception:
-                db.session.rollback()
                 rejected += 1
     except Exception as exc:
         db.session.commit()  # behoud alles wat tot hiertoe verwerkt is
