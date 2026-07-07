@@ -45,11 +45,13 @@ def geldige_events(query, now=None):
     onder, boven = geldig_venster(now)
     # Permanente POI's (speeltuinen, attracties) hebben geen datum en zijn
     # altijd geldig; gedateerde events moeten binnen het venster vallen.
-    return query.filter(db.or_(
-        Event.is_permanent.is_(True),
-        db.and_((Event.end >= onder) | (Event.start >= onder),
-                Event.start <= boven),
-    ))
+    return query.filter(
+        Event.hidden.is_(False),      # verborgen dubbels nooit tonen
+        db.or_(
+            Event.is_permanent.is_(True),
+            db.and_((Event.end >= onder) | (Event.start >= onder),
+                    Event.start <= boven),
+        ))
 
 
 def _zoek_centrum(zoek):
@@ -187,7 +189,8 @@ MIN_FEED = 6
 def permanente_pois(profile, limit=24):
     """Gescoorde permanente plekken (speeltuinen, musea, attracties) in de buurt.
     Fallback zodat Vandaag/Weekend niet leeg zijn als er weinig gedateerde events zijn."""
-    candidates = Event.query.filter(Event.is_permanent.is_(True)).limit(3000).all()
+    candidates = Event.query.filter(Event.is_permanent.is_(True),
+                                    Event.hidden.is_(False)).limit(3000).all()
     rows = []
     for e in candidates:
         s = score_event(e, profile)
@@ -216,6 +219,7 @@ def scored_events(profile, scope, extra_filter=None, limit=40, weer=True):
     # Harde grenzen: nooit afgelopen events, nooit absurd ver in de toekomst.
     # 'Afgelopen' = het EINDE ligt achter de ondergrens (lopende events tellen mee).
     q = Event.query.filter(
+        Event.hidden.is_(False),
         Event.start <= end,
         (Event.end >= start) | (Event.start >= start),
         (Event.end >= onder) | (Event.start >= onder),   # niet afgelopen
@@ -494,7 +498,7 @@ def verkennen():
         Event.lat.isnot(None), Event.is_permanent.is_(False)
     ).order_by(Event.start).limit(500).all()
     permanent = Event.query.filter(
-        Event.lat.isnot(None), Event.is_permanent.is_(True)
+        Event.lat.isnot(None), Event.is_permanent.is_(True), Event.hidden.is_(False)
     ).order_by(Event.title).limit(500).all()
     evs = gedateerd + permanent
 
@@ -593,6 +597,7 @@ def _gemeente_events(gemeente, facet=None):
     onder, boven = geldig_venster()
     q = Event.query.filter(
         db.func.lower(Event.gemeente) == gemeente.lower(),
+        Event.hidden.is_(False),
         db.or_(
             Event.is_permanent.is_(True),
             db.and_(Event.start <= end,

@@ -387,3 +387,51 @@ def test_vandaag_valt_terug_op_permanente_pois(client, app):
     for pad in ("/vandaag", "/weekend"):
         html = client.get(pad).get_data(as_text=True)
         assert "Speeltuin Fallback" in html, pad
+
+
+# --------------------------------------------------------------- dedup --
+
+def test_dedup_verbergt_dubbels_rijkste_wint(app):
+    """Zelfde plek uit OSM (kaal) + Wikidata (foto+site) op <150m: OSM wordt
+    verborgen, Wikidata blijft en houdt de foto."""
+    from app.models import Event
+    from app.services.sources import dedup_pois
+    from app.extensions import db as _db
+    osm = Event(source="osm", ext_id="node/1", slug="zoo-osm", title="ZOO Antwerpen",
+                is_permanent=True, lat=51.2170, lng=4.4210, age_min=1, age_max=12,
+                categories=["natuur"])
+    wd = Event(source="wd", ext_id="Q1", slug="zoo-wd", title="ZOO Antwerpen",
+               is_permanent=True, lat=51.2171, lng=4.4212, age_min=1, age_max=12,
+               categories=["natuur"], image_url="https://commons/zoo.jpg",
+               source_url="https://zooantwerpen.be")
+    _db.session.add_all([osm, wd]); _db.session.commit()
+    n = dedup_pois()
+    assert n == 1
+    osm_r = Event.query.filter_by(source="osm").first()
+    wd_r = Event.query.filter_by(source="wd").first()
+    assert osm_r.hidden is True and osm_r.dupe_of == wd_r.id   # kale OSM verborgen
+    assert wd_r.hidden is False                                 # Wikidata (met foto) blijft
+
+
+def test_dedup_spaart_verschillende_plekken(app):
+    """Twee verschillende speeltuinen dicht bij elkaar blijven allebei zichtbaar."""
+    from app.models import Event
+    from app.services.sources import dedup_pois
+    from app.extensions import db as _db
+    a = Event(source="osm", ext_id="node/1", slug="sp-a", title="Speeltuin Astrid",
+              is_permanent=True, lat=51.20, lng=4.40, age_min=1, age_max=12, categories=["buiten"])
+    b = Event(source="osm", ext_id="node/2", slug="sp-b", title="Speeltuin Rivierenhof",
+              is_permanent=True, lat=51.2001, lng=4.4001, age_min=1, age_max=12, categories=["buiten"])
+    _db.session.add_all([a, b]); _db.session.commit()
+    assert dedup_pois() == 0                                    # andere naam => geen merge
+    assert Event.query.filter_by(hidden=True).count() == 0
+
+
+def test_verborgen_dubbel_niet_in_ontdek(client, app):
+    from app.models import Event
+    from app.extensions import db as _db
+    _db.session.add(Event(source="osm", ext_id="node/9", slug="verborgen-poi",
+        title="Verborgen Dubbel", is_permanent=True, hidden=True, gemeente="Gent",
+        postcode="9000", lat=51.05, lng=3.72, age_min=1, age_max=12, categories=["buiten"]))
+    _db.session.commit()
+    assert "Verborgen Dubbel" not in client.get("/ontdek").get_data(as_text=True)

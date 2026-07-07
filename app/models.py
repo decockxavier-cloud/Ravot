@@ -98,6 +98,8 @@ class Event(db.Model):
     source_url = db.Column(db.String(500))           # canonieke "meer info & tickets"-link (niet-UiT)
     attribution = db.Column(db.String(120))          # korte bronvermelding (licentie-compliance)
     is_permanent = db.Column(db.Boolean, default=False, nullable=False, index=True)  # POI zonder vaste datum
+    hidden = db.Column(db.Boolean, default=False, nullable=False, index=True)  # dubbel: verborgen in lijsten
+    dupe_of = db.Column(db.Integer, index=True)   # id van het canonieke event waar dit een dubbel van is
     slug = db.Column(db.String(300), unique=True, index=True)
     title = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text)

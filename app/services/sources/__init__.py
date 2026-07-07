@@ -111,10 +111,82 @@ def sync_all():
         db.session.commit()
     except Exception:
         db.session.rollback()
+    # Dubbels (dezelfde plek uit meerdere bronnen) verbergen
+    try:
+        dedup_pois()
+    except Exception:
+        db.session.rollback()
     return results
 
 
-# ----------------------------------------------------------------- purge --
+# ----------------------------------------------------------------- dedup --
+
+def _naam_tokens(titel):
+    import re
+    import unicodedata
+    t = unicodedata.normalize("NFKD", (titel or "")).encode("ascii", "ignore").decode().lower()
+    stop = {"de", "het", "een", "van", "the", "le", "la", "les", "museum", "park"}
+    return set(re.findall(r"[a-z0-9]+", t)) - stop
+
+
+def dedup_pois():
+    """Verberg dubbele permanente POI's (dezelfde plek uit meerdere bronnen).
+    Conservatief: enkel samenvoegen bij nabijheid (<150m) én sterke naamgelijkenis.
+    De rijkste bron blijft zichtbaar en erft ontbrekende foto/website/beschrijving.
+    Retourneert het aantal verborgen dubbels."""
+    from collections import defaultdict
+    from ...models import Event
+    from ...scoring import haversine_km
+    evs = Event.query.filter(Event.is_permanent.is_(True), Event.lat.isnot(None)).all()
+    for e in evs:                       # vorige dedup resetten (idempotent)
+        e.hidden, e.dupe_of = False, None
+    db.session.flush()
+
+    buckets = defaultdict(list)
+    for e in evs:
+        buckets[(round(e.lat, 2), round(e.lng, 2))].append(e)
+    tokens = {e.id: _naam_tokens(e.title) for e in evs}
+    prio = {"uit": 4, "tv": 3, "wd": 2, "osm": 1}
+
+    def rijkdom(e):
+        return (1 if e.image_url else 0, prio.get(e.source, 0), 1 if e.source_url else 0)
+
+    verwerkt, n_dupe = set(), 0
+    for e in evs:
+        if e.id in verwerkt:
+            continue
+        groep = [e]
+        blat, blng = round(e.lat, 2), round(e.lng, 2)
+        for dlat in (-0.01, 0.0, 0.01):
+            for dlng in (-0.01, 0.0, 0.01):
+                for f in buckets.get((round(blat + dlat, 2), round(blng + dlng, 2)), []):
+                    if f.id == e.id or f.id in verwerkt:
+                        continue
+                    if haversine_km(e.lat, e.lng, f.lat, f.lng) * 1000 > 150:
+                        continue
+                    ta, tb = tokens[e.id], tokens[f.id]
+                    if not ta or not tb:
+                        continue
+                    jac = len(ta & tb) / len(ta | tb)
+                    if jac >= 0.5:                 # sterke naamgelijkenis
+                        groep.append(f)
+        for g in groep:
+            verwerkt.add(g.id)
+        if len(groep) > 1:
+            canon = max(groep, key=rijkdom)
+            for g in groep:
+                if g.id == canon.id:
+                    continue
+                g.hidden, g.dupe_of = True, canon.id
+                n_dupe += 1
+                if not canon.image_url and g.image_url:
+                    canon.image_url = g.image_url
+                if not canon.source_url and g.source_url:
+                    canon.source_url = g.source_url
+                if not canon.description and g.description:
+                    canon.description = g.description
+    db.session.commit()
+    return n_dupe
 
 def purge_source(naam):
     """Verwijder ALLE events van één bron + verweesde locaties/reeksen/zwaartepunten.

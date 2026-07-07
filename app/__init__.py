@@ -134,6 +134,9 @@ def register_cli(app):
             ("attribution", "ALTER TABLE events ADD COLUMN attribution VARCHAR(120)"),
             ("is_permanent",
              "ALTER TABLE events ADD COLUMN is_permanent BOOLEAN DEFAULT FALSE NOT NULL"),
+            ("hidden",
+             "ALTER TABLE events ADD COLUMN hidden BOOLEAN DEFAULT FALSE NOT NULL"),
+            ("dupe_of", "ALTER TABLE events ADD COLUMN dupe_of INTEGER"),
         ):
             if kol not in cols:
                 db.session.execute(text(ddl))
@@ -251,6 +254,13 @@ def register_cli(app):
         from .services.maandagmail import send_all
         n = send_all(send_mail)
         click.echo(f"Maandagmail verstuurd naar {n} gezinnen.")
+
+    @app.cli.command("dedup")
+    def dedup_cmd():
+        """Dubbele permanente POI's (dezelfde plek uit meerdere bronnen) verbergen."""
+        from .services.sources import dedup_pois
+        n = dedup_pois()
+        click.echo(f"Dedup klaar: {n} dubbels verborgen.")
 
     @app.cli.command("purge-bron")
     @click.argument("naam")
