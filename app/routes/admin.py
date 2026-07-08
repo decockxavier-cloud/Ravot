@@ -686,8 +686,23 @@ def verrijk():
     # een handvol recente plekken tonen om snel te kiezen
     recent = Event.query.filter_by(is_permanent=True).order_by(
         Event.id.desc()).limit(15).all()
+    # tellers per zone zodat de admin ziet waar de winst zit
+    from ..models import get_int, EnrichProposal
+    k_min = get_int("kwaliteit_min_lijst", 30)
+    k_hoog = get_int("kwaliteit_hoog", 60)
+    heeft_voorstel = db.session.query(EnrichProposal.event_id)
+    basis = Event.query.filter(Event.is_permanent.is_(True),
+                               Event.pending.is_(False),
+                               Event.hidden.is_(False),
+                               ~Event.id.in_(heeft_voorstel))
+    tellers = {
+        "midden": basis.filter(Event.quality >= k_min, Event.quality < k_hoog).count(),
+        "totaal_open": basis.count(),
+        "k_min": k_min, "k_hoog": k_hoog,
+    }
     return render_template("admin/verrijk.html", voorstel=voorstel, plek=plek,
-                           fout=fout, recent=recent, backend=get_setting("verrijk_backend"),
+                           fout=fout, recent=recent, tellers=tellers,
+                           backend=get_setting("verrijk_backend"),
                            model=get_setting("ollama_model"), title="AI-verrijking",
                            family=None, active="verrijk")
 
@@ -706,6 +721,7 @@ def verrijk_batch_start():
         n = max(1, min(100, int(request.form.get("n") or 10)))
     except ValueError:
         n = 10
+    zone = "alles" if request.form.get("zone") == "alles" else "midden"
     if _verrijk_bezig["aan"]:
         flash("Er loopt al een verrijkingsbatch. Even geduld.", "error")
         return redirect(url_for("admin.verrijk"))
@@ -716,7 +732,7 @@ def verrijk_batch_start():
         try:
             with app_obj.app_context():
                 from ..enrich import verrijk_batch
-                verrijk_batch(limit=n)
+                verrijk_batch(limit=n, zone=zone)
         except Exception as exc:
             app_obj.logger.warning("verrijk-batch faalde: %s", str(exc)[:160])
         finally:

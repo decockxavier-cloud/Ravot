@@ -82,7 +82,8 @@ def test_batch_maakt_voorstellen(app):
         for i in range(3):
             db.session.add(Event(source="osm", ext_id=f"node/{i}", slug=f"p-{i}",
                 title=f"Plek {i}", is_permanent=True, gemeente="Gent",
-                categories=["buiten"], age_min=0, age_max=12, lat=51.0, lng=3.7))
+                categories=["buiten"], age_min=0, age_max=12, lat=51.0, lng=3.7,
+                quality=45))   # middenzone -> doelwit van de standaard batch
         db.session.commit()
         def fake(prompt, system):
             import json

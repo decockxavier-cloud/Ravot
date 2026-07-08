@@ -120,3 +120,19 @@ def test_feed_sync_end_to_end(app):
         ev = Event.query.filter_by(source="feed").first()
         assert ev and ev.title == "Kindertheater Pinokkio" and not ev.pending
         assert ev.quality is not None
+
+
+def test_verrijking_richt_op_middenzone_dichtst_bij_groen(app):
+    """te_verrijken(zone='midden') pakt enkel de middenzone, hoogste score eerst."""
+    from app.enrich import te_verrijken
+    from app.models import Setting
+    with app.app_context():
+        db.session.merge(Setting(key="kwaliteit_min_lijst", value="30"))
+        db.session.merge(Setting(key="kwaliteit_hoog", value="60"))
+        for i, q in [("laag", 10), ("mid-laag", 35), ("mid-hoog", 55), ("groen", 80)]:
+            db.session.add(_ev(slug=f"z-{i}", title=f"Plek {i}", quality=q))
+        db.session.commit()
+        kand = te_verrijken(limit=10, zone="midden")
+        slugs = [e.slug for e in kand]
+        assert slugs == ["z-mid-hoog", "z-mid-laag"]   # enkel midden, 55 vóór 35
+        assert "z-laag" not in slugs and "z-groen" not in slugs

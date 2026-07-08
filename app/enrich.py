@@ -145,28 +145,47 @@ def verrijk_plek(event, generate=None):
 
 # ------------------------------------------------ wachtrij (batch) --
 
-def te_verrijken(limit=20):
-    """Permanente, zichtbare plekken die nog geen voorstel hebben."""
-    from .models import Event, EnrichProposal
+def te_verrijken(limit=20, zone="midden"):
+    """Kandidaten voor AI-verrijking: permanente, zichtbare plekken zonder
+    voorstel.
+
+    zone="midden" (standaard): enkel de middenzone (kwaliteit_min ≤ score <
+    kwaliteit_hoog), met de fiches die het díchtst bij de groene drempel zitten
+    eerst — die hebben aan één beschrijving genoeg om voorrang te halen, dus het
+    hoogste rendement per batch. Binnen gelijke score krijgen fiches zonder
+    beschrijving voorrang (daar voegt de AI het meeste toe).
+    zone="alles": elke kandidaat (oud gedrag), nieuwste eerst."""
+    from .models import Event, EnrichProposal, get_int
     from .extensions import db
     heeft_voorstel = db.session.query(EnrichProposal.event_id)
-    return (Event.query
-            .filter(Event.is_permanent.is_(True),
-                    Event.pending.is_(False),
-                    Event.hidden.is_(False),
-                    ~Event.id.in_(heeft_voorstel))
-            .order_by(Event.id.desc())
-            .limit(limit).all())
+    q = Event.query.filter(
+        Event.is_permanent.is_(True),
+        Event.pending.is_(False),
+        Event.hidden.is_(False),
+        ~Event.id.in_(heeft_voorstel))
+    if zone == "midden":
+        k_min = get_int("kwaliteit_min_lijst", 30)
+        k_hoog = get_int("kwaliteit_hoog", 60)
+        q = q.filter(Event.quality.isnot(None),
+                     Event.quality >= k_min,
+                     Event.quality < k_hoog)
+        # dichtst bij groen eerst; daarna: lege beschrijving eerst
+        geen_tekst = db.case((db.or_(Event.description.is_(None),
+                                     Event.description == ""), 0), else_=1)
+        q = q.order_by(Event.quality.desc(), geen_tekst.asc())
+    else:
+        q = q.order_by(Event.id.desc())
+    return q.limit(limit).all()
 
 
-def verrijk_batch(limit=20, generate=None):
+def verrijk_batch(limit=20, generate=None, zone="midden"):
     """Genereer AI-voorstellen voor tot 'limit' plekken en zet ze in de wachtrij.
     Geeft (aantal_gelukt, aantal_mislukt) terug. Traag op CPU: bedoeld als
-    achtergrond- of nachtelijke batch."""
+    achtergrond- of nachtelijke batch. zone stuurt de selectie (zie te_verrijken)."""
     from .models import EnrichProposal
     from .extensions import db
     gelukt = mislukt = 0
-    for ev in te_verrijken(limit):
+    for ev in te_verrijken(limit, zone=zone):
         try:
             v = verrijk_plek(ev, generate=generate)
         except Exception:

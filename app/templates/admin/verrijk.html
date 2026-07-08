@@ -25,10 +25,25 @@
   <p class="hint">Genereer in de achtergrond voorstellen voor plekken die er nog geen hebben.
     Ze verschijnen in <a href="{{ url_for('admin.nazicht') }}">Nazicht</a> ter goedkeuring.
     Traag op CPU — begin klein.</p>
+  {% if tellers %}
+  <div class="badges" style="margin-bottom:10px">
+    <span class="badge">🟡 middenzone open ({{ tellers.k_min }}–{{ tellers.k_hoog }}): <strong>{{ tellers.midden }}</strong></span>
+    <span class="badge">alle open kandidaten: {{ tellers.totaal_open }}</span>
+  </div>
+  <p class="hint">Tip: de middenzone geeft het hoogste rendement — die fiches hebben
+    aan één beschrijving genoeg om voorrang te halen. De fiches die het dichtst bij
+    de groene drempel zitten, worden eerst behandeld.</p>
+  {% endif %}
   <form method="post" action="{{ url_for('admin.verrijk_batch_start') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label>Aantal plekken
       <input type="number" name="n" value="10" min="1" max="100" style="width:6em">
+    </label>
+    <label style="margin-left:10px">Selectie
+      <select name="zone">
+        <option value="midden">Middenzone (aanbevolen)</option>
+        <option value="alles">Alle kandidaten</option>
+      </select>
     </label>
     <button class="btn btn-zon" type="submit">Genereer voorstellen</button>
   </form>
