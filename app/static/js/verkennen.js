@@ -63,10 +63,36 @@
         .addTo(map)
         .bindPopup(fiche, { minWidth: 250, maxWidth: 300, className: "fiche-popup" });
     });
-    if (data.markers && data.markers.length) {
+    if (!data.gezocht && data.markers && data.markers.length) {
       var pts = data.markers.filter(function (m) { return m.lat != null; })
                             .map(function (m) { return [m.lat, m.lng]; });
-      if (pts.length) map.fitBounds(pts, { padding: [30, 30], maxZoom: 13 });
+      if (pts.length) map.fitBounds(pts, { padding: [30, 30], maxZoom: 15 });
+    }
+
+    // "Plekken in mijn buurt": zoom via browser-locatie op de eigen positie.
+    var knop = document.getElementById("inbuurt");
+    if (knop && navigator.geolocation) {
+      knop.addEventListener("click", function () {
+        var oud = knop.textContent;
+        knop.disabled = true;
+        knop.textContent = "📍 Locatie zoeken…";
+        navigator.geolocation.getCurrentPosition(function (pos) {
+          var lat = pos.coords.latitude, lng = pos.coords.longitude;
+          map.setView([lat, lng], 15);
+          L.circleMarker([lat, lng], {
+            radius: 9, color: "#2e7d32", weight: 3,
+            fillColor: "#4caf50", fillOpacity: 0.6
+          }).addTo(map).bindPopup("Jouw locatie").openPopup();
+          knop.disabled = false;
+          knop.textContent = oud;
+        }, function () {
+          knop.disabled = false;
+          knop.textContent = oud;
+          alert("We konden je locatie niet ophalen. Sta locatietoegang toe in je browser en probeer opnieuw.");
+        }, { enableHighAccuracy: true, timeout: 8000 });
+      });
+    } else if (knop) {
+      knop.style.display = "none";   // geen geolocatie in deze browser
     }
   }
   if (document.readyState === "loading")

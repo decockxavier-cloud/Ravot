@@ -11,6 +11,7 @@
   <input type="hidden" name="filter" value="{{ filter_type }}">
   <button class="btn btn-klein" type="submit">Zoek</button>
 </form>
+<button type="button" id="inbuurt" class="btn btn-klein btn-stil" style="margin:6px 0">📍 Plekken in mijn buurt</button>
 <div class="filterbalk" role="group" aria-label="Filteren">
   <a class="filterchip {{ 'aan' if not filter_type }}" href="{{ url_for('public.verkennen', q=zoek) }}">Alles</a>
   <a class="filterchip {{ 'aan' if filter_type=='gratis' }}" href="{{ url_for('public.verkennen', filter='gratis', q=zoek) }}">🆓 Gratis</a>
@@ -27,7 +28,7 @@
 <div id="map" role="application" aria-label="Kaart met kinderactiviteiten"
      data-center="{{ center|tojson|forceescape }}"
      data-markers="{{ markers|tojson|forceescape }}"></div>
-<script type="application/json" id="map-data">{{ {"center": center, "zoom": zoom, "markers": markers}|tojson|safe }}</script>
+<script type="application/json" id="map-data">{{ {"center": center, "zoom": zoom, "gezocht": gezocht, "markers": markers}|tojson|safe }}</script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="{{ url_for('static', filename='js/verkennen.js') }}" defer></script>
 {% endblock %}

@@ -144,11 +144,12 @@ def _add_dated_and_permanent():
     return dated, poi
 
 
-def test_permanente_poi_zichtbaar_op_ontdek(client, app):
+def test_permanente_poi_niet_op_ontdek(client, app):
+    """Permanente plekken horen op de kaart, niet in de Ontdek-lijst."""
     _add_dated_and_permanent()
     r = client.get("/ontdek")
     assert r.status_code == 200
-    assert "Speeltuin Altijd Open" in r.get_data(as_text=True)
+    assert "Speeltuin Altijd Open" not in r.get_data(as_text=True)
 
 
 def test_permanente_poi_op_kaart(client, app):
@@ -376,8 +377,9 @@ def test_wikidata_regio_scopes_ontdubbeld(app):
     assert len(scopes) == 2                                              # België (1x) + NL
 
 
-def test_vandaag_valt_terug_op_permanente_pois(client, app):
-    """Zonder gedateerde events tonen Vandaag/Weekend toch permanente plekken."""
+def test_vandaag_toont_geen_permanente_pois(client, app):
+    """Permanente plekken (speeltuinen e.d.) horen op de kaart, niet in de
+    tijdgebonden feeds Vandaag/Weekend."""
     from app.models import Event
     from app.extensions import db as _db
     _db.session.add(Event(source="osm", ext_id="node/9", slug="speeltuin-fallback",
@@ -386,7 +388,7 @@ def test_vandaag_valt_terug_op_permanente_pois(client, app):
     _db.session.commit()
     for pad in ("/vandaag", "/weekend"):
         html = client.get(pad).get_data(as_text=True)
-        assert "Speeltuin Fallback" in html, pad
+        assert "Speeltuin Fallback" not in html, pad
 
 
 # --------------------------------------------------------------- dedup --
@@ -497,3 +499,18 @@ def test_osm_kasteel_en_natuurgebied(app):
     nat = osm.normalise({"type": "way", "id": 52, "center": {"lat": 51.1, "lon": 4.4},
                          "tags": {"leisure": "nature_reserve", "name": "Het Zwin"}})
     assert nat["categories"] == ["natuur"]
+
+
+def test_detailpagina_toont_kaartje_en_adres(client, app):
+    """Een permanente plek toont nu een kaartje + routebeschrijving op de fiche."""
+    from app.models import Event
+    from app.extensions import db as _db
+    _db.session.add(Event(source="osm", ext_id="node/50", slug="speeltuin-detail",
+        title="Speeltuin Park", is_permanent=True, gemeente="Gent", postcode="9000",
+        adres="Parklaan 1", lat=51.05, lng=3.72, age_min=1, age_max=12,
+        categories=["buiten"], is_free=True))
+    _db.session.commit()
+    html = client.get("/e/speeltuin-detail").get_data(as_text=True)
+    assert 'id="minimap"' in html and 'data-lat="51.05"' in html   # kaartje
+    assert "Routebeschrijving" in html                              # route-link
+    assert "Parklaan 1" in html                                     # adres

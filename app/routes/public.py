@@ -348,7 +348,6 @@ def vandaag():
         # Bezoeker zonder profiel: toon gewoon wat er vandaag te doen is.
         # (De landingspagina staat op "/" — de Vandaag-tab hoort de lijst te tonen.)
         rows = _gast_rows("vandaag")
-    rows = vul_aan_met_permanente(rows, profile)
     if not rows:
         log("zero_result", scope="vandaag", postcode=guest_profile().get("postcode")
             or (fam.postcode if fam else None))
@@ -368,7 +367,6 @@ def deze_week():
     profile, fam = build_profile()
     has_profile = bool(fam or guest_profile().get("postcode"))
     rows = scored_events(profile, "deze-week") if has_profile else _gast_rows("deze-week")
-    rows = vul_aan_met_permanente(rows, profile)
     return render_template("public/lijst.html", rows=rows, scope="deze week",
                            title="Deze week", answer=None,
                            regen=rows[0].get("regen") if rows else None,
@@ -380,7 +378,6 @@ def weekend():
     profile, fam = build_profile()
     has_profile = bool(fam or guest_profile().get("postcode"))
     rows = scored_events(profile, "weekend") if has_profile else _gast_rows("weekend")
-    rows = vul_aan_met_permanente(rows, profile)
     return render_template("public/lijst.html", rows=rows, scope="dit weekend",
                            title="Dit weekend", answer=None,
                            regen=rows[0].get("regen") if rows else None,
@@ -404,7 +401,7 @@ def ontdek():
     per_pagina = get_int("ontdek_per_pagina", 24) or 24
     now = datetime.utcnow()
 
-    q = geldige_events(Event.query, now)
+    q = geldige_events(Event.query, now).filter(Event.is_permanent.is_(False))
     centrum = _zoek_centrum(zoek) if zoek else None
     if zoek and not centrum:
         # Geen bekende plaats → zoek op tekst (titel/gemeente)
@@ -502,7 +499,8 @@ def verkennen():
 
     markers = [_kaart_marker(e) for e in evs]
     return render_template("public/verkennen.html", markers=markers, center=center,
-                           zoom=zoom, zoek=zoek, filter_type=filter_type, aantal=len(markers),
+                           zoom=zoom, zoek=zoek, gezocht=bool(centrum),
+                           filter_type=filter_type, aantal=len(markers),
                            family=fam, active="verkennen", title="Verkennen")
 
 
