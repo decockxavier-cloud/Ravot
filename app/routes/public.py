@@ -468,7 +468,7 @@ def verkennen():
     centrum = _zoek_centrum(zoek) if zoek else None
     if centrum:
         center = [centrum[0], centrum[1]]
-        zoom = 12
+        zoom = 14
     elif profile.lat:
         center = [profile.lat, profile.lng]
         zoom = 11

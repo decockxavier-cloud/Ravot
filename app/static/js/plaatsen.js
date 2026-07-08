@@ -1,11 +1,17 @@
 /* Autocomplete voor stad/postcode. Werkt op elk input met data-plaatsen.
-   - vult een <datalist> met canonieke suggesties ("Gent (9000)")
-   - bij keuze: postcode/gemeente netjes splitsen naar gekoppelde velden
-     (data-vul-postcode / data-vul-gemeente = selector van het doelveld) */
+   Na keuze krijgt het veld de juiste waarde (postcode of naam) en worden
+   gekoppelde velden (data-vul-postcode / data-vul-gemeente) mee gevuld.
+   Voor de kaart laten we "Naam (9000)" staan: de server gebruikt de postcode,
+   zodat dubbelzinnige namen (bv. meerdere 'Beveren') toch juist landen. */
 (function () {
   "use strict";
   var velden = document.querySelectorAll("input[data-plaatsen]");
   if (!velden.length) return;
+
+  function kies(sel) {
+    if (!sel) return null;
+    try { return document.querySelector(sel); } catch (e) { return null; }
+  }
 
   velden.forEach(function (veld, i) {
     var lijst = document.createElement("datalist");
@@ -15,19 +21,23 @@
     veld.setAttribute("autocomplete", "off");
 
     var timer = null, laatste = "";
+
+    function verwerkKeuze() {
+      var m = veld.value.trim().match(/^(.+) \((\d{4})\)$/);
+      if (!m) return false;
+      var pc = kies(veld.dataset.vulPostcode);
+      var gm = kies(veld.dataset.vulGemeente);
+      if (pc) pc.value = m[2];
+      if (gm) gm.value = m[1];
+      if (veld.dataset.zelf === "postcode") veld.value = m[2];
+      else if (veld.dataset.zelf === "gemeente" && (pc || gm)) veld.value = m[1];
+      return true;
+    }
+
+    veld.addEventListener("change", verwerkKeuze);
     veld.addEventListener("input", function () {
+      if (verwerkKeuze()) return;
       var q = veld.value.trim();
-      // Gekozen uit de lijst? ("Naam (9999)") -> splitsen en klaar.
-      var m = q.match(/^(.+) \((\d{4})\)$/);
-      if (m) {
-        var pc = document.querySelector(veld.dataset.vulPostcode || "");
-        var gm = document.querySelector(veld.dataset.vulGemeente || "");
-        if (pc) pc.value = m[2];
-        if (gm) gm.value = m[1];
-        if (veld.dataset.vulPostcode && veld.dataset.zelf === "gemeente") veld.value = m[1];
-        if (veld.dataset.zelf === "postcode") veld.value = m[2];
-        return;
-      }
       if (q.length < 2 || q === laatste) return;
       clearTimeout(timer);
       timer = setTimeout(function () {
@@ -42,8 +52,8 @@
               lijst.appendChild(opt);
             });
           })
-          .catch(function () { /* stil falen: veld blijft gewoon werken */ });
-      }, 180);
+          .catch(function () { /* stil falen */ });
+      }, 160);
     });
   });
 })();

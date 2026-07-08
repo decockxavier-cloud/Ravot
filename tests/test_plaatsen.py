@@ -33,3 +33,18 @@ def test_geo_gebruikt_offline_lijst_zonder_netwerk(app):
         assert coord is not None and abs(coord[0] - 50.94) < 0.1
         # deelgemeente ook
         assert geo.zoek_centrum("Rumbeke") is not None
+
+
+def test_zoek_centrum_gebruikt_postcode_uit_label(app):
+    """'Beveren (8800)' moet naar 8800 (bij Roeselare) zoomen, niet naar een
+    andere Beveren op naam."""
+    from app import geo
+    with app.app_context():
+        via_label = geo.zoek_centrum("Beveren (8800)")
+        via_postcode = geo.zoek_centrum("8800")
+        assert via_label is not None
+        assert via_label == via_postcode          # label -> zelfde als de postcode
+        # en dat is niet de Antwerpse Beveren (9120)
+        anders = geo.zoek_centrum("9120")
+        if anders:
+            assert abs(via_label[1] - anders[1]) > 0.3   # duidelijk andere lengtegraad

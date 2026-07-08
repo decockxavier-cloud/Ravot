@@ -42,7 +42,7 @@ def onboarding():
     if request.method == "POST":
         current_year = datetime.now(timezone.utc).year
         ages = [int(a) for a in request.form.getlist("age") if a.strip().isdigit()]
-        postcode = request.form.get("postcode", "").strip()[:4]
+        postcode = re.sub(r"\D", "", request.form.get("postcode", ""))[:4]
         if not ages or len(postcode) != 4:
             flash("Vul minstens één leeftijd en je postcode in.", "error")
             return render_template("account/onboarding.html", categories=CATEGORIES,
@@ -80,7 +80,7 @@ def profiel():
     """Mijn Ravot — dashboard met bewaard, te reviewen, scores en vrienden."""
     fam = me()
     if request.method == "POST":
-        fam.postcode = request.form.get("postcode", fam.postcode).strip()[:4]
+        fam.postcode = re.sub(r"\D", "", request.form.get("postcode", fam.postcode or ""))[:4] or fam.postcode
         fam.radius_km = int(request.form.get("radius", fam.radius_km))
         fam.budget_pref = request.form.get("budget", fam.budget_pref)
         fam.newsletter_opt_in = request.form.get("newsletter") == "on"
@@ -129,7 +129,7 @@ def instellingen():
     """Gezinsinstellingen (postcode, kinderen, mails). Los van het dashboard."""
     fam = me()
     if request.method == "POST":
-        fam.postcode = request.form.get("postcode", fam.postcode).strip()[:4]
+        fam.postcode = re.sub(r"\D", "", request.form.get("postcode", fam.postcode or ""))[:4] or fam.postcode
         fam.radius_km = int(request.form.get("radius", fam.radius_km))
         fam.budget_pref = request.form.get("budget", fam.budget_pref)
         fam.newsletter_opt_in = request.form.get("newsletter") == "on"
