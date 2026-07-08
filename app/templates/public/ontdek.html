@@ -18,21 +18,28 @@
          data-plaatsen data-zelf="gemeente"
          placeholder="🔍 Zoek op naam of gemeente…" aria-label="Zoek">
   <input type="hidden" name="sort" value="{{ sort }}">
+  <input type="hidden" name="wanneer" value="{{ wanneer }}">
   <input type="hidden" name="filter" value="{{ filter_type }}">
   <button class="btn btn-klein" type="submit">Zoek</button>
 </form>
 
 <div class="filterbalk" role="group" aria-label="Sorteren">
   <span class="filter-label">Sorteer:</span>
-  <a class="filterchip {{ 'aan' if sort=='score' }}" href="{{ url_for('public.ontdek', sort='score', filter=filter_type, q=zoek) }}">😄 Best gescoord</a>
-  <a class="filterchip {{ 'aan' if sort=='datum' }}" href="{{ url_for('public.ontdek', sort='datum', filter=filter_type, q=zoek) }}">📅 Eerst gepland</a>
+  <a class="filterchip {{ 'aan' if sort=='score' }}" href="{{ url_for('public.ontdek', wanneer=wanneer, sort='score', filter=filter_type, q=zoek) }}">😄 Best gescoord</a>
+  <a class="filterchip {{ 'aan' if sort=='datum' }}" href="{{ url_for('public.ontdek', wanneer=wanneer, sort='datum', filter=filter_type, q=zoek) }}">📅 Eerst gepland</a>
 </div>
 <div class="filterbalk" role="group" aria-label="Filteren">
   <span class="filter-label">Toon:</span>
-  <a class="filterchip {{ 'aan' if not filter_type }}" href="{{ url_for('public.ontdek', sort=sort, q=zoek) }}">Alles</a>
-  <a class="filterchip {{ 'aan' if filter_type=='gratis' }}" href="{{ url_for('public.ontdek', sort=sort, filter='gratis', q=zoek) }}">🆓 Gratis</a>
-  <a class="filterchip {{ 'aan' if filter_type=='binnen' }}" href="{{ url_for('public.ontdek', sort=sort, filter='binnen', q=zoek) }}">🏠 Binnen</a>
-  <a class="filterchip {{ 'aan' if filter_type=='buiten' }}" href="{{ url_for('public.ontdek', sort=sort, filter='buiten', q=zoek) }}">🌳 Buiten</a>
+  <a class="filterchip {{ 'aan' if not wanneer }}" href="{{ url_for('public.ontdek', sort=sort, filter=filter_type, q=zoek) }}">📆 Alle data</a>
+  <a class="filterchip {{ 'aan' if wanneer=='vandaag' }}" href="{{ url_for('public.ontdek', wanneer='vandaag', sort=sort, filter=filter_type, q=zoek) }}">Vandaag</a>
+  <a class="filterchip {{ 'aan' if wanneer=='deze-week' }}" href="{{ url_for('public.ontdek', wanneer='deze-week', sort=sort, filter=filter_type, q=zoek) }}">Deze week</a>
+  <a class="filterchip {{ 'aan' if wanneer=='weekend' }}" href="{{ url_for('public.ontdek', wanneer='weekend', sort=sort, filter=filter_type, q=zoek) }}">Dit weekend</a>
+</div>
+<div class="filterbalk">
+  <a class="filterchip {{ 'aan' if not filter_type }}" href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, q=zoek) }}">Alles</a>
+  <a class="filterchip {{ 'aan' if filter_type=='gratis' }}" href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, filter='gratis', q=zoek) }}">🆓 Gratis</a>
+  <a class="filterchip {{ 'aan' if filter_type=='binnen' }}" href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, filter='binnen', q=zoek) }}">🏠 Binnen</a>
+  <a class="filterchip {{ 'aan' if filter_type=='buiten' }}" href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, filter='buiten', q=zoek) }}">🌳 Buiten</a>
 </div>
 <p class="resultaat-teller">{{ totaal }} activiteiten{% if max_pagina > 1 %} · pagina {{ pagina }}/{{ max_pagina }}{% endif %}
   · <a href="{{ url_for('account.toevoegen') }}">Ken je een plek die ontbreekt? Voeg ze toe →</a></p>
@@ -47,11 +54,11 @@
   {% if max_pagina > 1 %}
   <nav class="paginering" aria-label="Pagina's">
     {% if pagina > 1 %}
-      <a class="btn btn-stil btn-klein" href="{{ url_for('public.ontdek', sort=sort, filter=filter_type, q=zoek, p=pagina-1) }}">← Vorige</a>
+      <a class="btn btn-stil btn-klein" href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, filter=filter_type, q=zoek, p=pagina-1) }}">← Vorige</a>
     {% endif %}
     <span class="pag-teller">{{ pagina }} / {{ max_pagina }}</span>
     {% if pagina < max_pagina %}
-      <a class="btn btn-klein" href="{{ url_for('public.ontdek', sort=sort, filter=filter_type, q=zoek, p=pagina+1) }}">Volgende →</a>
+      <a class="btn btn-klein" href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, filter=filter_type, q=zoek, p=pagina+1) }}">Volgende →</a>
     {% endif %}
   </nav>
   {% endif %}

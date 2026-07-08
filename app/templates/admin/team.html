@@ -30,13 +30,13 @@
       <td>{{ '🛡️ beheerder' if a.role == 'admin' else '🔍 reviewer' }}</td>
       <td>{{ '✓' if a.totp_confirmed else 'nog in te stellen' }}</td>
       <td>
-        {% if a.role == 'reviewer' %}
+        {% if a.id != session.get('admin_id') %}
         <form method="post" action="{{ url_for('admin.team_verwijder', aid=a.id) }}"
-              onsubmit="return confirm('Reviewer {{ a.email }} verwijderen?');">
+              onsubmit="return confirm('{{ 'Beheerder' if a.role == 'admin' else 'Reviewer' }} {{ a.email }} verwijderen?');">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn btn-klein btn-stil" type="submit">Verwijder</button>
         </form>
-        {% endif %}
+        {% else %}<span class="hint">(jij)</span>{% endif %}
       </td>
     </tr>
     {% endfor %}

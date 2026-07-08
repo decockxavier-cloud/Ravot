@@ -117,5 +117,16 @@ elke nacht automatisch een sync (cron).</p>
     <div class="acties"><button class="btn btn-stil" type="submit">✉️ Stuur testmail naar mezelf</button></div>
   </form>
 </div>
+
+<div class="card">
+  <h2 style="margin-top:0">AI-verrijking (Ollama)</h2>
+  <p class="hint">Lokale AI voor beschrijvingen en categorieën (menselijke goedkeuring blijft
+    verplicht via Nazicht). URL: <code>{{ status.ollama.url }}</code> · model:
+    <code>{{ status.ollama.model or 'niet ingesteld' }}</code></p>
+  <form method="post" action="{{ url_for('admin.test_ollama') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="acties"><button class="btn btn-stil" type="submit">🤖 Test Ollama</button></div>
+  </form>
+</div>
 <p><a href="{{ url_for('admin.dashboard') }}">← Terug naar dashboard</a></p>
 {% endblock %}

@@ -212,6 +212,8 @@ def upsert_event(data):
     ev.organizer_id = org.id if org else None
     ev.venue_id = venue.id if venue else None
     ev.series_id = series.id
+    from ..kwaliteit import bereken_kwaliteit
+    ev.quality = bereken_kwaliteit(ev, heeft_reviews=False)
     return ev
 
 

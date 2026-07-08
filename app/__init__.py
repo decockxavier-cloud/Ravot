@@ -152,6 +152,7 @@ def register_cli(app):
              "ALTER TABLE events ADD COLUMN pending BOOLEAN DEFAULT FALSE NOT NULL"),
             ("submitted_by", "ALTER TABLE events ADD COLUMN submitted_by INTEGER"),
             ("partner_until", "ALTER TABLE events ADD COLUMN partner_until TIMESTAMP"),
+            ("quality", "ALTER TABLE events ADD COLUMN quality INTEGER"),
         ):
             if kol not in cols:
                 db.session.execute(text(ddl))
@@ -314,6 +315,13 @@ def register_cli(app):
         from .enrich import verrijk_batch
         gelukt, mislukt = verrijk_batch(limit=n)
         click.echo(f"Verrijking klaar: {gelukt} voorstellen, {mislukt} mislukt.")
+
+    @app.cli.command("herbereken-kwaliteit")
+    def herbereken_kwaliteit_cmd():
+        """Kwaliteitsscore (0-100) van alle fiches herberekenen."""
+        from .kwaliteit import herbereken_alles
+        n = herbereken_alles()
+        click.echo(f"Kwaliteit herberekend: {n} fiches bijgewerkt.")
 
     @app.cli.command("dedup")
     def dedup_cmd():

@@ -88,4 +88,16 @@
   </table>
   {% else %}<p class="hint">Nog geen scores.</p>{% endif %}
 </section>
+<section class="card">
+  <h2 style="margin-top:0">Datakwaliteit</h2>
+  <p class="hint">Volledigheid van de fiches (0–100). Onder {{ kwaliteit.min }} = uit de lijsten
+    (kaart toont alles); vanaf {{ kwaliteit.hoog_v }} = voorrang. Drempels: Instellingen.
+    Herberekenen: <code>flask herbereken-kwaliteit</code>.</p>
+  <div class="badges">
+    <span class="badge">🟢 hoog (≥{{ kwaliteit.hoog_v }}): {{ kwaliteit.hoog }}</span>
+    <span class="badge">🟡 midden: {{ kwaliteit.midden }}</span>
+    <span class="badge">🔴 laag (&lt;{{ kwaliteit.min }}): {{ kwaliteit.laag }}</span>
+    {% if kwaliteit.onbekend %}<span class="badge">⚪ nog niet berekend: {{ kwaliteit.onbekend }}</span>{% endif %}
+  </div>
+</section>
 {% endblock %}

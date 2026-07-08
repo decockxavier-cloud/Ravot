@@ -177,6 +177,18 @@ def dashboard():
         "nieuw_deze_week": Family.query.filter(Family.created_at >= week_start).count(),
     }
 
+    # Kwaliteitsverdeling: waar staat de data? (drijft de kwaliteitslaag)
+    from ..models import get_int
+    k_min = get_int("kwaliteit_min_lijst", 30)
+    k_hoog = get_int("kwaliteit_hoog", 60)
+    kwaliteit = {
+        "hoog": Event.query.filter(Event.quality >= k_hoog).count(),
+        "midden": Event.query.filter(Event.quality >= k_min, Event.quality < k_hoog).count(),
+        "laag": Event.query.filter(Event.quality < k_min).count(),
+        "onbekend": Event.query.filter(Event.quality.is_(None)).count(),
+        "min": k_min, "hoog_v": k_hoog,
+    }
+
     # Populairste gemeenten (naar aantal komende events)
     top_gemeenten = db.session.query(
         Event.gemeente, db.func.count(Event.id).label("n")) \
@@ -187,7 +199,7 @@ def dashboard():
     nieuwste_gezinnen = Family.query.order_by(Family.created_at.desc()).limit(5).all()
     recent_reviews = Review.query.order_by(Review.created_at.desc()).limit(10).all()
 
-    return render_template("admin/dashboard.html", stats=stats,
+    return render_template("admin/dashboard.html", kwaliteit=kwaliteit, stats=stats,
                            top_gemeenten=top_gemeenten, nieuwste_gezinnen=nieuwste_gezinnen,
                            reviews=recent_reviews, title="Dashboard",
                            family=None, active="dashboard")
@@ -271,23 +283,63 @@ def verbindingen():
     # Extra bronnen: aan/uit + eventueel een key + aantal events per bron.
     from ..models import get_bool as _gb
     status["uit"]["aan"] = _gb("bron_uit_aan")
-    status["bronnen"] = [
-        {"code": "tm", "naam": "Ticketmaster (Family)", "aan": _gb("bron_tm_aan"),
-         "key_nodig": True, "geconfigureerd": bool(cfg.get("TICKETMASTER_API_KEY")),
-         "aantal": Event.query.filter_by(source="tm").count(), "test": True},
-        {"code": "tv", "naam": "Toerisme Vlaanderen", "aan": _gb("bron_tv_aan"),
-         "key_nodig": False, "geconfigureerd": True,
-         "aantal": Event.query.filter_by(source="tv").count(), "test": False},
-        {"code": "osm", "naam": "OpenStreetMap (speeltuinen, musea e.d.)", "aan": _gb("bron_osm_aan"),
-         "key_nodig": False, "geconfigureerd": True,
-         "aantal": Event.query.filter_by(source="osm").count(), "test": False},
-        {"code": "wd", "naam": "Wikidata (musea/attracties met foto's)", "aan": _gb("bron_wd_aan"),
-         "key_nodig": False, "geconfigureerd": True,
-         "aantal": Event.query.filter_by(source="wd").count(), "test": False},
-    ]
+    # Dynamisch uit de bronnen-registry: elke bron die bestaat, staat hier —
+    # er kan er nooit meer één "vergeten" worden op deze pagina.
+    from ..services.sources import REGISTRY
+    _extra = {"tm": {"key_nodig": True, "geconfigureerd": bool(cfg.get("TICKETMASTER_API_KEY")), "test": True}}
+    status["bronnen"] = []
+    for code, (setting_key, label, _mod) in REGISTRY.items():
+        if code == "uit":
+            continue  # heeft zijn eigen blok bovenaan
+        ex = _extra.get(code, {})
+        status["bronnen"].append({
+            "code": code, "naam": label, "aan": _gb(setting_key),
+            "key_nodig": ex.get("key_nodig", False),
+            "geconfigureerd": ex.get("geconfigureerd", True),
+            "aantal": Event.query.filter_by(source=code).count(),
+            "test": ex.get("test", False),
+        })
+    # Ollama (AI-verrijking): bereikbaar? welk model?
+    status["ollama"] = {"url": cfg.get("OLLAMA_URL", ""), "model": cfg.get("OLLAMA_MODEL", "")}
     return render_template("admin/verbindingen.html", status=status,
                            syncstatus=syncstatus, sync_bezig=sync_bezig,
                            title="Verbindingen", family=None, active=None)
+
+
+@bp.route("/test-ollama", methods=["POST"])
+@admin_required
+@limiter.limit("10/hour")
+def test_ollama():
+    """Test of de Ollama-container bereikbaar is en het model geladen kan worden."""
+    import requests as _rq
+    from flask import current_app
+    url = (current_app.config.get("OLLAMA_URL") or "").rstrip("/")
+    model = current_app.config.get("OLLAMA_MODEL") or ""
+    if not url:
+        flash("OLLAMA_URL is niet geconfigureerd in .env.", "error")
+        return redirect(url_for("admin.verbindingen"))
+    try:
+        r = _rq.get(f"{url}/api/tags", timeout=8)
+        r.raise_for_status()
+        modellen = [m.get("name", "") for m in (r.json().get("models") or [])]
+        if not modellen:
+            flash("Ollama draait, maar er is nog geen model gepulld. "
+                  "Draai: docker compose exec ollama ollama pull " + (model or "qwen2.5:7b"), "error")
+        elif model and not any(model in m for m in modellen):
+            flash(f"Ollama draait met {', '.join(modellen)}, maar het ingestelde model "
+                  f"'{model}' ontbreekt. Pull het of pas OLLAMA_MODEL aan.", "error")
+        else:
+            # kleine echte generatie als ultieme proef
+            g = _rq.post(f"{url}/api/generate", json={
+                "model": model or modellen[0], "prompt": "Zeg exact: OK", "stream": False,
+            }, timeout=60)
+            g.raise_for_status()
+            antwoord = (g.json().get("response") or "").strip()[:40]
+            audit("ollama-test uitgevoerd")
+            flash(f"Ollama werkt ✅ — model antwoordde: \"{antwoord}\"", "ok")
+    except Exception as exc:
+        flash(f"Ollama niet bereikbaar: {str(exc)[:150]}", "error")
+    return redirect(url_for("admin.verbindingen"))
 
 
 @bp.route("/test-uit", methods=["POST"])
@@ -774,13 +826,16 @@ def team_verwijder(aid):
     a = db.session.get(Admin, aid)
     if not a:
         abort(404)
-    if a.role != "reviewer":
-        flash("Enkel reviewer-accounts kun je hier verwijderen.", "error")
+    if a.id == session.get("admin_id"):
+        flash("Je kunt jezelf niet verwijderen.", "error")
         return redirect(url_for("admin.team"))
-    audit(f"reviewer verwijderd: {a.email}")
+    if a.role == "admin" and Admin.query.filter_by(role="admin").count() <= 1:
+        flash("Er moet minstens één beheerder overblijven.", "error")
+        return redirect(url_for("admin.team"))
+    audit(f"teamlid verwijderd: {a.email} ({a.role})")
     db.session.delete(a)
     db.session.commit()
-    flash("Reviewer verwijderd.", "ok")
+    flash(f"{'Beheerder' if a.role == 'admin' else 'Reviewer'} verwijderd.", "ok")
     return redirect(url_for("admin.team"))
 
 
@@ -816,6 +871,9 @@ def nazicht_wijziging(pid, actie):
                 if veld in EDIT_VELDEN:            # whitelist, ook bij toepassen
                     setattr(v.event, veld, waarde)
         v.status = "approved"
+        if v.event:
+            from ..kwaliteit import bereken_kwaliteit
+            v.event.quality = bereken_kwaliteit(v.event)
         audit(f"fichewijziging toegepast: #{v.id} (event {v.event_id})")
         flash("Wijziging toegepast op de fiche.", "ok")
     elif actie == "afwijzen":

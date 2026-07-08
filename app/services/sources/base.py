@@ -121,6 +121,8 @@ def upsert_event(data):
         # Volledige ext_id in de slug -> geen botsingen bij naamloze POI's.
         ev.slug = f"{slugify(data['title'])}-{source}-{slugify(str(ext_id))}"[:290]
     ev.venue_id = venue.id if venue else None
+    from ...kwaliteit import bereken_kwaliteit
+    ev.quality = bereken_kwaliteit(ev, heeft_reviews=False)  # reviews tellen mee bij herbereken
     db.session.flush()
     return ev
 

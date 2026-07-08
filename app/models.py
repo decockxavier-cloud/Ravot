@@ -102,6 +102,7 @@ class Event(db.Model):
     dupe_of = db.Column(db.Integer, index=True)   # id van het canonieke event waar dit een dubbel van is
     pending = db.Column(db.Boolean, default=False, nullable=False, index=True)  # door gebruiker ingediend, wacht op review
     partner_until = db.Column(db.DateTime, index=True)   # Ravot Partner actief tot (betaald, nooit invloed op score)
+    quality = db.Column(db.Integer, index=True)         # 0-100 volledigheid van de fiche (app/kwaliteit.py)
     submitted_by = db.Column(db.Integer, db.ForeignKey("families.id"))  # wie het toevoegde (gebruikersbijdrage)
     slug = db.Column(db.String(300), unique=True, index=True)
     title = db.Column(db.String(255), nullable=False)
@@ -317,6 +318,8 @@ SETTING_DEFS = {
     "odoo_factuur_auto": ("0", "Odoo: factuur meteen valideren (1) of als concept klaarzetten (0)", "bool"),
     "founding_aan": ("1", "Founding partners: gratis eerste jaar aanbieden", "bool"),
     "founding_max": ("20", "Founding partners: maximum aantal plaatsen", "int"),
+    "kwaliteit_min_lijst": ("30", "Kwaliteit: minimumscore om in lijsten/gemeentepagina's te staan (kaart toont alles)", "int"),
+    "kwaliteit_hoog": ("60", "Kwaliteit: score vanaf wanneer een fiche voorrang krijgt", "int"),
 }
 
 

@@ -70,14 +70,23 @@ def test_admin_maakt_en_verwijdert_reviewer(client, app):
         assert Admin.query.filter_by(email="nieuw@rev.be").first() is None
 
 
-def test_admin_account_niet_verwijderbaar_via_team(client, app):
-    """SECURITY: het admin-account zelf kan niet via teambeheer verwijderd worden."""
+def test_andere_admin_wel_verwijderbaar_maar_met_grenzen(client, app):
+    """Een admin mag een ANDERE beheerder verwijderen, maar nooit zichzelf,
+    en de laatste beheerder is onverwijderbaar."""
     aid = _maak(app, "admin")
     ander = _maak(app, "admin")
     _login_als(client, aid)
+    # andere admin verwijderen: mag
     client.post(f"/beheer/team/{ander}/verwijder", data={"csrf_token": "x"})
     with app.app_context():
-        assert db.session.get(Admin, ander) is not None   # blijft bestaan
+        assert db.session.get(Admin, ander) is None
+    # zichzelf verwijderen: geweigerd
+    client.post(f"/beheer/team/{aid}/verwijder", data={"csrf_token": "x"})
+    with app.app_context():
+        assert db.session.get(Admin, aid) is not None
+    # en als laatste admin sowieso onverwijderbaar (ook via een omweg)
+    with app.app_context():
+        assert Admin.query.filter_by(role="admin").count() == 1
 
 
 def test_zwak_reviewerwachtwoord_geweigerd(client, app):

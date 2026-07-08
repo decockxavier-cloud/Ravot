@@ -55,6 +55,16 @@ def geldige_events(query, now=None):
         ))
 
 
+def kwaliteit_filter(query):
+    """Weer fiches onder de kwaliteitsdrempel uit lijsten/gemeentepagina's.
+    NULL (nog niet berekend) blijft zichtbaar; de kaart gebruikt dit NIET
+    (daar is een kaal speelpleintje met enkel coordinaten nog nuttig)."""
+    drempel = get_int("kwaliteit_min_lijst", 30)
+    if drempel <= 0:
+        return query
+    return query.filter(db.or_(Event.quality.is_(None), Event.quality >= drempel))
+
+
 def _zoek_centrum(zoek):
     """Zet een zoekterm (gemeente of postcode) om naar een (lat, lng)-middelpunt.
     Robuust: postcodes uit de statische tabel, plaatsnamen via centroids of
@@ -436,9 +446,10 @@ def ontdek():
     from ..models import get_int
     profile, fam = build_profile()
     has_profile = bool(fam or guest_profile().get("postcode"))
-    sort = request.args.get("sort", "score")       # score | datum | gratis
+    sort = request.args.get("sort", "datum")       # datum (standaard) | score
     zoek = (request.args.get("q") or "").strip().lower()
     filter_type = request.args.get("filter", "")   # ''|gratis|binnen|buiten
+    wanneer = request.args.get("wanneer", "")      # ''|vandaag|deze-week|weekend
     try:
         pagina = max(1, int(request.args.get("p", 1)))
     except ValueError:
@@ -446,7 +457,11 @@ def ontdek():
     per_pagina = get_int("ontdek_per_pagina", 24) or 24
     now = datetime.utcnow()
 
-    q = geldige_events(Event.query, now).filter(Event.is_permanent.is_(False))
+    q = kwaliteit_filter(geldige_events(Event.query, now).filter(Event.is_permanent.is_(False)))
+    if wanneer in ("vandaag", "deze-week", "weekend"):
+        w_start, w_end = window(wanneer)
+        q = q.filter(Event.start <= w_end,
+                     (Event.end >= w_start) | (Event.start >= w_start))
     centrum = _zoek_centrum(zoek) if zoek else None
     if zoek and not centrum:
         # Geen bekende plaats → zoek op tekst (titel/gemeente)
@@ -482,10 +497,13 @@ def ontdek():
                      "family_total": None})
 
     if sort == "score":
-        rows.sort(key=lambda r: ((r["agg"] or {}).get("avg") or 0, r["event"].start or now),
+        rows.sort(key=lambda r: ((r["agg"] or {}).get("avg") or 0,
+                                 r["event"].quality or 0,          # completere fiches eerst
+                                 r["event"].start or now),
                   reverse=True)
-    else:  # datum
-        rows.sort(key=lambda r: r["event"].start or now)
+    else:  # datum (Eerst gepland) — bij gelijke datum wint de completere fiche
+        rows.sort(key=lambda r: ((r["event"].start or now),
+                                 -(r["event"].quality or 0)))
 
     totaal = len(rows)
     max_pagina = max(1, (totaal + per_pagina - 1) // per_pagina)
@@ -493,7 +511,7 @@ def ontdek():
     begin = (pagina - 1) * per_pagina
     pagina_rows = rows[begin:begin + per_pagina]
 
-    return render_template("public/ontdek.html", rows=pagina_rows, sort=sort, zoek=zoek,
+    return render_template("public/ontdek.html", rows=pagina_rows, sort=sort, zoek=zoek, wanneer=wanneer,
                            filter_type=filter_type, pagina=pagina, max_pagina=max_pagina,
                            totaal=totaal, has_profile=has_profile, family=fam,
                            active="ontdek", title="Ontdek alles")
@@ -647,7 +665,10 @@ def _gemeente_events(gemeente, facet=None):
     if facet in FACET_AGES:
         lo, hi = FACET_AGES[facet]
         q = q.filter(Event.age_min <= hi, Event.age_max >= lo)
-    return q.order_by(Event.start.is_(None).asc(), Event.start).limit(100).all()
+    q = kwaliteit_filter(q)
+    # Gedateerde events op datum; permanente plekken daarna, beste fiches eerst.
+    return q.order_by(Event.start.is_(None).asc(), Event.start,
+                      Event.quality.desc().nullslast()).limit(100).all()
 
 
 @bp.route("/<gemeente>")
