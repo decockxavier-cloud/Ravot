@@ -61,18 +61,22 @@ def bereken_kwaliteit(ev, heeft_reviews=None):
 
 
 def herbereken_alles(batch=500):
-    """Herbereken de kwaliteit van alle events. Retourneert aantal bijgewerkt."""
+    """Herbereken de kwaliteit van alle events. Retourneert aantal bijgewerkt.
+
+    Werkt in batches over id's (geen server-side cursor), zodat tussentijdse
+    commits de iteratie niet breken — op PostgreSQL geeft yield_per + commit
+    anders 'named cursor isn't valid anymore'."""
     from .extensions import db
     from .models import Event, Review
-    # één set met alle event-ids die reviews hebben (spaart n queries uit)
     met_reviews = {r[0] for r in db.session.query(Review.event_id).distinct().all()}
+    ids = [r[0] for r in db.session.query(Event.id).all()]
     n = 0
-    for ev in Event.query.yield_per(batch):
-        nieuw = bereken_kwaliteit(ev, heeft_reviews=ev.id in met_reviews)
-        if ev.quality != nieuw:
-            ev.quality = nieuw
-            n += 1
-        if n and n % batch == 0:
-            db.session.commit()
-    db.session.commit()
+    for i in range(0, len(ids), batch):
+        blok = ids[i:i + batch]
+        for ev in Event.query.filter(Event.id.in_(blok)).all():
+            nieuw = bereken_kwaliteit(ev, heeft_reviews=ev.id in met_reviews)
+            if ev.quality != nieuw:
+                ev.quality = nieuw
+                n += 1
+        db.session.commit()
     return n

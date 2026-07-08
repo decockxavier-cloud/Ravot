@@ -120,13 +120,32 @@
     <div class="nazicht-item">
       <div style="flex:1">
         <strong>{{ v.event.title if v.event else '—' }}</strong>
-        <p class="meta">voorstel: {{ v.categorie or '—' }} · {{ v.leeftijd_min }}–{{ v.leeftijd_max }} jaar
-          · {{ 'binnen' if v.binnen else 'buiten' }}</p>
-        {% if v.event and v.event.description %}
-          <p class="hint">huidige tekst: {{ v.event.description }}</p>{% endif %}
+        {% if v.event %}
+        <p class="meta">
+          <a href="{{ url_for('admin.activiteit_bewerk', event_id=v.event.id) }}">⚙️ bewerk fiche</a> ·
+          <a href="{{ url_for('public.event', slug=v.event.slug) }}" target="_blank">↗ publieke fiche</a> ·
+          bron: {{ v.event.source }} · {{ v.event.gemeente or '' }} {{ v.event.postcode or '' }}
+        </p>
+        {% endif %}
+        <div class="vergelijk" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:8px 0">
+          <div style="background:#f7f7f5;padding:8px;border-radius:8px">
+            <p class="hint" style="margin:0 0 4px"><strong>Nu op de fiche</strong></p>
+            <p class="meta">categorie: {{ v.event.categories[0] if v.event and v.event.categories else '—' }}
+              · {{ v.event.age_min if v.event else '?' }}–{{ v.event.age_max if v.event else '?' }} jaar
+              · {{ 'binnen' if v.event and v.event.indoor else 'buiten' }}</p>
+            <p class="hint" style="white-space:pre-wrap">{{ (v.event.description if v.event else '') or '(geen beschrijving)' }}</p>
+          </div>
+          <div style="background:#eef6ee;padding:8px;border-radius:8px">
+            <p class="hint" style="margin:0 0 4px"><strong>AI stelt voor</strong></p>
+            <p class="meta">categorie: {{ v.categorie or '—' }}
+              · {{ v.leeftijd_min }}–{{ v.leeftijd_max }} jaar
+              · {{ 'binnen' if v.binnen else 'buiten' }}</p>
+            <p class="hint">↓ pas de tekst gerust aan vóór je goedkeurt</p>
+          </div>
+        </div>
         <form method="post" action="{{ url_for('admin.verrijk_voorstel', pid=v.id, actie='goedkeuren') }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <textarea name="beschrijving" rows="3" style="width:100%">{{ v.beschrijving }}</textarea>
+          <textarea name="beschrijving" rows="4" style="width:100%">{{ v.beschrijving }}</textarea>
           <div class="nazicht-acties">
             <button class="btn btn-klein" type="submit">✓ Goedkeuren &amp; toepassen</button>
           </div>

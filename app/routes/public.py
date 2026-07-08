@@ -65,12 +65,12 @@ def kwaliteit_filter(query):
     return query.filter(db.or_(Event.quality.is_(None), Event.quality >= drempel))
 
 
-def _zoek_centrum(zoek):
+def _zoek_centrum(zoek, strict=False):
     """Zet een zoekterm (gemeente of postcode) om naar een (lat, lng)-middelpunt.
     Robuust: postcodes uit de statische tabel, plaatsnamen via centroids of
     (als laatste redmiddel) een geocoder met cache. None als er niets past."""
     from .. import geo
-    return geo.zoek_centrum(zoek)
+    return geo.zoek_centrum(zoek, strict=strict)
 
 
 def _filter_buurt(rows, centrum, straal_km=20):
@@ -462,9 +462,9 @@ def ontdek():
         w_start, w_end = window(wanneer)
         q = q.filter(Event.start <= w_end,
                      (Event.end >= w_start) | (Event.start >= w_start))
-    centrum = _zoek_centrum(zoek) if zoek else None
+    centrum = _zoek_centrum(zoek, strict=True) if zoek else None
     if zoek and not centrum:
-        # Geen bekende plaats → zoek op tekst (titel/gemeente)
+        # Geen exacte plaats → zoek op tekst (titel/gemeente)
         like = f"%{zoek}%"
         q = q.filter(db.or_(db.func.lower(Event.title).like(like),
                             db.func.lower(Event.gemeente).like(like)))

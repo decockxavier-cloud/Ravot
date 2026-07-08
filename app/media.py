@@ -8,9 +8,35 @@ _CAT_IMG = {
 }
 
 
+def _veilige_afbeelding(url):
+    """Geef enkel een afbeeldings-URL terug die veilig laadt, anders None.
+    - http:// wordt https:// (anders blokkeert de browser 'mixed content' en
+      krijg je een kapot-foto-icoon zonder dat onerror altijd vuurt);
+    - enkel URL's die op een echt beeldformaat lijken of van bekende
+      beeld-hosts komen, worden vertrouwd."""
+    if not url or not isinstance(url, str):
+        return None
+    u = url.strip()
+    if u.startswith("//"):
+        u = "https:" + u
+    if u.startswith("http://"):
+        u = "https://" + u[len("http://"):]
+    if not u.startswith("https://"):
+        return None
+    laag = u.lower().split("?")[0]
+    goede_host = ("upload.wikimedia.org", "commons.wikimedia.org",
+                  "wikimedia.org", "uitdatabank", "cultuurdatabank",
+                  "googleusercontent.com", "cloudfront.net")
+    if laag.endswith((".jpg", ".jpeg", ".png", ".webp", ".gif")):
+        return u
+    if any(h in laag for h in goede_host):
+        return u
+    return None   # onbetrouwbaar -> liever de nette categorie-illustratie
+
+
 def poi_image(event):
-    """URL van de best beschikbare afbeelding. Nooit None."""
-    echt = getattr(event, "image_url", None)
+    """URL van de best beschikbare afbeelding. Nooit None, nooit een kapotte."""
+    echt = _veilige_afbeelding(getattr(event, "image_url", None))
     if echt:
         return echt
     if getattr(event, "indoor", False):
@@ -22,4 +48,4 @@ def poi_image(event):
 
 
 def has_echte_foto(event):
-    return bool(getattr(event, "image_url", None))
+    return bool(_veilige_afbeelding(getattr(event, "image_url", None)))

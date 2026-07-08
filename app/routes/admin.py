@@ -937,3 +937,96 @@ def feed_verwijder(fid):
     db.session.commit()
     flash("Feed verwijderd.", "ok")
     return redirect(url_for("admin.feeds"))
+
+
+# Velden die de beheerder rechtstreeks op een fiche mag aanpassen.
+ADMIN_EVENT_VELDEN = ("title", "description", "adres", "postcode", "gemeente",
+                      "source_url", "image_url", "indoor", "is_free",
+                      "age_min", "age_max")
+
+
+@bp.route("/activiteiten")
+@admin_required
+def activiteiten():
+    """Zoek- en beheeroverzicht van ALLE fiches (ook permanente plekken en
+    pending). Lost op dat de admin anders niet aan de meeste data kan."""
+    from ..models import Event
+    zoek = (request.args.get("q") or "").strip()
+    bron = request.args.get("bron", "")
+    status = request.args.get("status", "")
+    q = Event.query
+    if zoek:
+        like = f"%{zoek.lower()}%"
+        q = q.filter(db.or_(db.func.lower(Event.title).like(like),
+                            db.func.lower(Event.gemeente).like(like),
+                            db.func.lower(Event.postcode).like(like)))
+    if bron:
+        q = q.filter(Event.source == bron)
+    if status == "pending":
+        q = q.filter(Event.pending.is_(True))
+    elif status == "live":
+        q = q.filter(Event.pending.is_(False))
+    rijen = q.order_by(Event.updated_at.desc()).limit(200).all()
+    from ..services.sources import REGISTRY
+    return render_template("admin/activiteiten.html", rijen=rijen, zoek=zoek,
+                           bron=bron, status=status, bronnen=list(REGISTRY),
+                           title="Activiteiten", family=None, active="activiteiten")
+
+
+@bp.route("/activiteiten/<int:event_id>", methods=["GET", "POST"])
+@admin_required
+def activiteit_bewerk(event_id):
+    from ..models import Event
+    ev = db.session.get(Event, event_id) or abort(404)
+    if request.method == "POST":
+        f = request.form
+        import re as _re
+        for veld in ADMIN_EVENT_VELDEN:
+            if veld not in f:
+                continue
+            waarde = (f.get(veld) or "").strip()
+            if veld in ("indoor", "is_free"):
+                setattr(ev, veld, f.get(veld) == "1")
+            elif veld in ("age_min", "age_max"):
+                if waarde.isdigit():
+                    setattr(ev, veld, int(waarde))
+            elif veld == "postcode":
+                ev.postcode = _re.sub(r"\D", "", waarde)[:8] or None
+            else:
+                setattr(ev, veld, waarde or None)
+        # categorie apart (kan meerdere zijn; hier één hoofdcategorie)
+        cat = (f.get("categorie") or "").strip()
+        if cat:
+            ev.categories = [cat]
+        # pending togglen (publiceren / terug in wachtrij)
+        if "pending" in f:
+            ev.pending = f.get("pending") == "1"
+        # coördinaten herberekenen uit postcode als gevraagd
+        if f.get("herbereken_geo") and ev.postcode:
+            from ..geo import postcode_coord
+            coord = postcode_coord(ev.postcode)
+            if coord:
+                ev.lat, ev.lng = coord
+        from ..kwaliteit import bereken_kwaliteit
+        ev.quality = bereken_kwaliteit(ev)
+        db.session.commit()
+        audit(f"activiteit bewerkt door admin: #{ev.id} '{ev.title}'")
+        flash("Fiche opgeslagen.", "ok")
+        return redirect(url_for("admin.activiteit_bewerk", event_id=ev.id))
+    from ..models import CATEGORIES
+    return render_template("admin/activiteit_bewerk.html", ev=ev,
+                           categories=CATEGORIES, title=f"Bewerk: {ev.title}",
+                           family=None, active="activiteiten")
+
+
+@bp.route("/activiteiten/<int:event_id>/verwijder", methods=["POST"])
+@admin_required
+def activiteit_verwijder(event_id):
+    from ..models import Event
+    ev = db.session.get(Event, event_id) or abort(404)
+    titel = ev.title
+    db.session.delete(ev)
+    db.session.commit()
+    audit(f"activiteit verwijderd door admin: '{titel}'")
+    flash(f"'{titel}' verwijderd.", "ok")
+    return redirect(url_for("admin.activiteiten"))

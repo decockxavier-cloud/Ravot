@@ -63,8 +63,10 @@ def _geocode(term):
     return coord
 
 
-def _offline_plaats(z):
-    """Plaatsnaam -> coord via de canonieke offline lijst (exact, dan prefix)."""
+def _offline_plaats(z, exact_only=False):
+    """Plaatsnaam -> coord via de canonieke offline lijst (exact, dan prefix).
+    exact_only=True: enkel exacte naam (geen prefix), zodat een losse zoekterm
+    geen willekeurige gemeente kaapt."""
     import unicodedata
     from .plaatsen import PLAATSEN
     def plat(t):
@@ -77,11 +79,14 @@ def _offline_plaats(z):
             return (lat, lng)
         if prefix is None and n.startswith(zp):
             prefix = (lat, lng)
-    return prefix
+    return None if exact_only else prefix
 
 
-def zoek_centrum(term):
-    """Zoekterm (postcode of plaatsnaam) -> (lat, lng)-middelpunt, of None."""
+def zoek_centrum(term, strict=False):
+    """Zoekterm (postcode of plaatsnaam) -> (lat, lng)-middelpunt, of None.
+
+    strict=True: enkel een postcode of een EXACTE gemeentenaam telt als plaats.
+    Zo kaapt een losse term als 'poppen' (prefix van 'Poppel') de tekstzoek niet."""
     if not term:
         return None
     z = term.strip().lower()
@@ -95,12 +100,14 @@ def zoek_centrum(term):
             return coord
     if z.isdigit() and len(z) in (4, 5):
         return postcode_coord(z)
-    offline = _offline_plaats(z)          # canonieke lijst eerst (geen netwerk)
+    offline = _offline_plaats(z, exact_only=strict)   # canonieke lijst (geen netwerk)
     if offline:
         return offline
     pc = PostcodeCentroid.query.filter(db.func.lower(PostcodeCentroid.gemeente) == z).first()
     if pc:
         return (pc.lat, pc.lng)
+    if strict:
+        return None
     pc = PostcodeCentroid.query.filter(
         db.func.lower(PostcodeCentroid.gemeente).like(f"{z}%")).first()
     if pc:

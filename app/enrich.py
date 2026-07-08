@@ -199,4 +199,7 @@ def pas_voorstel_toe(proposal, beschrijving=None):
         if proposal.binnen is not None:
             ev.indoor = bool(proposal.binnen)
     proposal.status = "approved"
+    if ev:
+        from .kwaliteit import bereken_kwaliteit
+        ev.quality = bereken_kwaliteit(ev)
     db.session.commit()

@@ -1,0 +1,35 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<h1>Activiteiten</h1>
+<p class="hint">Zoek en bewerk élke fiche — ook permanente plekken (die staan niet
+  in Ontdek) en items in de wachtrij. Hier vind je terug wat je net goedkeurde.</p>
+
+<form method="get" class="zoekbalk-admin" style="margin-bottom:14px">
+  <input type="search" name="q" value="{{ zoek }}" placeholder="Naam, gemeente of postcode…" style="min-width:220px">
+  <select name="bron"><option value="">alle bronnen</option>
+    {% for b in bronnen %}<option value="{{ b }}" {{ 'selected' if bron==b }}>{{ b }}</option>{% endfor %}
+  </select>
+  <select name="status"><option value="">alle statussen</option>
+    <option value="live" {{ 'selected' if status=='live' }}>live</option>
+    <option value="pending" {{ 'selected' if status=='pending' }}>in wachtrij</option>
+  </select>
+  <button class="btn btn-stil" type="submit">Zoek</button>
+</form>
+
+<table class="tabel">
+  <tr><th>Titel</th><th>Bron</th><th>Plaats</th><th>Wanneer</th><th>Kwal.</th><th>Status</th><th></th></tr>
+  {% for e in rijen %}
+  <tr>
+    <td>{{ e.title }}</td>
+    <td>{{ e.source }}</td>
+    <td>{{ e.gemeente or '' }} {{ e.postcode or '' }}</td>
+    <td>{{ '📌 vast' if e.is_permanent else (e.start.strftime('%d/%m/%y') if e.start else '—') }}</td>
+    <td>{{ e.quality if e.quality is not none else '—' }}</td>
+    <td>{{ '⏳ wachtrij' if e.pending else '✅ live' }}</td>
+    <td><a class="btn btn-klein" href="{{ url_for('admin.activiteit_bewerk', event_id=e.id) }}">Bewerk</a></td>
+  </tr>
+  {% else %}<tr><td colspan="7" class="leeg">Niets gevonden.</td></tr>
+  {% endfor %}
+</table>
+<p class="hint">Max 200 resultaten getoond — verfijn met de zoekvelden.</p>
+{% endblock %}

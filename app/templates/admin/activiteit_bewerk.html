@@ -1,0 +1,50 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<p><a href="{{ url_for('admin.activiteiten') }}">← Terug naar activiteiten</a></p>
+<h1>Fiche bewerken</h1>
+<div class="badges" style="margin-bottom:10px">
+  <span class="badge">bron: {{ ev.source }}</span>
+  <span class="badge">id: {{ ev.id }}</span>
+  <span class="badge">kwaliteit: {{ ev.quality if ev.quality is not none else '—' }}</span>
+  {% if ev.attribution %}<span class="badge">{{ ev.attribution }}</span>{% endif %}
+  <a class="badge" href="{{ url_for('public.event', slug=ev.slug) }}" target="_blank">↗ bekijk publieke fiche</a>
+</div>
+
+<form method="post" class="kaart-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label>Titel <input type="text" name="title" value="{{ ev.title or '' }}" maxlength="200"></label>
+  <label>Beschrijving <textarea name="description" rows="5" maxlength="2000">{{ ev.description or '' }}</textarea></label>
+  <div class="veldrij">
+    <label>Gemeente <input type="text" name="gemeente" value="{{ ev.gemeente or '' }}"></label>
+    <label>Postcode <input type="text" name="postcode" value="{{ ev.postcode or '' }}" maxlength="8"></label>
+  </div>
+  <label>Adres <input type="text" name="adres" value="{{ ev.adres or '' }}"></label>
+  <label>Website <input type="url" name="source_url" value="{{ ev.source_url or '' }}"></label>
+  <label>Foto-URL <input type="url" name="image_url" value="{{ ev.image_url or '' }}"></label>
+  <div class="veldrij">
+    <label>Categorie
+      <select name="categorie">
+        <option value="">— (ongewijzigd)</option>
+        {% for c in categories %}<option value="{{ c }}" {{ 'selected' if ev.categories and ev.categories[0]==c }}>{{ c }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Leeftijd van <input type="number" name="age_min" value="{{ ev.age_min if ev.age_min is not none else '' }}" min="0" max="18" style="width:80px"></label>
+    <label>tot <input type="number" name="age_max" value="{{ ev.age_max if ev.age_max is not none else '' }}" min="0" max="18" style="width:80px"></label>
+  </div>
+  <div class="veldrij">
+    <label class="check"><input type="checkbox" name="indoor" value="1" {{ 'checked' if ev.indoor }}> Binnen</label>
+    <label class="check"><input type="checkbox" name="is_free" value="1" {{ 'checked' if ev.is_free }}> Gratis</label>
+    <label class="check"><input type="checkbox" name="pending" value="1" {{ 'checked' if ev.pending }}> In wachtrij (niet publiek)</label>
+    <label class="check"><input type="checkbox" name="herbereken_geo" value="1"> Coördinaten opnieuw uit postcode</label>
+  </div>
+  <div class="acties" style="justify-content:space-between">
+    <button class="btn btn-zon" type="submit">Opslaan</button>
+  </div>
+</form>
+
+<form method="post" action="{{ url_for('admin.activiteit_verwijder', event_id=ev.id) }}"
+      onsubmit="return confirm('Deze fiche definitief verwijderen?');" style="margin-top:20px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button class="btn btn-klein btn-stil" type="submit">🗑️ Verwijder fiche</button>
+</form>
+{% endblock %}
