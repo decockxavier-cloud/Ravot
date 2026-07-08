@@ -23,7 +23,7 @@
     var timer = null, laatste = "";
 
     function verwerkKeuze() {
-      var m = veld.value.trim().match(/^(.+) \((\d{4})\)$/);
+      var m = veld.value.trim().match(/^(.+?)\s*\((\d{4,5})\)/);
       if (!m) return false;
       var pc = kies(veld.dataset.vulPostcode);
       var gm = kies(veld.dataset.vulGemeente);

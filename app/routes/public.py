@@ -10,13 +10,14 @@ SEO-architectuur (SEO/GEO-plan):
   /uitstap/<slug>         permanente editie-reekspagina (301-doel voor afgelopen events)
   /sitemap.xml /robots.txt /llms.txt
 """
+import re
 from datetime import datetime, timedelta
 
 from flask import (Blueprint, abort, current_app, g, redirect, render_template,
                    request, session, url_for, Response)
 
 from ..extensions import db, limiter
-from ..models import (Event, Family, Interaction, PostcodeCentroid, Review,
+from ..models import (get_int, Event, Family, Interaction, PostcodeCentroid, Review,
                       SavedEvent, Share, Connection)
 from ..pricing import aggregate_ravotscore, euro_indicator, family_price
 from ..scoring import Profile, score_event
@@ -95,6 +96,13 @@ def guest_profile():
     return session.get("guest", {})
 
 
+def _veilig_int(waarde, standaard):
+    try:
+        return int(str(waarde).strip() or standaard)
+    except (ValueError, TypeError):
+        return standaard
+
+
 def build_profile():
     from ..geo import postcode_coord
     fam = current_family()
@@ -114,7 +122,7 @@ def build_profile():
         child_ages=ages,
         lat=coord[0] if coord else None,
         lng=coord[1] if coord else None,
-        radius_km=int(guest.get("radius", 25)),
+        radius_km=_veilig_int(guest.get("radius") or get_int("default_radius", 25), 25),
         budget_pref=guest.get("budget", "all"),
     ), None
 
@@ -127,6 +135,36 @@ def log(type_, event_id=None, **meta):
 
 
 # -------------------------------------------------------------- tijdsvensters --
+
+DAGEN = ["ma", "di", "wo", "do", "vr", "za", "zo"]
+MAANDEN = ["", "jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep",
+           "okt", "nov", "dec"]
+
+
+def event_datum(ev, now=None):
+    """Leesbare, ondubbelzinnige datum voor een event.
+    - Lopende meerdaagse events (begonnen, nog bezig) => 'loopt nog t/m ...'
+      i.p.v. de (voorbije ogende) startdatum.
+    - Jaartal tonen zodra het niet het huidige jaar is (anders lijkt 14/02
+      volgend jaar op een voorbije datum)."""
+    if not ev or not ev.start:
+        return ""
+    now = now or datetime.utcnow()
+    einde = ev.end or ev.start
+    meerdaags = ev.end and ev.end.date() != ev.start.date()
+    # Al begonnen maar nog bezig:
+    if ev.start <= now <= einde:
+        if meerdaags:
+            return f"loopt nog t/m {einde.day} {MAANDEN[einde.month]} {einde.year}"
+        return "vandaag bezig"
+    d = ev.start
+    stuk = f"{DAGEN[d.weekday()]} {d.day} {MAANDEN[d.month]}"
+    if d.year != now.year:
+        stuk += f" {d.year}"
+    if d.hour or d.minute:
+        stuk += f" om {d.strftime('%H:%M')}"
+    return stuk
+
 
 def window(scope):
     now = datetime.utcnow()
@@ -233,9 +271,12 @@ def scored_events(profile, scope, extra_filter=None, limit=40, weer=True):
         if s > 0:
             # weerbonus: bij regen binnen omhoog, buiten omlaag
             if regen is not None:
-                if regen >= 50:
+                from ..models import get_int
+                r_hoog = get_int("regen_drempel", 50) or 50
+                r_laag = get_int("zon_drempel", 20) or 20
+                if regen >= r_hoog:
                     s *= 1.3 if e.indoor else 0.85
-                elif regen <= 20 and not e.indoor:
+                elif regen <= r_laag and not e.indoor:
                     s *= 1.1
             total, _ = family_price(e.price_info, profile.child_ages)
             rows.append({"event": e, "score": s, "agg": agg,
@@ -307,10 +348,14 @@ def proberen():
     """Anonieme snelstart: postcode + leeftijden, zonder account."""
     if request.method == "POST":
         ages = [int(a) for a in request.form.getlist("age") if a.strip().isdigit()]
+        try:
+            radius = int(re.sub(r"\D", "", request.form.get("radius", "") or "") or 25)
+        except ValueError:
+            radius = 25
         session["guest"] = {
-            "postcode": request.form.get("postcode", "").strip()[:4],
+            "postcode": re.sub(r"\D", "", request.form.get("postcode", ""))[:4],
             "ages": ages[:6],
-            "radius": request.form.get("radius", 25),
+            "radius": max(1, min(radius, 200)),
             "budget": request.form.get("budget", "all"),
         }
         session.permanent = True
@@ -770,16 +815,21 @@ def foto(pid):
 def api_plaatsen():
     """Autocomplete voor stad/postcode: canonieke suggesties uit de offline
     Belgische plaatsenlijst. Geen externe calls, dus snel en altijd consistent."""
-    from ..plaatsen import PLAATSEN
+    from ..plaatsen import PLAATSEN, PLAATS_LAND
     q = (request.args.get("q") or "").strip().lower()
     if len(q) < 2:
         return {"suggesties": []}
+    vlag = {"BE": "🇧🇪", "NL": "🇳🇱", "FR": "🇫🇷"}
+    def maak(zc, naam, lat, lng):
+        land = PLAATS_LAND.get(zc, "BE")
+        merk = "" if land == "BE" else f" {vlag.get(land, '')}"
+        return {"label": f"{naam} ({zc}){merk}", "postcode": zc,
+                "gemeente": naam, "lat": lat, "lng": lng, "land": land}
     uit = []
     if q.isdigit():                       # postcode-prefix
         for zc, naam, lat, lng in PLAATSEN:
             if zc.startswith(q):
-                uit.append({"label": f"{naam} ({zc})", "postcode": zc,
-                            "gemeente": naam, "lat": lat, "lng": lng})
+                uit.append(maak(zc, naam, lat, lng))
                 if len(uit) >= 8:
                     break
     else:                                 # naam-prefix (accentongevoelig)
@@ -789,8 +839,7 @@ def api_plaatsen():
         qp = plat(q)
         for zc, naam, lat, lng in PLAATSEN:
             if plat(naam).startswith(qp):
-                uit.append({"label": f"{naam} ({zc})", "postcode": zc,
-                            "gemeente": naam, "lat": lat, "lng": lng})
+                uit.append(maak(zc, naam, lat, lng))
                 if len(uit) >= 8:
                     break
     return {"suggesties": uit}

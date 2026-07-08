@@ -88,12 +88,12 @@ def zoek_centrum(term):
     # Autocomplete-keuze "gemeente (9000)" -> gebruik de postcode (die is uniek,
     # de naam niet: er zijn bv. meerdere 'Beveren').
     import re as _re
-    m = _re.search(r"\((\d{4})\)\s*$", z)
+    m = _re.search(r"\((\d{4,5})\)\s*$", z)
     if m:
         coord = postcode_coord(m.group(1))
         if coord:
             return coord
-    if z.isdigit() and len(z) == 4:
+    if z.isdigit() and len(z) in (4, 5):
         return postcode_coord(z)
     offline = _offline_plaats(z)          # canonieke lijst eerst (geen netwerk)
     if offline:

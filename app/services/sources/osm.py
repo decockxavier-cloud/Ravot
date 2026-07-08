@@ -144,10 +144,18 @@ def normalise(el):
         return None  # POORT: enkel kindvriendelijke tags
     cat, (age_min, age_max), indoor, check, naam_verplicht = TAG_CATEGORIE[kind]
 
-    naam = tags.get("name")
+    naam = (tags.get("name") or tags.get("name:nl") or tags.get("official_name")
+            or tags.get("name:fr") or tags.get("alt_name") or tags.get("loc_name"))
     if naam_verplicht and not naam:
         return None  # bv. een naamloos parkje -> geen bruikbare fiche
-    title = naam or LABELS.get(kind, "Uitstap")
+    if naam:
+        title = naam
+    else:
+        # Geen echte naam: maak het generieke label herkenbaar met straat of
+        # gemeente, zodat het geen kaal "Park" of "Speeltuin" wordt.
+        label = LABELS.get(kind, "Uitstap")
+        plek = tags.get("addr:street") or tags.get("addr:city")
+        title = f"{label} — {plek}" if plek else label
     if check and any(bad in title.lower() for bad in NIET_KINDVRIENDELIJK):
         return None  # bv. erotisch museum weren
 

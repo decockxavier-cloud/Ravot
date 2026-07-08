@@ -196,3 +196,9 @@ def test_vandaag_toont_lijst_voor_gasten(client, app):
     html = client.get("/vandaag").get_data(as_text=True)
     assert "GastEvent" in html                 # de lijst
     assert "Maak gratis profiel" not in html   # niet de landing
+
+
+def test_mijn_redirect_naar_profiel(client, app):
+    """'/mijn' zelf moet naar het dashboard leiden, niet 404."""
+    r = client.get("/mijn/")
+    assert r.status_code in (302, 308)

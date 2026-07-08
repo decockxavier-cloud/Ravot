@@ -9,7 +9,7 @@ from flask import current_app
 
 from ...extensions import db
 from ...models import get_bool
-from . import ticketmaster, toerisme, osm, wikidata
+from . import ticketmaster, toerisme, osm, wikidata, feeds
 from .base import run_source
 
 # naam -> (setting-key, label, adaptermodule)
@@ -19,6 +19,7 @@ REGISTRY = {
     "tv": ("bron_tv_aan", "Toerisme Vlaanderen", toerisme),
     "osm": ("bron_osm_aan", "OpenStreetMap", osm),
     "wd": ("bron_wd_aan", "Wikidata", wikidata),
+    "feed": ("bron_feed_aan", "Agenda-feeds (iCal/RSS)", feeds),
 }
 
 

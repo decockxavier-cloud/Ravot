@@ -1,0 +1,60 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<h1>Agenda-feeds 📅</h1>
+<p class="hint">Voeg iCal- of RSS-agenda's toe van cultuurcentra, toeristische
+  diensten, kinderboerderijen… Dit levert nette, lokale events — veel properder
+  dan ruwe kaartdata. Zet de bron "Agenda-feeds" aan bij Instellingen en draai
+  een sync om ze op te halen. <strong>Vertrouwd</strong> = events komen meteen
+  live; anders belanden ze eerst in Nazicht.</p>
+
+<section class="card">
+  <h2 style="margin-top:0">Feed toevoegen</h2>
+  <form method="post" class="kaart-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Naam <input type="text" name="naam" required maxlength="160" placeholder="CC De Spil, Roeselare"></label>
+    <label>URL (.ics of RSS) <input type="url" name="url" required maxlength="500" placeholder="https://…/agenda.ics"></label>
+    <div class="veldrij">
+      <label>Type
+        <select name="kind"><option value="ical">iCal (.ics)</option><option value="rss">RSS/Atom</option></select>
+      </label>
+      <label>Categorie
+        <select name="categorie">
+          <option value="cultuur">cultuur</option><option value="buiten">buiten</option>
+          <option value="natuur">natuur</option><option value="creatief">creatief</option>
+          <option value="sport">sport</option><option value="leren">leren</option>
+        </select>
+      </label>
+    </div>
+    <div class="veldrij">
+      <label>Gemeente (standaard) <input type="text" name="gemeente" maxlength="80"></label>
+      <label>Postcode (standaard) <input type="text" name="postcode" inputmode="numeric" maxlength="8"></label>
+    </div>
+    <label class="check"><input type="checkbox" name="trusted" checked> Vertrouwd (meteen live)</label>
+    <div class="acties"><button class="btn btn-zon" type="submit">Feed toevoegen</button></div>
+  </form>
+</section>
+
+<section class="card">
+  <h2 style="margin-top:0">Feeds ({{ feeds|length }})</h2>
+  <table class="tabel">
+    <tr><th>Naam</th><th>Type</th><th>Plaats</th><th>Vertrouwd</th><th>Laatste run</th><th></th></tr>
+    {% for f in feeds %}
+    <tr>
+      <td>{{ f.naam }}<br><span class="hint">{{ f.url }}</span></td>
+      <td>{{ f.kind }}</td>
+      <td>{{ f.gemeente or '' }} {{ f.postcode or '' }}</td>
+      <td>{{ '✓' if f.trusted else 'nazicht' }}</td>
+      <td>{{ f.last_result or '—' }}</td>
+      <td>
+        <form method="post" action="{{ url_for('admin.feed_verwijder', fid=f.id) }}"
+              onsubmit="return confirm('Feed verwijderen?');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-klein btn-stil" type="submit">Verwijder</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}<tr><td colspan="6" class="leeg">Nog geen feeds.</td></tr>
+    {% endfor %}
+  </table>
+</section>
+{% endblock %}

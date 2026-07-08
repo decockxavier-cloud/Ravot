@@ -74,6 +74,12 @@ def onboarding():
 
 # ------------------------------------------------------------------- profiel --
 
+@bp.route("/")
+def mijn_home():
+    """Wie /mijn intikt, hoort op zijn dashboard te landen."""
+    return redirect(url_for("account.profiel"))
+
+
 @bp.route("/profiel", methods=["GET", "POST"])
 @login_required
 def profiel():

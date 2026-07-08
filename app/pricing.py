@@ -87,7 +87,12 @@ def aggregate_ravotscore(reviews):
     }
     top_cost = max(costs, key=costs.get) if costs else None
     # Bayesiaans gewogen gemiddelde: PRIOR_N "onzichtbare" reviews op het midden.
-    PRIOR_N, PRIOR_SCORE = 3, 3.0
+    try:
+        from .models import get_int, get_setting
+        PRIOR_N = get_int("score_prior_n", 3) or 3
+        PRIOR_SCORE = float(get_setting("score_prior_waarde") or 3.0)
+    except Exception:
+        PRIOR_N, PRIOR_SCORE = 3, 3.0
     n = len(overall)
     ruw = sum(overall) / n
     gewogen = (PRIOR_N * PRIOR_SCORE + sum(overall)) / (PRIOR_N + n)

@@ -514,3 +514,40 @@ def test_detailpagina_toont_kaartje_en_adres(client, app):
     assert 'id="minimap"' in html and 'data-lat="51.05"' in html   # kaartje
     assert "Routebeschrijving" in html                              # route-link
     assert "Parklaan 1" in html                                     # adres
+
+
+def test_event_datum_lopend_toont_geen_voorbije_startdatum(app):
+    """Een lopende tentoonstelling (gestart 14/02, eindigt later dit jaar) mag
+    niet als voorbije 14/02 tonen, maar als 'loopt nog t/m ...'."""
+    from datetime import datetime, timedelta
+    from app.routes.public import event_datum
+    from app.models import Event
+    now = datetime(2026, 7, 8, 12, 0)
+    ev = Event(source="uit", slug="expo", title="Expo",
+               start=datetime(2026, 2, 14), end=datetime(2026, 12, 31))
+    tekst = event_datum(ev, now=now)
+    assert "loopt nog" in tekst and "14" not in tekst.split("t/m")[0]
+
+
+def test_event_datum_toekomst_toont_jaartal_bij_ander_jaar(app):
+    from datetime import datetime
+    from app.routes.public import event_datum
+    from app.models import Event
+    now = datetime(2026, 7, 8)
+    ev = Event(source="uit", slug="next", title="Next", start=datetime(2027, 2, 14, 10, 0))
+    tekst = event_datum(ev, now=now)
+    assert "2027" in tekst           # jaartal zichtbaar -> niet verwarrend met verleden
+
+
+def test_zoeken_op_postcode_in_lijst(client, app):
+    """De live-filter op Vandaag/Weekend moet ook op postcode kunnen matchen
+    (postcode zit nu in data-zoek)."""
+    from datetime import datetime
+    from app.models import Event
+    from app.extensions import db as _db
+    _db.session.add(Event(source="uit", ext_id="pc1", slug="pc-event", title="Iets Leuks",
+        start=datetime.utcnow(), gemeente="Gent", postcode="9000", lat=51.05, lng=3.72,
+        age_min=0, age_max=12, categories=["buiten"]))
+    _db.session.commit()
+    html = client.get("/vandaag").get_data(as_text=True)
+    assert 'data-zoek="' in html and "9000" in html   # postcode in doorzoekbare tekst

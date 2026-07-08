@@ -299,6 +299,7 @@ SETTING_DEFS = {
     "bron_tm_aan": ("0", "Bron: Ticketmaster — enkel Family-segment (BE)", "bool"),
     "bron_tv_aan": ("0", "Bron: Toerisme Vlaanderen — kindvriendelijke attracties", "bool"),
     "bron_osm_aan": ("0", "Bron: OpenStreetMap — speeltuinen, zoo, pretpark, musea", "bool"),
+    "bron_feed_aan": ("0", "Bron: agenda-feeds (iCal/RSS)", "bool"),
     "bron_wd_aan": ("0", "Bron: Wikidata — musea/attracties met officiële foto's", "bool"),
     "tv_max": ("2000", "Toerisme Vlaanderen: max. attracties per sync", "int"),
     "osm_tags": ("playground,park,nature_reserve,water_park,swimming_area,miniature_golf,"
@@ -519,6 +520,25 @@ class PartnerPayment(db.Model):
     odoo_invoice_ref = db.Column(db.String(40))      # bv. INV/2026/0042 of DRAFT
     operator = db.relationship("Operator")
     event = db.relationship("Event")
+
+
+class Feed(db.Model):
+    """Een vertrouwde agenda-feed (iCal of RSS) van bv. een cultuurcentrum of
+    toeristische dienst. Beheerder voegt ze toe; de feeds-adapter haalt ze op.
+    'trusted' = events van deze feed komen meteen live (anders in de wachtrij)."""
+    __tablename__ = "feeds"
+    id = db.Column(db.Integer, primary_key=True)
+    naam = db.Column(db.String(160), nullable=False)      # "CC De Spil, Roeselare"
+    url = db.Column(db.String(500), nullable=False)
+    kind = db.Column(db.String(8), default="ical", nullable=False)  # ical | rss
+    gemeente = db.Column(db.String(80))                   # standaardgemeente als de feed er geen geeft
+    postcode = db.Column(db.String(8))
+    categorie = db.Column(db.String(40))                  # standaardcategorie (bv. "cultuur")
+    trusted = db.Column(db.Boolean, default=True, nullable=False)
+    actief = db.Column(db.Boolean, default=True, nullable=False)
+    last_run = db.Column(db.DateTime)
+    last_result = db.Column(db.String(200))
+    created_at = db.Column(db.DateTime, default=utcnow)
 
 
 class GeoCache(db.Model):

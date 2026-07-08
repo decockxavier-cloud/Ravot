@@ -113,7 +113,7 @@ def upsert_event(data):
     for f in ("title", "description", "start", "end", "is_permanent",
               "gemeente", "postcode", "adres", "lat", "lng", "age_min", "age_max",
               "categories", "indoor", "is_free", "price_info", "image_url",
-              "source_url", "attribution"):
+              "source_url", "attribution", "pending"):
         if f in data:
             setattr(ev, f, data[f])
     ev.has_vlieg = False  # Vlieg is een publiq-label; nooit op andere bronnen

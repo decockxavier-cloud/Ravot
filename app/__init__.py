@@ -18,6 +18,8 @@ def create_app(config_object=Config):
     from .media import poi_image, has_echte_foto
     app.jinja_env.globals["poi_image"] = poi_image
     app.jinja_env.globals["has_echte_foto"] = has_echte_foto
+    from .routes.public import event_datum
+    app.jinja_env.globals["event_datum"] = event_datum
 
     @app.context_processor
     def _inject_nu():
@@ -218,7 +220,7 @@ def register_cli(app):
             added.append("enrich_proposals (tabel)")
         if "photos" not in insp.get_table_names():
             added.append("photos (tabel)")
-        for tabel in ("operators", "operator_claims", "edit_proposals", "partner_payments"):
+        for tabel in ("operators", "operator_claims", "edit_proposals", "partner_payments", "feeds"):
             if tabel not in insp.get_table_names():
                 added.append(f"{tabel} (tabel)")
         # nieuwe kolommen op bestaande operator/betaal-tabellen

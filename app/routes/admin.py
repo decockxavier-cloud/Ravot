@@ -837,3 +837,45 @@ def partners():
     return render_template("admin/partners.html", betalingen=betalingen,
                            odoo_actief=odoo.actief(), title="Partners",
                            family=None, active="partners")
+
+
+@bp.route("/feeds", methods=["GET", "POST"])
+@admin_required
+@limiter.limit("30/hour", methods=["POST"])
+def feeds():
+    """Beheer van vertrouwde agenda-feeds (iCal/RSS) van cultuurcentra e.d."""
+    from ..models import Feed
+    import re as _re
+    if request.method == "POST":
+        url = (request.form.get("url") or "").strip()
+        naam = (request.form.get("naam") or "").strip()[:160]
+        if not (url.startswith("http") and naam):
+            flash("Geef een naam en een geldige URL (http/https).", "error")
+            return redirect(url_for("admin.feeds"))
+        db.session.add(Feed(
+            naam=naam, url=url[:500],
+            kind="rss" if request.form.get("kind") == "rss" else "ical",
+            gemeente=(request.form.get("gemeente") or "").strip()[:80] or None,
+            postcode=_re.sub(r"\D", "", request.form.get("postcode") or "")[:8] or None,
+            categorie=(request.form.get("categorie") or "cultuur").strip()[:40],
+            trusted=bool(request.form.get("trusted")),
+        ))
+        db.session.commit()
+        audit(f"feed toegevoegd: {naam}")
+        flash("Feed toegevoegd. Draai een sync om de agenda op te halen.", "ok")
+        return redirect(url_for("admin.feeds"))
+    alle = Feed.query.order_by(Feed.naam).all()
+    return render_template("admin/feeds.html", feeds=alle, title="Agenda-feeds",
+                           family=None, active="feeds")
+
+
+@bp.route("/feeds/<int:fid>/verwijder", methods=["POST"])
+@admin_required
+def feed_verwijder(fid):
+    from ..models import Feed
+    f = db.session.get(Feed, fid) or abort(404)
+    audit(f"feed verwijderd: {f.naam}")
+    db.session.delete(f)
+    db.session.commit()
+    flash("Feed verwijderd.", "ok")
+    return redirect(url_for("admin.feeds"))
