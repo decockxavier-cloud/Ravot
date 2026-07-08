@@ -1,13 +1,19 @@
 # Coolify-compatibel. LET OP: nooit de pgdata-mapnaam wijzigen of wissen.
+# web hangt aan het externe proxy-netwerk (reverse proxy doet TLS/poorten);
+# db en ollama zitten enkel op het interne netwerk (nooit publiek bereikbaar).
 services:
   web:
     build: .
     env_file: .env
-    ports: ["8000:8000"]
+    expose:
+      - "8000"
     depends_on: [db]
     restart: unless-stopped
     volumes:
       - ravot_uploads:/data/uploads   # gebruikersfoto's, persistent over rebuilds
+    networks:
+      - internal
+      - proxy
   db:
     image: postgres:16-alpine
     environment:
@@ -17,13 +23,22 @@ services:
     volumes:
       - ravot_pgdata:/var/lib/postgresql/data
     restart: unless-stopped
+    networks:
+      - internal
   ollama:
     image: ollama/ollama:latest
     volumes:
       - ollama_models:/root/.ollama   # modellen blijven bewaard over rebuilds heen
     restart: unless-stopped
-    # Geen poort naar buiten: enkel intern bereikbaar als http://ollama:11434
+    # Geen poort, geen proxy-netwerk: enkel intern bereikbaar als http://ollama:11434
+    networks:
+      - internal
 volumes:
   ravot_pgdata:
   ollama_models:
   ravot_uploads:
+networks:
+  internal:
+    name: ravot_internal
+  proxy:
+    external: true
