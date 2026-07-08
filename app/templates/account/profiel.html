@@ -21,7 +21,7 @@
     <button type="button" class="kind-toevoegen" data-add-kind>+ nog een kind</button>
     <p class="hint">Alleen de leeftijd — nooit namen. De leeftijd groeit vanzelf mee.</p>
     <label for="pc">Postcode</label>
-    <input id="pc" type="text" name="postcode" value="{{ family.postcode }}" maxlength="4" pattern="[0-9]{4}">
+    <input id="pc" type="text" name="postcode" data-plaatsen data-zelf="postcode" value="{{ family.postcode }}" maxlength="4" pattern="[0-9]{4}">
     <label for="rad">Straal</label>
     <select id="rad" name="radius">
       {% for km in (10, 25, 50) %}<option value="{{ km }}" {{ 'selected' if family.radius_km == km }}>tot {{ km }} km</option>{% endfor %}

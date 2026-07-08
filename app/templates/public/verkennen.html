@@ -6,7 +6,7 @@
 {% block content %}
 <h1>Verkennen 🗺️</h1>
 <form method="get" action="{{ url_for('public.verkennen') }}" class="zoekrij">
-  <input type="search" name="q" value="{{ zoek }}" class="zoekveld"
+  <input type="search" name="q" data-plaatsen data-zelf="gemeente" value="{{ zoek }}" class="zoekveld"
          placeholder="🔍 Zoek op naam of gemeente…" aria-label="Zoek">
   <input type="hidden" name="filter" value="{{ filter_type }}">
   <button class="btn btn-klein" type="submit">Zoek</button>

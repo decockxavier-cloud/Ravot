@@ -458,3 +458,42 @@ def test_osm_adres_getoond_op_fiche(client, app):
     _db.session.commit()
     html = client.get("/e/museum-adres").get_data(as_text=True)
     assert "Jan Breydelstraat 5" in html
+
+
+def test_osm_gesloten_plek_geweerd(app):
+    """Verlaten/gesloten/voormalige OSM-plekken komen niet binnen."""
+    from app.services.sources import osm
+    base = {"type": "node", "id": 40, "lat": 51.0, "lon": 3.7}
+    assert osm.normalise({**base, "tags": {"disused:tourism": "museum", "name": "Oud Museum"}}) is None
+    assert osm.normalise({**base, "tags": {"tourism": "museum", "disused": "yes", "name": "X"}}) is None
+    assert osm.normalise({**base, "tags": {"tourism": "museum", "end_date": "2005", "name": "Y"}}) is None
+    # gewoon open museum blijft wel
+    assert osm.normalise({**base, "tags": {"tourism": "museum", "name": "Levend Museum"}}) is not None
+
+
+def test_wikidata_query_filtert_ontbonden(app):
+    """De SPARQL-query sluit ontbonden/gesloten plekken uit."""
+    from app.services.sources import wikidata
+    q = wikidata._query("Q33506", "?item wdt:P17 wd:Q31 .")
+    assert "P576" in q and "P3999" in q and "FILTER NOT EXISTS" in q
+
+
+# ---------------------------------------------- OSM verbreding --
+
+def test_osm_park_vereist_naam(app):
+    from app.services.sources import osm
+    base = {"type": "way", "id": 50, "center": {"lat": 51.0, "lon": 3.7}}
+    # naamloos park -> geweigerd (anti-vervuiling)
+    assert osm.normalise({**base, "tags": {"leisure": "park"}}) is None
+    d = osm.normalise({**base, "tags": {"leisure": "park", "name": "Stadspark"}})
+    assert d is not None and d["categories"] == ["buiten"]
+
+
+def test_osm_kasteel_en_natuurgebied(app):
+    from app.services.sources import osm
+    kast = osm.normalise({"type": "way", "id": 51, "center": {"lat": 50.9, "lon": 3.1},
+                          "tags": {"historic": "castle", "name": "Kasteel Ooidonk"}})
+    assert kast["categories"] == ["cultuur"]
+    nat = osm.normalise({"type": "way", "id": 52, "center": {"lat": 51.1, "lon": 4.4},
+                         "tags": {"leisure": "nature_reserve", "name": "Het Zwin"}})
+    assert nat["categories"] == ["natuur"]

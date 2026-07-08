@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Voor uitbaters 🏪</h1>
+<div class="card">
+  <p><strong>Staat jouw zaak op Ravot?</strong> Claim ze gratis en houd zelf je
+    gegevens correct: openingsinfo, adres, website en beschrijving. Zo vinden
+    gezinnen altijd de juiste info — en jij bereikt je doelpubliek.</p>
+  <p class="hint">Claimen en corrigeren is gratis. Elke wijziging wordt door ons
+    team nagekeken voor ze verschijnt. Claimen verandert niets aan de
+    Ravotscore: die komt altijd van gezinnen zelf.</p>
+</div>
+<form method="post" action="{{ url_for('uitbater.login') }}" class="kaart-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label>Jouw e-mailadres (liefst dat van je zaak)
+    <input type="email" name="email" required placeholder="info@jouwzaak.be">
+  </label>
+  <div class="acties"><button class="btn btn-zon" type="submit">Stuur mij een inlogcode</button></div>
+</form>
+{% endblock %}

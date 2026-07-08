@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Claim je zaak 🔎</h1>
+<form method="get" action="{{ url_for('uitbater.claim') }}" class="zoekrij">
+  <input type="search" name="q" value="{{ zoek }}" class="zoekveld"
+         placeholder="Zoek op naam van je zaak…" aria-label="Zoek">
+  <button class="btn btn-klein" type="submit">Zoek</button>
+</form>
+
+{% if zoek %}
+  {% if resultaten %}
+    {% for e in resultaten %}
+    <div class="nazicht-item">
+      <div>
+        <strong>{{ e.title }}</strong>
+        <p class="meta">📍 {{ e.adres or '' }} {{ e.gemeente or '' }}</p>
+      </div>
+      <form method="post" action="{{ url_for('uitbater.claim') }}" class="meld-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="event_id" value="{{ e.id }}">
+        <input type="text" name="note" maxlength="500"
+               placeholder="Hoe zien we dat dit jouw zaak is? (bv. e-mail matcht website)">
+        <button class="btn btn-klein" type="submit">Dit is mijn zaak</button>
+      </form>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="card leeg"><p>Niets gevonden voor "{{ zoek }}". Staat je zaak nog
+      niet op Ravot? Mail ons via info@ravot.be — we voegen ze graag toe.</p></div>
+  {% endif %}
+{% endif %}
+{% endblock %}

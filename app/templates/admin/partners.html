@@ -1,0 +1,31 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<h1>Partners ⭐</h1>
+{% if not odoo_actief %}
+<p class="hint">⚠️ Odoo-facturatie is nog niet geconfigureerd (ODOO_URL/DB/USER/API_KEY
+  in .env). Betalingen werken, maar facturen worden pas aangemaakt zodra de
+  koppeling actief is.</p>
+{% endif %}
+<section class="card">
+  <table class="tabel">
+    <tr><th>Datum</th><th>Zaak</th><th>Uitbater</th><th>Plan</th><th>Bedrag (incl.)</th>
+        <th>Status</th><th>Factuur</th></tr>
+    {% for b in betalingen %}
+    <tr>
+      <td>{{ b.created_at.strftime("%d/%m/%Y") }}</td>
+      <td>{{ b.event.title if b.event else '—' }}</td>
+      <td>{{ b.operator.bedrijfsnaam or b.operator.email if b.operator else '—' }}</td>
+      <td>{{ b.plan }}</td>
+      <td>€{{ b.amount }}</td>
+      <td>{{ '✅ betaald' if b.status == 'paid' else b.status }}</td>
+      <td>{% if b.odoo_invoice_ref %}{{ b.odoo_invoice_ref }}
+          <span class="hint">(Odoo #{{ b.odoo_invoice_id }})</span>
+          {% elif b.status == 'paid' %}<span class="hint">nog geen factuur</span>
+          {% else %}—{% endif %}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" class="leeg">Nog geen Partner-betalingen.</td></tr>
+    {% endfor %}
+  </table>
+</section>
+{% endblock %}

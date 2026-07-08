@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Voer je code in 📧</h1>
+<p>We stuurden een 6-cijferige code naar <strong>{{ email }}</strong>.</p>
+<form method="post" action="{{ url_for('uitbater.code_verify') }}" class="kaart-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="email" value="{{ email }}">
+  <label>Inlogcode
+    <input type="text" name="code" inputmode="numeric" maxlength="6" required autofocus>
+  </label>
+  <div class="acties"><button class="btn btn-zon" type="submit">Aanmelden</button></div>
+</form>
+{% endblock %}

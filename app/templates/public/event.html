@@ -14,6 +14,7 @@
   <span class="badge">{{ ev.age_min }}–{{ ev.age_max }} jaar</span>
   {% if ev.is_free %}<span class="badge badge-free">Gratis</span>
   {% elif family_total is not none %}<span class="badge">Voor jullie gezin: €{{ "%.0f"|format(family_total) }}</span>{% endif %}
+  {% if ev.partner_until and ev.partner_until > nu_utc %}<span class="badge badge-partner" title="Deze zaak is betalend partner van Ravot; dit beïnvloedt de score of volgorde niet">⭐ Partner</span>{% endif %}
   {% if euro and not ev.is_free %}<span class="badge">{{ euro }}</span>{% endif %}
   {% if ev.indoor %}<span class="badge">🌧️ binnen</span>{% endif %}
   {% if ev.is_permanent %}<span class="badge">📍 vaste plek — altijd te bezoeken</span>{% endif %}
@@ -79,4 +80,47 @@
 {% endif %}
 
 {% if ev.series %}<p class="hint">Keert dit jaarlijks terug? Bekijk de <a href="{{ url_for('public.reeks', slug=ev.series.slug) }}">reekspagina met historiek</a>.</p>{% endif %}
+
+{% if fotos %}
+<div class="card">
+  <h2 style="margin-top:0">Foto's van gezinnen</h2>
+  <div class="foto-raster">
+    {% for f in fotos %}<img src="{{ url_for('public.foto', pid=f.id) }}" alt="{{ ev.title }}" loading="lazy">{% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if family %}
+<details class="melden">
+  <summary>📷 Voeg een foto toe</summary>
+  <form method="post" action="{{ url_for('account.upload_foto', event_id=ev.id) }}"
+        enctype="multipart/form-data" class="meld-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="file" name="foto" accept="image/jpeg,image/png,image/webp" required>
+    <label class="check"><input type="checkbox" name="akkoord" required>
+      Ik heb deze foto zelf gemaakt en geef Ravot toestemming om ze te tonen.</label>
+    <button class="btn btn-klein" type="submit">Foto indienen</button>
+  </form>
+  <p class="hint">Je foto wordt eerst nagekeken voordat ze verschijnt.</p>
+</details>
+{% endif %}
+
+{% if family %}
+<details class="melden">
+  <summary>Klopt er iets niet? Meld deze plek</summary>
+  <form method="post" action="{{ url_for('account.melden', event_id=ev.id) }}" class="meld-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Reden
+      <select name="reason">
+        <option value="gesloten">Deze plek bestaat niet meer / is gesloten</option>
+        <option value="fout">De informatie klopt niet</option>
+        <option value="ongepast">Niet geschikt voor kinderen</option>
+        <option value="anders">Iets anders</option>
+      </select>
+    </label>
+    <input type="text" name="note" maxlength="500" placeholder="Toelichting (optioneel)">
+    <button class="btn btn-klein btn-stil" type="submit">Melding versturen</button>
+  </form>
+</details>
+{% endif %}
 {% endblock %}

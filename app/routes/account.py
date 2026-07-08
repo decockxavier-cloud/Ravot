@@ -422,3 +422,102 @@ def delete_account():
     session.clear()
     flash("Je account en gegevens zijn verwijderd. Tot ziens!", "ok")
     return redirect(url_for("public.vandaag"))
+
+
+# ------------------------------------------------ gebruikersbijdragen --
+
+def _slugify(text):
+    import unicodedata
+    t = unicodedata.normalize("NFKD", text or "").encode("ascii", "ignore").decode()
+    t = re.sub(r"[^a-zA-Z0-9]+", "-", t).strip("-").lower()
+    return t[:200] or "plek"
+
+
+@bp.route("/toevoegen", methods=["GET", "POST"])
+@login_required
+@limiter.limit("20/hour", methods=["POST"])
+def toevoegen():
+    """Gebruiker voegt een plek toe die er nog niet is. Gaat naar de
+    moderatiewachtrij (pending) — pas zichtbaar na goedkeuring."""
+    from ..models import CATEGORIES
+    from ..geo import postcode_coord
+    fam = db.session.get(Family, session["family_id"])
+    if request.method == "POST":
+        titel = (request.form.get("titel") or "").strip()[:255]
+        if not titel:
+            flash("Geef minstens een naam voor de plek.", "error")
+            return redirect(url_for("account.toevoegen"))
+        postcode = re.sub(r"\D", "", request.form.get("postcode") or "")[:4] or None
+        cats = [c for c in request.form.getlist("categorie") if c in CATEGORIES] or ["buiten"]
+        try:
+            lo = max(0, min(18, int(request.form.get("age_min") or 0)))
+            hi = max(lo, min(18, int(request.form.get("age_max") or 12)))
+        except ValueError:
+            lo, hi = 0, 12
+        coord = postcode_coord(postcode) if postcode else None
+        ev = Event(
+            source="user", pending=True, is_permanent=True, hidden=False,
+            submitted_by=fam.id,
+            title=titel,
+            description=(request.form.get("beschrijving") or "").strip()[:2000],
+            gemeente=(request.form.get("gemeente") or "").strip()[:80] or None,
+            postcode=postcode,
+            adres=(request.form.get("adres") or "").strip()[:255] or None,
+            lat=coord[0] if coord else None, lng=coord[1] if coord else None,
+            age_min=lo, age_max=hi, categories=cats,
+            indoor=bool(request.form.get("indoor")),
+            is_free=bool(request.form.get("gratis")),
+            source_url=(request.form.get("website") or "").strip()[:500] or None,
+            attribution="toegevoegd door een gezin",
+            slug=f"{_slugify(titel)}-u{secrets.token_hex(3)}",
+        )
+        db.session.add(ev)
+        db.session.commit()
+        flash("Bedankt! Je plek is ingediend en verschijnt zodra we ze nagekeken hebben.", "ok")
+        return redirect(url_for("public.vandaag"))
+    return render_template("account/toevoegen.html", categories=CATEGORIES,
+                           family=fam, active=None, title="Plek toevoegen")
+
+
+@bp.route("/melden/<int:event_id>", methods=["POST"])
+@login_required
+@limiter.limit("30/hour")
+def melden(event_id):
+    """Meld een plek als gesloten / foute info / ongepast -> naar de admin."""
+    from ..models import Report, REPORT_REASONS
+    ev = db.session.get(Event, event_id)
+    if not ev:
+        abort(404)
+    reason = request.form.get("reason")
+    if reason not in REPORT_REASONS:
+        reason = "anders"
+    db.session.add(Report(event_id=ev.id, family_id=session.get("family_id"),
+                          reason=reason,
+                          note=(request.form.get("note") or "").strip()[:500]))
+    db.session.commit()
+    flash("Bedankt voor je melding — we kijken ernaar.", "ok")
+    return redirect(url_for("public.event", slug=ev.slug))
+
+
+@bp.route("/foto/<int:event_id>", methods=["POST"])
+@login_required
+@limiter.limit("15/hour", methods=["POST"])
+def upload_foto(event_id):
+    """Gebruiker uploadt een foto van een plek -> moderatiewachtrij (pending)."""
+    from ..models import Photo
+    from ..fotos import verwerk_upload
+    ev = db.session.get(Event, event_id)
+    if not ev:
+        abort(404)
+    if not request.form.get("akkoord"):
+        flash("Vink aan dat je akkoord gaat met het delen van je foto.", "error")
+        return redirect(url_for("public.event", slug=ev.slug))
+    naam = verwerk_upload(request.files.get("foto"))
+    if not naam:
+        flash("Dat lijkt geen geldige foto (jpg, png of webp).", "error")
+        return redirect(url_for("public.event", slug=ev.slug))
+    db.session.add(Photo(event_id=ev.id, family_id=session.get("family_id"),
+                         filename=naam, status="pending"))
+    db.session.commit()
+    flash("Bedankt! Je foto is ingediend en verschijnt zodra we ze nagekeken hebben.", "ok")
+    return redirect(url_for("public.event", slug=ev.slug))

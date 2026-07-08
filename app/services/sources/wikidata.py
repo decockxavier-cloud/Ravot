@@ -52,6 +52,8 @@ SELECT ?item ?itemLabel ?coord ?website ?image WHERE {{
   ?item wdt:P31/wdt:P279* wd:{klasse_qid} .
   ?item wdt:P625 ?coord .
   {scope}
+  FILTER NOT EXISTS {{ ?item wdt:P576 ?ontbonden. }}   # ontbonden/afgebroken -> weg
+  FILTER NOT EXISTS {{ ?item wdt:P3999 ?gesloten. }}   # datum van sluiting -> weg
   OPTIONAL {{ ?item wdt:P856 ?website. }}
   OPTIONAL {{ ?item wdt:P18 ?image. }}
   SERVICE wikibase:label {{ bd:serviceParam wikibase:language "nl,en,fr". }}

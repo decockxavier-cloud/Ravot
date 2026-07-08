@@ -31,9 +31,24 @@ def _huidige_admin():
 
 
 def admin_required(f):
+    """Enkel volle beheerders (role='admin')."""
     @wraps(f)
     def wrapper(*args, **kwargs):
-        if not _huidige_admin() or not session.get("admin_2fa_ok"):
+        a = _huidige_admin()
+        if not a or not session.get("admin_2fa_ok"):
+            return redirect(url_for("admin.login"))
+        if getattr(a, "role", "admin") != "admin":
+            abort(403)   # reviewer probeert een admin-pagina
+        return f(*args, **kwargs)
+    return wrapper
+
+
+def reviewer_required(f):
+    """Beheerders én reviewers: content nazien en valideren (Nazicht)."""
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        a = _huidige_admin()
+        if not a or not session.get("admin_2fa_ok"):
             return redirect(url_for("admin.login"))
         return f(*args, **kwargs)
     return wrapper
@@ -94,6 +109,9 @@ def tweefa_instellen():
             session["admin_2fa_ok"] = True
             audit("2fa ingesteld + login")
             flash("Tweestapsverificatie is ingesteld. 🎉", "ok")
+            a = _huidige_admin()
+            if a and getattr(a, "role", "admin") == "reviewer":
+                return redirect(url_for("admin.nazicht"))
             return redirect(url_for("admin.dashboard"))
         flash("Die code klopt niet. Scan de QR opnieuw en probeer een verse code.", "error")
 
@@ -129,6 +147,9 @@ def otp():
         if totp.verify(request.form.get("code", ""), valid_window=1):
             session["admin_2fa_ok"] = True
             audit("login")
+            a = _huidige_admin()
+            if a and getattr(a, "role", "admin") == "reviewer":
+                return redirect(url_for("admin.nazicht"))
             return redirect(url_for("admin.dashboard"))
         flash("Onjuiste code.", "error")
     return render_template("admin/otp.html", title="Tweestapsverificatie",
@@ -526,3 +547,293 @@ def logout():
     session.pop("admin_id", None)
     session.pop("admin_2fa_ok", None)
     return redirect(url_for("public.vandaag"))
+
+
+@bp.route("/nazicht")
+@reviewer_required
+def nazicht():
+    """Moderatie: door gebruikers toegevoegde plekken (wachtrij) + meldingen."""
+    from ..models import (Report, REPORT_REASONS, EnrichProposal, Photo,
+                          OperatorClaim, EditProposal)
+    wachtrij = Event.query.filter_by(pending=True).order_by(Event.id.desc()).limit(200).all()
+    meldingen = Report.query.filter_by(handled=False).order_by(
+        Report.created_at.desc()).limit(200).all()
+    voorstellen = EnrichProposal.query.filter_by(status="pending").order_by(
+        EnrichProposal.id.desc()).limit(100).all()
+    fotos = Photo.query.filter_by(status="pending").order_by(Photo.id.desc()).limit(100).all()
+    claims = OperatorClaim.query.filter_by(status="pending").order_by(
+        OperatorClaim.id.desc()).limit(100).all()
+    edits = EditProposal.query.filter_by(status="pending").order_by(
+        EditProposal.id.desc()).limit(100).all()
+    return render_template("admin/nazicht.html", wachtrij=wachtrij, meldingen=meldingen,
+                           voorstellen=voorstellen, fotos=fotos, claims=claims,
+                           edits=edits, redenen=REPORT_REASONS,
+                           title="Nazicht", family=None, active="nazicht")
+
+
+@bp.route("/nazicht/plek/<int:event_id>/<actie>", methods=["POST"])
+@reviewer_required
+def nazicht_plek(event_id, actie):
+    ev = db.session.get(Event, event_id)
+    if not ev or not ev.pending:
+        abort(404)
+    if actie == "goedkeuren":
+        ev.pending = False
+        audit(f"plek goedgekeurd: {ev.title} (#{ev.id})")
+        flash(f"'{ev.title}' is nu zichtbaar.", "ok")
+    elif actie == "afwijzen":
+        audit(f"plek afgewezen: {ev.title} (#{ev.id})")
+        db.session.delete(ev)
+        flash("Plek afgewezen en verwijderd.", "ok")
+    db.session.commit()
+    return redirect(url_for("admin.nazicht"))
+
+
+@bp.route("/nazicht/melding/<int:report_id>/<actie>", methods=["POST"])
+@reviewer_required
+def nazicht_melding(report_id, actie):
+    from ..models import Report
+    r = db.session.get(Report, report_id)
+    if not r:
+        abort(404)
+    if actie == "verberg" and r.event:      # plek verbergen (bv. gesloten)
+        r.event.hidden = True
+        audit(f"plek verborgen na melding: #{r.event_id}")
+    if actie == "verwijder" and r.event:    # plek definitief weg
+        audit(f"plek verwijderd na melding: #{r.event_id}")
+        db.session.delete(r.event)
+    r.handled = True
+    audit(f"melding afgehandeld: #{r.id} ({actie})")
+    db.session.commit()
+    flash("Melding afgehandeld.", "ok")
+    return redirect(url_for("admin.nazicht"))
+
+
+@bp.route("/verrijk", methods=["GET", "POST"])
+@admin_required
+def verrijk():
+    """Testknop voor AI-verrijking: genereer een voorstel voor één plek en
+    toon het (nog niet opgeslagen — dat is de latere wachtrij-stap)."""
+    from ..models import get_setting
+    voorstel = plek = fout = None
+    if request.method == "POST":
+        try:
+            eid = int(request.form.get("event_id") or 0)
+        except ValueError:
+            eid = 0
+        plek = db.session.get(Event, eid)
+        if not plek:
+            fout = "Geen plek gevonden met dat id."
+        else:
+            from ..enrich import verrijk_plek
+            try:
+                voorstel = verrijk_plek(plek)
+                audit(f"AI-verrijking getest voor #{plek.id}")
+            except Exception as exc:
+                fout = f"Verrijking mislukt: {exc}"
+    # een handvol recente plekken tonen om snel te kiezen
+    recent = Event.query.filter_by(is_permanent=True).order_by(
+        Event.id.desc()).limit(15).all()
+    return render_template("admin/verrijk.html", voorstel=voorstel, plek=plek,
+                           fout=fout, recent=recent, backend=get_setting("verrijk_backend"),
+                           model=get_setting("ollama_model"), title="AI-verrijking",
+                           family=None, active="verrijk")
+
+
+_verrijk_bezig = {"aan": False}
+
+
+@bp.route("/verrijk/batch", methods=["POST"])
+@admin_required
+@limiter.limit("6/hour")
+def verrijk_batch_start():
+    """Start in de achtergrond een AI-verrijkingsbatch (voorstellen -> Nazicht)."""
+    import threading
+    from flask import current_app
+    try:
+        n = max(1, min(100, int(request.form.get("n") or 10)))
+    except ValueError:
+        n = 10
+    if _verrijk_bezig["aan"]:
+        flash("Er loopt al een verrijkingsbatch. Even geduld.", "error")
+        return redirect(url_for("admin.verrijk"))
+    app_obj = current_app._get_current_object()
+
+    def _job():
+        _verrijk_bezig["aan"] = True
+        try:
+            with app_obj.app_context():
+                from ..enrich import verrijk_batch
+                verrijk_batch(limit=n)
+        except Exception as exc:
+            app_obj.logger.warning("verrijk-batch faalde: %s", str(exc)[:160])
+        finally:
+            _verrijk_bezig["aan"] = False
+
+    if current_app.testing:
+        _job()
+    else:
+        threading.Thread(target=_job, daemon=True).start()
+    audit(f"AI-verrijkingsbatch gestart (n={n})")
+    flash(f"Verrijking gestart voor {n} plekken. De voorstellen verschijnen in Nazicht "
+          "(kan even duren op CPU — herlaad die pagina).", "ok")
+    return redirect(url_for("admin.verrijk"))
+
+
+@bp.route("/verrijk/voorstel/<int:pid>/<actie>", methods=["POST"])
+@reviewer_required
+def verrijk_voorstel(pid, actie):
+    from ..models import EnrichProposal
+    from ..enrich import pas_voorstel_toe
+    vp = db.session.get(EnrichProposal, pid)
+    if not vp or vp.status != "pending":
+        abort(404)
+    if actie == "goedkeuren":
+        pas_voorstel_toe(vp, beschrijving=request.form.get("beschrijving"))
+        audit(f"AI-voorstel goedgekeurd: #{vp.id} (event {vp.event_id})")
+        flash("Voorstel toegepast op de plek.", "ok")
+    elif actie == "afwijzen":
+        vp.status = "rejected"
+        db.session.commit()
+        audit(f"AI-voorstel afgewezen: #{vp.id}")
+        flash("Voorstel afgewezen.", "ok")
+    return redirect(url_for("admin.nazicht"))
+
+
+@bp.route("/foto/<int:pid>/<actie>", methods=["POST"])
+@reviewer_required
+def nazicht_foto(pid, actie):
+    """Keur een gebruikersfoto goed of wijs ze af (met verwijderen van bestand)."""
+    from ..models import Photo
+    from ..fotos import verwijder
+    from flask import url_for as _url
+    p = db.session.get(Photo, pid)
+    if not p or p.status != "pending":
+        abort(404)
+    if actie == "goedkeuren":
+        p.status = "approved"
+        # als de plek nog geen foto had, wordt deze de hoofdafbeelding
+        if p.event and not p.event.image_url:
+            p.event.image_url = _url("public.foto", pid=p.id)
+        audit(f"foto goedgekeurd: #{p.id} (event {p.event_id})")
+        flash("Foto goedgekeurd en zichtbaar.", "ok")
+    elif actie == "afwijzen":
+        verwijder(p.filename)          # bestand van schijf verwijderen
+        p.status = "rejected"
+        audit(f"foto afgewezen: #{p.id}")
+        flash("Foto afgewezen en verwijderd.", "ok")
+    db.session.commit()
+    return redirect(url_for("admin.nazicht"))
+
+
+@bp.app_context_processor
+def _inject_admin_rol():
+    """Rol van de ingelogde beheerder/reviewer beschikbaar in templates."""
+    try:
+        a = _huidige_admin()
+        return {"admin_rol": getattr(a, "role", "admin") if a else None}
+    except Exception:
+        return {"admin_rol": None}
+
+
+@bp.route("/team", methods=["GET", "POST"])
+@admin_required
+@limiter.limit("20/hour", methods=["POST"])
+def team():
+    """Teambeheer: reviewers toevoegen die enkel Nazicht mogen doen."""
+    import re as _re
+    import pyotp
+    if request.method == "POST":
+        email = (request.form.get("email") or "").strip().lower()
+        ww = request.form.get("wachtwoord") or ""
+        if not _re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+            flash("Geef een geldig e-mailadres.", "error")
+            return redirect(url_for("admin.team"))
+        if len(ww) < 12:
+            flash("Kies een wachtwoord van minstens 12 tekens.", "error")
+            return redirect(url_for("admin.team"))
+        if Admin.query.filter_by(email=email).first():
+            flash("Er bestaat al een account met dat e-mailadres.", "error")
+            return redirect(url_for("admin.team"))
+        db.session.add(Admin(email=email, pw_hash=_ph.hash(ww),
+                             totp_secret=pyotp.random_base32(),
+                             totp_confirmed=False, role="reviewer"))
+        db.session.commit()
+        audit(f"reviewer aangemaakt: {email}")
+        flash(f"Reviewer '{email}' aangemaakt. Die logt in op /beheer en stelt "
+              "bij de eerste login 2FA in via de QR-code.", "ok")
+        return redirect(url_for("admin.team"))
+    leden = Admin.query.order_by(Admin.role, Admin.email).all()
+    return render_template("admin/team.html", leden=leden, title="Team",
+                           family=None, active="team")
+
+
+@bp.route("/team/<int:aid>/verwijder", methods=["POST"])
+@admin_required
+def team_verwijder(aid):
+    a = db.session.get(Admin, aid)
+    if not a:
+        abort(404)
+    if a.role != "reviewer":
+        flash("Enkel reviewer-accounts kun je hier verwijderen.", "error")
+        return redirect(url_for("admin.team"))
+    audit(f"reviewer verwijderd: {a.email}")
+    db.session.delete(a)
+    db.session.commit()
+    flash("Reviewer verwijderd.", "ok")
+    return redirect(url_for("admin.team"))
+
+
+@bp.route("/nazicht/claim/<int:cid>/<actie>", methods=["POST"])
+@reviewer_required
+def nazicht_claim(cid, actie):
+    from ..models import OperatorClaim
+    c = db.session.get(OperatorClaim, cid)
+    if not c or c.status != "pending":
+        abort(404)
+    if actie == "goedkeuren":
+        c.status = "approved"
+        audit(f"claim goedgekeurd: operator {c.operator_id} -> event {c.event_id}")
+        flash("Claim goedgekeurd — de uitbater kan nu wijzigingen voorstellen.", "ok")
+    elif actie == "afwijzen":
+        c.status = "rejected"
+        audit(f"claim afgewezen: #{c.id}")
+        flash("Claim afgewezen.", "ok")
+    db.session.commit()
+    return redirect(url_for("admin.nazicht"))
+
+
+@bp.route("/nazicht/wijziging/<int:pid>/<actie>", methods=["POST"])
+@reviewer_required
+def nazicht_wijziging(pid, actie):
+    from ..models import EditProposal, EDIT_VELDEN
+    v = db.session.get(EditProposal, pid)
+    if not v or v.status != "pending":
+        abort(404)
+    if actie == "goedkeuren":
+        if v.event:
+            for veld, waarde in (v.changes or {}).items():
+                if veld in EDIT_VELDEN:            # whitelist, ook bij toepassen
+                    setattr(v.event, veld, waarde)
+        v.status = "approved"
+        audit(f"fichewijziging toegepast: #{v.id} (event {v.event_id})")
+        flash("Wijziging toegepast op de fiche.", "ok")
+    elif actie == "afwijzen":
+        v.status = "rejected"
+        audit(f"fichewijziging afgewezen: #{v.id}")
+        flash("Wijziging afgewezen.", "ok")
+    db.session.commit()
+    return redirect(url_for("admin.nazicht"))
+
+
+@bp.route("/partners")
+@admin_required
+def partners():
+    """Overzicht van Partner-betalingen mét Odoo-factuurreferentie."""
+    from ..models import PartnerPayment
+    from .. import odoo
+    betalingen = PartnerPayment.query.order_by(
+        PartnerPayment.created_at.desc()).limit(200).all()
+    return render_template("admin/partners.html", betalingen=betalingen,
+                           odoo_actief=odoo.actief(), title="Partners",
+                           family=None, active="partners")

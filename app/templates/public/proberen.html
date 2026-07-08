@@ -6,7 +6,7 @@
   <form method="post" action="{{ url_for('public.proberen') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label for="pc">Postcode</label>
-    <input id="pc" type="text" name="postcode" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required placeholder="8800" value="{{ guest.postcode or '' }}">
+    <input id="pc" type="text" name="postcode" data-plaatsen data-zelf="postcode" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required placeholder="8800" value="{{ guest.postcode or '' }}">
     <label>Hoe oud zijn de kinderen?</label>
     <div id="kinderen">
       {% for a in guest.ages or [] %}

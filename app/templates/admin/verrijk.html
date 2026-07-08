@@ -1,0 +1,55 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<h1>AI-verrijking testen 🤖</h1>
+<p class="hint">Backend: <strong>{{ backend }}</strong>{% if backend == 'ollama' %} · model: <strong>{{ model }}</strong>{% endif %}.
+  Dit genereert een <em>voorstel</em> en slaat niets op — zo test je de kwaliteit
+  vóór we de verrijkingswachtrij eraan koppelen.</p>
+
+<form method="post" action="{{ url_for('admin.verrijk') }}" class="kaart-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label>Plek (event-id)
+    <input type="number" name="event_id" required
+           value="{{ plek.id if plek else '' }}" placeholder="bv. 42">
+  </label>
+  <div class="acties"><button class="btn btn-zon" type="submit">Genereer voorstel</button></div>
+</form>
+
+{% if recent %}
+<p class="hint">Recente plekken om te testen:
+  {% for e in recent %}<code>{{ e.id }}</code> {{ e.title }}{% if not loop.last %} · {% endif %}{% endfor %}
+</p>
+{% endif %}
+
+<section class="card">
+  <h2 style="margin-top:0">Wachtrij vullen (batch)</h2>
+  <p class="hint">Genereer in de achtergrond voorstellen voor plekken die er nog geen hebben.
+    Ze verschijnen in <a href="{{ url_for('admin.nazicht') }}">Nazicht</a> ter goedkeuring.
+    Traag op CPU — begin klein.</p>
+  <form method="post" action="{{ url_for('admin.verrijk_batch_start') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Aantal plekken
+      <input type="number" name="n" value="10" min="1" max="100" style="width:6em">
+    </label>
+    <button class="btn btn-zon" type="submit">Genereer voorstellen</button>
+  </form>
+</section>
+
+{% if fout %}
+<div class="card" style="border-color:#e57373">
+  <strong>⚠️ {{ fout }}</strong>
+  <p class="hint">Draait de Ollama-container en is het model gepulld?
+    Check met <code>docker compose exec ollama ollama list</code>.</p>
+</div>
+{% endif %}
+
+{% if voorstel and plek %}
+<div class="card">
+  <h2 style="margin-top:0">Voorstel voor: {{ plek.title }}</h2>
+  <p><strong>Beschrijving:</strong> {{ voorstel.beschrijving or '—' }}</p>
+  <p><strong>Categorie:</strong> {{ voorstel.categorie or '—' }}
+     · <strong>Leeftijd:</strong> {{ voorstel.leeftijd_min }}–{{ voorstel.leeftijd_max }} jaar
+     · <strong>Binnen:</strong> {{ 'ja' if voorstel.binnen else 'nee' }}</p>
+  <details><summary>Ruwe modeloutput</summary><pre style="white-space:pre-wrap">{{ voorstel.ruw }}</pre></details>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Facturatiegegevens 🧾</h1>
+<p class="hint">Verplicht om Partner te worden: zo ontvang je een correcte
+  elektronische factuur via Peppol (de Belgische B2B-standaard).</p>
+<form method="post" class="kaart-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label>Bedrijfsnaam *
+    <input type="text" name="bedrijfsnaam" required maxlength="160"
+           value="{{ op.bedrijfsnaam or '' }}">
+  </label>
+  <label>Btw-nummer * (BE0xxxxxxxxx)
+    <input type="text" name="btw_nummer" required maxlength="14"
+           value="{{ op.btw_nummer or '' }}" placeholder="BE0123456789">
+  </label>
+  <label>Straat + nummer
+    <input type="text" name="straat" maxlength="160" value="{{ op.straat or '' }}">
+  </label>
+  <div class="veldrij">
+    <label>Postcode
+      <input type="text" name="postcode" inputmode="numeric" maxlength="40" data-plaatsen data-zelf="postcode" data-vul-gemeente="input[name=gemeente]"
+             value="{{ op.postcode or '' }}">
+    </label>
+    <label>Gemeente
+      <input type="text" name="gemeente" maxlength="80" value="{{ op.gemeente or '' }}">
+    </label>
+  </div>
+  <div class="acties"><button class="btn btn-zon" type="submit">Bewaren</button></div>
+</form>
+{% endblock %}

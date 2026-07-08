@@ -6,6 +6,8 @@ services:
     ports: ["8000:8000"]
     depends_on: [db]
     restart: unless-stopped
+    volumes:
+      - ravot_uploads:/data/uploads   # gebruikersfoto's, persistent over rebuilds
   db:
     image: postgres:16-alpine
     environment:
@@ -15,5 +17,13 @@ services:
     volumes:
       - ravot_pgdata:/var/lib/postgresql/data
     restart: unless-stopped
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_models:/root/.ollama   # modellen blijven bewaard over rebuilds heen
+    restart: unless-stopped
+    # Geen poort naar buiten: enkel intern bereikbaar als http://ollama:11434
 volumes:
   ravot_pgdata:
+  ollama_models:
+  ravot_uploads:

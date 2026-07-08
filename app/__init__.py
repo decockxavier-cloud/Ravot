@@ -19,14 +19,21 @@ def create_app(config_object=Config):
     app.jinja_env.globals["poi_image"] = poi_image
     app.jinja_env.globals["has_echte_foto"] = has_echte_foto
 
+    @app.context_processor
+    def _inject_nu():
+        from datetime import datetime
+        return {"nu_utc": datetime.utcnow()}
+
     from .routes.public import bp as public_bp
     from .routes.auth import bp as auth_bp
     from .routes.account import bp as account_bp
     from .routes.admin import bp as admin_bp
+    from .routes.uitbater import bp as uitbater_bp
     # let op: public als laatste registreren — die heeft de catch-all /<gemeente>
     app.register_blueprint(auth_bp)
     app.register_blueprint(account_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(uitbater_bp)
     app.register_blueprint(public_bp)
 
     # Welke bronnen zijn actief? Stuurt de publieke bronvermeldingen. Publiq
@@ -119,6 +126,7 @@ def register_cli(app):
     def migrate_db():
         """Voegt ontbrekende kolommen/tabellen toe zonder data te wissen."""
         from sqlalchemy import inspect, text
+        db.create_all()   # eerst: maakt ontbrekende tabellen (ook op een verse DB)
         insp = inspect(db.engine)
         added = []
         cols = {c["name"] for c in insp.get_columns("events")}
@@ -138,6 +146,10 @@ def register_cli(app):
              "ALTER TABLE events ADD COLUMN hidden BOOLEAN DEFAULT FALSE NOT NULL"),
             ("dupe_of", "ALTER TABLE events ADD COLUMN dupe_of INTEGER"),
             ("adres", "ALTER TABLE events ADD COLUMN adres VARCHAR(255)"),
+            ("pending",
+             "ALTER TABLE events ADD COLUMN pending BOOLEAN DEFAULT FALSE NOT NULL"),
+            ("submitted_by", "ALTER TABLE events ADD COLUMN submitted_by INTEGER"),
+            ("partner_until", "ALTER TABLE events ADD COLUMN partner_until TIMESTAMP"),
         ):
             if kol not in cols:
                 db.session.execute(text(ddl))
@@ -155,6 +167,10 @@ def register_cli(app):
             db.session.execute(text(
                 "ALTER TABLE admins ADD COLUMN totp_confirmed BOOLEAN DEFAULT FALSE NOT NULL"))
             added.append("admins.totp_confirmed")
+        if "role" not in admin_cols:
+            db.session.execute(text(
+                "ALTER TABLE admins ADD COLUMN role VARCHAR(12) DEFAULT 'admin' NOT NULL"))
+            added.append("admins.role")
         # attempts op magic_tokens: brute-force-slot voor inlogcodes
         mt_cols = {c["name"] for c in insp.get_columns("magic_tokens")}
         if "attempts" not in mt_cols:
@@ -196,6 +212,37 @@ def register_cli(app):
             added.append("sync_status (tabel)")
         if "geo_cache" not in insp.get_table_names():
             added.append("geo_cache (tabel)")
+        if "reports" not in insp.get_table_names():
+            added.append("reports (tabel)")
+        if "enrich_proposals" not in insp.get_table_names():
+            added.append("enrich_proposals (tabel)")
+        if "photos" not in insp.get_table_names():
+            added.append("photos (tabel)")
+        for tabel in ("operators", "operator_claims", "edit_proposals", "partner_payments"):
+            if tabel not in insp.get_table_names():
+                added.append(f"{tabel} (tabel)")
+        # nieuwe kolommen op bestaande operator/betaal-tabellen
+        if "operators" in insp.get_table_names():
+            op_cols = {c["name"] for c in insp.get_columns("operators")}
+            for kol, ddl in (
+                ("bedrijfsnaam", "ALTER TABLE operators ADD COLUMN bedrijfsnaam VARCHAR(160)"),
+                ("btw_nummer", "ALTER TABLE operators ADD COLUMN btw_nummer VARCHAR(20)"),
+                ("straat", "ALTER TABLE operators ADD COLUMN straat VARCHAR(160)"),
+                ("postcode", "ALTER TABLE operators ADD COLUMN postcode VARCHAR(8)"),
+                ("gemeente", "ALTER TABLE operators ADD COLUMN gemeente VARCHAR(80)"),
+            ):
+                if kol not in op_cols:
+                    db.session.execute(text(ddl))
+                    added.append(f"operators.{kol}")
+        if "partner_payments" in insp.get_table_names():
+            pp_cols = {c["name"] for c in insp.get_columns("partner_payments")}
+            for kol, ddl in (
+                ("odoo_invoice_id", "ALTER TABLE partner_payments ADD COLUMN odoo_invoice_id INTEGER"),
+                ("odoo_invoice_ref", "ALTER TABLE partner_payments ADD COLUMN odoo_invoice_ref VARCHAR(40)"),
+            ):
+                if kol not in pp_cols:
+                    db.session.execute(text(ddl))
+                    added.append(f"partner_payments.{kol}")
         # Standaard mail- en contentteksten inladen (alleen als ze nog niet bestaan)
         from .seed_content import seed_standaard_content
         n_content = seed_standaard_content()
@@ -257,6 +304,14 @@ def register_cli(app):
         from .services.maandagmail import send_all
         n = send_all(send_mail)
         click.echo(f"Maandagmail verstuurd naar {n} gezinnen.")
+
+    @app.cli.command("verrijk-batch")
+    @click.option("--n", default=20, help="Aantal plekken om te verrijken.")
+    def verrijk_batch_cmd(n):
+        """Genereer AI-verrijkingsvoorstellen voor plekken (naar de wachtrij)."""
+        from .enrich import verrijk_batch
+        gelukt, mislukt = verrijk_batch(limit=n)
+        click.echo(f"Verrijking klaar: {gelukt} voorstellen, {mislukt} mislukt.")
 
     @app.cli.command("dedup")
     def dedup_cmd():

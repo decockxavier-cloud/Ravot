@@ -3,6 +3,17 @@
 {% block content %}
 <h1>Wat te doen met kinderen in {{ gemeente }}{% if facet %} — {{ facets[facet] }}{% endif %}?</h1>
 <p class="answer">{{ answer }}</p>
+
+{% if partners %}
+<div class="card partnerblok">
+  <p class="hint" style="margin-top:0">⭐ <strong>Partners in {{ gemeente }}</strong>
+    · betaalde vermelding — heeft geen invloed op scores of volgorde</p>
+  {% for e in partners %}
+  <p><a href="{{ url_for('public.event', slug=e.slug) }}"><strong>{{ e.title }}</strong></a>
+    {% if e.adres %}· {{ e.adres }}{% endif %}</p>
+  {% endfor %}
+</div>
+{% endif %}
 <div class="badges">
   <a class="badge" href="/{{ gemeente|lower }}">dit weekend</a>
   {% for f, label in facets.items() %}<a class="badge" href="/{{ gemeente|lower }}/{{ f }}">{{ label }}</a>{% endfor %}

@@ -185,6 +185,10 @@ def dedup_pois():
                     canon.source_url = g.source_url
                 if not canon.description and g.description:
                     canon.description = g.description
+                if not canon.adres and g.adres:
+                    canon.adres = g.adres
+                if not canon.gemeente and g.gemeente:
+                    canon.gemeente = g.gemeente
     db.session.commit()
     return n_dupe
 

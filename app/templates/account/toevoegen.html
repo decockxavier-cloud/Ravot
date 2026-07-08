@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Een plek toevoegen 📍</h1>
+<p class="intro">Ken je een leuke plek die nog niet op Ravot staat? Voeg ze toe!
+  We kijken elke inzending even na voor ze verschijnt.</p>
+
+<form method="post" action="{{ url_for('account.toevoegen') }}" class="kaart-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <label>Naam van de plek *
+    <input type="text" name="titel" required maxlength="255" placeholder="bv. Speelbos De Warande">
+  </label>
+
+  <label>Wat is het? Kies één of meer categorieën
+    <span class="hulp"></span>
+  </label>
+  <div class="checkrij">
+    {% for c in categories %}
+      <label class="check"><input type="checkbox" name="categorie" value="{{ c }}"> {{ c }}</label>
+    {% endfor %}
+  </div>
+
+  <div class="veldrij">
+    <label>Postcode
+      <input type="text" name="postcode" inputmode="numeric" maxlength="40" placeholder="9000" data-plaatsen data-zelf="postcode" data-vul-gemeente="input[name=gemeente]">
+    </label>
+    <label>Gemeente
+      <input type="text" name="gemeente" maxlength="80" placeholder="Gent">
+    </label>
+  </div>
+
+  <label>Adres (straat + nummer)
+    <input type="text" name="adres" maxlength="255" placeholder="Jan Breydelstraat 5">
+  </label>
+
+  <div class="veldrij">
+    <label>Vanaf leeftijd
+      <input type="number" name="age_min" min="0" max="18" value="0">
+    </label>
+    <label>Tot leeftijd
+      <input type="number" name="age_max" min="0" max="18" value="12">
+    </label>
+  </div>
+
+  <div class="checkrij">
+    <label class="check"><input type="checkbox" name="indoor"> 🏠 Binnen</label>
+    <label class="check"><input type="checkbox" name="gratis"> 🆓 Gratis</label>
+  </div>
+
+  <label>Website (optioneel)
+    <input type="url" name="website" maxlength="500" placeholder="https://...">
+  </label>
+
+  <label>Korte beschrijving (optioneel)
+    <textarea name="beschrijving" maxlength="2000" rows="4"
+              placeholder="Wat maakt deze plek leuk voor kinderen?"></textarea>
+  </label>
+
+  <div class="acties"><button class="btn btn-zon" type="submit">Plek indienen</button></div>
+</form>
+{% endblock %}

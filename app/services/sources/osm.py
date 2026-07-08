@@ -19,21 +19,34 @@ from .base import clean_postcode, NIET_KINDVRIENDELIJK
 
 # tag -> (Ravot-categorie, (leeftijd_min, leeftijd_max), binnen?, blacklist-check?)
 TAG_CATEGORIE = {
-    "playground": ("buiten", (1, 12), False, False),
-    "theme_park": ("buiten", (2, 12), False, False),
-    "water_park": ("sport", (3, 12), False, False),
-    "zoo": ("natuur", (1, 12), False, False),
-    "museum": ("cultuur", (4, 12), True, True),
-    "aquarium": ("natuur", (2, 12), True, False),
+    # tag: (categorie, (leeftijd), binnen?, blacklist-check?, naam verplicht?)
+    "playground":     ("buiten", (1, 12), False, False, False),
+    "park":           ("buiten", (1, 12), False, False, True),
+    "nature_reserve": ("natuur", (3, 12), False, False, True),
+    "water_park":     ("sport",  (3, 12), False, False, False),
+    "swimming_area":  ("sport",  (3, 12), False, False, True),
+    "miniature_golf": ("sport",  (4, 12), False, False, False),
+    "theme_park":     ("buiten", (2, 12), False, False, False),
+    "zoo":            ("natuur", (1, 12), False, False, False),
+    "aquarium":       ("natuur", (2, 12), True,  False, False),
+    "museum":         ("cultuur", (4, 12), True, True,  False),
+    "viewpoint":      ("buiten", (4, 12), False, False, True),
+    "attraction":     ("buiten", (2, 12), False, True,  True),
+    "castle":         ("cultuur", (4, 12), False, True,  True),
 }
 # Welke OSM-key hoort bij de tag.
 OSM_KEY = {
-    "playground": "leisure", "water_park": "leisure",
-    "theme_park": "tourism", "zoo": "tourism", "museum": "tourism", "aquarium": "tourism",
+    "playground": "leisure", "park": "leisure", "nature_reserve": "leisure",
+    "water_park": "leisure", "swimming_area": "leisure", "miniature_golf": "leisure",
+    "theme_park": "tourism", "zoo": "tourism", "aquarium": "tourism",
+    "museum": "tourism", "viewpoint": "tourism", "attraction": "tourism",
+    "castle": "historic",
 }
 LABELS = {"playground": "Speeltuin", "theme_park": "Pretpark",
-          "water_park": "Waterpretpark", "zoo": "Dierenpark",
-          "museum": "Museum", "aquarium": "Aquarium"}
+          "water_park": "Waterpretpark", "zoo": "Dierenpark", "museum": "Museum",
+          "aquarium": "Aquarium", "park": "Park", "nature_reserve": "Natuurgebied",
+          "swimming_area": "Zwemplek", "miniature_golf": "Minigolf",
+          "viewpoint": "Uitzichtpunt", "attraction": "Attractie", "castle": "Kasteel"}
 
 # Regio -> bounding box (zuid, west, noord, oost).
 REGIOS = {
@@ -120,12 +133,20 @@ def fetch():
 
 def normalise(el):
     tags = el.get("tags") or {}
+    # Gesloten/verlaten/voormalige plekken weren (bestaan niet meer).
+    if (tags.get("disused") == "yes" or tags.get("abandoned") == "yes"
+            or tags.get("end_date")
+            or any(k.split(":", 1)[0] in ("disused", "abandoned", "was", "razed",
+                                          "demolished", "removed") for k in tags)):
+        return None
     kind = next((t for t, key in OSM_KEY.items() if tags.get(key) == t), None)
     if kind not in TAG_CATEGORIE:
         return None  # POORT: enkel kindvriendelijke tags
-    cat, (age_min, age_max), indoor, check = TAG_CATEGORIE[kind]
+    cat, (age_min, age_max), indoor, check, naam_verplicht = TAG_CATEGORIE[kind]
 
     naam = tags.get("name")
+    if naam_verplicht and not naam:
+        return None  # bv. een naamloos parkje -> geen bruikbare fiche
     title = naam or LABELS.get(kind, "Uitstap")
     if check and any(bad in title.lower() for bad in NIET_KINDVRIENDELIJK):
         return None  # bv. erotisch museum weren

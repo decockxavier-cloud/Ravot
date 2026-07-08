@@ -100,6 +100,9 @@ class Event(db.Model):
     is_permanent = db.Column(db.Boolean, default=False, nullable=False, index=True)  # POI zonder vaste datum
     hidden = db.Column(db.Boolean, default=False, nullable=False, index=True)  # dubbel: verborgen in lijsten
     dupe_of = db.Column(db.Integer, index=True)   # id van het canonieke event waar dit een dubbel van is
+    pending = db.Column(db.Boolean, default=False, nullable=False, index=True)  # door gebruiker ingediend, wacht op review
+    partner_until = db.Column(db.DateTime, index=True)   # Ravot Partner actief tot (betaald, nooit invloed op score)
+    submitted_by = db.Column(db.Integer, db.ForeignKey("families.id"))  # wie het toevoegde (gebruikersbijdrage)
     slug = db.Column(db.String(300), unique=True, index=True)
     title = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text)
@@ -246,6 +249,7 @@ class Admin(db.Model):
     pw_hash = db.Column(db.String(255), nullable=False)   # scrypt (werkzeug)
     totp_secret = db.Column(db.String(64), nullable=False)  # verplichte 2FA
     totp_confirmed = db.Column(db.Boolean, default=False, nullable=False)  # QR gescand + code bevestigd
+    role = db.Column(db.String(12), default="admin", nullable=False)  # admin | reviewer
 
 
 class AuditLog(db.Model):
@@ -297,10 +301,21 @@ SETTING_DEFS = {
     "bron_osm_aan": ("0", "Bron: OpenStreetMap — speeltuinen, zoo, pretpark, musea", "bool"),
     "bron_wd_aan": ("0", "Bron: Wikidata — musea/attracties met officiële foto's", "bool"),
     "tv_max": ("2000", "Toerisme Vlaanderen: max. attracties per sync", "int"),
-    "osm_tags": ("playground,theme_park,water_park,zoo,museum,aquarium",
-                 "OSM: soorten (playground,theme_park,water_park,zoo,museum,aquarium)", "text"),
+    "osm_tags": ("playground,park,nature_reserve,water_park,swimming_area,miniature_golf,"
+                 "theme_park,zoo,aquarium,museum,viewpoint,attraction,castle",
+                 "OSM: soorten plekken (komma-gescheiden)", "text"),
     "osm_regios": ("vlaanderen",
                    "OSM: regio's (vlaanderen,brussel,wallonie,nederland,fr-nord)", "text"),
+    "verrijk_backend": ("ollama", "AI-verrijking: backend (ollama | cloud)", "text"),
+    "ollama_model": ("qwen2.5:7b", "AI-verrijking: lokaal model (Ollama)", "text"),
+    "cloud_model": ("claude-haiku-4-5-20251001", "AI-verrijking: cloud-model (indien backend=cloud)", "text"),
+    "partner_prijs_maand": ("19.00", "Ravot Partner: prijs per maand (EUR)", "text"),
+    "partner_prijs_jaar": ("190.00", "Ravot Partner: prijs per jaar (EUR, excl. btw)", "text"),
+    "partner_btw_pct": ("21", "Ravot Partner: btw-percentage", "text"),
+    "odoo_product_id": ("", "Odoo: product-id voor Partner-facturen (aanbevolen: product met 21% btw)", "text"),
+    "odoo_factuur_auto": ("0", "Odoo: factuur meteen valideren (1) of als concept klaarzetten (0)", "bool"),
+    "founding_aan": ("1", "Founding partners: gratis eerste jaar aanbieden", "bool"),
+    "founding_max": ("20", "Founding partners: maximum aantal plaatsen", "int"),
 }
 
 
@@ -385,6 +400,125 @@ class SyncStatus(db.Model):
     last_result = db.Column(db.String(200))
     last_error = db.Column(db.String(300))
     updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
+
+
+class Report(db.Model):
+    """Gebruikersmelding over een plek: gesloten, foute info, ... -> naar admin."""
+    __tablename__ = "reports"
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("events.id"), nullable=False, index=True)
+    family_id = db.Column(db.Integer, db.ForeignKey("families.id"))   # None = anoniem
+    reason = db.Column(db.String(24), nullable=False)   # gesloten | fout | ongepast | anders
+    note = db.Column(db.String(500))
+    handled = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=utcnow, index=True)
+    event = db.relationship("Event")
+
+
+REPORT_REASONS = {
+    "gesloten": "Deze plek bestaat niet meer / is gesloten",
+    "fout": "De informatie klopt niet",
+    "ongepast": "Niet geschikt voor kinderen",
+    "anders": "Iets anders",
+}
+
+
+class Photo(db.Model):
+    """Door een gebruiker geuploade foto van een plek. Staat standaard in de
+    moderatiewachtrij (pending) en is pas publiek zichtbaar na goedkeuring."""
+    __tablename__ = "photos"
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("events.id"), nullable=False, index=True)
+    family_id = db.Column(db.Integer, db.ForeignKey("families.id"))   # uploader
+    filename = db.Column(db.String(120), nullable=False)   # veilige, zelfgekozen bestandsnaam
+    status = db.Column(db.String(12), default="pending", nullable=False, index=True)  # pending|approved|rejected
+    created_at = db.Column(db.DateTime, default=utcnow, index=True)
+    event = db.relationship("Event")
+
+
+class EnrichProposal(db.Model):
+    """Een AI-voorstel tot verrijking van een plek. Wacht op menselijke
+    goedkeuring; pas dan worden de velden op het event toegepast."""
+    __tablename__ = "enrich_proposals"
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("events.id"), nullable=False, index=True)
+    beschrijving = db.Column(db.Text)
+    categorie = db.Column(db.String(32))
+    leeftijd_min = db.Column(db.Integer)
+    leeftijd_max = db.Column(db.Integer)
+    binnen = db.Column(db.Boolean)
+    status = db.Column(db.String(12), default="pending", nullable=False, index=True)  # pending|approved|rejected
+    created_at = db.Column(db.DateTime, default=utcnow, index=True)
+    event = db.relationship("Event")
+
+
+class Operator(db.Model):
+    """Uitbater (horeca, museum, speeltuin, ...) die zijn zaak claimt op Ravot.
+    Wachtwoordloos: inloggen via e-mailcode, net zoals gezinnen."""
+    __tablename__ = "operators"
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(255), unique=True, nullable=False, index=True)
+    display_name = db.Column(db.String(120))
+    # Facturatiegegevens (verplicht vóór Partner-aankoop; B2B/Peppol via Odoo).
+    bedrijfsnaam = db.Column(db.String(160))
+    btw_nummer = db.Column(db.String(20))     # BE0123456789
+    straat = db.Column(db.String(160))
+    postcode = db.Column(db.String(8))
+    gemeente = db.Column(db.String(80))
+    active = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=utcnow)
+
+
+class OperatorClaim(db.Model):
+    """Claim van een uitbater op een plek. Pas na goedkeuring (Nazicht) mag de
+    uitbater fichewijzigingen voorstellen voor die plek."""
+    __tablename__ = "operator_claims"
+    id = db.Column(db.Integer, primary_key=True)
+    operator_id = db.Column(db.Integer, db.ForeignKey("operators.id"), nullable=False, index=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("events.id"), nullable=False, index=True)
+    note = db.Column(db.String(500))   # hoe toont de uitbater dat de zaak van hem is
+    status = db.Column(db.String(12), default="pending", nullable=False, index=True)  # pending|approved|rejected
+    created_at = db.Column(db.DateTime, default=utcnow)
+    operator = db.relationship("Operator")
+    event = db.relationship("Event")
+
+
+# Velden die een uitbater mag voorstellen te wijzigen (whitelist).
+EDIT_VELDEN = ("description", "adres", "postcode", "gemeente", "source_url",
+               "indoor", "is_free")
+
+
+class EditProposal(db.Model):
+    """Voorgestelde fichewijziging door een uitbater -> Nazicht -> toepassen."""
+    __tablename__ = "edit_proposals"
+    id = db.Column(db.Integer, primary_key=True)
+    operator_id = db.Column(db.Integer, db.ForeignKey("operators.id"), nullable=False, index=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("events.id"), nullable=False, index=True)
+    changes = db.Column(db.JSON, default=dict)   # {veld: nieuwe waarde} (enkel EDIT_VELDEN)
+    status = db.Column(db.String(12), default="pending", nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=utcnow)
+    operator = db.relationship("Operator")
+    event = db.relationship("Event")
+
+
+class PartnerPayment(db.Model):
+    """Mollie-betaling voor het Ravot Partner-niveau van één zaak.
+    Status wordt UITSLUITEND gezet na verificatie bij Mollie zelf (nooit op
+    basis van de webhook-body) — dat is Mollies beveiligingsmodel."""
+    __tablename__ = "partner_payments"
+    id = db.Column(db.Integer, primary_key=True)
+    operator_id = db.Column(db.Integer, db.ForeignKey("operators.id"), nullable=False, index=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("events.id"), nullable=False, index=True)
+    mollie_id = db.Column(db.String(64), unique=True, index=True)   # tr_...
+    plan = db.Column(db.String(8), nullable=False)                  # maand | jaar
+    amount = db.Column(db.String(12), nullable=False)               # "19.00"
+    status = db.Column(db.String(16), default="open", nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=utcnow, index=True)
+    paid_at = db.Column(db.DateTime)
+    odoo_invoice_id = db.Column(db.Integer)          # account.move-id in Odoo
+    odoo_invoice_ref = db.Column(db.String(40))      # bv. INV/2026/0042 of DRAFT
+    operator = db.relationship("Operator")
+    event = db.relationship("Event")
 
 
 class GeoCache(db.Model):

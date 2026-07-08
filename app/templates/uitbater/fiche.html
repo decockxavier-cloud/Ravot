@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Fiche bewerken: {{ ev.title }}</h1>
+<p class="hint">Je wijzigingen worden eerst nagekeken door ons team en verschijnen
+  daarna op de fiche. De Ravotscore kan je niet wijzigen — die komt van gezinnen.</p>
+
+<form method="post" action="{{ url_for('uitbater.fiche', event_id=ev.id) }}" class="kaart-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label>Beschrijving
+    <textarea name="description" rows="4" maxlength="2000">{{ ev.description or '' }}</textarea>
+  </label>
+  <label>Adres (straat + nummer)
+    <input type="text" name="adres" maxlength="255" value="{{ ev.adres or '' }}">
+  </label>
+  <div class="veldrij">
+    <label>Postcode
+      <input type="text" name="postcode" inputmode="numeric" maxlength="40" data-plaatsen data-zelf="postcode" data-vul-gemeente="input[name=gemeente]" value="{{ ev.postcode or '' }}">
+    </label>
+    <label>Gemeente
+      <input type="text" name="gemeente" maxlength="80" value="{{ ev.gemeente or '' }}">
+    </label>
+  </div>
+  <label>Website
+    <input type="url" name="source_url" maxlength="500" value="{{ ev.source_url or '' }}">
+  </label>
+  <div class="checkrij">
+    <label class="check"><input type="checkbox" name="indoor" {{ 'checked' if ev.indoor }}> 🏠 Binnen</label>
+    <label class="check"><input type="checkbox" name="is_free" {{ 'checked' if ev.is_free }}> 🆓 Gratis toegang</label>
+  </div>
+  <div class="acties"><button class="btn btn-zon" type="submit">Wijziging indienen</button></div>
+</form>
+{% endblock %}

@@ -16,6 +16,7 @@
     {% else %}<span class="badge badge-leeg" title="Nog geen Ravotscore">nog geen score</span>{% endif %}
     {% if e.indoor %}<span class="badge">🌧️ binnen</span>{% endif %}
     {% if e.is_permanent %}<span class="badge">📍 altijd open</span>{% endif %}
+    {% if e.partner_until and e.partner_until > nu_utc %}<span class="badge badge-partner" title="Deze zaak is betalend partner van Ravot; dit beïnvloedt de score of volgorde niet">⭐ Partner</span>{% endif %}
     {% if e.has_vlieg %}<span class="badge badge-vlieg">🐛 Vlieg</span>{% endif %}
   </div>
   {% if family %}

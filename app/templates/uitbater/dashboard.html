@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Mijn zaken 🏪</h1>
+<p><a class="btn" href="{{ url_for('uitbater.claim') }}">+ Claim een zaak</a>
+   <a class="btn btn-stil" href="{{ url_for('uitbater.logout') }}">Afmelden</a></p>
+
+<div class="card">
+  <h2 style="margin-top:0">Mijn claims</h2>
+  {% if claims %}
+    {% for c in claims %}
+    <div class="nazicht-item">
+      <div>
+        <strong>{{ c.event.title if c.event else '—' }}</strong>
+        <p class="meta">status:
+          {% if c.status == 'approved' %}✅ goedgekeurd
+          {% elif c.status == 'pending' %}⏳ wordt nagekeken
+          {% else %}✕ afgewezen{% endif %}</p>
+      </div>
+      {% if c.status == 'approved' and c.event %}
+      <div class="nazicht-acties">
+        <a class="btn btn-klein" href="{{ url_for('uitbater.fiche', event_id=c.event_id) }}">Fiche bewerken</a>
+        {% if is_partner(c.event) %}
+          <span class="badge badge-partner">⭐ Partner tot {{ c.event.partner_until.strftime("%d/%m/%Y") }}</span>
+        {% else %}
+          <a class="btn btn-klein btn-zon" href="{{ url_for('uitbater.partner', event_id=c.event_id) }}">⭐ Word Partner</a>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+    {% if stats.get(c.event_id) %}
+    <p class="meta">📊 {{ stats[c.event_id].views }} weergaven ·
+      {{ stats[c.event_id].saves }}× bewaard · {{ stats[c.event_id].clicks }}× doorgeklikt</p>
+    {% endif %}
+    {% endfor %}
+  {% else %}<p class="leeg">Nog geen claims. Begin met je zaak te claimen!</p>{% endif %}
+</div>
+
+{% if voorstellen %}
+<div class="card">
+  <h2 style="margin-top:0">Mijn ingediende wijzigingen</h2>
+  {% for v in voorstellen %}
+  <p class="meta">{{ v.event.title if v.event else '—' }} — {{ v.changes|length }} veld(en) ·
+    {% if v.status == 'approved' %}✅ toegepast{% elif v.status == 'pending' %}⏳ wordt nagekeken{% else %}✕ afgewezen{% endif %}</p>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

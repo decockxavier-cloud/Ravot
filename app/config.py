@@ -46,6 +46,22 @@ class Config:
     # Nominatim (OSM-geocoder) voor plaatsnaam -> coördinaten. Geen key nodig.
     NOMINATIM_URL = os.environ.get(
         "NOMINATIM_URL", "https://nominatim.openstreetmap.org/search")
+    # Lokaal AI-model (Ollama-container) voor verrijking. Intern bereikbaar.
+    OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://ollama:11434")
+    # Optionele cloud-backend voor verrijking (leeg = uit).
+    ENRICH_CLOUD_KEY = os.environ.get("ENRICH_CLOUD_KEY", "")
+    # Mollie (Ravot Partner). Leeg = betalingen uit (portaal blijft gratis werken).
+    MOLLIE_API_KEY = os.environ.get("MOLLIE_API_KEY", "")
+    # Odoo (Peppol-conforme facturatie). Alles leeg = facturatie uit.
+    ODOO_URL = os.environ.get("ODOO_URL", "")
+    ODOO_DB = os.environ.get("ODOO_DB", "")
+    ODOO_USER = os.environ.get("ODOO_USER", "")
+    ODOO_API_KEY = os.environ.get("ODOO_API_KEY", "")
+    # Gebruikersfoto's: persistente map (Docker-volume) + limieten.
+    UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/data/uploads")
+    MAX_CONTENT_LENGTH = int(os.environ.get("MAX_UPLOAD_BYTES", 10 * 1024 * 1024))  # 10 MB
+    FOTO_MAX_ZIJDE = 1600   # px; grotere foto's worden verkleind
+    FOTO_KWALITEIT = 82     # JPEG-kwaliteit na heringcodering
 
     # -- Site ------------------------------------------------------------------
     SITE_URL = os.environ.get("SITE_URL", "http://localhost:5000")

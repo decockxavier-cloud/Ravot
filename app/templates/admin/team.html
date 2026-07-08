@@ -1,0 +1,45 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<h1>Team 👥</h1>
+<p class="hint">Reviewers kunnen enkel <strong>Nazicht</strong> gebruiken: ingediende
+  plekken, meldingen, foto's en AI-voorstellen beoordelen. Ze zien geen
+  instellingen, bronnen of gezinsgegevens. Ook reviewers loggen in met
+  wachtwoord + verplichte 2FA.</p>
+
+<section class="card">
+  <h2 style="margin-top:0">Reviewer toevoegen</h2>
+  <form method="post" action="{{ url_for('admin.team') }}" class="kaart-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>E-mailadres
+      <input type="email" name="email" required placeholder="reviewer@voorbeeld.be">
+    </label>
+    <label>Tijdelijk wachtwoord (min. 12 tekens — geef dit veilig door)
+      <input type="password" name="wachtwoord" required minlength="12">
+    </label>
+    <div class="acties"><button class="btn btn-zon" type="submit">Reviewer aanmaken</button></div>
+  </form>
+</section>
+
+<section class="card">
+  <h2 style="margin-top:0">Huidige leden</h2>
+  <table class="tabel">
+    <tr><th>E-mail</th><th>Rol</th><th>2FA</th><th></th></tr>
+    {% for a in leden %}
+    <tr>
+      <td>{{ a.email }}</td>
+      <td>{{ '🛡️ beheerder' if a.role == 'admin' else '🔍 reviewer' }}</td>
+      <td>{{ '✓' if a.totp_confirmed else 'nog in te stellen' }}</td>
+      <td>
+        {% if a.role == 'reviewer' %}
+        <form method="post" action="{{ url_for('admin.team_verwijder', aid=a.id) }}"
+              onsubmit="return confirm('Reviewer {{ a.email }} verwijderen?');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-klein btn-stil" type="submit">Verwijder</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</section>
+{% endblock %}

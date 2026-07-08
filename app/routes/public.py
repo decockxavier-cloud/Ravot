@@ -46,7 +46,7 @@ def geldige_events(query, now=None):
     # Permanente POI's (speeltuinen, attracties) hebben geen datum en zijn
     # altijd geldig; gedateerde events moeten binnen het venster vallen.
     return query.filter(
-        Event.hidden.is_(False),      # verborgen dubbels nooit tonen
+        Event.hidden.is_(False), Event.pending.is_(False),      # verborgen dubbels nooit tonen
         db.or_(
             Event.is_permanent.is_(True),
             db.and_((Event.end >= onder) | (Event.start >= onder),
@@ -174,7 +174,7 @@ def permanente_pois(profile, limit=24):
     """Gescoorde permanente plekken (speeltuinen, musea, attracties) in de buurt.
     Fallback zodat Vandaag/Weekend niet leeg zijn als er weinig gedateerde events zijn."""
     candidates = Event.query.filter(Event.is_permanent.is_(True),
-                                    Event.hidden.is_(False)).limit(3000).all()
+                                    Event.hidden.is_(False), Event.pending.is_(False)).limit(3000).all()
     rows = []
     for e in candidates:
         s = score_event(e, profile)
@@ -203,7 +203,7 @@ def scored_events(profile, scope, extra_filter=None, limit=40, weer=True):
     # Harde grenzen: nooit afgelopen events, nooit absurd ver in de toekomst.
     # 'Afgelopen' = het EINDE ligt achter de ondergrens (lopende events tellen mee).
     q = Event.query.filter(
-        Event.hidden.is_(False),
+        Event.hidden.is_(False), Event.pending.is_(False),
         Event.start <= end,
         (Event.end >= start) | (Event.start >= start),
         (Event.end >= onder) | (Event.start >= onder),   # niet afgelopen
@@ -482,7 +482,7 @@ def verkennen():
         Event.lat.isnot(None), Event.is_permanent.is_(False)
     ).order_by(Event.start).limit(500).all()
     permanent = Event.query.filter(
-        Event.lat.isnot(None), Event.is_permanent.is_(True), Event.hidden.is_(False)
+        Event.lat.isnot(None), Event.is_permanent.is_(True), Event.hidden.is_(False), Event.pending.is_(False)
     ).order_by(Event.title).limit(500).all()
     evs = gedateerd + permanent
 
@@ -521,6 +521,11 @@ def _kaart_marker(e):
 @bp.route("/e/<slug>")
 def event(slug):
     ev = Event.query.filter_by(slug=slug).first_or_404()
+    # Nog niet gemodereerde gebruikersbijdrage: niet publiek tonen.
+    # (Enkel de indiener zelf mag meekijken; geen indiener bekend => niemand.)
+    if ev.pending and (ev.submitted_by is None
+                       or session.get("family_id") != ev.submitted_by):
+        abort(404)
     if ev.end and ev.end < datetime.utcnow() - timedelta(days=1) and ev.series:
         # SEO §2.3: afgelopen event → permanente reekspagina (301)
         return redirect(url_for("public.reeks", slug=ev.series.slug), code=301)
@@ -545,10 +550,13 @@ def event(slug):
             friends_interested = [r[0] or "Een bevriend gezin" for r in rows]
     log("view", event_id=ev.id)
     title, desc = seo.meta_event(ev, total)
+    from ..models import Photo
+    goedgekeurde_fotos = Photo.query.filter_by(event_id=ev.id, status="approved").all()
     return render_template(
         "public/event.html", ev=ev, agg=agg, family_total=total,
         euro=euro_indicator(total), reviews=[r.public_dict() for r in series_reviews[:10]],
         friends=friends_interested, saved=saved, shared=shared, family=fam,
+        fotos=goedgekeurde_fotos,
         meta_title=title, meta_desc=desc,
         jsonld=[seo.event_jsonld(ev, agg, total),
                 seo.breadcrumb_jsonld([("Ravot", "/"),
@@ -581,7 +589,7 @@ def _gemeente_events(gemeente, facet=None):
     onder, boven = geldig_venster()
     q = Event.query.filter(
         db.func.lower(Event.gemeente) == gemeente.lower(),
-        Event.hidden.is_(False),
+        Event.hidden.is_(False), Event.pending.is_(False),
         db.or_(
             Event.is_permanent.is_(True),
             db.and_(Event.start <= end,
@@ -619,8 +627,16 @@ def gemeente_page(gemeente, facet=None):
         Event.gemeente.isnot(None), db.func.lower(Event.gemeente) != gemeente.lower()
     ).group_by(Event.gemeente).limit(6).all()]
     faq = seo.faq_jsonld([(f"Wat is er {scope} te doen in {naam} met kinderen?", answer)])
+    # Partnerblok: max. 2 betalende partners in deze gemeente, duidelijk gelabeld.
+    # Bewust een APART blok — partners krijgen nooit een betere plek in de lijst.
+    partners = Event.query.filter(
+        db.func.lower(Event.gemeente) == gemeente.lower(),
+        Event.partner_until.isnot(None), Event.partner_until > datetime.utcnow(),
+        Event.hidden.is_(False), Event.pending.is_(False),
+    ).order_by(Event.partner_until.desc()).limit(2).all()
     return render_template("public/gemeente.html", gemeente=naam, facet=facet,
                            facets=FACETS, events=events, answer=answer, buren=buren,
+                           partners=partners,
                            noindex=noindex, meta_title=title, meta_desc=desc,
                            jsonld=[faq], family=current_family(), active=None,
                            title=title)
@@ -731,3 +747,52 @@ def cookies():
 @bp.route("/contact")
 def contact():
     return _content_of_template("contact", "public/content.html", "Contact")
+
+
+@bp.route("/foto/<int:pid>")
+def foto(pid):
+    """Serveer een gebruikersfoto. Goedgekeurd -> iedereen; anders enkel de
+    admin of de uploader (pending foto's zijn dus niet publiek zichtbaar)."""
+    from flask import send_file
+    from .fotos_helpers import _mag_zien   # kleine helper hieronder
+    from ..models import Photo
+    from ..fotos import pad_van
+    import os
+    p = db.session.get(Photo, pid)
+    if not p or not _mag_zien(p):
+        abort(404)
+    pad = pad_van(p.filename)
+    if not os.path.exists(pad):
+        abort(404)
+    return send_file(pad, mimetype="image/jpeg", max_age=3600)
+
+
+@bp.route("/api/plaatsen")
+@limiter.limit("120/minute")
+def api_plaatsen():
+    """Autocomplete voor stad/postcode: canonieke suggesties uit de offline
+    Belgische plaatsenlijst. Geen externe calls, dus snel en altijd consistent."""
+    from ..plaatsen import PLAATSEN
+    q = (request.args.get("q") or "").strip().lower()
+    if len(q) < 2:
+        return {"suggesties": []}
+    uit = []
+    if q.isdigit():                       # postcode-prefix
+        for zc, naam, lat, lng in PLAATSEN:
+            if zc.startswith(q):
+                uit.append({"label": f"{naam} ({zc})", "postcode": zc,
+                            "gemeente": naam, "lat": lat, "lng": lng})
+                if len(uit) >= 8:
+                    break
+    else:                                 # naam-prefix (accentongevoelig)
+        import unicodedata
+        def plat(t):
+            return unicodedata.normalize("NFKD", t).encode("ascii", "ignore").decode().lower()
+        qp = plat(q)
+        for zc, naam, lat, lng in PLAATSEN:
+            if plat(naam).startswith(qp):
+                uit.append({"label": f"{naam} ({zc})", "postcode": zc,
+                            "gemeente": naam, "lat": lat, "lng": lng})
+                if len(uit) >= 8:
+                    break
+    return {"suggesties": uit}

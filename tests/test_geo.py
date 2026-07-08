@@ -25,12 +25,16 @@ def test_zoek_centrum_postcode(app):
         assert coord is not None
 
 
-def test_zoek_centrum_gemeente_uit_centroid(app):
+def test_zoek_centrum_gemeente_offline_canoniek(app):
+    """Plaatsnamen worden opgelost via de canonieke offline lijst (consistent,
+    geen netwerk) — die heeft voorrang op event-afgeleide centroids."""
     with app.app_context():
         db.session.add(PostcodeCentroid(postcode="8500", gemeente="Kortrijk",
                                         lat=50.83, lng=3.26, n_events=3))
         db.session.commit()
-        assert geo.zoek_centrum("Kortrijk") == (50.83, 3.26)
+        coord = geo.zoek_centrum("Kortrijk")
+        assert coord is not None
+        assert abs(coord[0] - 50.82) < 0.1 and abs(coord[1] - 3.26) < 0.15
 
 
 def test_geocode_gebruikt_cache_zonder_netwerk(app):

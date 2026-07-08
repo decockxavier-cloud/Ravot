@@ -1,0 +1,173 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<h1>Nazicht 🔍</h1>
+
+<section class="card">
+  <h2>Ingediende plekken <span class="pil">{{ wachtrij|length }}</span></h2>
+  {% if wachtrij %}
+    {% for e in wachtrij %}
+    <div class="nazicht-item">
+      <div>
+        <strong>{{ e.title }}</strong>
+        <p class="meta">📍 {{ e.adres or '' }}{% if e.postcode %} · {{ e.postcode }}{% endif %}
+          {{ e.gemeente or '' }} · {{ e.age_min }}–{{ e.age_max }} jaar
+          · {{ e.categories|join(', ') }}{% if e.indoor %} · binnen{% endif %}{% if e.is_free %} · gratis{% endif %}</p>
+        {% if e.description %}<p>{{ e.description }}</p>{% endif %}
+        {% if e.source_url %}<p><a href="{{ e.source_url }}" target="_blank" rel="noopener">{{ e.source_url }}</a></p>{% endif %}
+      </div>
+      <div class="nazicht-acties">
+        <form method="post" action="{{ url_for('admin.nazicht_plek', event_id=e.id, actie='goedkeuren') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-klein" type="submit">✓ Goedkeuren</button>
+        </form>
+        <form method="post" action="{{ url_for('admin.nazicht_plek', event_id=e.id, actie='afwijzen') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-klein btn-stil" type="submit">✕ Afwijzen</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}<p class="leeg">Geen wachtende inzendingen.</p>{% endif %}
+</section>
+
+<section class="card">
+  <h2>Uitbatersclaims <span class="pil">{{ claims|length }}</span></h2>
+  {% if claims %}
+    {% for c in claims %}
+    <div class="nazicht-item">
+      <div>
+        <strong>{{ c.event.title if c.event else '—' }}</strong>
+        <p class="meta">geclaimd door {{ c.operator.email if c.operator else '—' }}</p>
+        {% if c.note %}<p>“{{ c.note }}”</p>{% endif %}
+        {% if c.event and c.event.source_url %}<p class="hint">website op fiche:
+          <a href="{{ c.event.source_url }}" target="_blank" rel="noopener">{{ c.event.source_url }}</a>
+          — check of het e-maildomein overeenkomt.</p>{% endif %}
+      </div>
+      <div class="nazicht-acties">
+        <form method="post" action="{{ url_for('admin.nazicht_claim', cid=c.id, actie='goedkeuren') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-klein" type="submit">✓ Goedkeuren</button>
+        </form>
+        <form method="post" action="{{ url_for('admin.nazicht_claim', cid=c.id, actie='afwijzen') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-klein btn-stil" type="submit">✕ Afwijzen</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}<p class="leeg">Geen wachtende claims.</p>{% endif %}
+</section>
+
+<section class="card">
+  <h2>Fichewijzigingen van uitbaters <span class="pil">{{ edits|length }}</span></h2>
+  {% if edits %}
+    {% for v in edits %}
+    <div class="nazicht-item">
+      <div>
+        <strong>{{ v.event.title if v.event else '—' }}</strong>
+        <p class="meta">door {{ v.operator.email if v.operator else '—' }}</p>
+        <table class="tabel">
+          {% for veld, waarde in v.changes.items() %}
+          <tr><td><code>{{ veld }}</code></td>
+              <td class="hint">{{ v.event|attr(veld) if v.event else '—' }}</td>
+              <td>→ <strong>{{ waarde }}</strong></td></tr>
+          {% endfor %}
+        </table>
+      </div>
+      <div class="nazicht-acties">
+        <form method="post" action="{{ url_for('admin.nazicht_wijziging', pid=v.id, actie='goedkeuren') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-klein" type="submit">✓ Toepassen</button>
+        </form>
+        <form method="post" action="{{ url_for('admin.nazicht_wijziging', pid=v.id, actie='afwijzen') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-klein btn-stil" type="submit">✕ Afwijzen</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}<p class="leeg">Geen wachtende fichewijzigingen.</p>{% endif %}
+</section>
+
+<section class="card">
+  <h2>Foto's <span class="pil">{{ fotos|length }}</span></h2>
+  {% if fotos %}
+    <div class="foto-raster">
+    {% for f in fotos %}
+    <div class="foto-item">
+      <img src="{{ url_for('public.foto', pid=f.id) }}" alt="ter beoordeling" loading="lazy">
+      <p class="meta">{{ f.event.title if f.event else '—' }}</p>
+      <div class="nazicht-acties">
+        <form method="post" action="{{ url_for('admin.nazicht_foto', pid=f.id, actie='goedkeuren') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-klein" type="submit">✓ Goedkeuren</button>
+        </form>
+        <form method="post" action="{{ url_for('admin.nazicht_foto', pid=f.id, actie='afwijzen') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-klein btn-stil" type="submit">✕ Afwijzen</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+    </div>
+  {% else %}<p class="leeg">Geen foto's ter beoordeling.</p>{% endif %}
+</section>
+
+<section class="card">
+  <h2>AI-voorstellen <span class="pil">{{ voorstellen|length }}</span></h2>
+  {% if voorstellen %}
+    {% for v in voorstellen %}
+    <div class="nazicht-item">
+      <div style="flex:1">
+        <strong>{{ v.event.title if v.event else '—' }}</strong>
+        <p class="meta">voorstel: {{ v.categorie or '—' }} · {{ v.leeftijd_min }}–{{ v.leeftijd_max }} jaar
+          · {{ 'binnen' if v.binnen else 'buiten' }}</p>
+        {% if v.event and v.event.description %}
+          <p class="hint">huidige tekst: {{ v.event.description }}</p>{% endif %}
+        <form method="post" action="{{ url_for('admin.verrijk_voorstel', pid=v.id, actie='goedkeuren') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <textarea name="beschrijving" rows="3" style="width:100%">{{ v.beschrijving }}</textarea>
+          <div class="nazicht-acties">
+            <button class="btn btn-klein" type="submit">✓ Goedkeuren &amp; toepassen</button>
+          </div>
+        </form>
+        <form method="post" action="{{ url_for('admin.verrijk_voorstel', pid=v.id, actie='afwijzen') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-klein btn-stil" type="submit">✕ Afwijzen</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}<p class="leeg">Geen AI-voorstellen in de wachtrij.
+    Genereer er via <a href="{{ url_for('admin.verrijk') }}">AI-verrijking</a>.</p>{% endif %}
+</section>
+
+<section class="card">
+  <h2>Meldingen <span class="pil">{{ meldingen|length }}</span></h2>
+  {% if meldingen %}
+    {% for r in meldingen %}
+    <div class="nazicht-item">
+      <div>
+        <strong>{{ redenen.get(r.reason, r.reason) }}</strong>
+        {% if r.event %}<p class="meta">over: <a href="{{ url_for('public.event', slug=r.event.slug) }}">{{ r.event.title }}</a></p>{% endif %}
+        {% if r.note %}<p>“{{ r.note }}”</p>{% endif %}
+      </div>
+      <div class="nazicht-acties">
+        <form method="post" action="{{ url_for('admin.nazicht_melding', report_id=r.id, actie='verberg') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-klein" type="submit">Verberg plek</button>
+        </form>
+        <form method="post" action="{{ url_for('admin.nazicht_melding', report_id=r.id, actie='verwijder') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-klein btn-stil" type="submit">Verwijder plek</button>
+        </form>
+        <form method="post" action="{{ url_for('admin.nazicht_melding', report_id=r.id, actie='ok') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-klein btn-stil" type="submit">Enkel afvinken</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}<p class="leeg">Geen open meldingen.</p>{% endif %}
+</section>
+{% endblock %}
