@@ -21,3 +21,19 @@ except Exception:
 PLAATSEN = [(r[0], r[1], r[2], r[3]) for r in _RUW]
 # postcode -> landcode (BE/NL/FR), voor wie het onderscheid nodig heeft.
 PLAATS_LAND = {r[0]: r[4] for r in _RUW}
+
+
+_LAND_NAAM = {"BE": "België", "NL": "Nederland", "FR": "Frankrijk"}
+
+
+def land_van_postcode(postcode):
+    """Landcode (BE/NL/FR) voor een postcode, of None."""
+    if not postcode:
+        return None
+    return PLAATS_LAND.get(str(postcode).strip())
+
+
+def land_label(event):
+    """Landnaam om achter het adres te tonen — leeg voor België (impliciet)."""
+    code = land_van_postcode(getattr(event, "postcode", None))
+    return "" if code in (None, "BE") else _LAND_NAAM.get(code, "")

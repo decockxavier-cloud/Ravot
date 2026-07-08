@@ -965,11 +965,12 @@ ADMIN_EVENT_VELDEN = ("title", "description", "adres", "postcode", "gemeente",
 @admin_required
 def activiteiten():
     """Zoek- en beheeroverzicht van ALLE fiches (ook permanente plekken en
-    pending). Lost op dat de admin anders niet aan de meeste data kan."""
-    from ..models import Event
+    pending), met sortering en een focus op wat aangevuld moet worden."""
+    from ..models import Event, EnrichProposal, get_int
     zoek = (request.args.get("q") or "").strip()
     bron = request.args.get("bron", "")
     status = request.args.get("status", "")
+    sort = request.args.get("sort", "kwaliteit-op")   # kwaliteit-op|kwaliteit-af|recent
     q = Event.query
     if zoek:
         like = f"%{zoek.lower()}%"
@@ -982,20 +983,48 @@ def activiteiten():
         q = q.filter(Event.pending.is_(True))
     elif status == "live":
         q = q.filter(Event.pending.is_(False))
-    rijen = q.order_by(Event.updated_at.desc()).limit(200).all()
+    elif status == "aanvullen":
+        # De middenzone zonder AI-voorstel: precies wat verrijking nodig heeft.
+        k_min = get_int("kwaliteit_min_lijst", 30)
+        k_hoog = get_int("kwaliteit_hoog", 60)
+        heeft_voorstel = db.session.query(EnrichProposal.event_id)
+        q = q.filter(Event.quality >= k_min, Event.quality < k_hoog,
+                     ~Event.id.in_(heeft_voorstel))
+    if sort == "kwaliteit-af":
+        q = q.order_by(Event.quality.desc().nullslast())
+    elif sort == "recent":
+        q = q.order_by(Event.updated_at.desc())
+    else:  # kwaliteit-op: zwakste (of dichtst bij groen) eerst — standaard
+        q = q.order_by(Event.quality.asc().nullsfirst())
+    rijen = q.limit(200).all()
     from ..services.sources import REGISTRY
     return render_template("admin/activiteiten.html", rijen=rijen, zoek=zoek,
-                           bron=bron, status=status, bronnen=list(REGISTRY),
+                           bron=bron, status=status, sort=sort,
+                           bronnen=list(REGISTRY),
                            title="Activiteiten", family=None, active="activiteiten")
 
 
 @bp.route("/activiteiten/<int:event_id>", methods=["GET", "POST"])
 @admin_required
 def activiteit_bewerk(event_id):
-    from ..models import Event
+    from ..models import Event, CATEGORIES
     ev = db.session.get(Event, event_id) or abort(404)
+    voorstel = None
     if request.method == "POST":
         f = request.form
+        # --- AI-voorstel genereren (vult de velden, slaat NIET op) ---
+        if f.get("actie") == "verrijk":
+            from ..enrich import verrijk_plek
+            try:
+                voorstel = verrijk_plek(ev)
+                flash("AI-voorstel ingevuld — controleer, pas aan en klik Opslaan.", "ok")
+            except Exception as exc:
+                flash(f"AI-verrijking mislukt: {str(exc)[:150]}. Draait Ollama?", "error")
+            return render_template("admin/activiteit_bewerk.html", ev=ev,
+                                   categories=CATEGORIES, voorstel=voorstel,
+                                   title=f"Bewerk: {ev.title}", family=None,
+                                   active="activiteiten")
+        # --- Opslaan ---
         import re as _re
         for veld in ADMIN_EVENT_VELDEN:
             if veld not in f:
@@ -1010,14 +1039,11 @@ def activiteit_bewerk(event_id):
                 ev.postcode = _re.sub(r"\D", "", waarde)[:8] or None
             else:
                 setattr(ev, veld, waarde or None)
-        # categorie apart (kan meerdere zijn; hier één hoofdcategorie)
         cat = (f.get("categorie") or "").strip()
         if cat:
             ev.categories = [cat]
-        # pending togglen (publiceren / terug in wachtrij)
         if "pending" in f:
             ev.pending = f.get("pending") == "1"
-        # coördinaten herberekenen uit postcode als gevraagd
         if f.get("herbereken_geo") and ev.postcode:
             from ..geo import postcode_coord
             coord = postcode_coord(ev.postcode)
@@ -1029,10 +1055,10 @@ def activiteit_bewerk(event_id):
         audit(f"activiteit bewerkt door admin: #{ev.id} '{ev.title}'")
         flash("Fiche opgeslagen.", "ok")
         return redirect(url_for("admin.activiteit_bewerk", event_id=ev.id))
-    from ..models import CATEGORIES
     return render_template("admin/activiteit_bewerk.html", ev=ev,
-                           categories=CATEGORIES, title=f"Bewerk: {ev.title}",
-                           family=None, active="activiteiten")
+                           categories=CATEGORIES, voorstel=voorstel,
+                           title=f"Bewerk: {ev.title}", family=None,
+                           active="activiteiten")
 
 
 @bp.route("/activiteiten/<int:event_id>/verwijder", methods=["POST"])

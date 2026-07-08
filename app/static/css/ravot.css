@@ -64,9 +64,11 @@ a { color: var(--gras); }
 
 /* Formulieren */
 label { display: block; font-weight: 600; margin: 12px 0 4px; }
-input[type=text], input[type=email], input[type=number], select {
+input[type=text], input[type=email], input[type=number], input[type=url],
+input[type=search], input[type=password], input[type=tel], select, textarea {
   width: 100%; min-height: 46px; padding: 10px 12px; border: 1.5px solid var(--lijn);
   border-radius: 12px; background: var(--wit); font: inherit; }
+textarea { min-height: 110px; resize: vertical; line-height: 1.5; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip { position: relative; }
 .chip input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }

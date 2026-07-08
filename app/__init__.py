@@ -20,6 +20,8 @@ def create_app(config_object=Config):
     app.jinja_env.globals["has_echte_foto"] = has_echte_foto
     from .routes.public import event_datum
     app.jinja_env.globals["event_datum"] = event_datum
+    from .plaatsen import land_label
+    app.jinja_env.globals["land_label"] = land_label
 
     @app.context_processor
     def _inject_nu():

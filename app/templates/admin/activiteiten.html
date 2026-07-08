@@ -2,34 +2,56 @@
 {% block admin_content %}
 <h1>Activiteiten</h1>
 <p class="hint">Zoek en bewerk élke fiche — ook permanente plekken (die staan niet
-  in Ontdek) en items in de wachtrij. Hier vind je terug wat je net goedkeurde.</p>
+  in Ontdek) en items in de wachtrij. Kies <strong>"aan te vullen"</strong> om
+  gericht de fiches te zien die verrijking nodig hebben, zwakste of dichtst bij
+  groen eerst.</p>
 
-<form method="get" class="zoekbalk-admin" style="margin-bottom:14px">
-  <input type="search" name="q" value="{{ zoek }}" placeholder="Naam, gemeente of postcode…" style="min-width:220px">
+<form method="get" class="zoekbalk-admin" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+  <input type="search" name="q" value="{{ zoek }}" placeholder="Naam, gemeente of postcode…" style="min-width:200px">
   <select name="bron"><option value="">alle bronnen</option>
     {% for b in bronnen %}<option value="{{ b }}" {{ 'selected' if bron==b }}>{{ b }}</option>{% endfor %}
   </select>
   <select name="status"><option value="">alle statussen</option>
     <option value="live" {{ 'selected' if status=='live' }}>live</option>
     <option value="pending" {{ 'selected' if status=='pending' }}>in wachtrij</option>
+    <option value="aanvullen" {{ 'selected' if status=='aanvullen' }}>aan te vullen (middenzone)</option>
+  </select>
+  <select name="sort">
+    <option value="kwaliteit-op" {{ 'selected' if sort=='kwaliteit-op' }}>kwaliteit: laagste eerst</option>
+    <option value="kwaliteit-af" {{ 'selected' if sort=='kwaliteit-af' }}>kwaliteit: hoogste eerst</option>
+    <option value="recent" {{ 'selected' if sort=='recent' }}>recentst gewijzigd</option>
   </select>
   <button class="btn btn-stil" type="submit">Zoek</button>
 </form>
 
-<table class="tabel">
-  <tr><th>Titel</th><th>Bron</th><th>Plaats</th><th>Wanneer</th><th>Kwal.</th><th>Status</th><th></th></tr>
+<table class="admin-tabel">
+  <tr><th>Titel</th><th>Bron</th><th>Plaats</th><th>Wanneer</th><th>Kwal.</th><th>Mist</th><th>Status</th><th></th></tr>
   {% for e in rijen %}
   <tr>
     <td>{{ e.title }}</td>
     <td>{{ e.source }}</td>
     <td>{{ e.gemeente or '' }} {{ e.postcode or '' }}</td>
     <td>{{ '📌 vast' if e.is_permanent else (e.start.strftime('%d/%m/%y') if e.start else '—') }}</td>
-    <td>{{ e.quality if e.quality is not none else '—' }}</td>
+    <td>
+      {% set qd = e.quality if e.quality is not none else -1 %}
+      {% if qd < 0 %}<span class="badge">—</span>
+      {% elif qd >= 60 %}<span class="badge" style="color:var(--gras)">🟢 {{ qd }}</span>
+      {% elif qd >= 30 %}<span class="badge" style="color:#b8860b">🟡 {{ qd }}</span>
+      {% else %}<span class="badge" style="color:var(--rood)">🔴 {{ qd }}</span>{% endif %}
+    </td>
+    <td class="hint">
+      {%- set mist = [] -%}
+      {%- if not e.description or e.description|length < 20 %}{% set _ = mist.append('tekst') %}{% endif -%}
+      {%- if not e.image_url %}{% set _ = mist.append('foto') %}{% endif -%}
+      {%- if not e.adres %}{% set _ = mist.append('adres') %}{% endif -%}
+      {%- if not e.source_url %}{% set _ = mist.append('web') %}{% endif -%}
+      {{ mist|join(', ') if mist else '—' }}
+    </td>
     <td>{{ '⏳ wachtrij' if e.pending else '✅ live' }}</td>
-    <td><a class="btn btn-klein" href="{{ url_for('admin.activiteit_bewerk', event_id=e.id) }}">Bewerk</a></td>
+    <td><a class="btn btn-klein" href="{{ url_for('admin.activiteit_bewerk', event_id=e.id) }}">Bewerk / verrijk</a></td>
   </tr>
-  {% else %}<tr><td colspan="7" class="leeg">Niets gevonden.</td></tr>
+  {% else %}<tr><td colspan="8" class="leeg">Niets gevonden.</td></tr>
   {% endfor %}
 </table>
-<p class="hint">Max 200 resultaten getoond — verfijn met de zoekvelden.</p>
+<p class="hint">Max 200 resultaten — verfijn met de velden hierboven.</p>
 {% endblock %}

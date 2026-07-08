@@ -66,3 +66,66 @@ def test_beeld_sanering():
     assert _veilige_afbeelding("https://tracker.evil/pixel") is None   # geen echt beeld
     assert _veilige_afbeelding("https://x.be/foto.jpg") == "https://x.be/foto.jpg"
     assert _veilige_afbeelding(None) is None
+
+
+def test_ai_voorstel_vult_velden_zonder_op_te_slaan(client, app, monkeypatch):
+    """De 'verrijk'-knop op de fiche genereert een voorstel dat de velden vult,
+    maar slaat NIETS op tot de admin expliciet opslaat."""
+    with app.app_context():
+        db.session.add(Event(source="osm", ext_id="o", slug="geit", title="Geitenweide",
+            is_permanent=True, gemeente="Roeselare", postcode="8800", lat=51.0, lng=3.1,
+            age_min=1, age_max=12, categories=["natuur"], quality=30))
+        db.session.commit()
+        eid = Event.query.filter_by(slug="geit").first().id
+    # AI-generatie mocken zodat er geen Ollama nodig is
+    import app.enrich as enrich
+    monkeypatch.setattr(enrich, "verrijk_plek", lambda ev, generate=None: {
+        "beschrijving": "Een knusse kinderboerderij met geiten om te aaien.",
+        "categorie": "natuur", "leeftijd_min": 2, "leeftijd_max": 10, "binnen": False})
+    _admin(client, app)
+    r = client.post(f"/beheer/activiteiten/{eid}", data={"csrf_token": "x", "actie": "verrijk"})
+    assert r.status_code == 200
+    assert "knusse kinderboerderij" in r.get_data(as_text=True)   # voorstel in de velden
+    with app.app_context():
+        # niets opgeslagen: beschrijving in de databank nog leeg
+        assert not (db.session.get(Event, eid).description or "")
+    # nu expliciet opslaan met de voorgestelde tekst
+    r2 = client.post(f"/beheer/activiteiten/{eid}", data={"csrf_token": "x",
+        "actie": "opslaan", "title": "Geitenweide", "gemeente": "Roeselare",
+        "postcode": "8800", "categorie": "natuur", "age_min": "2", "age_max": "10",
+        "description": "Een knusse kinderboerderij met geiten om te aaien."})
+    assert r2.status_code == 302
+    with app.app_context():
+        assert "kinderboerderij" in db.session.get(Event, eid).description
+
+
+def test_land_label_afgeleid_uit_postcode(app):
+    from app.plaatsen import land_label
+    class E:  pass
+    be = E(); be.postcode = "9000"
+    nl = E(); nl.postcode = "4811"
+    fr = E(); fr.postcode = "59000"
+    assert land_label(be) == ""            # België impliciet, geen label
+    assert land_label(nl) == "Nederland"
+    assert land_label(fr) == "Frankrijk"
+
+
+def test_activiteiten_aanvullen_filter_en_sortering(client, app):
+    """Focusfilter 'aanvullen' toont enkel middenzone zonder voorstel,
+    en sorteren op kwaliteit werkt."""
+    from app.models import Setting
+    with app.app_context():
+        db.session.merge(Setting(key="kwaliteit_min_lijst", value="30"))
+        db.session.merge(Setting(key="kwaliteit_hoog", value="60"))
+        for slug, q in [("laag", 10), ("mid", 45), ("hoog", 80)]:
+            db.session.add(Event(source="osm", ext_id=slug, slug=slug, title=f"Plek {slug}",
+                is_permanent=True, gemeente="Gent", postcode="9000", lat=51.0, lng=3.7,
+                age_min=0, age_max=12, categories=["buiten"], quality=q))
+        db.session.commit()
+    _admin(client, app)
+    html = client.get("/beheer/activiteiten?status=aanvullen").get_data(as_text=True)
+    assert "Plek mid" in html
+    assert "Plek laag" not in html and "Plek hoog" not in html
+    # sorteren hoogste eerst: 'hoog' vóór 'laag' in de HTML
+    h2 = client.get("/beheer/activiteiten?sort=kwaliteit-af").get_data(as_text=True)
+    assert h2.index("Plek hoog") < h2.index("Plek laag")

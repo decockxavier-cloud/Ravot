@@ -8,7 +8,7 @@
           data-titel="{{ ev.title }}" data-url="{{ request.url }}"
           aria-label="Deel deze activiteit">📤 Deel</button>
 </div>
-<p class="meta">📍 {{ ev.venue.name if ev.venue else '' }}{% if ev.adres %} · {{ ev.adres }}{% endif %}{% if ev.postcode %} · {{ ev.postcode }}{% endif %}{% if ev.gemeente %} <a href="/{{ ev.gemeente|lower }}">{{ ev.gemeente }}</a>{% endif %}
+<p class="meta">📍 {{ ev.venue.name if ev.venue else '' }}{% if ev.adres %} · {{ ev.adres }}{% endif %}{% if ev.postcode %} · {{ ev.postcode }}{% endif %}{% if ev.gemeente %} <a href="/{{ ev.gemeente|lower }}">{{ ev.gemeente }}</a>{% endif %}{% if land_label(ev) %} <span class="badge">🌍 {{ land_label(ev) }}</span>{% endif %}
  {% if ev.start %} · 🕐 {{ event_datum(ev) }}{% endif %}</p>
 {% if ev.lat and ev.lng %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
