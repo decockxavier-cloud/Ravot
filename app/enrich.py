@@ -39,17 +39,26 @@ def _feiten(event):
     }
 
 
-def _prompt(event):
-    return (
+def _prompt(event, webtekst=None):
+    blok = (
         "Feiten over een plek (gebruik ENKEL deze, verzin niets bij):\n"
         f"{json.dumps(_feiten(event), ensure_ascii=False, indent=2)}\n\n"
+    )
+    if webtekst:
+        blok += ("Tekst van de website van deze plek (gebruik dit als bron, maar "
+                 "neem enkel over wat duidelijk over deze plek gaat):\n"
+                 f"\"\"\"\n{webtekst}\n\"\"\"\n\n")
+    return blok + (
         "Geef een JSON-object met exact deze sleutels:\n"
         '- "beschrijving": 2 à 3 zinnen, warm en uitnodigend, gericht op gezinnen '
-        "met jonge kinderen, in het Nederlands. Baseer je enkel op de feiten.\n"
+        "met jonge kinderen, in het Nederlands. Baseer je enkel op de feiten"
+        f"{' en de websitetekst' if webtekst else ''}.\n"
         f'- "categorie": één waarde uit deze lijst: {list(CATEGORIES)}.\n'
         '- "leeftijd_min": geschatte minimumleeftijd (geheel getal 0-18).\n'
         '- "leeftijd_max": geschatte maximumleeftijd (geheel getal 0-18).\n'
         '- "binnen": true als het een binnenlocatie is, anders false.\n'
+        '- "gratis": true als de plek duidelijk gratis toegankelijk is, false als '
+        "er duidelijk betaald moet worden, of null als je het niet zeker weet.\n"
         "Antwoord met ENKEL het JSON-object."
     )
 
@@ -122,23 +131,71 @@ def _clamp_leeftijd(v, standaard):
         return standaard
 
 
-def verrijk_plek(event, generate=None):
+def _haal_webtekst(url, max_chars=3000):
+    """Haal de zichtbare tekst van een webpagina op (voor AI-context).
+    Veilig: enkel http/https, korte timeout, HTML gestript, begrensd."""
+    if not url or not str(url).startswith(("http://", "https://")):
+        return None
+    try:
+        import requests
+        r = requests.get(url, timeout=12, headers={"User-Agent": "Ravot/1.0 (+https://ravot.be)"})
+        r.raise_for_status()
+        html = r.text
+    except Exception:
+        return None
+    from html.parser import HTMLParser
+
+    class _Tekst(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.stukken = []
+            self._skip = False
+        def handle_starttag(self, tag, attrs):
+            if tag in ("script", "style", "nav", "footer", "header"):
+                self._skip = True
+        def handle_endtag(self, tag):
+            if tag in ("script", "style", "nav", "footer", "header"):
+                self._skip = False
+        def handle_data(self, data):
+            if not self._skip:
+                t = data.strip()
+                if t:
+                    self.stukken.append(t)
+
+    p = _Tekst()
+    try:
+        p.feed(html)
+    except Exception:
+        return None
+    tekst = " ".join(p.stukken)
+    return tekst[:max_chars] if tekst else None
+
+
+def verrijk_plek(event, generate=None, extra_url=None):
     """Vraag een AI-voorstel voor een plek. Geeft een dict met voorstel-velden.
+    Als er een website (event.source_url of extra_url) is, halen we die tekst op
+    en geven we ze als extra context mee — zo baseert de AI zich op wat online
+    staat i.p.v. enkel op de kale feiten.
     'generate' is injecteerbaar voor tests (zodat we geen live model nodig hebben)."""
     gen = generate or _generate
-    ruw = gen(_prompt(event), SYSTEM)
+    webtekst = _haal_webtekst(extra_url or event.source_url)
+    ruw = gen(_prompt(event, webtekst=webtekst), SYSTEM)
     data = _parse_json(ruw)
     cat = data.get("categorie")
     lo = _clamp_leeftijd(data.get("leeftijd_min"), event.age_min or 0)
     hi = _clamp_leeftijd(data.get("leeftijd_max"), event.age_max or 12)
     if hi < lo:
         lo, hi = hi, lo
+    # is_free (gratis): AI mag None teruggeven -> dan behouden we de bestaande waarde
+    gratis = data.get("gratis")
     return {
         "beschrijving": (data.get("beschrijving") or "").strip()[:2000],
         "categorie": cat if cat in CATEGORIES else None,
         "leeftijd_min": lo,
         "leeftijd_max": hi,
         "binnen": bool(data.get("binnen")),
+        "gratis": bool(gratis) if gratis is not None else event.is_free,
+        "webtekst_gebruikt": bool(webtekst),
         "ruw": ruw,   # voor debugging in de testknop
     }
 

@@ -79,9 +79,10 @@ def test_ai_voorstel_vult_velden_zonder_op_te_slaan(client, app, monkeypatch):
         eid = Event.query.filter_by(slug="geit").first().id
     # AI-generatie mocken zodat er geen Ollama nodig is
     import app.enrich as enrich
-    monkeypatch.setattr(enrich, "verrijk_plek", lambda ev, generate=None: {
+    monkeypatch.setattr(enrich, "verrijk_plek", lambda ev, generate=None, extra_url=None: {
         "beschrijving": "Een knusse kinderboerderij met geiten om te aaien.",
-        "categorie": "natuur", "leeftijd_min": 2, "leeftijd_max": 10, "binnen": False})
+        "categorie": "natuur", "leeftijd_min": 2, "leeftijd_max": 10,
+        "binnen": False, "gratis": True, "webtekst_gebruikt": False})
     _admin(client, app)
     r = client.post(f"/beheer/activiteiten/{eid}", data={"csrf_token": "x", "actie": "verrijk"})
     assert r.status_code == 200

@@ -1015,9 +1015,11 @@ def activiteit_bewerk(event_id):
         # --- AI-voorstel genereren (vult de velden, slaat NIET op) ---
         if f.get("actie") == "verrijk":
             from ..enrich import verrijk_plek
+            extra_url = (f.get("verrijk_url") or "").strip() or None
             try:
-                voorstel = verrijk_plek(ev)
-                flash("AI-voorstel ingevuld — controleer, pas aan en klik Opslaan.", "ok")
+                voorstel = verrijk_plek(ev, extra_url=extra_url)
+                bron = "op basis van de website" if voorstel.get("webtekst_gebruikt") else "op basis van de bekende gegevens"
+                flash(f"AI-voorstel ingevuld ({bron}) — controleer, pas aan en klik Opslaan.", "ok")
             except Exception as exc:
                 flash(f"AI-verrijking mislukt: {str(exc)[:150]}. Draait Ollama?", "error")
             return render_template("admin/activiteit_bewerk.html", ev=ev,

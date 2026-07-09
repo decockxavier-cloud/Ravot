@@ -112,7 +112,7 @@ def upsert_event(data):
         db.session.add(ev)
     for f in ("title", "description", "start", "end", "is_permanent",
               "gemeente", "postcode", "adres", "lat", "lng", "age_min", "age_max",
-              "categories", "indoor", "is_free", "price_info", "image_url",
+              "categories", "subtype", "indoor", "is_free", "price_info", "image_url",
               "source_url", "attribution", "pending"):
         if f in data:
             setattr(ev, f, data[f])

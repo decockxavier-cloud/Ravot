@@ -103,6 +103,7 @@ class Event(db.Model):
     pending = db.Column(db.Boolean, default=False, nullable=False, index=True)  # door gebruiker ingediend, wacht op review
     partner_until = db.Column(db.DateTime, index=True)   # Ravot Partner actief tot (betaald, nooit invloed op score)
     quality = db.Column(db.Integer, index=True)         # 0-100 volledigheid van de fiche (app/kwaliteit.py)
+    subtype = db.Column(db.String(40), index=True)      # fijn OSM-type: playground, park, zoo, museum…
     submitted_by = db.Column(db.Integer, db.ForeignKey("families.id"))  # wie het toevoegde (gebruikersbijdrage)
     slug = db.Column(db.String(300), unique=True, index=True)
     title = db.Column(db.String(255), nullable=False)

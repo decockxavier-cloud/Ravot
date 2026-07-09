@@ -136,3 +136,33 @@ def test_verrijking_richt_op_middenzone_dichtst_bij_groen(app):
         slugs = [e.slug for e in kand]
         assert slugs == ["z-mid-hoog", "z-mid-laag"]   # enkel midden, 55 vóór 35
         assert "z-laag" not in slugs and "z-groen" not in slugs
+
+
+def test_verrijking_leest_url_en_vult_gratis(app, monkeypatch):
+    """verrijk_plek haalt websitetekst op en de AI mag ook 'gratis' bepalen."""
+    import app.enrich as enrich
+    gezien = {}
+    monkeypatch.setattr(enrich, "_haal_webtekst",
+                        lambda url, max_chars=3000: "Gratis toegankelijk speelbos met kabelbaan.")
+    def fake_gen(prompt, system):
+        gezien["prompt"] = prompt
+        import json as _j
+        return _j.dumps({"beschrijving": "Leuk speelbos.", "categorie": "natuur",
+                         "leeftijd_min": 3, "leeftijd_max": 10, "binnen": False, "gratis": True})
+    with app.app_context():
+        ev = _ev(slug="url", title="Speelbos", source_url="https://x.be")
+        v = enrich.verrijk_plek(ev, generate=fake_gen)
+        assert v["gratis"] is True and v["binnen"] is False
+        assert v["webtekst_gebruikt"] is True
+        assert "speelbos met kabelbaan" in gezien["prompt"].lower()   # webtekst in prompt
+
+
+def test_kaart_verbergt_speeltuinen(client, app):
+    from app.models import Event
+    with app.app_context():
+        db.session.add(_ev(slug="sp", title="Gewone Speeltuin", subtype="playground"))
+        db.session.add(_ev(slug="zoo", title="Dierenpark Testtuin", subtype="zoo",
+                           categories=["natuur"]))
+        db.session.commit()
+    html = client.get("/verkennen?sp=0").get_data(as_text=True)
+    assert "Dierenpark Testtuin" in html and "Gewone Speeltuin" not in html

@@ -6,6 +6,7 @@
 {% set v_min = voorstel.leeftijd_min if voorstel and voorstel.leeftijd_min is not none else ev.age_min %}
 {% set v_max = voorstel.leeftijd_max if voorstel and voorstel.leeftijd_max is not none else ev.age_max %}
 {% set v_indoor = voorstel.binnen if voorstel and voorstel.binnen is not none else ev.indoor %}
+{% set v_gratis = voorstel.gratis if voorstel and voorstel.gratis is not none else ev.is_free %}
 
 <p><a href="{{ url_for('admin.activiteiten') }}">← Terug naar activiteiten</a></p>
 <h1>Fiche bewerken</h1>
@@ -52,16 +53,21 @@
   </div>
   <div class="veldrij">
     <label class="check"><input type="checkbox" name="indoor" value="1" {{ 'checked' if v_indoor }}> Binnen</label>
-    <label class="check"><input type="checkbox" name="is_free" value="1" {{ 'checked' if ev.is_free }}> Gratis</label>
+    <label class="check"><input type="checkbox" name="is_free" value="1" {{ 'checked' if v_gratis }}> Gratis</label>
     <label class="check"><input type="checkbox" name="pending" value="1" {{ 'checked' if ev.pending }}> In wachtrij (niet publiek)</label>
     <label class="check"><input type="checkbox" name="herbereken_geo" value="1"> Coördinaten opnieuw uit postcode</label>
+  </div>
+  <div class="veldrij" style="align-items:end">
+    <label>Verrijk op basis van deze URL <small class="hint">(leeg = de website hierboven)</small>
+      <input type="url" name="verrijk_url" placeholder="https://…"></label>
   </div>
   <div class="acties" style="gap:10px">
     <button class="btn btn-zon" type="submit" name="actie" value="opslaan">💾 Opslaan</button>
     <button class="btn btn-stil" type="submit" name="actie" value="verrijk"
-            title="Genereer een AI-voorstel en vul de velden in (traag op CPU)">🤖 AI-voorstel genereren</button>
+            title="Genereer een AI-voorstel (leest de URL/website als die er is) en vul alle velden in — traag op CPU">🤖 AI-voorstel genereren</button>
   </div>
-  <p class="hint">Het AI-voorstel vult enkel de velden in; niets wordt bewaard tot je op Opslaan klikt.</p>
+  <p class="hint">De AI vult beschrijving, categorie, leeftijden én de vinkjes (binnen/gratis) in.
+    Is er een website of URL, dan leest ze die als bron. Niets wordt bewaard tot je op Opslaan klikt.</p>
 </form>
 
 <form method="post" action="{{ url_for('admin.activiteit_verwijder', event_id=ev.id) }}"

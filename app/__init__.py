@@ -155,6 +155,7 @@ def register_cli(app):
             ("submitted_by", "ALTER TABLE events ADD COLUMN submitted_by INTEGER"),
             ("partner_until", "ALTER TABLE events ADD COLUMN partner_until TIMESTAMP"),
             ("quality", "ALTER TABLE events ADD COLUMN quality INTEGER"),
+            ("subtype", "ALTER TABLE events ADD COLUMN subtype VARCHAR(40)"),
         ):
             if kol not in cols:
                 db.session.execute(text(ddl))
@@ -253,6 +254,15 @@ def register_cli(app):
         n_content = seed_standaard_content()
         if n_content:
             added.append(f"{n_content} standaardteksten")
+        # Eenmalige backfill: bestaande OSM-speeltuinen krijgen subtype='playground'
+        # (de OSM-adapter zette is_free enkel voor speeltuinen -> betrouwbare proxy),
+        # zodat de "verberg speeltuinen"-filter meteen werkt zonder re-sync.
+        if "subtype" in cols or "subtype" in [a.split(".")[-1] for a in added]:
+            res = db.session.execute(text(
+                "UPDATE events SET subtype='playground' "
+                "WHERE source='osm' AND is_permanent AND is_free AND subtype IS NULL"))
+            if res.rowcount:
+                added.append(f"{res.rowcount}× subtype=playground")
         db.session.commit()
         click.echo("Migratie klaar. Toegevoegd: " + (", ".join(added) or "niets nodig"))
 

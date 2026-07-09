@@ -190,6 +190,7 @@ def normalise(el):
         "lat": float(lat), "lng": float(lng),
         "age_min": age_min, "age_max": age_max,
         "categories": [cat],
+        "subtype": kind,
         "indoor": indoor,
         "is_free": kind == "playground",
         "price_info": [{"name": "basis", "price": 0}] if kind == "playground" else [],

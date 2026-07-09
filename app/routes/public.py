@@ -450,6 +450,8 @@ def ontdek():
     zoek = (request.args.get("q") or "").strip().lower()
     filter_type = request.args.get("filter", "")   # ''|gratis|binnen|buiten
     wanneer = request.args.get("wanneer", "")      # ''|vandaag|deze-week|weekend
+    cat = request.args.get("cat", "")              # categorie-filter
+    verberg_sp = request.args.get("sp") == "0"     # gewone speeltuinen verbergen
     try:
         pagina = max(1, int(request.args.get("p", 1)))
     except ValueError:
@@ -474,6 +476,11 @@ def ontdek():
         q = q.filter(Event.indoor.is_(True))
     elif filter_type == "buiten":
         q = q.filter(Event.indoor.is_(False))
+    if cat:
+        # categories is JSON; matchen doen we tekstueel op de opgeslagen lijst
+        q = q.filter(db.func.lower(db.cast(Event.categories, db.String)).like(f'%"{cat}"%'))
+    if verberg_sp:
+        q = q.filter(db.or_(Event.subtype.is_(None), Event.subtype != "playground"))
     # Gedateerde events eerst (permanente POI's met start=None achteraan), zodat
     # de 1000-cap niet volloopt met permanente plekken.
     candidates = q.order_by(Event.start.is_(None).asc(),
@@ -511,7 +518,7 @@ def ontdek():
     begin = (pagina - 1) * per_pagina
     pagina_rows = rows[begin:begin + per_pagina]
 
-    return render_template("public/ontdek.html", rows=pagina_rows, sort=sort, zoek=zoek, wanneer=wanneer,
+    return render_template("public/ontdek.html", rows=pagina_rows, sort=sort, zoek=zoek, wanneer=wanneer, cat=cat, verberg_sp=verberg_sp,
                            filter_type=filter_type, pagina=pagina, max_pagina=max_pagina,
                            totaal=totaal, has_profile=has_profile, family=fam,
                            active="ontdek", title="Ontdek alles")
@@ -546,13 +553,19 @@ def verkennen():
     ).order_by(Event.title).limit(500).all()
     evs = gedateerd + permanent
 
-    # Filter op type en (indien gezocht) op buurt rond de plaats
+    # Filter op type, categorie, speeltuinen en (indien gezocht) op buurt
+    cat = request.args.get("cat", "")
+    verberg_sp = request.args.get("sp") == "0"   # gewone speeltuinen weg
     def _past(e):
         if filter_type == "gratis" and not e.is_free:
             return False
         if filter_type == "binnen" and not e.indoor:
             return False
         if filter_type == "buiten" and e.indoor:
+            return False
+        if cat and cat not in (e.categories or []):
+            return False
+        if verberg_sp and e.subtype == "playground":
             return False
         return True
     evs = [e for e in evs if _past(e)]
@@ -563,7 +576,8 @@ def verkennen():
     markers = [_kaart_marker(e) for e in evs]
     return render_template("public/verkennen.html", markers=markers, center=center,
                            zoom=zoom, zoek=zoek, gezocht=bool(centrum),
-                           filter_type=filter_type, aantal=len(markers),
+                           filter_type=filter_type, cat=cat, verberg_sp=verberg_sp,
+                           aantal=len(markers),
                            family=fam, active="verkennen", title="Verkennen")
 
 
