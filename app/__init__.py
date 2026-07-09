@@ -373,12 +373,23 @@ def register_cli(app):
             db.session.commit()
             gewist += len(brok)
 
-        # verweesde organisatoren/locaties/reeksen opruimen
+        # Verweesde reeksen/organisatoren/locaties opruimen — in de juiste
+        # volgorde (reeksen eerst, want die verwijzen naar organisatoren/locaties)
+        # en enkel wat door géén event én géén overblijvende reeks gebruikt wordt.
         wees = 0
-        for Model, kol in ((Organizer, "organizer_id"), (Venue, "venue_id"),
-                           (EditionSeries, "series_id")):
-            gebruikt = select(getattr(Event, kol)).where(getattr(Event, kol).isnot(None))
-            q = Model.query.filter(~Model.id.in_(gebruikt))
+        # 1) reeksen zonder events
+        ser_gebruikt = select(Event.series_id).where(Event.series_id.isnot(None))
+        q = EditionSeries.query.filter(~EditionSeries.id.in_(ser_gebruikt))
+        wees += q.count()
+        q.delete(synchronize_session=False)
+        db.session.commit()
+        # 2) organisatoren/locaties die nergens meer aan hangen (event noch reeks)
+        for Model, ev_kol, ser_kol in (
+                (Organizer, Event.organizer_id, EditionSeries.organizer_id),
+                (Venue, Event.venue_id, EditionSeries.venue_id)):
+            uit_events = select(ev_kol).where(ev_kol.isnot(None))
+            uit_reeksen = select(ser_kol).where(ser_kol.isnot(None))
+            q = Model.query.filter(~Model.id.in_(uit_events), ~Model.id.in_(uit_reeksen))
             wees += q.count()
             q.delete(synchronize_session=False)
         db.session.commit()

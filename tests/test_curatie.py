@@ -154,3 +154,24 @@ def test_kuis_testdata_behoudt_goedgekeurd_en_gebruiker(app):
     with app.app_context():
         namen = {e.title for e in Event.query.all()}
         assert namen == {"Keep", "Osm"}   # testdata weg, rest blijft
+
+
+def test_kuis_testdata_ruimt_fk_keten_op(app):
+    """Regressie: reeks -> organisator/locatie FK-keten moet in juiste volgorde
+    opgeruimd worden (reeksen eerst), anders ForeignKeyViolation."""
+    from app.models import Event, Organizer, Venue, EditionSeries
+    with app.app_context():
+        o = Organizer(uit_id="o", name="Org", slug="org")
+        v = Venue(uit_id="v", name="Zaal", gemeente="G", postcode="9000")
+        db.session.add_all([o, v]); db.session.flush()
+        s = EditionSeries(slug="r", name="Reeks", organizer_id=o.id, venue_id=v.id)
+        db.session.add(s); db.session.flush()
+        db.session.add(Event(source="uit", slug="a", title="T", organizer_id=o.id,
+            venue_id=v.id, series_id=s.id, gemeente="G", postcode="9000",
+            lat=51, lng=3, age_min=0, age_max=12, categories=["cultuur"]))
+        db.session.commit()
+    r = app.test_cli_runner().invoke(args=["kuis-testdata", "--bevestig"])
+    assert "✓" in r.output and r.exception is None
+    with app.app_context():
+        assert Event.query.count() == 0 and EditionSeries.query.count() == 0
+        assert Organizer.query.count() == 0 and Venue.query.count() == 0
