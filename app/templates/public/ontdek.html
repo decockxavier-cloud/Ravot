@@ -25,10 +25,10 @@
 </form>
 
 <div class="filterbalk" role="group" aria-label="Wanneer">
-  <a class="filterchip {{ 'aan' if not wanneer }}" href="{{ url_for('public.ontdek', sort=sort, filter=filter_type, cat=cat, q=zoek) }}">Alle data</a>
   <a class="filterchip {{ 'aan' if wanneer=='vandaag' }}" href="{{ url_for('public.ontdek', wanneer='vandaag', sort=sort, filter=filter_type, cat=cat, q=zoek) }}">Vandaag</a>
   <a class="filterchip {{ 'aan' if wanneer=='deze-week' }}" href="{{ url_for('public.ontdek', wanneer='deze-week', sort=sort, filter=filter_type, cat=cat, q=zoek) }}">Deze week</a>
   <a class="filterchip {{ 'aan' if wanneer=='weekend' }}" href="{{ url_for('public.ontdek', wanneer='weekend', sort=sort, filter=filter_type, cat=cat, q=zoek) }}">Weekend</a>
+  <a class="filterchip {{ 'aan' if wanneer not in ('vandaag','deze-week','weekend') }}" href="{{ url_for('public.ontdek', wanneer='alle', sort=sort, filter=filter_type, cat=cat, q=zoek) }}">📆 Alle data</a>
 </div>
 
 <details class="meer-filters" {{ 'open' if filter_type or cat or sort!='datum' }}>

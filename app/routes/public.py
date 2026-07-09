@@ -449,7 +449,9 @@ def ontdek():
     sort = request.args.get("sort", "datum")       # datum (standaard) | score
     zoek = (request.args.get("q") or "").strip().lower()
     filter_type = request.args.get("filter", "")   # ''|gratis|binnen|buiten
-    wanneer = request.args.get("wanneer", "")      # ''|vandaag|deze-week|weekend
+    wanneer = request.args.get("wanneer", "deze-week")   # standaard: deze week
+    # 'alle' (of onbekende waarde) = geen datumbegrenzing; de drie vensters
+    # (vandaag/deze-week/weekend) passen wél een filter toe (zie hieronder).
     cat = request.args.get("cat", "")              # categorie-filter
     verberg_sp = request.args.get("sp") == "0"     # gewone speeltuinen verbergen
     try:
@@ -545,9 +547,14 @@ def verkennen():
 
     # Gebalanceerd: gedateerde events én permanente POI's krijgen elk een
     # eigen deel van de kaart (anders verdringen 1000en speeltuinen de agenda).
-    gedateerd = geldige_events(Event.query, now).filter(
-        Event.lat.isnot(None), Event.is_permanent.is_(False)
-    ).order_by(Event.start).limit(500).all()
+    wanneer = request.args.get("wanneer", "deze-week")   # standaard: deze week
+    gedateerd_q = geldige_events(Event.query, now).filter(
+        Event.lat.isnot(None), Event.is_permanent.is_(False))
+    if wanneer in ("vandaag", "deze-week", "weekend"):
+        w_start, w_end = window(wanneer)
+        gedateerd_q = gedateerd_q.filter(
+            Event.start <= w_end, (Event.end >= w_start) | (Event.start >= w_start))
+    gedateerd = gedateerd_q.order_by(Event.start).limit(500).all()
     permanent = Event.query.filter(
         Event.lat.isnot(None), Event.is_permanent.is_(True), Event.hidden.is_(False), Event.pending.is_(False)
     ).order_by(Event.title).limit(500).all()
@@ -577,7 +584,7 @@ def verkennen():
     return render_template("public/verkennen.html", markers=markers, center=center,
                            zoom=zoom, zoek=zoek, gezocht=bool(centrum),
                            filter_type=filter_type, cat=cat, verberg_sp=verberg_sp,
-                           aantal=len(markers),
+                           wanneer=wanneer, aantal=len(markers),
                            family=fam, active="verkennen", title="Verkennen")
 
 

@@ -166,3 +166,38 @@ def test_kaart_verbergt_speeltuinen(client, app):
         db.session.commit()
     html = client.get("/verkennen?sp=0").get_data(as_text=True)
     assert "Dierenpark Testtuin" in html and "Gewone Speeltuin" not in html
+
+
+def test_ontdek_standaard_deze_week_en_alle_verruimt(client, app):
+    from datetime import datetime, timedelta
+    from app.models import Event
+    now = datetime.utcnow()
+    with app.app_context():
+        db.session.add(Event(source="uit", ext_id="w", slug="dw", title="DezeWeekEvent",
+            start=now + timedelta(hours=5), gemeente="Gent", postcode="9000",
+            lat=51.0, lng=3.7, age_min=0, age_max=12, categories=["cultuur"], quality=70))
+        db.session.add(Event(source="uit", ext_id="l", slug="lm", title="LaterEvent",
+            start=now + timedelta(days=40), gemeente="Gent", postcode="9000",
+            lat=51.0, lng=3.7, age_min=0, age_max=12, categories=["cultuur"], quality=70))
+        db.session.commit()
+    d = client.get("/ontdek").get_data(as_text=True)
+    assert "DezeWeekEvent" in d and "LaterEvent" not in d   # standaard = deze week
+    a = client.get("/ontdek?wanneer=alle").get_data(as_text=True)
+    assert "LaterEvent" in a                                 # expliciet verruimen werkt
+
+
+def test_kaart_standaard_deze_week_maar_vaste_plekken_altijd(client, app):
+    from datetime import datetime, timedelta
+    from app.models import Event
+    now = datetime.utcnow()
+    with app.app_context():
+        db.session.add(Event(source="uit", ext_id="lm2", slug="lm2", title="MaandLaterEvent",
+            start=now + timedelta(days=40), gemeente="Gent", postcode="9000",
+            lat=51.0, lng=3.7, age_min=0, age_max=12, categories=["cultuur"], quality=70))
+        db.session.add(Event(source="osm", ext_id="v", slug="vast", title="VastePlekAltijd",
+            is_permanent=True, gemeente="Gent", postcode="9000", lat=51.0, lng=3.7,
+            age_min=0, age_max=12, categories=["buiten"], quality=40))
+        db.session.commit()
+    d = client.get("/verkennen").get_data(as_text=True)
+    assert "VastePlekAltijd" in d and "MaandLaterEvent" not in d
+    assert "MaandLaterEvent" in client.get("/verkennen?wanneer=alle").get_data(as_text=True)

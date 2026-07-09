@@ -154,12 +154,13 @@ def test_geen_voorbije_of_verre_events(client, app):
             age_min=3, age_max=10, categories=[], is_free=True,
             price_info=[{"name":"basis","price":0}]))
         db.session.commit()
-    html = client.get("/ontdek").get_data(as_text=True)
+    # 'alle' zodat we het geldig-venster testen, niet de nieuwe week-standaard
+    html = client.get("/ontdek?wanneer=alle").get_data(as_text=True)
     assert "GeldigEvent" in html       # geldig event wél
     assert "VoorbijEvent" not in html  # voorbij event niet
     assert "VerEvent" not in html      # 2999-event niet
     # zelfde op de kaart
-    kaart = client.get("/verkennen").get_data(as_text=True)
+    kaart = client.get("/verkennen?wanneer=alle").get_data(as_text=True)
     assert "GeldigEvent" in kaart
     assert "VoorbijEvent" not in kaart
     assert "VerEvent" not in kaart

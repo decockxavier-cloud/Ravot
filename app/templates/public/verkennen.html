@@ -11,32 +11,42 @@
   <input type="search" name="q" data-plaatsen data-zelf="gemeente" value="{{ zoek }}" class="zoekveld"
          placeholder="🔍 Zoek op naam of gemeente…" aria-label="Zoek">
   <input type="hidden" name="filter" value="{{ filter_type }}">
+  <input type="hidden" name="wanneer" value="{{ wanneer }}">
   <button class="btn btn-klein" type="submit">Zoek</button>
 </form>
 <button type="button" id="inbuurt" class="btn btn-klein btn-stil" style="margin:6px 0">📍 Plekken in mijn buurt</button>
 
-<details class="meer-filters" {{ 'open' if filter_type or cat or verberg_sp }}>
-  <summary>⚙️ Filteren{% if filter_type or cat or verberg_sp %} <span class="filter-punt">•</span>{% endif %}</summary>
+<details class="meer-filters" {{ 'open' if filter_type or cat or verberg_sp or wanneer!='deze-week' }}>
+  <summary>⚙️ Filteren{% if filter_type or cat or verberg_sp or wanneer!='deze-week' %} <span class="filter-punt">•</span>{% endif %}</summary>
   <div class="meer-filters-inhoud">
     <div class="filterrij">
+      <span class="filter-label">Agenda:</span>
+      <a class="filterchip {{ 'aan' if wanneer=='vandaag' }}" href="{{ url_for('public.verkennen', wanneer='vandaag', filter=filter_type, cat=cat, q=zoek, sp='0' if verberg_sp else None) }}">Vandaag</a>
+      <a class="filterchip {{ 'aan' if wanneer=='deze-week' }}" href="{{ url_for('public.verkennen', wanneer='deze-week', filter=filter_type, cat=cat, q=zoek, sp='0' if verberg_sp else None) }}">Deze week</a>
+      <a class="filterchip {{ 'aan' if wanneer=='weekend' }}" href="{{ url_for('public.verkennen', wanneer='weekend', filter=filter_type, cat=cat, q=zoek, sp='0' if verberg_sp else None) }}">Weekend</a>
+      <a class="filterchip {{ 'aan' if wanneer not in ('vandaag','deze-week','weekend') }}" href="{{ url_for('public.verkennen', wanneer='alle', filter=filter_type, cat=cat, q=zoek, sp='0' if verberg_sp else None) }}">📆 Alles</a>
+    </div>
+    <div class="filterrij">
       <span class="filter-label">Type:</span>
-      <a class="filterchip {{ 'aan' if not filter_type }}" href="{{ url_for('public.verkennen', cat=cat, q=zoek, sp='0' if verberg_sp else None) }}">Alles</a>
-      <a class="filterchip {{ 'aan' if filter_type=='gratis' }}" href="{{ url_for('public.verkennen', filter='gratis', cat=cat, q=zoek, sp='0' if verberg_sp else None) }}">🆓 Gratis</a>
-      <a class="filterchip {{ 'aan' if filter_type=='binnen' }}" href="{{ url_for('public.verkennen', filter='binnen', cat=cat, q=zoek, sp='0' if verberg_sp else None) }}">🏠 Binnen</a>
-      <a class="filterchip {{ 'aan' if filter_type=='buiten' }}" href="{{ url_for('public.verkennen', filter='buiten', cat=cat, q=zoek, sp='0' if verberg_sp else None) }}">🌳 Buiten</a>
+      <a class="filterchip {{ 'aan' if not filter_type }}" href="{{ url_for('public.verkennen', wanneer=wanneer, cat=cat, q=zoek, sp='0' if verberg_sp else None) }}">Alles</a>
+      <a class="filterchip {{ 'aan' if filter_type=='gratis' }}" href="{{ url_for('public.verkennen', wanneer=wanneer, filter='gratis', cat=cat, q=zoek, sp='0' if verberg_sp else None) }}">🆓 Gratis</a>
+      <a class="filterchip {{ 'aan' if filter_type=='binnen' }}" href="{{ url_for('public.verkennen', wanneer=wanneer, filter='binnen', cat=cat, q=zoek, sp='0' if verberg_sp else None) }}">🏠 Binnen</a>
+      <a class="filterchip {{ 'aan' if filter_type=='buiten' }}" href="{{ url_for('public.verkennen', wanneer=wanneer, filter='buiten', cat=cat, q=zoek, sp='0' if verberg_sp else None) }}">🌳 Buiten</a>
     </div>
     <div class="filterrij">
       <span class="filter-label">Soort:</span>
       {% set cats = [('natuur','🌿 Natuur'),('cultuur','🎭 Cultuur'),('creatief','🎨 Creatief'),('sport','⚽ Sport'),('leren','🔬 Ontdekken')] %}
       {% for code,label in cats %}
-      <a class="filterchip {{ 'aan' if cat==code }}" href="{{ url_for('public.verkennen', cat='' if cat==code else code, filter=filter_type, q=zoek, sp='0' if verberg_sp else None) }}">{{ label }}</a>
+      <a class="filterchip {{ 'aan' if cat==code }}" href="{{ url_for('public.verkennen', wanneer=wanneer, cat='' if cat==code else code, filter=filter_type, q=zoek, sp='0' if verberg_sp else None) }}">{{ label }}</a>
       {% endfor %}
     </div>
     <div class="filterrij">
       <span class="filter-label">Kaart:</span>
-      <a class="filterchip {{ 'aan' if verberg_sp }}" href="{{ url_for('public.verkennen', filter=filter_type, cat=cat, q=zoek, sp=None if verberg_sp else '0') }}"
+      <a class="filterchip {{ 'aan' if verberg_sp }}" href="{{ url_for('public.verkennen', wanneer=wanneer, filter=filter_type, cat=cat, q=zoek, sp=None if verberg_sp else '0') }}"
          title="Verberg de vele gewone speeltuinen">🙈 Speeltuinen {{ 'tonen' if verberg_sp else 'verbergen' }}</a>
     </div>
+    <p class="hint" style="margin:4px 2px 0">De agenda-keuze geldt voor evenementen met een datum. Vaste plekken
+      (speeltuinen, musea…) blijven altijd zichtbaar.</p>
     <div class="kaart-legende">
       <span><i class="leg-bol" style="background:#2E7D46"></i> 😄 goed gescoord</span>
       <span><i class="leg-bol" style="background:#F4B233"></i> 🎈 gratis</span>
