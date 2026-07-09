@@ -165,6 +165,12 @@ def event_datum(ev, now=None):
     # Al begonnen maar nog bezig:
     if ev.start <= now <= einde:
         if meerdaags:
+            # Einddatum ver in de toekomst (>1 jaar) = in de praktijk een
+            # placeholder ("open einde", bv. UiT-data met jaar 2100/5201).
+            # Dan is een concrete datum zinloos; 'doorlopend' zegt dat het aanbod
+            # blijft lopen, zonder een 24/7-belofte zoals 'altijd open' zou doen.
+            if (einde - now).days > 365:
+                return "doorlopend"
             return f"loopt nog t/m {einde.day} {MAANDEN[einde.month]} {einde.year}"
         return "vandaag bezig"
     d = ev.start

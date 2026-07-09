@@ -201,3 +201,19 @@ def test_kaart_standaard_deze_week_maar_vaste_plekken_altijd(client, app):
     d = client.get("/verkennen").get_data(as_text=True)
     assert "VastePlekAltijd" in d and "MaandLaterEvent" not in d
     assert "MaandLaterEvent" in client.get("/verkennen?wanneer=alle").get_data(as_text=True)
+
+
+def test_event_datum_verre_einddatum_wordt_altijd_open(app):
+    """Placeholder-einddata ver in de toekomst (bv. jaar 2100/5201) tonen als
+    'altijd open' i.p.v. een zinloze concrete datum."""
+    from datetime import datetime
+    from app.routes.public import event_datum
+    from app.models import Event
+    now = datetime(2026, 7, 9)
+    ver = Event(source="uit", slug="v", title="Fietstocht",
+                start=datetime(2020, 1, 1), end=datetime(5201, 1, 28))
+    assert event_datum(ver, now=now) == "doorlopend"
+    # een normale meerdaagse (dit jaar) blijft wél een concrete datum tonen
+    kort = Event(source="uit", slug="k", title="Expo",
+                 start=datetime(2026, 6, 1), end=datetime(2026, 9, 1))
+    assert "loopt nog t/m" in event_datum(kort, now=now)

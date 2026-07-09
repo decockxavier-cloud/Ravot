@@ -149,3 +149,19 @@ document.addEventListener("click", function (e) {
     bewaar(a && a.checked);
   });
 })();
+
+// Kapotte thumbnail-foto's opruimen zodat de emoji-onderlaag zichtbaar wordt.
+// Vangt ook afbeeldingen die al mislukt waren vóór deze code liep (cache/lazy):
+// een geladen maar 0px-brede img is stuk. De inline onerror dekt live fouten.
+(function () {
+  function scrub() {
+    document.querySelectorAll("img.thumb-over").forEach(function (img) {
+      function weg() { if (img && img.parentNode) img.remove(); }
+      if (img.complete && img.naturalWidth === 0) weg();
+      img.addEventListener("error", weg);
+    });
+  }
+  if (document.readyState === "loading")
+    document.addEventListener("DOMContentLoaded", scrub);
+  else scrub();
+})();
