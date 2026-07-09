@@ -102,3 +102,25 @@ def test_vlieg_geeft_kwaliteitsbonus_maar_geen_poort(app):
                     has_vlieg=True, categories=["cultuur"])
         assert bereken_kwaliteit(met, heeft_reviews=False) == \
                bereken_kwaliteit(zonder, heeft_reviews=False) + 8
+
+
+def test_organisatoren_met_zelfde_naam_botsen_niet(app):
+    """Regressie: twee organisatoren met dezelfde naam kregen dezelfde slug ->
+    UniqueViolation -> events overgeslagen. Nu krijgen ze een unieke slug."""
+    from app.services import uit_sync
+    from app.models import Organizer, Event
+    def mk(ev, orgnaam, oid):
+        return {"@id": "https://x/e/" + ev, "name": {"nl": ev}, "typicalAgeRange": "0-12",
+                "terms": [{"label": {"nl": "Theatervoorstelling"}, "domain": "eventtype"}],
+                "organizer": {"@id": "https://x/o/" + oid, "name": {"nl": orgnaam}},
+                "location": {"@id": "https://x/l/" + oid, "name": {"nl": "Zaal"},
+                             "address": {"addressLocality": "Gent", "postalCode": "9000"},
+                             "geo": {"latitude": 51.0, "longitude": 3.7}},
+                "labels": []}
+    with app.app_context():
+        for ev, oid in [("A", "o1"), ("B", "o2"), ("C", "o3")]:
+            uit_sync.upsert_event(uit_sync.normalise(mk(ev, "Cultuurhuis", oid)))
+            db.session.commit()
+        assert Organizer.query.count() == 3
+        assert len({o.slug for o in Organizer.query.all()}) == 3   # allemaal uniek
+        assert Event.query.count() == 3                            # niets overgeslagen

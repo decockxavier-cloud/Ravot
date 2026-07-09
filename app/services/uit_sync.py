@@ -169,6 +169,21 @@ def normalise(item):
 
 # -------------------------------------------------------------------- upsert --
 
+def _unieke_slug(model, basis, uit_id):
+    """Geef een slug die geen bestaande (andere) rij botst. De unieke index op
+    Organizer.slug botste anders wanneer twee verschillende organisatoren
+    dezelfde naam hadden -> events werden overgeslagen."""
+    basis = (basis or "org").strip("-") or "org"
+    if not model.query.filter_by(slug=basis).first():
+        return basis
+    kandidaat = f"{basis}-{(uit_id or '')[:8]}"
+    n = 2
+    while model.query.filter_by(slug=kandidaat).first():
+        kandidaat = f"{basis}-{(uit_id or '')[:8]}-{n}"
+        n += 1
+    return kandidaat
+
+
 def _get_or_create(model, uit_id, defaults):
     if not uit_id:
         return None
@@ -201,7 +216,9 @@ def upsert_event(data):
     if data["organizer"]["name"]:
         org = _get_or_create(Organizer, data["organizer"]["uit_id"],
                              {"name": data["organizer"]["name"],
-                              "slug": slugify(data["organizer"]["name"])})
+                              "slug": _unieke_slug(Organizer,
+                                                   slugify(data["organizer"]["name"]),
+                                                   data["organizer"]["uit_id"])})
     venue = _get_or_create(Venue, data["venue"]["uit_id"], {
         "name": data["venue"]["name"], "gemeente": data["gemeente"],
         "postcode": data["postcode"], "lat": data["lat"], "lng": data["lng"],
