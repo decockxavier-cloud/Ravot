@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% block head %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
 {% endblock %}
 {% block body_class %}met-sfeer{% endblock %}
 {% block content %}
@@ -12,31 +14,44 @@
   <button class="btn btn-klein" type="submit">Zoek</button>
 </form>
 <button type="button" id="inbuurt" class="btn btn-klein btn-stil" style="margin:6px 0">📍 Plekken in mijn buurt</button>
-<div class="filterbalk" role="group" aria-label="Filteren">
-  <a class="filterchip {{ 'aan' if not filter_type and not cat }}" href="{{ url_for('public.verkennen', q=zoek, sp='0' if verberg_sp else None) }}">Alles</a>
-  <a class="filterchip {{ 'aan' if filter_type=='gratis' }}" href="{{ url_for('public.verkennen', filter='gratis', cat=cat, q=zoek, sp='0' if verberg_sp else None) }}">🆓 Gratis</a>
-  <a class="filterchip {{ 'aan' if filter_type=='binnen' }}" href="{{ url_for('public.verkennen', filter='binnen', cat=cat, q=zoek, sp='0' if verberg_sp else None) }}">🏠 Binnen</a>
-  <a class="filterchip {{ 'aan' if filter_type=='buiten' }}" href="{{ url_for('public.verkennen', filter='buiten', cat=cat, q=zoek, sp='0' if verberg_sp else None) }}">🌳 Buiten</a>
-</div>
-<div class="filterbalk" role="group" aria-label="Categorie" style="margin-top:6px">
-  {% set cats = [('natuur','🌿 Natuur'),('cultuur','🎭 Cultuur'),('creatief','🎨 Creatief'),('sport','⚽ Sport'),('leren','🔬 Ontdekken')] %}
-  {% for code,label in cats %}
-  <a class="filterchip {{ 'aan' if cat==code }}" href="{{ url_for('public.verkennen', cat='' if cat==code else code, filter=filter_type, q=zoek, sp='0' if verberg_sp else None) }}">{{ label }}</a>
-  {% endfor %}
-  <a class="filterchip {{ 'aan' if verberg_sp }}" href="{{ url_for('public.verkennen', filter=filter_type, cat=cat, q=zoek, sp=None if verberg_sp else '0') }}"
-     title="Verberg de vele gewone speeltuinen">🙈 Speeltuinen {{ 'tonen' if verberg_sp else 'verbergen' }}</a>
-</div>
+
+<details class="meer-filters" {{ 'open' if filter_type or cat or verberg_sp }}>
+  <summary>⚙️ Filteren{% if filter_type or cat or verberg_sp %} <span class="filter-punt">•</span>{% endif %}</summary>
+  <div class="meer-filters-inhoud">
+    <div class="filterrij">
+      <span class="filter-label">Type:</span>
+      <a class="filterchip {{ 'aan' if not filter_type }}" href="{{ url_for('public.verkennen', cat=cat, q=zoek, sp='0' if verberg_sp else None) }}">Alles</a>
+      <a class="filterchip {{ 'aan' if filter_type=='gratis' }}" href="{{ url_for('public.verkennen', filter='gratis', cat=cat, q=zoek, sp='0' if verberg_sp else None) }}">🆓 Gratis</a>
+      <a class="filterchip {{ 'aan' if filter_type=='binnen' }}" href="{{ url_for('public.verkennen', filter='binnen', cat=cat, q=zoek, sp='0' if verberg_sp else None) }}">🏠 Binnen</a>
+      <a class="filterchip {{ 'aan' if filter_type=='buiten' }}" href="{{ url_for('public.verkennen', filter='buiten', cat=cat, q=zoek, sp='0' if verberg_sp else None) }}">🌳 Buiten</a>
+    </div>
+    <div class="filterrij">
+      <span class="filter-label">Soort:</span>
+      {% set cats = [('natuur','🌿 Natuur'),('cultuur','🎭 Cultuur'),('creatief','🎨 Creatief'),('sport','⚽ Sport'),('leren','🔬 Ontdekken')] %}
+      {% for code,label in cats %}
+      <a class="filterchip {{ 'aan' if cat==code }}" href="{{ url_for('public.verkennen', cat='' if cat==code else code, filter=filter_type, q=zoek, sp='0' if verberg_sp else None) }}">{{ label }}</a>
+      {% endfor %}
+    </div>
+    <div class="filterrij">
+      <span class="filter-label">Kaart:</span>
+      <a class="filterchip {{ 'aan' if verberg_sp }}" href="{{ url_for('public.verkennen', filter=filter_type, cat=cat, q=zoek, sp=None if verberg_sp else '0') }}"
+         title="Verberg de vele gewone speeltuinen">🙈 Speeltuinen {{ 'tonen' if verberg_sp else 'verbergen' }}</a>
+    </div>
+    <div class="kaart-legende">
+      <span><i class="leg-bol" style="background:#2E7D46"></i> 😄 goed gescoord</span>
+      <span><i class="leg-bol" style="background:#F4B233"></i> 🎈 gratis</span>
+      <span><i class="leg-bol" style="background:#5B8DEF"></i> 🏠 binnen</span>
+      <span><i class="leg-bol" style="background:#EE8035"></i> 📍 andere</span>
+    </div>
+  </div>
+</details>
+
 <p class="hint">{{ aantal }} activiteiten op de kaart. Tik op een speldje voor meer info.</p>
-<div class="kaart-legende">
-  <span><i class="leg-bol" style="background:#2E7D46"></i> 😄 goed gescoord</span>
-  <span><i class="leg-bol" style="background:#F4B233"></i> 🎈 gratis</span>
-  <span><i class="leg-bol" style="background:#5B8DEF"></i> 🏠 binnen</span>
-  <span><i class="leg-bol" style="background:#EE8035"></i> 📍 andere</span>
-</div>
 <div id="map" role="application" aria-label="Kaart met kinderactiviteiten"
      data-center="{{ center|tojson|forceescape }}"
      data-markers="{{ markers|tojson|forceescape }}"></div>
 <script type="application/json" id="map-data">{{ {"center": center, "zoom": zoom, "gezocht": gezocht, "markers": markers}|tojson|safe }}</script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script src="{{ url_for('static', filename='js/verkennen.js') }}" defer></script>
 {% endblock %}

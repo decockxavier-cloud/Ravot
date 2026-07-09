@@ -7,6 +7,11 @@
     var map = L.map("map").setView(data.center, data.zoom || 10);
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
       { attribution: "© OpenStreetMap", maxZoom: 19 }).addTo(map);
+    var cluster = (typeof L.markerClusterGroup === "function")
+      ? L.markerClusterGroup({ maxClusterRadius: 50, spiderfyOnMaxZoom: true,
+                               showCoverageOnHover: false, chunkedLoading: true })
+      : null;
+    var laag = cluster || map;   // val terug op de kaart als de plugin ontbreekt
     (data.markers || []).forEach(function (m) {
       if (m.lat == null || m.lng == null) return;
 
@@ -60,14 +65,14 @@
       fiche += "</div></div>";
 
       L.marker([m.lat, m.lng], { icon: icon })
-        .addTo(map)
+        .addTo(laag)
         .bindPopup(fiche, { minWidth: 250, maxWidth: 300, className: "fiche-popup" });
     });
-    if (!data.gezocht && data.markers && data.markers.length) {
-      var pts = data.markers.filter(function (m) { return m.lat != null; })
-                            .map(function (m) { return [m.lat, m.lng]; });
-      if (pts.length) map.fitBounds(pts, { padding: [30, 30], maxZoom: 15 });
-    }
+    if (cluster) map.addLayer(cluster);
+    // Geen automatische fitBounds meer over álle markers: met data in BE, NL én
+    // Noord-Frankrijk zou dat de kaart veel te ver uitzoomen en alles op één hoop
+    // duwen. We vertrouwen op de door de server gekozen centrering (gezochte
+    // plaats, profiel of België) en laten clustering de dichtheid oplossen.
 
     // "Plekken in mijn buurt": zoom via browser-locatie op de eigen positie.
     var knop = document.getElementById("inbuurt");
