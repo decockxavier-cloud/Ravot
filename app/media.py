@@ -49,3 +49,19 @@ def poi_image(event):
 
 def has_echte_foto(event):
     return bool(_veilige_afbeelding(getattr(event, "image_url", None)))
+
+
+_CAT_EMOJI = {"buiten": "🌳", "natuur": "🌿", "sport": "⚽", "cultuur": "🎭",
+              "creatief": "🎨", "leren": "🔬", "binnen": "🏠"}
+
+
+def poi_emoji(event):
+    """Emoji + kleurklasse voor de fallback-banner (geen echte foto)."""
+    if getattr(event, "indoor", False):
+        cat = "binnen"
+    else:
+        cats = getattr(event, "categories", None) or []
+        cat = cats[0] if cats else "buiten"
+    if cat not in _CAT_EMOJI:
+        cat = "buiten"
+    return {"emoji": _CAT_EMOJI[cat], "klasse": f"c-{cat}"}

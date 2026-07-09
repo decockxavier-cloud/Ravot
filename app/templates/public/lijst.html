@@ -50,8 +50,12 @@
                data-score="{{ r.agg.avg if r.agg else 0 }}"
                data-zoek="{{ (e.title ~ ' ' ~ (e.gemeente or '') ~ ' ' ~ (e.postcode or '') ~ ' ' ~ (e.venue.name if e.venue else '')) | lower }}">
         <a href="{{ url_for('public.event', slug=e.slug) }}" class="thumb-link">
+          {% if has_echte_foto(e) %}
           <img class="thumb" src="{{ poi_image(e) }}" alt="" loading="lazy"
-               onerror="this.src='{{ url_for('static', filename='img/cat-buiten.svg') }}'">
+               onerror="this.onerror=null;this.parentNode.innerHTML='&lt;span class=\'thumb-emoji {{ poi_emoji(e).klasse }}\'&gt;{{ poi_emoji(e).emoji }}&lt;/span&gt;'">
+          {% else %}
+          {% set pe = poi_emoji(e) %}<span class="thumb-emoji {{ pe.klasse }}">{{ pe.emoji }}</span>
+          {% endif %}
         </a>
         <h3><a href="{{ url_for('public.event', slug=e.slug) }}">{{ e.title }}</a></h3>
         <p class="meta">📍 {{ e.gemeente }}{% if e.venue %} · {{ e.venue.name }}{% endif %}

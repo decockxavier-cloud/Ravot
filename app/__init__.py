@@ -17,6 +17,8 @@ def create_app(config_object=Config):
 
     from .media import poi_image, has_echte_foto
     app.jinja_env.globals["poi_image"] = poi_image
+    from .media import poi_emoji
+    app.jinja_env.globals["poi_emoji"] = poi_emoji
     app.jinja_env.globals["has_echte_foto"] = has_echte_foto
     from .routes.public import event_datum
     app.jinja_env.globals["event_datum"] = event_datum

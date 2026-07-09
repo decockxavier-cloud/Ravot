@@ -20,33 +20,41 @@
   <input type="hidden" name="sort" value="{{ sort }}">
   <input type="hidden" name="wanneer" value="{{ wanneer }}">
   <input type="hidden" name="filter" value="{{ filter_type }}">
+  <input type="hidden" name="cat" value="{{ cat }}">
   <button class="btn btn-klein" type="submit">Zoek</button>
 </form>
 
-<div class="filterbalk" role="group" aria-label="Sorteren">
-  <span class="filter-label">Sorteer:</span>
-  <a class="filterchip {{ 'aan' if sort=='score' }}" href="{{ url_for('public.ontdek', wanneer=wanneer, sort='score', filter=filter_type, q=zoek) }}">😄 Best gescoord</a>
-  <a class="filterchip {{ 'aan' if sort=='datum' }}" href="{{ url_for('public.ontdek', wanneer=wanneer, sort='datum', filter=filter_type, q=zoek) }}">📅 Eerst gepland</a>
-</div>
-<div class="filterbalk" role="group" aria-label="Filteren">
-  <span class="filter-label">Toon:</span>
-  <a class="filterchip {{ 'aan' if not wanneer }}" href="{{ url_for('public.ontdek', sort=sort, filter=filter_type, cat=cat, q=zoek) }}">📆 Alle data</a>
+<div class="filterbalk" role="group" aria-label="Wanneer">
+  <a class="filterchip {{ 'aan' if not wanneer }}" href="{{ url_for('public.ontdek', sort=sort, filter=filter_type, cat=cat, q=zoek) }}">Alle data</a>
   <a class="filterchip {{ 'aan' if wanneer=='vandaag' }}" href="{{ url_for('public.ontdek', wanneer='vandaag', sort=sort, filter=filter_type, cat=cat, q=zoek) }}">Vandaag</a>
   <a class="filterchip {{ 'aan' if wanneer=='deze-week' }}" href="{{ url_for('public.ontdek', wanneer='deze-week', sort=sort, filter=filter_type, cat=cat, q=zoek) }}">Deze week</a>
-  <a class="filterchip {{ 'aan' if wanneer=='weekend' }}" href="{{ url_for('public.ontdek', wanneer='weekend', sort=sort, filter=filter_type, cat=cat, q=zoek) }}">Dit weekend</a>
+  <a class="filterchip {{ 'aan' if wanneer=='weekend' }}" href="{{ url_for('public.ontdek', wanneer='weekend', sort=sort, filter=filter_type, cat=cat, q=zoek) }}">Weekend</a>
 </div>
-<div class="filterbalk">
-  <a class="filterchip {{ 'aan' if not filter_type }}" href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, cat=cat, q=zoek) }}">Alles</a>
-  <a class="filterchip {{ 'aan' if filter_type=='gratis' }}" href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, filter='gratis', cat=cat, q=zoek) }}">🆓 Gratis</a>
-  <a class="filterchip {{ 'aan' if filter_type=='binnen' }}" href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, filter='binnen', cat=cat, q=zoek) }}">🏠 Binnen</a>
-  <a class="filterchip {{ 'aan' if filter_type=='buiten' }}" href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, filter='buiten', cat=cat, q=zoek) }}">🌳 Buiten</a>
-</div>
-<div class="filterbalk">
-  {% set cats = [('natuur','🌿 Natuur'),('cultuur','🎭 Cultuur'),('creatief','🎨 Creatief'),('sport','⚽ Sport'),('leren','🔬 Ontdekken')] %}
-  {% for code,label in cats %}
-  <a class="filterchip {{ 'aan' if cat==code }}" href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, filter=filter_type, cat='' if cat==code else code, q=zoek) }}">{{ label }}</a>
-  {% endfor %}
-</div>
+
+<details class="meer-filters" {{ 'open' if filter_type or cat or sort!='datum' }}>
+  <summary>⚙️ Filteren &amp; sorteren{% if filter_type or cat %} <span class="filter-punt">•</span>{% endif %}</summary>
+  <div class="meer-filters-inhoud">
+    <div class="filterrij">
+      <span class="filter-label">Type:</span>
+      <a class="filterchip {{ 'aan' if not filter_type }}" href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, cat=cat, q=zoek) }}">Alles</a>
+      <a class="filterchip {{ 'aan' if filter_type=='gratis' }}" href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, filter='gratis', cat=cat, q=zoek) }}">🆓 Gratis</a>
+      <a class="filterchip {{ 'aan' if filter_type=='binnen' }}" href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, filter='binnen', cat=cat, q=zoek) }}">🏠 Binnen</a>
+      <a class="filterchip {{ 'aan' if filter_type=='buiten' }}" href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, filter='buiten', cat=cat, q=zoek) }}">🌳 Buiten</a>
+    </div>
+    <div class="filterrij">
+      <span class="filter-label">Soort:</span>
+      {% set cats = [('natuur','🌿 Natuur'),('cultuur','🎭 Cultuur'),('creatief','🎨 Creatief'),('sport','⚽ Sport'),('leren','🔬 Ontdekken')] %}
+      {% for code,label in cats %}
+      <a class="filterchip {{ 'aan' if cat==code }}" href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, filter=filter_type, cat='' if cat==code else code, q=zoek) }}">{{ label }}</a>
+      {% endfor %}
+    </div>
+    <div class="filterrij">
+      <span class="filter-label">Sorteer:</span>
+      <a class="filterchip {{ 'aan' if sort!='score' }}" href="{{ url_for('public.ontdek', wanneer=wanneer, filter=filter_type, cat=cat, q=zoek) }}">📅 Eerst gepland</a>
+      <a class="filterchip {{ 'aan' if sort=='score' }}" href="{{ url_for('public.ontdek', wanneer=wanneer, sort='score', filter=filter_type, cat=cat, q=zoek) }}">😄 Best gescoord</a>
+    </div>
+  </div>
+</details>
 <p class="resultaat-teller">{{ totaal }} activiteiten{% if max_pagina > 1 %} · pagina {{ pagina }}/{{ max_pagina }}{% endif %}
   · <a href="{{ url_for('account.toevoegen') }}">Ken je een plek die ontbreekt? Voeg ze toe →</a></p>
 

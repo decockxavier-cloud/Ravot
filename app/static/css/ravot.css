@@ -588,3 +588,26 @@ section h2 { font-size: 1.25rem; margin: 22px 0 8px; }
 .admin-kolommen { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 720px) { .admin-kolommen { grid-template-columns: 1fr; } }
 .foot-bedrijf { color: #a09a88; font-size: .78rem; margin-top: 6px; }
+
+/* Ingeklapt filterpaneel op Ontdek — rustiger dan vier rijen chips */
+.meer-filters { margin: 8px 0 4px; }
+.meer-filters > summary {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  padding: 8px 14px; border: 1.5px solid var(--lijn); border-radius: 999px;
+  background: var(--wit); font-weight: 600; list-style: none; user-select: none; }
+.meer-filters > summary::-webkit-details-marker { display: none; }
+.meer-filters[open] > summary { background: #EFEAE0; }
+.meer-filters .filter-punt { color: var(--gras); font-size: 1.3em; line-height: 0; }
+.meer-filters-inhoud { padding: 12px 2px 4px; display: flex; flex-direction: column; gap: 8px; }
+.filterrij { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+
+/* Kaart zonder echte foto: nette categorie-banner i.p.v. leeg beeldvak */
+.thumb-emoji { display: flex; align-items: center; justify-content: center;
+  aspect-ratio: 16/10; border-radius: 14px 14px 0 0; font-size: 2.6rem; }
+.thumb-emoji.c-buiten   { background: #E7F1E3; }
+.thumb-emoji.c-natuur   { background: #E2F0E4; }
+.thumb-emoji.c-cultuur  { background: #F3E9DE; }
+.thumb-emoji.c-creatief { background: #F5E7EF; }
+.thumb-emoji.c-sport    { background: #E4EDF7; }
+.thumb-emoji.c-leren    { background: #EFEADD; }
+.thumb-emoji.c-binnen   { background: #E9E9F2; }
