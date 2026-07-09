@@ -486,11 +486,11 @@ def toevoegen():
 
 
 @bp.route("/melden/<int:event_id>", methods=["POST"])
-@login_required
-@limiter.limit("30/hour")
+@limiter.limit("10/hour")
 def melden(event_id):
-    """Meld een plek als gesloten / foute info / ongepast -> naar de admin."""
-    from ..models import Report, REPORT_REASONS
+    """Meld een plek als gesloten / foute info / ongepast -> naar de admin.
+    Mag anoniem (nuttig vanaf de eerste bezoeker); wel rate-limited tegen spam."""
+    from ..models import Report, REPORT_REASONS, get_int
     ev = db.session.get(Event, event_id)
     if not ev:
         abort(404)
@@ -500,6 +500,22 @@ def melden(event_id):
     db.session.add(Report(event_id=ev.id, family_id=session.get("family_id"),
                           reason=reason,
                           note=(request.form.get("note") or "").strip()[:500]))
+    db.session.flush()
+    # Community-bewaking: genoeg onbehandelde meldingen -> een goedgekeurde plek
+    # verliest automatisch zijn ✓ en gaat terug naar nazicht, tot jij ze herbekijkt.
+    # Anti-misbruik: álle anonieme meldingen samen tellen als één stem; enkel
+    # verschillende ingelogde gezinnen tellen elk apart. Zo kan één persoon
+    # niet in z'n eentje de gecureerde kern leegtrekken.
+    drempel = get_int("report_drempel", 3) or 3
+    open_q = Report.query.filter_by(event_id=ev.id, handled=False)
+    distinct_fams = (open_q.filter(Report.family_id.isnot(None))
+                     .with_entities(Report.family_id).distinct().count())
+    heeft_anoniem = open_q.filter(Report.family_id.is_(None)).count() > 0
+    stemmen = distinct_fams + (1 if heeft_anoniem else 0)
+    if ev.curated and stemmen >= drempel:
+        ev.curated = False
+        ev.curated_by = None
+        ev.curated_at = None
     db.session.commit()
     flash("Bedankt voor je melding — we kijken ernaar.", "ok")
     return redirect(url_for("public.event", slug=ev.slug))

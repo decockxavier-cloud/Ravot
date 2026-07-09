@@ -990,6 +990,10 @@ def activiteiten():
         heeft_voorstel = db.session.query(EnrichProposal.event_id)
         q = q.filter(Event.quality >= k_min, Event.quality < k_hoog,
                      ~Event.id.in_(heeft_voorstel))
+    elif status == "gecureerd":
+        q = q.filter(Event.curated.is_(True))
+    elif status == "tebeoordelen":
+        q = q.filter(Event.curated.is_(False), Event.is_permanent.is_(True))
     if sort == "kwaliteit-af":
         q = q.order_by(Event.quality.desc().nullslast())
     elif sort == "recent":
@@ -1074,3 +1078,65 @@ def activiteit_verwijder(event_id):
     audit(f"activiteit verwijderd door admin: '{titel}'")
     flash(f"'{titel}' verwijderd.", "ok")
     return redirect(url_for("admin.activiteiten"))
+
+
+@bp.route("/types", methods=["GET", "POST"])
+@admin_required
+def types_beheer():
+    """Per activiteittype kiezen of het publiek zichtbaar is + aantallen tonen."""
+    from ..models import Event, get_setting, Setting
+    from ..types import TYPES, _CAT_NAAR_EV, type_code
+    if request.method == "POST":
+        # aangevinkt = zichtbaar; niet aangevinkt = verbergen
+        zichtbaar = set(request.form.getlist("zichtbaar"))
+        verborgen = [code for code in TYPES if code not in zichtbaar]
+        row = Setting.query.filter_by(key="verborgen_types").first()
+        if not row:
+            row = Setting(key="verborgen_types")
+            db.session.add(row)
+        row.value = ",".join(verborgen)
+        db.session.commit()
+        audit(f"types-zichtbaarheid aangepast: {len(verborgen)} verborgen")
+        flash("Zichtbaarheid per type opgeslagen.", "ok")
+        return redirect(url_for("admin.types_beheer"))
+
+    verborgen = set((get_setting("verborgen_types") or "").split(","))
+    # Aantallen per type (subtype voor vaste plekken; categorie voor events).
+    tellers = {code: 0 for code in TYPES}
+    sub_counts = dict(db.session.query(Event.subtype, db.func.count(Event.id))
+                      .group_by(Event.subtype).all())
+    for st, n in sub_counts.items():
+        if st in tellers:
+            tellers[st] += n
+    # events zonder subtype: tel per categorie-afgeleid ev-type (benadering)
+    for cat, code in _CAT_NAAR_EV.items():
+        n = (Event.query.filter(Event.subtype.is_(None))
+             .filter(db.func.lower(db.cast(Event.categories, db.String)).like(f'%"{cat}"%'))
+             .count())
+        tellers[code] += n
+    rijen = [{"code": c, "emoji": TYPES[c][0], "label": TYPES[c][1],
+              "plaats": TYPES[c][2], "aantal": tellers[c],
+              "zichtbaar": c not in verborgen} for c in TYPES]
+    return render_template("admin/types.html", rijen=rijen, title="Activiteittypes",
+                           family=None, active="types")
+
+
+@bp.route("/activiteiten/<int:event_id>/waardig", methods=["POST"])
+@admin_required
+def activiteit_waardig(event_id):
+    """Toggle 'Ravot-waardig' — de menselijke goedkeuring die de kern vormt."""
+    from ..models import Event
+    from datetime import datetime
+    ev = db.session.get(Event, event_id) or abort(404)
+    ev.curated = not ev.curated
+    ev.curated_by = session.get("admin_id") if ev.curated else None
+    ev.curated_at = datetime.utcnow() if ev.curated else None
+    db.session.commit()
+    audit(f"{'goedgekeurd' if ev.curated else 'goedkeuring ingetrokken'}: '{ev.title}'")
+    flash("Als Ravot-waardig gemarkeerd. ✓" if ev.curated
+          else "Goedkeuring ingetrokken.", "ok")
+    terug = request.form.get("terug") or ""
+    # Open-redirect-bescherming: enkel relatieve paden binnen de site.
+    if not terug.startswith("/") or terug.startswith("//"):
+        terug = url_for("admin.activiteit_bewerk", event_id=ev.id)
+    return redirect(terug)

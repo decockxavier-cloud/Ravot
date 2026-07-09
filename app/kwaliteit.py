@@ -49,6 +49,10 @@ def bereken_kwaliteit(ev, heeft_reviews=None):
     if ev.price_info:
         score += 5
     score += _BRON_BONUS.get(ev.source, 0)
+    # Vlieg-label (publiq's kwaliteitslabel voor kindvriendelijke activiteiten) is
+    # een positief signaal — een kleine bonus, nooit een voorwaarde.
+    if getattr(ev, "has_vlieg", False):
+        score += 8
     if heeft_reviews is None:
         try:
             from .models import Review

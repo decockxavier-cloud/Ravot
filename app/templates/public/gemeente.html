@@ -21,7 +21,8 @@
 {% for e in events %}
 <article class="card">
   <h3><a href="{{ url_for('public.event', slug=e.slug) }}">{{ e.title }}</a></h3>
-  <p class="meta">{% if e.start %}🕐 {{ e.start.strftime("%a %d/%m om %H:%M") }} · {% endif %}{{ e.age_min }}–{{ e.age_max }} jaar{% if e.is_free %} · <strong>gratis</strong>{% endif %}</p>
+  <p class="meta">{% set t = activiteit_type(e) %}<span class="badge badge-type">{{ t.emoji }} {{ t.label }}</span>
+    {% if e.start %} · 🕐 {{ event_datum(e) }}{% endif %} · {{ e.age_min }}–{{ e.age_max }} jaar{% if e.is_free %} · <strong>gratis</strong>{% endif %}</p>
 </article>
 {% else %}
 <div class="card"><p>Momenteel niets gevonden. Bekijk de buurgemeenten hieronder of <a href="{{ url_for('public.verkennen') }}">verken de kaart</a>.</p></div>
@@ -30,5 +31,5 @@
 <h2>Ook dichtbij</h2>
 <div class="badges">{% for b in buren %}<a class="badge" href="/{{ b|lower }}">{{ b }}</a>{% endfor %}</div>
 {% endif %}
-<p class="hint">{% if bron_vermeldingen %}Activiteiten in samenwerking met {% for b in bron_vermeldingen %}{{ b.naam }}{% if not loop.last %}, {% endif %}{% endfor %}; {% endif %}Ravotscores en kostindicaties door gezinnen zelf.</p>
+<p class="hint">{% if bron_vermeldingen %}Met open data van {% for b in bron_vermeldingen %}{{ b.naam }}{% if not loop.last %}, {% endif %}{% endfor %}; {% endif %}Ravotscores en kostindicaties door gezinnen zelf.</p>
 {% endblock %}

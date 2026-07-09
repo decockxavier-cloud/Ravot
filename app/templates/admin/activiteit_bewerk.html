@@ -10,6 +10,20 @@
 
 <p><a href="{{ url_for('admin.activiteiten') }}">← Terug naar activiteiten</a></p>
 <h1>Fiche bewerken</h1>
+
+<div class="card" style="border-color:{{ 'var(--gras)' if ev.curated else 'var(--lijn)' }};background:{{ '#eef6ee' if ev.curated else 'var(--wit)' }};margin-bottom:12px">
+  <form method="post" action="{{ url_for('admin.activiteit_waardig', event_id=ev.id) }}" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% if ev.curated %}
+      <strong style="color:var(--gras)">✓ Ravot-waardig</strong>
+      <span class="hint" style="margin:0">Deze plek is door een mens goedgekeurd en hoort tot de gecureerde kern.</span>
+      <button class="btn btn-klein btn-stil" type="submit">Goedkeuring intrekken</button>
+    {% else %}
+      <span class="hint" style="margin:0">Nog niet beoordeeld. Vind je dit een échte gezinsuitstap?</span>
+      <button class="btn btn-zon" type="submit">✓ Markeer als Ravot-waardig</button>
+    {% endif %}
+  </form>
+</div>
 <div class="badges" style="margin-bottom:10px">
   <span class="badge">bron: {{ ev.source }}</span>
   <span class="badge">id: {{ ev.id }}</span>

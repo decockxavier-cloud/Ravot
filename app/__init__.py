@@ -9,6 +9,11 @@ from .extensions import csrf, db, limiter
 
 def create_app(config_object=Config):
     app = Flask(__name__)
+    # Achter de Coolify reverse proxy: neem het echte client-IP en het https-
+    # schema uit de X-Forwarded-headers over. Zonder dit ziet de rate-limiter
+    # álle bezoekers als één IP (het proxy-IP) en werken limieten averechts.
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
     app.config.from_object(config_object)
 
     db.init_app(app)
@@ -36,6 +41,8 @@ def create_app(config_object=Config):
     app.jinja_env.globals["event_datum"] = event_datum
     from .plaatsen import land_label
     app.jinja_env.globals["land_label"] = land_label
+    from .types import activiteit_type
+    app.jinja_env.globals["activiteit_type"] = activiteit_type
 
     @app.context_processor
     def _inject_nu():
@@ -116,6 +123,10 @@ def create_app(config_object=Config):
                                     "max-age=31536000; includeSubDomains")
         return resp
 
+    @app.errorhandler(429)
+    def te_veel(_):
+        return render_template("429.html"), 429
+
     @app.errorhandler(404)
     def not_found(_):
         return render_template("public/404.html", family=None, active=None,
@@ -170,6 +181,9 @@ def register_cli(app):
             ("partner_until", "ALTER TABLE events ADD COLUMN partner_until TIMESTAMP"),
             ("quality", "ALTER TABLE events ADD COLUMN quality INTEGER"),
             ("subtype", "ALTER TABLE events ADD COLUMN subtype VARCHAR(40)"),
+            ("curated", "ALTER TABLE events ADD COLUMN curated BOOLEAN DEFAULT FALSE"),
+            ("curated_by", "ALTER TABLE events ADD COLUMN curated_by INTEGER"),
+            ("curated_at", "ALTER TABLE events ADD COLUMN curated_at TIMESTAMP"),
         ):
             if kol not in cols:
                 db.session.execute(text(ddl))

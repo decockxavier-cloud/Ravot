@@ -104,6 +104,9 @@ class Event(db.Model):
     partner_until = db.Column(db.DateTime, index=True)   # Ravot Partner actief tot (betaald, nooit invloed op score)
     quality = db.Column(db.Integer, index=True)         # 0-100 volledigheid van de fiche (app/kwaliteit.py)
     subtype = db.Column(db.String(40), index=True)      # fijn OSM-type: playground, park, zoo, museum…
+    curated = db.Column(db.Boolean, default=False, nullable=False, index=True)  # 'Ravot-waardig': mens keurde deze fiche goed
+    curated_by = db.Column(db.Integer)                  # admin/curator-id die goedkeurde
+    curated_at = db.Column(db.DateTime)
     submitted_by = db.Column(db.Integer, db.ForeignKey("families.id"))  # wie het toevoegde (gebruikersbijdrage)
     slug = db.Column(db.String(300), unique=True, index=True)
     title = db.Column(db.String(255), nullable=False)
@@ -321,6 +324,9 @@ SETTING_DEFS = {
     "founding_max": ("20", "Founding partners: maximum aantal plaatsen", "int"),
     "kwaliteit_min_lijst": ("30", "Kwaliteit: minimumscore om in lijsten/gemeentepagina's te staan (kaart toont alles)", "int"),
     "kwaliteit_hoog": ("60", "Kwaliteit: score vanaf wanneer een fiche voorrang krijgt", "int"),
+    "verborgen_types": ("", "Types die publiek verborgen zijn (komma-gescheiden codes)", "text"),
+    "enkel_gecureerd": ("0", "Toon publiek enkel door mensen goedgekeurde ('Ravot-waardige') plekken", "bool"),
+    "report_drempel": ("3", "Aantal meldingen waarna een fiche automatisch naar nazicht springt", "int"),
 }
 
 

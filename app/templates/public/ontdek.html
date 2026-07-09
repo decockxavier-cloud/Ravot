@@ -57,6 +57,15 @@
 </details>
 <p class="resultaat-teller">{{ totaal }} activiteiten{% if max_pagina > 1 %} · pagina {{ pagina }}/{{ max_pagina }}{% endif %}
   · <a href="{{ url_for('account.toevoegen') }}">Ken je een plek die ontbreekt? Voeg ze toe →</a></p>
+{% if curatie_aan %}
+<p class="hint curatie-melding">
+  {% if toon_alles %}Je ziet nu ook plekken die nog niet door Ravot gecontroleerd zijn.
+    <a href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, filter=filter_type, cat=cat, q=zoek) }}">Toon enkel goedgekeurde →</a>
+  {% else %}✓ Je ziet enkel door Ravot goedgekeurde plekken.
+    <a href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, filter=filter_type, cat=cat, q=zoek, alles_tonen='1') }}">Toon ook niet-gecontroleerde →</a>
+  {% endif %}
+</p>
+{% endif %}
 
 {% if rows %}
   <div class="kaarten-raster">

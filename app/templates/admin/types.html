@@ -1,0 +1,36 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<h1>Activiteittypes</h1>
+<p class="hint">Kies per type of het publiek zichtbaar is. Wat je uitvinkt, verdwijnt
+  uit Ontdek, de gemeentepagina's én de kaart — maar blijft in de databank en in
+  het beheer. Zo cureer je Ravot per soort, zonder fiches te verwijderen.</p>
+
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <h2>Vaste plekken</h2>
+  <table class="admin-tabel">
+    <tr><th>Zichtbaar</th><th>Type</th><th>Aantal</th></tr>
+    {% for r in rijen if r.plaats %}
+    <tr>
+      <td><input type="checkbox" name="zichtbaar" value="{{ r.code }}" {{ 'checked' if r.zichtbaar }}></td>
+      <td>{{ r.emoji }} {{ r.label }}</td>
+      <td>{{ r.aantal }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <h2 style="margin-top:18px">Activiteiten met een datum</h2>
+  <table class="admin-tabel">
+    <tr><th>Zichtbaar</th><th>Type</th><th>Aantal</th></tr>
+    {% for r in rijen if not r.plaats %}
+    <tr>
+      <td><input type="checkbox" name="zichtbaar" value="{{ r.code }}" {{ 'checked' if r.zichtbaar }}></td>
+      <td>{{ r.emoji }} {{ r.label }}</td>
+      <td>{{ r.aantal }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <div class="acties" style="margin-top:16px"><button class="btn btn-zon" type="submit">Opslaan</button></div>
+</form>
+{% endblock %}

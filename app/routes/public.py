@@ -55,6 +55,36 @@ def geldige_events(query, now=None):
         ))
 
 
+def curatie_filter(query, toon_alles=False):
+    """Als 'enkel_gecureerd' aanstaat, toon publiek enkel door mensen
+    goedgekeurde ('Ravot-waardige') fiches. toon_alles=True is de
+    ontsnappingsklep waarmee een bezoeker bewust ook de rest ziet."""
+    from ..models import get_bool
+    if toon_alles or not get_bool("enkel_gecureerd"):
+        return query
+    return query.filter(Event.curated.is_(True))
+
+
+def type_filter(query):
+    """Weer activiteittypes die de beheerder publiek verborgen heeft
+    (setting 'verborgen_types'). Werkt op subtype (vaste plekken) en, voor
+    gedateerde events zonder subtype, op de categorie."""
+    from ..types import verborgen_type_codes, _CAT_NAAR_EV
+    hidden = verborgen_type_codes()
+    if not hidden:
+        return query
+    sub_hidden = [c for c in hidden if not c.startswith("ev_")]
+    if sub_hidden:
+        query = query.filter(db.or_(Event.subtype.is_(None),
+                                    ~Event.subtype.in_(sub_hidden)))
+    ev_hidden_cats = [cat for cat, code in _CAT_NAAR_EV.items() if code in hidden]
+    for cat in ev_hidden_cats:
+        query = query.filter(db.or_(
+            Event.subtype.isnot(None),
+            ~db.func.lower(db.cast(Event.categories, db.String)).like(f'%"{cat}"%')))
+    return query
+
+
 def kwaliteit_filter(query):
     """Weer fiches onder de kwaliteitsdrempel uit lijsten/gemeentepagina's.
     NULL (nog niet berekend) blijft zichtbaar; de kaart gebruikt dit NIET
@@ -446,6 +476,7 @@ def weekend():
 
 
 @bp.route("/ontdek")
+@limiter.limit("40/minute;600/hour")   # anti-scrape: ruim voor mensen, traag voor bots
 def ontdek():
     """Alle gezinsactiviteiten, zichtbaar ZONDER postcode of profiel.
     Met zoeken, filters en paginering (want het zijn er veel)."""
@@ -467,7 +498,8 @@ def ontdek():
     per_pagina = get_int("ontdek_per_pagina", 24) or 24
     now = datetime.utcnow()
 
-    q = kwaliteit_filter(geldige_events(Event.query, now).filter(Event.is_permanent.is_(False)))
+    toon_alles = request.args.get("alles_tonen") == "1"
+    q = curatie_filter(type_filter(kwaliteit_filter(geldige_events(Event.query, now).filter(Event.is_permanent.is_(False)))), toon_alles)
     if wanneer in ("vandaag", "deze-week", "weekend"):
         w_start, w_end = window(wanneer)
         q = q.filter(Event.start <= w_end,
@@ -526,13 +558,15 @@ def ontdek():
     begin = (pagina - 1) * per_pagina
     pagina_rows = rows[begin:begin + per_pagina]
 
-    return render_template("public/ontdek.html", rows=pagina_rows, sort=sort, zoek=zoek, wanneer=wanneer, cat=cat, verberg_sp=verberg_sp,
+    from ..models import get_bool as _gb
+    return render_template("public/ontdek.html", rows=pagina_rows, sort=sort, zoek=zoek, wanneer=wanneer, cat=cat, verberg_sp=verberg_sp, toon_alles=toon_alles, curatie_aan=_gb("enkel_gecureerd"),
                            filter_type=filter_type, pagina=pagina, max_pagina=max_pagina,
                            totaal=totaal, has_profile=has_profile, family=fam,
                            active="ontdek", title="Ontdek alles")
 
 
 @bp.route("/verkennen")
+@limiter.limit("20/minute;300/hour")   # kaartdata is het duurst om te oogsten
 def verkennen():
     profile, fam = build_profile()
     zoek = (request.args.get("q") or "").strip().lower()
@@ -569,7 +603,13 @@ def verkennen():
     # Filter op type, categorie, speeltuinen en (indien gezocht) op buurt
     cat = request.args.get("cat", "")
     verberg_sp = request.args.get("sp") == "0"   # gewone speeltuinen weg
+    from ..types import verborgen_type_codes, type_code
+    from ..models import get_bool
+    _verborgen = verborgen_type_codes()
+    _enkel_gecureerd = get_bool("enkel_gecureerd") and request.args.get("alles_tonen") != "1"
     def _past(e):
+        if _enkel_gecureerd and not e.curated:
+            return False
         if filter_type == "gratis" and not e.is_free:
             return False
         if filter_type == "binnen" and not e.indoor:
@@ -579,6 +619,8 @@ def verkennen():
         if cat and cat not in (e.categories or []):
             return False
         if verberg_sp and e.subtype == "playground":
+            return False
+        if _verborgen and type_code(e) in _verborgen:
             return False
         return True
     evs = [e for e in evs if _past(e)]
@@ -607,6 +649,7 @@ def _kaart_marker(e):
 
 
 @bp.route("/e/<slug>")
+@limiter.limit("60/minute;1000/hour")  # fiches: 15k stuks leegtrekken duurt zo dagen per IP
 def event(slug):
     ev = Event.query.filter_by(slug=slug).first_or_404()
     # Nog niet gemodereerde gebruikersbijdrage: niet publiek tonen.
@@ -692,7 +735,7 @@ def _gemeente_events(gemeente, facet=None):
     if facet in FACET_AGES:
         lo, hi = FACET_AGES[facet]
         q = q.filter(Event.age_min <= hi, Event.age_max >= lo)
-    q = kwaliteit_filter(q)
+    q = curatie_filter(type_filter(kwaliteit_filter(q)))
     # Gedateerde events op datum; permanente plekken daarna, beste fiches eerst.
     return q.order_by(Event.start.is_(None).asc(), Event.start,
                       Event.quality.desc().nullslast()).limit(100).all()
@@ -832,7 +875,7 @@ def voorwaarden():
 
 @bp.route("/cookies")
 def cookies():
-    return _content_of_template("cookies", "public/content.html", "Cookiebeleid")
+    return _content_of_template("cookies", "public/cookies.html", "Cookiebeleid")
 
 
 @bp.route("/contact")

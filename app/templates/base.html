@@ -46,8 +46,6 @@
   {# Mobiele dropdown (verborgen tot hamburger-klik) #}
   <nav class="mobiel-menu" id="mobiel-menu" aria-label="Menu">
     <a href="{{ url_for('public.ontdek') }}" class="{{ 'on' if active=='ontdek' }}">🔭 Ontdek</a>
-    <a href="{{ url_for('public.ontdek', wanneer='vandaag') }}">☀️ Vandaag</a>
-    <a href="{{ url_for('public.ontdek', wanneer='weekend') }}">🎈 Dit weekend</a>
     <a href="{{ url_for('public.verkennen') }}" class="{{ 'on' if active=='verkennen' }}">🗺️ Kaart</a>
     {% if family %}
       <a href="{{ url_for('account.profiel') }}" class="{{ 'on' if active=='profiel' }}">🏠 {{ family.display_name or "Mijn Ravot" }}</a>
@@ -69,10 +67,6 @@
   <nav class="tabbar" aria-label="Hoofdnavigatie">
     <a href="{{ url_for('public.ontdek') }}" class="{{ 'on' if active=='ontdek' }}">
       <span class="tab-ico">🔭</span><span class="tab-tekst">Ontdek</span></a>
-    <a href="{{ url_for('public.ontdek', wanneer='vandaag') }}">
-      <span class="tab-ico">☀️</span><span class="tab-tekst">Vandaag</span></a>
-    <a href="{{ url_for('public.ontdek', wanneer='weekend') }}">
-      <span class="tab-ico">🎈</span><span class="tab-tekst">Weekend</span></a>
     <a href="{{ url_for('public.verkennen') }}" class="{{ 'on' if active=='verkennen' }}">
       <span class="tab-ico">🗺️</span><span class="tab-tekst">Kaart</span></a>
     <a href="{{ url_for('account.profiel') if family else url_for('auth.login') }}"
@@ -90,7 +84,7 @@
         ze verschijnt dan ook op UiTinVlaanderen.be en tal van andere agenda's.</p>
     </div>
     {% endif %}
-    <p>{% if bron_vermeldingen %}Activiteiten in samenwerking met {% for b in bron_vermeldingen %}<a href="{{ b.url }}" rel="noopener">{{ b.naam }}</a>{% if not loop.last %}, {% endif %}{% endfor %}. {% endif %}Gratis en zonder reclame. · <a href="{{ url_for('public.hoe_werkt_het') }}">Zo werkt het</a> ·
+    <p>{% if bron_vermeldingen %}Met open data van {% for b in bron_vermeldingen %}<a href="{{ b.url }}" rel="noopener">{{ b.naam }}</a>{% if not loop.last %}, {% endif %}{% endfor %}. {% endif %}Gratis en zonder reclame. · <a href="{{ url_for('public.hoe_werkt_het') }}">Zo werkt het</a> ·
     <a href="{{ url_for('public.over') }}">Over Ravot</a> ·
     <a href="{{ url_for('public.contact') }}">Contact</a> ·
     <a href="/privacy">Privacy</a> · <a href="/cookies">Cookies</a> · <a href="/voorwaarden">Voorwaarden</a> · <a href="{{ url_for('uitbater.login') }}">Voor uitbaters</a></p>

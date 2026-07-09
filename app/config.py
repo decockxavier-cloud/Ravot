@@ -48,6 +48,9 @@ class Config:
         "NOMINATIM_URL", "https://nominatim.openstreetmap.org/search")
     # Lokaal AI-model (Ollama-container) voor verrijking. Intern bereikbaar.
     OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://ollama:11434")
+    # Rate-limit-opslag: Redis in productie (persistent, gedeeld over workers);
+    # memory:// als fallback voor lokaal en tests.
+    RATELIMIT_STORAGE_URI = os.environ.get("RATELIMIT_STORAGE_URI", "memory://")
     # Optionele cloud-backend voor verrijking (leeg = uit).
     ENRICH_CLOUD_KEY = os.environ.get("ENRICH_CLOUD_KEY", "")
     # Mollie (Ravot Partner). Leeg = betalingen uit (portaal blijft gratis werken).

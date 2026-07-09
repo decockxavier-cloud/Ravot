@@ -15,6 +15,8 @@
     <option value="live" {{ 'selected' if status=='live' }}>live</option>
     <option value="pending" {{ 'selected' if status=='pending' }}>in wachtrij</option>
     <option value="aanvullen" {{ 'selected' if status=='aanvullen' }}>aan te vullen (middenzone)</option>
+    <option value="gecureerd" {{ 'selected' if status=='gecureerd' }}>✓ Ravot-waardig</option>
+    <option value="tebeoordelen" {{ 'selected' if status=='tebeoordelen' }}>nog te beoordelen (plekken)</option>
   </select>
   <select name="sort">
     <option value="kwaliteit-op" {{ 'selected' if sort=='kwaliteit-op' }}>kwaliteit: laagste eerst</option>
@@ -47,8 +49,15 @@
       {%- if not e.source_url %}{% set _ = mist.append('web') %}{% endif -%}
       {{ mist|join(', ') if mist else '—' }}
     </td>
-    <td>{{ '⏳ wachtrij' if e.pending else '✅ live' }}</td>
-    <td><a class="btn btn-klein" href="{{ url_for('admin.activiteit_bewerk', event_id=e.id) }}">Bewerk / verrijk</a></td>
+    <td>{{ '⏳ wachtrij' if e.pending else '✅ live' }}{% if e.curated %} · <span title="Ravot-waardig" style="color:var(--gras)">✓</span>{% endif %}</td>
+    <td>
+      <a class="btn btn-klein" href="{{ url_for('admin.activiteit_bewerk', event_id=e.id) }}">Bewerk / verrijk</a>
+      <form method="post" action="{{ url_for('admin.activiteit_waardig', event_id=e.id) }}" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="terug" value="{{ request.full_path }}">
+        <button class="btn btn-klein {{ 'btn-stil' if e.curated else 'btn-zon' }}" type="submit">{{ 'intrekken' if e.curated else '✓ waardig' }}</button>
+      </form>
+    </td>
   </tr>
   {% else %}<tr><td colspan="8" class="leeg">Niets gevonden.</td></tr>
   {% endfor %}

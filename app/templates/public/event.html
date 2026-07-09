@@ -114,7 +114,7 @@
 </details>
 {% endif %}
 
-{% if family %}
+{% if not family %}{% endif %}
 <details class="melden">
   <summary>Klopt er iets niet? Meld deze plek</summary>
   <form method="post" action="{{ url_for('account.melden', event_id=ev.id) }}" class="meld-form">
@@ -131,5 +131,4 @@
     <button class="btn btn-klein btn-stil" type="submit">Melding versturen</button>
   </form>
 </details>
-{% endif %}
 {% endblock %}

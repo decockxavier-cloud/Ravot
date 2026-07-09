@@ -133,12 +133,26 @@ def _clamp_leeftijd(v, standaard):
 
 def _haal_webtekst(url, max_chars=3000):
     """Haal de zichtbare tekst van een webpagina op (voor AI-context).
-    Veilig: enkel http/https, korte timeout, HTML gestript, begrensd."""
+    Veilig: enkel http/https naar publieke hosts (SSRF-bescherming: geen
+    loopback/privé/link-local adressen, dus geen interne diensten zoals
+    Ollama, de databank of cloud-metadata), korte timeout, HTML gestript."""
     if not url or not str(url).startswith(("http://", "https://")):
         return None
     try:
+        import socket, ipaddress
+        from urllib.parse import urlparse
+        host = urlparse(url).hostname or ""
+        for info in socket.getaddrinfo(host, None):
+            ip = ipaddress.ip_address(info[4][0])
+            if (ip.is_private or ip.is_loopback or ip.is_link_local
+                    or ip.is_reserved or ip.is_multicast):
+                return None
+    except Exception:
+        return None
+    try:
         import requests
-        r = requests.get(url, timeout=12, headers={"User-Agent": "Ravot/1.0 (+https://ravot.be)"})
+        r = requests.get(url, timeout=12, allow_redirects=False,
+                         headers={"User-Agent": "Ravot/1.0 (+https://ravot.be)"})
         r.raise_for_status()
         html = r.text
     except Exception:

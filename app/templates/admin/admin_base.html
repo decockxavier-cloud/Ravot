@@ -6,6 +6,7 @@
     <nav class="admin-menu">
       {% if admin_rol == 'reviewer' %}
         <a href="{{ url_for('admin.activiteiten') }}" class="{{ 'on' if active=='activiteiten' }}">🎡 Activiteiten</a>
+        <a href="{{ url_for('admin.types_beheer') }}" class="{{ 'on' if active=='types' }}">🏷️ Types</a>
         <a href="{{ url_for('admin.nazicht') }}" class="{{ 'on' if active=='nazicht' }}">🔍 Nazicht</a>
       {% else %}
         <a href="{{ url_for('admin.dashboard') }}" class="{{ 'on' if active=='dashboard' }}">📊 Dashboard</a>
