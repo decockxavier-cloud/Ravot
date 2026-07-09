@@ -5,14 +5,15 @@
          data-score="{{ (r.agg.avg if r.agg else 0) if r is defined else 0 }}"
          data-zoek="{{ (e.title ~ ' ' ~ (e.gemeente or '')) | lower }}">
   <a href="{{ url_for('public.event', slug=e.slug) }}" class="thumb-link">
+    {% set pe = poi_emoji(e) %}
+    <span class="thumb-emoji {{ pe.klasse }}">{{ pe.emoji }}</span>
     {% if has_echte_foto(e) %}
-    <img class="thumb" src="{{ poi_image(e) }}" alt="" loading="lazy"
-         onerror="this.onerror=null;this.parentNode.innerHTML='&lt;span class=\'thumb-emoji {{ poi_emoji(e).klasse }}\'&gt;{{ poi_emoji(e).emoji }}&lt;/span&gt;'"></a>
-    {% else %}
-    {% set pe = poi_emoji(e) %}<span class="thumb-emoji {{ pe.klasse }}">{{ pe.emoji }}</span></a>
+    <img class="thumb thumb-over" src="{{ poi_image(e) }}" alt="" loading="lazy"
+         onerror="this.remove()">
     {% endif %}
+  </a>
   <h3><a href="{{ url_for('public.event', slug=e.slug) }}">{{ e.title }}</a></h3>
-  <p class="meta">📍 {{ e.gemeente }}{% if e.start %} · 🕐 {{ e.start.strftime("%a %d/%m") }}{% endif %}</p>
+  <p class="meta">📍 {{ e.gemeente }}{% if e.start %} · 🕐 {{ event_datum(e) }}{% endif %}</p>
   <div class="badges">
     <span class="badge">{{ e.age_min }}–{{ e.age_max }} jaar</span>
     {% if e.is_free %}<span class="badge badge-free">Gratis</span>{% endif %}

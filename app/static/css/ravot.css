@@ -602,9 +602,13 @@ section h2 { font-size: 1.25rem; margin: 22px 0 8px; }
 .filterrij { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 
 /* Kaart zonder echte foto: nette categorie-banner i.p.v. leeg beeldvak.
-   Zelfde hoogte als een echte foto-thumb, zodat het raster gelijk blijft. */
+   Zelfde hoogte als een echte foto-thumb, zodat het raster gelijk blijft.
+   De emoji ligt eronder; een echte foto komt er absoluut overheen. Faalt de
+   foto (dode URL), dan verwijdert die zich (onerror) en zie je de emoji. */
+.thumb-link { position: relative; }
 .thumb-emoji { display: flex; align-items: center; justify-content: center;
   height: 150px; border-radius: 16px 16px 0 0; font-size: 2.8rem; }
+.thumb-over { position: absolute; inset: 0; margin: 0; border-radius: 16px 16px 0 0; }
 @media (min-width: 720px) { .thumb-emoji { height: 180px; } }
 .thumb-emoji.c-buiten   { background: #E7F1E3; }
 .thumb-emoji.c-natuur   { background: #E2F0E4; }
