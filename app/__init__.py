@@ -16,6 +16,18 @@ def create_app(config_object=Config):
     limiter.init_app(app)
 
     from .media import poi_image, has_echte_foto
+    import os as _os
+    from flask import url_for as _url_for
+    def static_v(filename):
+        """Static-URL met versie-stempel (?v=mtime) zodat caches nooit een
+        verouderd bestand serveren na een deploy."""
+        try:
+            pad = _os.path.join(app.static_folder, filename)
+            v = int(_os.path.getmtime(pad))
+        except OSError:
+            v = 0
+        return _url_for("static", filename=filename, v=v)
+    app.jinja_env.globals["static_v"] = static_v
     app.jinja_env.globals["poi_image"] = poi_image
     from .media import poi_emoji
     app.jinja_env.globals["poi_emoji"] = poi_emoji

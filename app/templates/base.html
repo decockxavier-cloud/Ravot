@@ -15,7 +15,7 @@
   <link rel="icon" href="{{ url_for('static', filename='img/icon.svg') }}" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&family=Inter:wght@400;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/ravot.css') }}">
+  <link rel="stylesheet" href="{{ static_v('css/ravot.css') }}">
   {% block head %}{% endblock %}
   {% for ld in jsonld or [] %}<script type="application/ld+json">{{ ld | safe }}</script>{% endfor %}
 </head>
@@ -113,7 +113,7 @@
     </div>
   </div>
 
-  <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/plaatsen.js') }}" defer></script>
+  <script src="{{ static_v('js/app.js') }}" defer></script>
+  <script src="{{ static_v('js/plaatsen.js') }}" defer></script>
 </body>
 </html>

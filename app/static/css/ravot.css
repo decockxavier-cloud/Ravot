@@ -601,9 +601,11 @@ section h2 { font-size: 1.25rem; margin: 22px 0 8px; }
 .meer-filters-inhoud { padding: 12px 2px 4px; display: flex; flex-direction: column; gap: 8px; }
 .filterrij { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 
-/* Kaart zonder echte foto: nette categorie-banner i.p.v. leeg beeldvak */
+/* Kaart zonder echte foto: nette categorie-banner i.p.v. leeg beeldvak.
+   Zelfde hoogte als een echte foto-thumb, zodat het raster gelijk blijft. */
 .thumb-emoji { display: flex; align-items: center; justify-content: center;
-  aspect-ratio: 16/10; border-radius: 14px 14px 0 0; font-size: 2.6rem; }
+  height: 150px; border-radius: 16px 16px 0 0; font-size: 2.8rem; }
+@media (min-width: 720px) { .thumb-emoji { height: 180px; } }
 .thumb-emoji.c-buiten   { background: #E7F1E3; }
 .thumb-emoji.c-natuur   { background: #E2F0E4; }
 .thumb-emoji.c-cultuur  { background: #F3E9DE; }
