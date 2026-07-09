@@ -313,16 +313,78 @@ def register_cli(app):
 
     @app.cli.command("sync-bron")
     @click.argument("naam")
-    def sync_bron(naam):
+    @click.option("--force", is_flag=True, help="Sync ook als de koppeling uit staat (testen).")
+    def sync_bron(naam, force):
         """Eén bron syncen. NAAM = uit | tm | tv | osm."""
         from .services.sources import sync_one, REGISTRY
         if naam not in REGISTRY:
             click.echo(f"Onbekende bron '{naam}'. Kies uit: {', '.join(REGISTRY)}.")
             return
-        r = sync_one(naam)
+        r = sync_one(naam, force=force)
         fout = f" — FOUT: {r['fout']}" if r.get("fout") else ""
         click.echo(f"{r['bron']}: {r['verwerkt']} verwerkt, "
                    f"{r.get('verworpen', 0)} verworpen{fout}")
+
+    @app.cli.command("kuis-testdata")
+    @click.option("--bevestig", is_flag=True, help="Écht wissen (zonder deze vlag: enkel tonen).")
+    def kuis_testdata_cmd(bevestig):
+        """Verwijder UiT-testdata en houd enkel wat er echt in mag.
+
+        Wist: events uit de bron 'uit' die NIET goedgekeurd zijn (curated) en
+        NIET door een gebruiker zijn toegevoegd. Behoudt: alle door jou als
+        Ravot-waardig gemarkeerde fiches, alle gebruikersbijdragen, en alle
+        plekken uit OSM/Wikidata/andere bronnen. Ruimt daarna verweesde
+        organisatoren/locaties/reeksen op. Raakt de databank-volume nooit aan.
+        """
+        from .models import Event, Organizer, Venue, EditionSeries
+        from sqlalchemy import delete, select
+
+        doel = Event.query.filter(Event.source == "uit",
+                                  Event.curated.is_(False),
+                                  Event.submitted_by.is_(None))
+        te_wissen = doel.count()
+        totaal_uit = Event.query.filter(Event.source == "uit").count()
+        behoud_cur = Event.query.filter(Event.source == "uit", Event.curated.is_(True)).count()
+        behoud_usr = Event.query.filter(Event.source == "uit",
+                                        Event.submitted_by.isnot(None)).count()
+        anders = Event.query.filter(Event.source != "uit").count()
+
+        click.echo("── Opkuis UiT-testdata ─────────────────────────")
+        click.echo(f"  UiT-events totaal        : {totaal_uit}")
+        click.echo(f"  → te wissen (testdata)   : {te_wissen}")
+        click.echo(f"  → behouden (Ravot-waardig): {behoud_cur}")
+        click.echo(f"  → behouden (gebruiker)   : {behoud_usr}")
+        click.echo(f"  Andere bronnen (blijven) : {anders}")
+
+        if not bevestig:
+            click.echo("\nDROOGLOOP — er is niets gewist. Draai met --bevestig om echt te wissen.")
+            click.echo("Maak eerst een back-up: docker compose exec db pg_dump -U ravot ravot > backup.sql")
+            return
+
+        ids = [r[0] for r in doel.with_entities(Event.id).all()]
+        gewist = 0
+        for i in range(0, len(ids), 1000):
+            brok = ids[i:i + 1000]
+            # eerst alle child-rijen die naar deze events verwijzen
+            for tbl in db.metadata.sorted_tables:
+                if tbl.name != "events" and "event_id" in tbl.c:
+                    db.session.execute(delete(tbl).where(tbl.c.event_id.in_(brok)))
+            db.session.execute(delete(Event.__table__).where(Event.id.in_(brok)))
+            db.session.commit()
+            gewist += len(brok)
+
+        # verweesde organisatoren/locaties/reeksen opruimen
+        wees = 0
+        for Model, kol in ((Organizer, "organizer_id"), (Venue, "venue_id"),
+                           (EditionSeries, "series_id")):
+            gebruikt = select(getattr(Event, kol)).where(getattr(Event, kol).isnot(None))
+            q = Model.query.filter(~Model.id.in_(gebruikt))
+            wees += q.count()
+            q.delete(synchronize_session=False)
+        db.session.commit()
+
+        click.echo(f"\n✓ {gewist} testevents gewist, {wees} verweesde organisatoren/locaties/reeksen opgeruimd.")
+        click.echo("Goedgekeurde, gebruikers- en OSM/Wikidata-fiches bleven behouden.")
 
     @app.cli.command("send-weekendmail")
     def send_weekendmail():
@@ -362,6 +424,23 @@ def register_cli(app):
         from .kwaliteit import herbereken_alles
         n = herbereken_alles()
         click.echo(f"Kwaliteit herberekend: {n} fiches bijgewerkt.")
+
+    @app.cli.command("kuis-beschrijvingen")
+    def kuis_beschrijvingen_cmd():
+        """Verwijder achtergebleven HTML-opmaak uit bestaande beschrijvingen."""
+        from .models import Event
+        from .services.uit_sync import _strip_html
+        ids = [r[0] for r in db.session.query(Event.id).all()]
+        n = 0
+        for i in range(0, len(ids), 500):
+            for ev in Event.query.filter(Event.id.in_(ids[i:i + 500])).all():
+                if ev.description and ("<" in ev.description or "&" in ev.description):
+                    schoon = _strip_html(ev.description)
+                    if schoon != ev.description:
+                        ev.description = schoon
+                        n += 1
+            db.session.commit()
+        click.echo(f"Beschrijvingen opgekuist: {n} fiches bijgewerkt.")
 
     @app.cli.command("dedup")
     def dedup_cmd():

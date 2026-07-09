@@ -66,8 +66,14 @@ def get_statuses():
 
 # -------------------------------------------------------------------- sync --
 
-def sync_one(name):
-    """Draai één bron en houd de status bij. Retourneert een resultaat-dict."""
+def sync_one(name, force=False):
+    """Draai één bron en houd de status bij. Retourneert een resultaat-dict.
+    Respecteert de aan/uit-schakelaar van de bron; met force=True kun je bewust
+    toch syncen (bv. om te testen)."""
+    if not force and not source_enabled(name):
+        _set_status(name, "idle", result="overgeslagen: koppeling staat uit")
+        return {"bron": name, "verwerkt": 0, "verworpen": 0,
+                "fout": "koppeling staat uit (zet ze aan of gebruik --force)"}
     _set_status(name, "running")
     try:
         if name == "uit":

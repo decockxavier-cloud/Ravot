@@ -27,9 +27,13 @@ def _osm_event(source="osm"):
 # ---------------------------------------------------------------- status --
 
 def test_sync_one_zet_status(app):
-    """sync_one('tm') zonder key doet niets, maar zet netjes de status op 'done'."""
+    """sync_one('tm') met koppeling aan maar zonder key doet niets, maar zet
+    netjes de status op 'done'."""
     from app.services.sources import sync_one
+    from app.models import Setting
     with app.app_context():
+        db.session.merge(Setting(key="bron_tm_aan", value="1"))  # koppeling aan
+        db.session.commit()
         sync_one("tm")
         st = db.session.get(SyncStatus, "tm")
         assert st is not None and st.state == "done"

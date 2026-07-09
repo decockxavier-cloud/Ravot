@@ -48,6 +48,20 @@ def fetch_events(page_start=0, limit=50):
 
 # ------------------------------------------------------------- normalisatie --
 
+def _strip_html(tekst):
+    """UiT levert beschrijvingen met HTML-opmaak (<a>, <strong>, &nbsp;, …).
+    We tonen platte tekst, dus strippen we tags en decoderen we entiteiten."""
+    if not tekst:
+        return tekst
+    import html as _html
+    zonder = re.sub(r"(?is)<(script|style)[^>]*>.*?</\1>", " ", tekst)  # scripts weg
+    zonder = re.sub(r"(?i)<\s*br\s*/?\s*>", " ", zonder)                # <br> -> spatie
+    zonder = re.sub(r"(?i)</\s*p\s*>", " ", zonder)                      # alinea-einde -> spatie
+    zonder = re.sub(r"<[^>]+>", "", zonder)                              # overige tags weg
+    zonder = _html.unescape(zonder)                                     # &nbsp; &amp; …
+    return re.sub(r"\s+", " ", zonder).strip()
+
+
 def _first_nl(val):
     if isinstance(val, dict):
         return val.get("nl") or next(iter(val.values()), None)
@@ -150,7 +164,7 @@ def normalise(item):
     return {
         "uit_id": uit_id,
         "title": title,
-        "description": (_first_nl(item.get("description")) or "")[:2000],
+        "description": _strip_html(_first_nl(item.get("description")) or "")[:2000],
         "start": _dt(start), "end": _dt(end),
         "gemeente": addr.get("addressLocality"),
         "postcode": postcode,

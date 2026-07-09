@@ -637,13 +637,15 @@ def verkennen():
 
 
 def _kaart_marker(e):
+    from ..types import activiteit_type
     return {
         "lat": e.lat, "lng": e.lng, "title": e.title,
         "url": url_for("public.event", slug=e.slug),
         "free": e.is_free, "gemeente": e.gemeente, "adres": e.adres,
-        "datum": e.start.strftime("%a %d/%m") if e.start else None,
+        "datum": event_datum(e) if e.start else None,
         "leeftijd": f"{e.age_min}\u2013{e.age_max} jaar" if e.age_min is not None else None,
         "indoor": bool(e.indoor), "img": poi_image(e),
+        "emoji": activiteit_type(e)["emoji"], "type": activiteit_type(e)["label"],
         "score": None, "count": None,
     }
 

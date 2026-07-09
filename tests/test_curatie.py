@@ -115,3 +115,42 @@ def test_open_redirect_geblokkeerd(client, app):
                     data={"csrf_token": "x", "terug": "https://evil.example/phish"})
     assert r.status_code == 302
     assert "evil.example" not in (r.location or "")   # extern doel geweigerd
+
+
+def test_sync_respecteert_koppeling_schakelaar(app):
+    from app.services.sources import sync_one
+    with app.app_context():
+        # koppeling uit -> sync doet niets
+        r = sync_one("uit")
+        assert r["verwerkt"] == 0 and "uit" in r["fout"]
+
+
+def test_kuis_testdata_droogloop_wist_niets(app):
+    from app.models import Event
+    with app.app_context():
+        db.session.add(Event(source="uit", slug="t", title="Test",
+            gemeente="G", postcode="9000", lat=51, lng=3, age_min=0, age_max=12,
+            categories=["cultuur"]))
+        db.session.commit()
+    out = app.test_cli_runner().invoke(args=["kuis-testdata"]).output
+    assert "DROOGLOOP" in out
+    with app.app_context():
+        assert Event.query.count() == 1   # niets gewist zonder --bevestig
+
+
+def test_kuis_testdata_behoudt_goedgekeurd_en_gebruiker(app):
+    from app.models import Event
+    with app.app_context():
+        db.session.add_all([
+            Event(source="uit", slug="w", title="Weg", gemeente="G", postcode="9000",
+                  lat=51, lng=3, age_min=0, age_max=12, categories=["cultuur"]),
+            Event(source="uit", slug="k", title="Keep", curated=True, gemeente="G",
+                  postcode="9000", lat=51, lng=3, age_min=0, age_max=12, categories=["cultuur"]),
+            Event(source="osm", slug="o", title="Osm", is_permanent=True, subtype="playground",
+                  gemeente="G", postcode="9000", lat=51, lng=3, age_min=0, age_max=12, categories=["buiten"]),
+        ])
+        db.session.commit()
+    app.test_cli_runner().invoke(args=["kuis-testdata", "--bevestig"])
+    with app.app_context():
+        namen = {e.title for e in Event.query.all()}
+        assert namen == {"Keep", "Osm"}   # testdata weg, rest blijft

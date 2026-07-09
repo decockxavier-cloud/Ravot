@@ -124,3 +124,25 @@ def test_organisatoren_met_zelfde_naam_botsen_niet(app):
         assert Organizer.query.count() == 3
         assert len({o.slug for o in Organizer.query.all()}) == 3   # allemaal uniek
         assert Event.query.count() == 3                            # niets overgeslagen
+
+
+def test_html_wordt_uit_beschrijving_gestript():
+    """UiT levert HTML in beschrijvingen; die moet platte tekst worden."""
+    from app.services.uit_sync import _strip_html
+    ruw = ('Voor kinderen. <a href="http://x.be" target="_blank">Website</a> '
+           '</br></br> <strong>Missie:&nbsp;</strong> Vzw Jong is het Gentse.')
+    schoon = _strip_html(ruw)
+    assert "<" not in schoon and "&nbsp;" not in schoon and "href" not in schoon
+    assert schoon == "Voor kinderen. Website Missie: Vzw Jong is het Gentse."
+    assert _strip_html(None) is None
+
+
+def test_kaartmarker_draagt_type_emoji(app):
+    from app.models import Event
+    with app.app_context():
+        db.session.add(Event(source="osm", ext_id="s", slug="sp", title="Speeltuintje",
+            is_permanent=True, subtype="playground", gemeente="Gent", postcode="9000",
+            lat=51.0, lng=3.7, age_min=0, age_max=12, categories=["buiten"], quality=40))
+        db.session.commit()
+    html = app.test_client().get("/verkennen").get_data(as_text=True)
+    assert '"Speeltuin (openbaar)"' in html   # type-label zit in de marker-data

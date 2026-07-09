@@ -21,14 +21,16 @@
         });
       }
 
-      // Kleur + icoon op basis van type activiteit
-      var kleur, ico;
-      if (m.score && m.score >= 4) { kleur = "#2E7D46"; ico = "😄"; }       // goed gescoord
-      else if (m.free) { kleur = "#F4B233"; ico = "🎈"; }                    // gratis
-      else if (m.indoor) { kleur = "#5B8DEF"; ico = "🏠"; }                  // binnen
-      else { kleur = "#EE8035"; ico = "📍"; }                                // overig
+      // Kleur toont score/gratis/binnen; het glyph toont het TYPE (speeltuin,
+      // theater, museum…) zodat je op de kaart meteen ziet wat het is.
+      var kleur;
+      if (m.score && m.score >= 4) { kleur = "#2E7D46"; }        // goed gescoord
+      else if (m.free) { kleur = "#F4B233"; }                    // gratis
+      else if (m.indoor) { kleur = "#5B8DEF"; }                  // binnen
+      else { kleur = "#EE8035"; }                                // overig
+      var ico = m.emoji || "📍";
 
-      // Custom pin: een druppel met een wit rondje en het icoon erin
+      // Custom pin: een druppel met een wit rondje en het type-icoon erin
       var html = '<div class="rv-pin" style="--pin:' + kleur + '">' +
                  '<span class="rv-pin-ico">' + ico + '</span></div>';
       var icon = L.divIcon({
