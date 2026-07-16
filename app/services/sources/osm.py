@@ -100,10 +100,13 @@ HORECA_SIGNALEN = ("kids_area", "highchair", "changing_table", "playground")
 
 
 def _query_horeca(bbox):
+    """Bewust géén regex op 'amenity' (duur voor Overpass): we vragen op de
+    zéldzame kind-signaaltags (highchair, kids_area, ...) met enkel een
+    goedkope key-check op amenity erbij. Welke amenity het precies is,
+    filteren wij daarna zelf in normalise() — gratis voor de servers."""
     s, w, n, e = bbox
-    am = "|".join(HORECA_AMENITY)
     delen = "".join(
-        f'nwr["amenity"~"^({am})$"]["{sig}"]["{sig}"!="no"]({s},{w},{n},{e});'
+        f'nwr["{sig}"]["{sig}"!="no"]["amenity"]({s},{w},{n},{e});'
         for sig in HORECA_SIGNALEN)
     return f'[out:json][timeout:90];({delen});out center tags;'
 
