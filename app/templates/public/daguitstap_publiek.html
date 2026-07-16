@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block body_class %}met-sfeer{% endblock %}
+{% block content %}
+<h1>🧺 {{ d.titel }}</h1>
+<p class="meta">Een daguitstap samengesteld op Ravot
+  {% if d.datum %} · 📅 {{ d.datum.strftime('%d/%m/%Y') }}{% endif %}</p>
+
+{% if markers %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<div id="minimap" class="event-minimap" style="height:280px;border-radius:14px;margin:12px 0;"
+     data-markers='{{ markers | tojson }}'></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  (function () {
+    var el = document.getElementById('minimap');
+    var punten = JSON.parse(el.dataset.markers || '[]');
+    if (!punten.length) return;
+    var map = L.map('minimap');
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {attribution: '&copy; OpenStreetMap'}).addTo(map);
+    var groep = [];
+    punten.forEach(function (p, i) {
+      var m = L.marker([p.lat, p.lng]).addTo(map)
+        .bindPopup('<strong>' + (i + 1) + '. ' + p.title + '</strong>');
+      groep.push(m.getLatLng());
+    });
+    map.fitBounds(L.latLngBounds(groep).pad(0.2));
+  })();
+</script>
+{% endif %}
+
+{% for item in items %}
+{% set e = item.event %}
+<div class="card mini-card">
+  <div class="daguitstap-nr">{{ loop.index }}</div>
+  <div style="flex:1">
+    <a href="{{ url_for('public.event', slug=e.slug) }}"><strong>{{ e.title }}</strong></a><br>
+    <span class="meta">{% set t = activiteit_type(e) %}{{ t.emoji }} {{ t.label }} · 📍 {{ e.gemeente }}
+      {% if e.start %} · 🕐 {{ event_datum(e) }}{% endif %}</span>
+    {% if item.nota %}<br><span class="hint">📝 {{ item.nota }}</span>{% endif %}
+  </div>
+</div>
+{% endfor %}
+
+<div class="card leeg">
+  <span class="groot-emoji">🦊</span>
+  <p><strong>Zelf zo'n daguitstap samenstellen?</strong><br>
+  Maak gratis een gezinsprofiel op Ravot en plan jullie perfecte dag.</p>
+  <a class="btn btn-zon" href="{{ url_for('auth.login') }}">Probeer Ravot →</a>
+</div>
+{% endblock %}

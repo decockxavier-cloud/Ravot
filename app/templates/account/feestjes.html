@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block body_class %}met-sfeer{% endblock %}
+{% block content %}
+<a href="{{ url_for('account.mijn_home') }}" class="terug-link">← Mijn Ravot</a>
+<h1>Mijn feestjes 🎂</h1>
+<p class="hint">Plan een verjaardagsfeestje en vraag met één klik offertes aan
+bij horeca, zalen, materiaalverhuur en animatie in de buurt.</p>
+
+{% if lijst %}
+{% for f in lijst %}
+<div class="card mini-card">
+  <div>
+    <a href="{{ url_for('account.feestje', fid=f.id) }}">
+      <strong>🎂 {{ f.datum.strftime('%d/%m/%Y') }}{% if f.leeftijd %} — wordt {{ f.leeftijd }} jaar{% endif %}</strong></a><br>
+    <span class="meta">{{ f.aanvragen | length }} aanvra{{ 'gen' if f.aanvragen | length != 1 else 'ag' }}
+      · {{ 'geregeld ✅' if f.status == 'geregeld' else f.status }}</span>
+  </div>
+  <a class="btn btn-stil btn-klein" href="{{ url_for('account.feestje', fid=f.id) }}">Open</a>
+</div>
+{% endfor %}
+{% else %}
+<div class="card leeg"><span class="groot-emoji">🎈</span>
+  <p>Nog geen feestje gepland.</p></div>
+{% endif %}
+
+<div class="acties">
+  <a class="btn btn-zon" href="{{ url_for('account.feestje_nieuw') }}">🎉 Nieuw feestje plannen</a>
+</div>
+{% endblock %}

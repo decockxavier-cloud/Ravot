@@ -1,5 +1,6 @@
 {# Herbruikbare eventkaart. Verwacht: e (event), r (row met agg/family_total), family #}
-<article class="card kaart-event"
+{% set toon_sc = score_zichtbaar(e) %}
+<article class="card kaart-event{{ ' kaart-gedempt' if not toon_sc }}"
          data-free="{{ '1' if e.is_free else '0' }}"
          data-indoor="{{ '1' if e.indoor else '0' }}"
          data-score="{{ (r.agg.avg if r.agg else 0) if r is defined else 0 }}"
@@ -20,11 +21,12 @@
     {% if e.curated %}<span class="badge badge-waardig" title="Door Ravot goedgekeurd als échte gezinsuitstap">✓ Ravot-waardig</span>{% endif %}
     <span class="badge">{{ e.age_min }}–{{ e.age_max }} jaar</span>
     {% if e.is_free %}<span class="badge badge-free">Gratis</span>{% endif %}
-    {% if r is defined and r.agg %}<span class="badge badge-score">😄 {{ r.agg.avg }} ({{ r.agg.count }})</span>
-    {% else %}<span class="badge badge-leeg" title="Nog geen Ravotscore">nog geen score</span>{% endif %}
+    {% if r is defined and r.agg and toon_sc %}<span class="badge badge-score">😄 {{ r.agg.avg }} ({{ r.agg.count }})</span>
+    {% elif toon_sc %}<span class="badge badge-leeg" title="Nog geen Ravotscore">nog geen score</span>{% endif %}
     {% if e.indoor %}<span class="badge">🌧️ binnen</span>{% endif %}
     {% if e.is_permanent %}<span class="badge">📍 vaste plek</span>{% endif %}
-    {% if e.partner_until and e.partner_until > nu_utc %}<span class="badge badge-partner" title="Deze zaak is betalend partner van Ravot; dit beïnvloedt de score of volgorde niet">⭐ Partner</span>{% endif %}
+    {% if e.partner_until and e.partner_until > nu_utc %}<span class="badge badge-partner" title="Deze zaak steunt Ravot als partner. De Ravotscore zelf komt altijd van gezinnen.">⭐ Partner</span>{% endif %}
+    {% if e.feest %}<span class="badge badge-feest" title="Hier kan je een verjaardagsfeestje vieren">🎂 feestjes</span>{% endif %}
     {% if e.has_vlieg %}<span class="badge badge-vlieg">🐛 Vlieg</span>{% endif %}
   </div>
   {% if family %}

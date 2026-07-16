@@ -197,6 +197,18 @@ def fiche(op, event_id):
             wijzigingen["indoor"] = indoor
         if gratis != bool(ev.is_free):
             wijzigingen["is_free"] = gratis
+        # Verjaardagsfeestjes: aanbod + contactadres (ook via nazicht)
+        from ..models import FEEST_SOORTEN
+        feest = bool(request.form.get("feest"))
+        if feest != bool(ev.feest):
+            wijzigingen["feest"] = feest
+        soorten = [s for s in request.form.getlist("feest_soorten")
+                   if s in FEEST_SOORTEN]
+        if feest and soorten != (ev.feest_soorten or []):
+            wijzigingen["feest_soorten"] = soorten
+        feest_mail = (request.form.get("feest_contact") or "").strip()[:255]
+        if feest_mail and feest_mail != (ev.feest_contact or ""):
+            wijzigingen["feest_contact"] = feest_mail
         if not wijzigingen:
             flash("Geen wijzigingen gevonden.", "error")
             return redirect(url_for("uitbater.fiche", event_id=ev.id))

@@ -624,3 +624,57 @@ section h2 { font-size: 1.25rem; margin: 22px 0 8px; }
 /* Ravot-waardig: menselijke goedkeuring, duidelijk maar niet schreeuwerig */
 .badge-waardig { background: #eef6ee; color: var(--gras); border: 1.5px solid var(--gras); font-weight: 700; }
 .curatie-melding { background: #eef6ee; border-radius: 10px; padding: 8px 12px; }
+
+/* ---- Weerbericht (woonplaats of gezochte plaats) ---- */
+.weer-bericht { display: flex; align-items: center; gap: 10px;
+  background: linear-gradient(120deg, #eef6ff, #fdf7ec);
+  border: 1px solid var(--lijn); border-radius: 14px;
+  padding: 10px 14px; margin: 10px 0; font-size: 0.95rem; }
+.weer-bericht .weer-emoji { font-size: 1.7rem; }
+.weer-bericht em { color: var(--gras); font-style: normal; font-weight: 700; }
+
+/* ---- Commercieel zonder Partner: gedempte fiche (afspraak 3c) ---- */
+.kaart-gedempt { opacity: 0.82; filter: saturate(0.75); }
+.kaart-gedempt .thumb, .kaart-gedempt .thumb-over { filter: grayscale(0.35); }
+
+/* ---- Feestjes ---- */
+.badge-feest { background: #fdeef5; color: #c2417f; border: 1.5px solid #e78ab5; font-weight: 700; }
+.feest-cta { border-color: #e78ab5; background: #fff5fa; }
+.feest-partner { align-items: center; gap: 12px; cursor: pointer; }
+.feest-partner input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--gras); }
+.feest-status-form select { padding: 6px 8px; border-radius: 10px; border: 1px solid var(--lijn); }
+
+/* ---- Daguitstappen ---- */
+.daguitstap-item { align-items: center; gap: 10px; }
+.daguitstap-nr { min-width: 30px; height: 30px; border-radius: 50%;
+  background: var(--oranje, #EE8035); color: #fff; font-weight: 800;
+  display: flex; align-items: center; justify-content: center; }
+.daguitstap-knopjes { display: flex; gap: 6px; }
+
+/* ---- Ravotpas (gamification) ---- */
+.ravotpas-kop { background: linear-gradient(120deg, #fdf3e7, #eef6ee); }
+.ravotpas-niveau { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
+.ravotpas-emoji { font-size: 2.6rem; }
+.ravotpas-balk { height: 12px; border-radius: 8px; background: #eee;
+  overflow: hidden; margin: 6px 0 2px; max-width: 340px; }
+.ravotpas-vul { height: 100%; border-radius: 8px;
+  background: linear-gradient(90deg, var(--zon, #F4B233), var(--oranje, #EE8035)); }
+.stempel-raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 10px; margin: 10px 0 18px; }
+.stempel { display: flex; flex-direction: column; align-items: center; gap: 3px;
+  background: var(--wit, #fff); border: 2px dashed var(--gras, #4CA362);
+  border-radius: 14px; padding: 10px 6px; text-decoration: none; color: inherit;
+  text-align: center; transition: transform 0.1s; }
+.stempel:hover { transform: scale(1.04) rotate(-1deg); }
+.stempel-emoji { font-size: 1.9rem; }
+.stempel-naam { font-size: 0.78rem; font-weight: 700; line-height: 1.15; }
+.stempel-plaats { font-size: 0.7rem; color: #888; }
+.badge-raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px; margin: 10px 0 18px; }
+.badge-kaart { display: flex; flex-direction: column; align-items: center; gap: 4px;
+  background: var(--wit, #fff); border: 1px solid var(--lijn, #eee);
+  border-radius: 14px; padding: 12px 8px; text-align: center; }
+.badge-kaart.behaald { border-color: var(--zon, #F4B233); background: #fffaf0;
+  box-shadow: 0 2px 8px rgba(244, 178, 51, 0.25); }
+.badge-kaart.nog-niet { opacity: 0.65; filter: grayscale(0.5); }
+.badge-kaart-emoji { font-size: 2rem; }

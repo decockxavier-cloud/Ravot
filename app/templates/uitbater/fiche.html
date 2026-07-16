@@ -27,6 +27,21 @@
     <label class="check"><input type="checkbox" name="indoor" {{ 'checked' if ev.indoor }}> 🏠 Binnen</label>
     <label class="check"><input type="checkbox" name="is_free" {{ 'checked' if ev.is_free }}> 🆓 Gratis toegang</label>
   </div>
+  <div class="card" style="margin:10px 0">
+    <strong>🎂 Verjaardagsfeestjes</strong>
+    <p class="hint">Bied je feestjes aan? Gezinnen vragen dan via Ravot met één
+    klik een offerte aan — die komt rechtstreeks in jouw mailbox.</p>
+    <label class="check"><input type="checkbox" name="feest" {{ 'checked' if ev.feest }}> Wij bieden verjaardagsfeestjes aan</label>
+    <div class="veldrij">
+      {% set fs = ev.feest_soorten or [] %}
+      <label class="check"><input type="checkbox" name="feest_soorten" value="horeca" {{ 'checked' if 'horeca' in fs }}> Eten &amp; drinken</label>
+      <label class="check"><input type="checkbox" name="feest_soorten" value="zaal" {{ 'checked' if 'zaal' in fs }}> Zaalverhuur</label>
+      <label class="check"><input type="checkbox" name="feest_soorten" value="materiaal" {{ 'checked' if 'materiaal' in fs }}> Materiaalverhuur</label>
+      <label class="check"><input type="checkbox" name="feest_soorten" value="animatie" {{ 'checked' if 'animatie' in fs }}> Activiteit of animatie</label>
+    </div>
+    <label>E-mail voor offertes <small class="hint">(leeg = je logingegevens)</small>
+      <input type="email" name="feest_contact" value="{{ ev.feest_contact or '' }}" placeholder="feest@jouwzaak.be"></label>
+  </div>
   <div class="acties"><button class="btn btn-zon" type="submit">Wijziging indienen</button></div>
 </form>
 {% endblock %}

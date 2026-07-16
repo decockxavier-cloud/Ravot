@@ -71,6 +71,35 @@
     <label class="check"><input type="checkbox" name="pending" value="1" {{ 'checked' if ev.pending }}> In wachtrij (niet publiek)</label>
     <label class="check"><input type="checkbox" name="herbereken_geo" value="1"> Coördinaten opnieuw uit postcode</label>
   </div>
+  <div class="veldrij">
+    {% macro tri(naam, label) -%}
+    <label>{{ label }}
+      <select name="{{ naam }}">
+        <option value="" {{ 'selected' if ev[naam] is none }}>onbekend</option>
+        <option value="1" {{ 'selected' if ev[naam] == true }}>ja</option>
+        <option value="0" {{ 'selected' if ev[naam] == false }}>nee</option>
+      </select></label>
+    {%- endmacro %}
+    {{ tri('omheind', '🚧 Omheind terrein') }}
+    {{ tri('verzorgingstafel', '🍼 Verschoontafel') }}
+    {{ tri('buggy_ok', '👶 Vlot met buggy') }}
+  </div>
+  <div class="veldrij" style="align-items:end">
+    <label>🎂 Verjaardagsfeestjes
+      <select name="feest">
+        <option value="0" {{ 'selected' if not ev.feest }}>nee</option>
+        <option value="1" {{ 'selected' if ev.feest }}>ja — feestpartner</option>
+      </select></label>
+    <label>Offerte-e-mail <small class="hint">(leeg = e-mail van de geclaimde uitbater)</small>
+      <input type="email" name="feest_contact" value="{{ ev.feest_contact or '' }}" placeholder="feest@zaak.be"></label>
+  </div>
+  <div class="veldrij">
+    {% set fs = ev.feest_soorten or [] %}
+    {% for code, label in feest_soorten.items() %}
+    <label class="check"><input type="checkbox" name="feest_soorten" value="{{ code }}"
+           {{ 'checked' if code in fs }}> {{ label }}</label>
+    {% endfor %}
+  </div>
   <div class="veldrij" style="align-items:end">
     <label>Verrijk op basis van deze URL <small class="hint">(leeg = de website hierboven)</small>
       <input type="url" name="verrijk_url" placeholder="https://…"></label>

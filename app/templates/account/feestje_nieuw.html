@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block body_class %}met-sfeer{% endblock %}
+{% block content %}
+<a href="{{ url_for('account.feestjes') }}" class="terug-link">← Mijn feestjes</a>
+<h1>Verjaardagsfeestje plannen 🎂</h1>
+<p class="hint">Vertel het vosje wat je nodig hebt — daarna kies je zelf naar
+welke partners in de buurt een vrijblijvende offerteaanvraag vertrekt.</p>
+
+<form method="post" class="card meld-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  {% if kinderen %}
+  <label>Voor wie is het feestje?
+    <select name="kind">
+      {% for k in kinderen %}
+      <option value="{{ k.id }}">kind van {{ vandaag.year - k.birth_year }}
+        (geboren in {{ k.birth_year }})</option>
+      {% endfor %}
+      <option value="">iemand anders</option>
+    </select>
+  </label>
+  <p class="hint">De leeftijd op de feestdag rekenen we automatisch uit —
+  handig voor de partners.</p>
+  {% else %}
+  <label>Leeftijd van de jarige
+    <input type="number" name="leeftijd" min="1" max="17" placeholder="bv. 7">
+  </label>
+  {% endif %}
+
+  <label>Feestdatum
+    <input type="date" name="datum" required min="{{ vandaag.isoformat() }}">
+  </label>
+
+  <label>Aantal kinderen (ongeveer)
+    <input type="number" name="aantal" min="1" max="60" value="8">
+  </label>
+
+  <label>In de buurt van (postcode)
+    <input type="text" name="postcode" inputmode="numeric" maxlength="4"
+           value="{{ family.postcode }}">
+  </label>
+
+  <label>Budget (optioneel, indicatie in €)
+    <input type="text" name="budget" maxlength="12" placeholder="bv. 150-250">
+  </label>
+
+  <label>Wensen (optioneel)
+    <textarea name="wensen" maxlength="600" rows="3"
+      placeholder="Thema, allergieën, binnen/buiten, springkasteel, ..."></textarea>
+  </label>
+
+  <button class="btn btn-zon" type="submit">Toon partners in de buurt →</button>
+</form>
+<p class="hint">Je gegevens gaan enkel naar de partners die jij zélf aanvinkt
+in de volgende stap. Antwoorden komen rechtstreeks in jullie mailbox.</p>
+{% endblock %}

@@ -126,6 +126,14 @@ class Event(db.Model):
     is_free = db.Column(db.Boolean, default=False, index=True)
     price_info = db.Column(db.JSON, default=list)  # [{name, price, min_age, max_age}]
     image_url = db.Column(db.String(500))
+    # Ouder-filters (nullable = onbekend; enkel True filtert positief):
+    omheind = db.Column(db.Boolean)            # omheind terrein (peuters!)
+    verzorgingstafel = db.Column(db.Boolean)   # verschoontafel aanwezig
+    buggy_ok = db.Column(db.Boolean)           # vlot toegankelijk met buggy
+    # Verjaardagsfeestjes: biedt deze plek feestjes aan, en wat precies?
+    feest = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    feest_soorten = db.Column(db.JSON, default=list)   # subset van FEEST_SOORTEN
+    feest_contact = db.Column(db.String(255))          # e-mail voor offertes
     organizer_id = db.Column(db.Integer, db.ForeignKey("organizers.id"))
     venue_id = db.Column(db.Integer, db.ForeignKey("venues.id"))
     series_id = db.Column(db.Integer, db.ForeignKey("edition_series.id"), index=True)
@@ -164,8 +172,14 @@ class SavedEvent(db.Model):
 REVIEW_TAGS = [
     "mooie natuur", "veel te doen", "top voor kleuters", "lekker eten",
     "dichtbij", "goed bij regen", "gratis parking", "verzorgingstafel",
-    "vlot met buggy", "leuk voor tieners",
+    "vlot met buggy", "leuk voor tieners", "omheind terrein",
 ]
+
+# Review-tags die (bij voldoende bevestigingen) een fiche-veld aanzetten,
+# zodat de community de ouder-filters vanzelf vult.
+TAG_NAAR_VELD = {"verzorgingstafel": "verzorgingstafel",
+                 "vlot met buggy": "buggy_ok",
+                 "omheind terrein": "omheind"}
 COST_RANGES = ["0", "<20", "20-50", "50-100", ">100"]
 
 
@@ -329,6 +343,19 @@ SETTING_DEFS = {
     "report_drempel": ("3", "Aantal meldingen waarna een fiche automatisch naar nazicht springt", "int"),
     # Onderhoud: publieke site offline; /beheer en ingelogde admins blijven werken
     "onderhoud_aan": ("0", "Onderhoudsmodus: publieke site offline (beheer blijft bereikbaar)", "bool"),
+    # Verjaardagsfeestjes
+    "feestjes_aan": ("1", "Feestjesmodule: gezinnen kunnen offertes aanvragen", "bool"),
+    "feest_straal_km": ("20", "Feestjes: standaard zoekstraal (km)", "int"),
+    "feest_max_aanvragen": ("6", "Feestjes: max. partners per offerteronde", "int"),
+    # Ravotscore × Partner (commerciële plekken): score is en blijft van de
+    # community; een actieve Partner mag ze tonen + laten meetellen in de
+    # volgorde. Commercieel zonder Partner krijgt een lichte demping.
+    "partner_score_bonus": ("1.10", "Commercieel mét Partner: rankingfactor (bv. 1.10)", "text"),
+    "geen_partner_malus": ("0.90", "Commercieel zonder Partner: rankingfactor (bv. 0.90)", "text"),
+    "foto_malus": ("0.92", "Fiches zonder foto: rankingfactor (bv. 0.92)", "text"),
+    # Community-filters: vanaf hoeveel gezinnen met dezelfde tag zetten we het
+    # bijhorende fiche-veld (verzorgingstafel, buggy, omheind) automatisch aan?
+    "tag_drempel": ("2", "Ouder-filters: aantal reviews met tag vóór auto-aanzetten", "int"),
 }
 
 
@@ -389,6 +416,8 @@ MAIL_TEMPLATES = {
     "inlogcode": ("Inlogcode", "{code}"),
     "weekend": ("Weekendmail", "{naam}, {activiteiten}"),
     "maandag": ("Maandagvraag", "{naam}"),
+    "feestje_offerte": ("Feestje: offerteaanvraag naar partner",
+                        "{plek}, {datum}, {leeftijd}, {aantal}, {gemeente}, {budget}, {wensen}"),
 }
 
 
@@ -498,7 +527,7 @@ class OperatorClaim(db.Model):
 
 # Velden die een uitbater mag voorstellen te wijzigen (whitelist).
 EDIT_VELDEN = ("description", "adres", "postcode", "gemeente", "source_url",
-               "indoor", "is_free")
+               "indoor", "is_free", "feest", "feest_soorten", "feest_contact")
 
 
 class EditProposal(db.Model):
@@ -551,6 +580,109 @@ class Feed(db.Model):
     last_run = db.Column(db.DateTime)
     last_result = db.Column(db.String(200))
     created_at = db.Column(db.DateTime, default=utcnow)
+
+
+class DagUitstap(db.Model):
+    """Zelf samengestelde daguitstap van een gezin: een geordend lijstje
+    plekken/activiteiten, opslaanbaar en (optioneel) deelbaar via link."""
+    __tablename__ = "daguitstappen"
+    id = db.Column(db.Integer, primary_key=True)
+    family_id = db.Column(db.Integer, db.ForeignKey("families.id"), nullable=False, index=True)
+    titel = db.Column(db.String(120), nullable=False)
+    datum = db.Column(db.Date)                      # optioneel: geplande dag
+    share_token = db.Column(db.String(24), unique=True, index=True)  # None = niet gedeeld
+    created_at = db.Column(db.DateTime, default=utcnow)
+    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
+    items = db.relationship("DagUitstapItem", backref="daguitstap",
+                            order_by="DagUitstapItem.volgorde",
+                            cascade="all, delete-orphan")
+
+
+class DagUitstapItem(db.Model):
+    __tablename__ = "daguitstap_items"
+    id = db.Column(db.Integer, primary_key=True)
+    daguitstap_id = db.Column(db.Integer, db.ForeignKey("daguitstappen.id"),
+                              nullable=False, index=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("events.id"), nullable=False)
+    volgorde = db.Column(db.Integer, default=0, nullable=False)
+    nota = db.Column(db.String(200))                # "hier lunchen", "reserveren!"
+    event = db.relationship("Event")
+    __table_args__ = (db.UniqueConstraint("daguitstap_id", "event_id"),)
+
+
+# Wat een feestpartner kan aanbieden (code -> label).
+FEEST_SOORTEN = {
+    "horeca": "Eten & drinken (horeca)",
+    "zaal": "Zaalverhuur",
+    "materiaal": "Materiaalverhuur (springkasteel, ...)",
+    "animatie": "Activiteit of animatie",
+}
+
+
+class Feestje(db.Model):
+    """Verjaardagsfeestje in voorbereiding. Privacy: geen kindnaam — enkel de
+    leeftijd die het kind op de feestdag bereikt."""
+    __tablename__ = "feestjes"
+    id = db.Column(db.Integer, primary_key=True)
+    family_id = db.Column(db.Integer, db.ForeignKey("families.id"), nullable=False, index=True)
+    leeftijd = db.Column(db.Integer)                # leeftijd op de feestdag
+    datum = db.Column(db.Date, nullable=False)
+    aantal_kinderen = db.Column(db.Integer, default=8, nullable=False)
+    postcode = db.Column(db.String(4))              # zoekcentrum
+    gemeente = db.Column(db.String(80))
+    straal_km = db.Column(db.Integer, default=20, nullable=False)
+    budget = db.Column(db.String(12))               # vrije indicatie, bv. "150-250"
+    wensen = db.Column(db.String(600))              # thema, allergieën, ...
+    status = db.Column(db.String(12), default="open", nullable=False, index=True)  # open|geregeld|geannuleerd
+    created_at = db.Column(db.DateTime, default=utcnow)
+    aanvragen = db.relationship("FeestjeAanvraag", backref="feestje",
+                                cascade="all, delete-orphan")
+
+
+class FeestjeAanvraag(db.Model):
+    """Eén offerteaanvraag: feestje -> feestpartner (plek). De mail vertrekt
+    met reply-to naar het gezin; het gezin volgt de status zelf op."""
+    __tablename__ = "feestje_aanvragen"
+    id = db.Column(db.Integer, primary_key=True)
+    feestje_id = db.Column(db.Integer, db.ForeignKey("feestjes.id"), nullable=False, index=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("events.id"), nullable=False, index=True)
+    status = db.Column(db.String(12), default="verstuurd", nullable=False)  # verstuurd|beantwoord|bevestigd|afgewezen
+    verzonden_at = db.Column(db.DateTime, default=utcnow)
+    event = db.relationship("Event")
+    __table_args__ = (db.UniqueConstraint("feestje_id", "event_id"),)
+
+
+FEESTJE_STATUSSEN = {"verstuurd": "📨 verstuurd", "beantwoord": "💬 beantwoord",
+                     "bevestigd": "✅ bevestigd", "afgewezen": "❌ niet gelukt"}
+
+
+# --- Ravotpas (gamification) --------------------------------------------------
+# Punten per actie. Dedupe: één keer per (gezin, reden, event).
+PUNT_REDENEN = {
+    "review": 10,          # Ravotscore gegeven
+    "foto": 15,            # foto goedgekeurd
+    "eerste_foto": 10,     # extra: de állereerste foto van die plek
+    "geweest": 5,          # bezoek bevestigd
+    "daguitstap": 5,       # daguitstap samengesteld
+    "feestje": 10,         # verjaardagsfeestje georganiseerd via Ravot
+    "plek": 15,            # zelf een plek toegevoegd die live ging
+}
+
+
+class RavotPunt(db.Model):
+    """Puntengrootboek van de Ravotpas. Bewust een logboek (geen teller op
+    Family): uitlegbaar, auditeerbaar en dubbeltellingen zijn uitgesloten."""
+    __tablename__ = "ravot_punten"
+    id = db.Column(db.Integer, primary_key=True)
+    family_id = db.Column(db.Integer, db.ForeignKey("families.id"), nullable=False, index=True)
+    punten = db.Column(db.Integer, nullable=False)
+    reden = db.Column(db.String(20), nullable=False)
+    # Generieke referentie: event-id, daguitstap-id of feestje-id — bewust geen
+    # FK, zodat de dedupe-sleutel voor alle soorten acties werkt.
+    ref_id = db.Column(db.Integer, default=0, nullable=False)
+    created_at = db.Column(db.DateTime, default=utcnow, index=True)
+    __table_args__ = (db.UniqueConstraint("family_id", "reden", "ref_id",
+                                          name="uq_punt_family_reden_ref"),)
 
 
 class GeoCache(db.Model):

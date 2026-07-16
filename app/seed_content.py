@@ -37,6 +37,23 @@ MAIL_SEED = {
             "*(De lijst met bewaarde activiteiten wordt automatisch toegevoegd.)*"
         ),
     },
+    "feestje_offerte": {
+        "onderwerp": "Offerteaanvraag verjaardagsfeestje via Ravot ({datum})",
+        "inhoud_md": (
+            "Dag {plek},\n\n"
+            "Een gezin uit de buurt van {gemeente} plant via **Ravot.be** een "
+            "verjaardagsfeestje en vraagt jullie graag een vrijblijvende offerte.\n\n"
+            "- **Datum:** {datum}\n"
+            "- **Verjaardag:** het kind wordt {leeftijd} jaar\n"
+            "- **Aantal kinderen:** {aantal}\n"
+            "- **Budget (indicatie):** {budget}\n"
+            "- **Wensen:** {wensen}\n\n"
+            "Antwoord gewoon op deze mail — je antwoord komt rechtstreeks bij "
+            "het gezin terecht.\n\n"
+            "Veel groetjes van het vosje 🦊\n"
+            "Ravot.be — dé uitstap-gids voor Vlaamse gezinnen"
+        ),
+    },
 }
 
 

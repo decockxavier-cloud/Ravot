@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block body_class %}met-sfeer{% endblock %}
+{% block content %}
+<a href="{{ url_for('account.mijn_home') }}" class="terug-link">← Mijn Ravot</a>
+<h1>Onze Ravotpas 🦊</h1>
+
+<div class="card ravotpas-kop">
+  <div class="ravotpas-niveau">
+    <span class="ravotpas-emoji">{{ niveau.emoji }}</span>
+    <div>
+      <strong>{{ niveau.naam }}</strong> · {{ niveau.punten }} ravotpunten
+      {% if niveau.volgende %}
+      <div class="ravotpas-balk" role="progressbar" aria-valuenow="{{ niveau.procent }}"
+           aria-valuemin="0" aria-valuemax="100">
+        <div class="ravotpas-vul" style="width:{{ niveau.procent }}%"></div>
+      </div>
+      <span class="hint">nog {{ niveau.te_gaan }} punten tot <strong>{{ niveau.volgende }}</strong></span>
+      {% else %}
+      <div class="hint">👑 Het hoogste niveau — wauw!</div>
+      {% endif %}
+    </div>
+  </div>
+  <p class="hint" style="margin-bottom:0">Verdien punten door plekken te bezoeken
+  (stempel!), Ravotscores te geven en foto's te delen. Samen met de kinderen
+  verzamelen maar!</p>
+</div>
+
+<h2>Stempelkaart 🐾 <span class="hint">({{ stempels | length }} plekken verzameld)</span></h2>
+{% if stempels %}
+<div class="stempel-raster">
+  {% for s in stempels %}
+  <a class="stempel" href="{{ url_for('public.event', slug=s.slug) }}" title="{{ s.titel }}">
+    <span class="stempel-emoji">{{ s.emoji }}</span>
+    <span class="stempel-naam">{{ s.titel | truncate(28) }}</span>
+    <span class="stempel-plaats">{{ s.gemeente or '' }}</span>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card leeg"><span class="groot-emoji">🐾</span>
+  <p>Nog geen stempels! Ga ergens ravotten en bevestig achteraf "wij waren
+  hier" — dan verschijnt de plek op jullie stempelkaart.</p>
+  <a class="btn btn-stil btn-klein" href="{{ url_for('public.ontdek') }}">Ontdek activiteiten →</a></div>
+{% endif %}
+
+<h2>Badges 🏅</h2>
+<div class="badge-raster">
+  {% for b in badges %}
+  <div class="badge-kaart {{ 'behaald' if b.behaald else 'nog-niet' }}">
+    <span class="badge-kaart-emoji">{{ b.emoji }}</span>
+    <strong>{{ b.naam }}</strong>
+    <span class="hint">{{ b.uitleg }}</span>
+    {% if b.behaald %}
+    <span class="badge badge-score">✓ behaald!</span>
+    {% else %}
+    <span class="hint">{{ b.teller }}/{{ b.doel }} — nog {{ b.doel - b.teller }} te gaan</span>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

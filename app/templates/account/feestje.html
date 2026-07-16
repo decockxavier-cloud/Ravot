@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block body_class %}met-sfeer{% endblock %}
+{% block content %}
+<a href="{{ url_for('account.feestjes') }}" class="terug-link">← Mijn feestjes</a>
+<h1>🎂 Feestje op {{ f.datum.strftime('%d/%m/%Y') }}</h1>
+<p class="meta">{% if f.leeftijd %}wordt {{ f.leeftijd }} jaar · {% endif %}
+  {{ f.aantal_kinderen }} kinderen · 📍 rond {{ f.gemeente or f.postcode }}
+  {% if f.status == 'geregeld' %} · <span class="badge badge-score">✅ geregeld</span>{% endif %}</p>
+
+{% if f.aanvragen %}
+<h2>Offerteaanvragen</h2>
+{% for a in f.aanvragen %}
+<div class="card mini-card">
+  <div style="flex:1">
+    <a href="{{ url_for('public.event', slug=a.event.slug) }}"><strong>{{ a.event.title }}</strong></a><br>
+    <span class="meta">verstuurd {{ a.verzonden_at.strftime('%d/%m') }} ·
+      status: {{ statussen.get(a.status, a.status) }}</span>
+  </div>
+  <form method="post" action="{{ url_for('account.feestje_status', fid=f.id, aid=a.id) }}"
+        class="feest-status-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <select name="status" onchange="this.form.submit()">
+      {% for code, label in statussen.items() %}
+      <option value="{{ code }}" {{ 'selected' if a.status == code }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+{% endfor %}
+<p class="hint">Antwoorden van partners komen rechtstreeks in jullie mailbox.
+Werk hier zelf de status bij zodra je iets hoort — zo hou je het overzicht.</p>
+{% else %}
+<div class="card leeg"><span class="groot-emoji">📨</span>
+  <p>Nog geen aanvragen verstuurd.</p></div>
+{% endif %}
+
+<div class="acties">
+  <a class="btn btn-zon" href="{{ url_for('account.feestje_partners', fid=f.id) }}">➕ Meer partners aanschrijven</a>
+</div>
+{% endblock %}

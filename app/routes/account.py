@@ -11,10 +11,13 @@ from flask import (Blueprint, Response, abort, flash, redirect, render_template,
                    request, session, url_for)
 
 from ..extensions import db, limiter
-from ..models import (CATEGORIES, COST_RANGES, REVIEW_TAGS, Child, Connection,
-                      Event, Family, FriendInvite, Interaction, Interest, Review,
-                      SavedEvent, Share)
+from ..models import (CATEGORIES, COST_RANGES, FEEST_SOORTEN,
+                      FEESTJE_STATUSSEN, REVIEW_TAGS, TAG_NAAR_VELD, Child,
+                      Connection, DagUitstap, DagUitstapItem, Event, Family,
+                      Feestje, FeestjeAanvraag, FriendInvite, Interaction,
+                      Interest, Review, SavedEvent, Share, get_bool, get_int)
 from ..scoring import adjust_weight
+from .. import punten as pas
 
 bp = Blueprint("account", __name__, url_prefix="/mijn")
 
@@ -223,7 +226,10 @@ def geweest(event_id):
     sv.gevraagd_geweest = True
     if antwoord == "ja":
         sv.geweest = True
+        extra = pas.ken_toe(fam.id, "geweest", event_id)
         db.session.commit()
+        if extra:
+            flash(f"🦊 +{extra} ravotpunten — nieuwe stempel op jullie Ravotpas!", "ok")
         return redirect(url_for("account.review", event_id=event_id))
     sv.geweest = False
     db.session.commit()
@@ -269,12 +275,36 @@ def review(event_id):
             tags=tags, child_ages=fam.child_ages(),
         ))
         db.session.add(Interaction(family_id=fam.id, event_id=event_id, type="review"))
+        extra = pas.ken_toe(fam.id, "review", event_id)
+        _tags_naar_velden(ev, tags)
         db.session.commit()
-        flash("Ravotscore bewaard — bedankt om andere gezinnen te helpen! 🌟", "ok")
+        boodschap = "Ravotscore bewaard — bedankt om andere gezinnen te helpen! 🌟"
+        if extra:
+            boodschap += f" (+{extra} ravotpunten 🦊)"
+        flash(boodschap, "ok")
         return redirect(url_for("public.event", slug=ev.slug))
     return render_template("account/review.html", ev=ev, existing=existing,
                            tags=REVIEW_TAGS,
                            family=fam, title=f"Ravotscore voor {ev.title}", active=None)
+
+
+def _tags_naar_velden(ev, nieuwe_tags):
+    """Community vult de ouder-filters: zodra genoeg gezinnen dezelfde
+    praktische tag geven (verzorgingstafel, buggy, omheind), zetten we het
+    fiche-veld aan. Nooit uit — enkel positieve bevestiging telt."""
+    drempel = get_int("tag_drempel", 2) or 2
+    relevant = set(nieuwe_tags) & set(TAG_NAAR_VELD)
+    if not relevant:
+        return
+    alle = Review.query.filter_by(event_id=ev.id).all()
+    for tag in relevant:
+        veld = TAG_NAAR_VELD[tag]
+        if getattr(ev, veld, None):
+            continue
+        # +1 voor de review die nu wordt toegevoegd (zit nog niet in `alle`)
+        n = 1 + sum(1 for r in alle if tag in (r.tags or []))
+        if n >= drempel:
+            setattr(ev, veld, True)
 
 
 # ------------------------------------------------- delen (opt-in, per event) --
@@ -543,3 +573,279 @@ def upload_foto(event_id):
     db.session.commit()
     flash("Bedankt! Je foto is ingediend en verschijnt zodra we ze nagekeken hebben.", "ok")
     return redirect(url_for("public.event", slug=ev.slug))
+
+
+# ------------------------------------------------------------- daguitstappen --
+
+def _mijn_daguitstap(uid, fam):
+    d = db.session.get(DagUitstap, uid)
+    if not d or d.family_id != fam.id:
+        abort(404)
+    return d
+
+
+@bp.route("/daguitstappen")
+@login_required
+def daguitstappen():
+    fam = me()
+    lijst = DagUitstap.query.filter_by(family_id=fam.id) \
+        .order_by(DagUitstap.updated_at.desc()).all()
+    return render_template("account/daguitstappen.html", lijst=lijst, family=fam,
+                           title="Mijn daguitstappen", active=None)
+
+
+@bp.route("/daguitstap/nieuw", methods=["POST"])
+@login_required
+@limiter.limit("20/hour")
+def daguitstap_nieuw():
+    fam = me()
+    titel = (request.form.get("titel") or "").strip()[:120] or "Onze daguitstap"
+    datum = None
+    if request.form.get("datum"):
+        try:
+            datum = datetime.strptime(request.form["datum"], "%Y-%m-%d").date()
+        except ValueError:
+            datum = None
+    d = DagUitstap(family_id=fam.id, titel=titel, datum=datum)
+    db.session.add(d)
+    db.session.flush()
+    # Rechtstreeks vanaf een fiche gestart? Voeg die plek meteen toe.
+    event_id = request.form.get("event_id")
+    if event_id and event_id.isdigit() and db.session.get(Event, int(event_id)):
+        db.session.add(DagUitstapItem(daguitstap_id=d.id, event_id=int(event_id),
+                                      volgorde=1))
+    extra = pas.ken_toe(fam.id, "daguitstap", d.id)
+    db.session.commit()
+    boodschap = f"Daguitstap '{d.titel}' aangemaakt!"
+    if extra:
+        boodschap += f" (+{extra} ravotpunten 🦊)"
+    flash(boodschap, "ok")
+    return redirect(url_for("account.daguitstap", uid=d.id))
+
+
+@bp.route("/daguitstap/<int:uid>")
+@login_required
+def daguitstap(uid):
+    fam = me()
+    d = _mijn_daguitstap(uid, fam)
+    return render_template("account/daguitstap.html", d=d, family=fam,
+                           title=d.titel, active=None)
+
+
+@bp.route("/daguitstap/<int:uid>/voeg/<int:event_id>", methods=["POST"])
+@login_required
+@limiter.limit("60/hour")
+def daguitstap_voeg(uid, event_id):
+    fam = me()
+    d = _mijn_daguitstap(uid, fam)
+    ev = db.session.get(Event, event_id) or abort(404)
+    if not DagUitstapItem.query.filter_by(daguitstap_id=d.id, event_id=ev.id).first():
+        volgende = (db.session.query(db.func.coalesce(
+            db.func.max(DagUitstapItem.volgorde), 0))
+            .filter_by(daguitstap_id=d.id).scalar() or 0) + 1
+        db.session.add(DagUitstapItem(daguitstap_id=d.id, event_id=ev.id,
+                                      volgorde=volgende))
+        db.session.commit()
+        flash(f"'{ev.title}' toegevoegd aan {d.titel}.", "ok")
+    return redirect(request.referrer or url_for("account.daguitstap", uid=d.id))
+
+
+@bp.route("/daguitstap/<int:uid>/item/<int:item_id>/<actie>", methods=["POST"])
+@login_required
+def daguitstap_item(uid, item_id, actie):
+    """Item verwijderen of van plaats wisselen (op/neer) — geen JS nodig."""
+    fam = me()
+    d = _mijn_daguitstap(uid, fam)
+    item = db.session.get(DagUitstapItem, item_id)
+    if not item or item.daguitstap_id != d.id:
+        abort(404)
+    if actie == "weg":
+        db.session.delete(item)
+    elif actie in ("op", "neer"):
+        items = sorted(d.items, key=lambda i: i.volgorde)
+        idx = items.index(item)
+        ruil = idx - 1 if actie == "op" else idx + 1
+        if 0 <= ruil < len(items):
+            items[idx].volgorde, items[ruil].volgorde = \
+                items[ruil].volgorde, items[idx].volgorde
+    else:
+        abort(400)
+    # Nota bijwerken mag altijd meekomen
+    db.session.commit()
+    return redirect(url_for("account.daguitstap", uid=d.id))
+
+
+@bp.route("/daguitstap/<int:uid>/deel", methods=["POST"])
+@login_required
+def daguitstap_deel(uid):
+    fam = me()
+    d = _mijn_daguitstap(uid, fam)
+    if d.share_token:
+        d.share_token = None      # delen weer uitzetten
+        flash("Deellink uitgeschakeld — enkel jullie zien deze daguitstap nog.", "ok")
+    else:
+        d.share_token = secrets.token_urlsafe(12)[:24]
+        flash("Deellink aangemaakt! Kopieer de link en stuur ze door.", "ok")
+    db.session.commit()
+    return redirect(url_for("account.daguitstap", uid=d.id))
+
+
+@bp.route("/daguitstap/<int:uid>/verwijder", methods=["POST"])
+@login_required
+def daguitstap_verwijder(uid):
+    fam = me()
+    d = _mijn_daguitstap(uid, fam)
+    db.session.delete(d)
+    db.session.commit()
+    flash("Daguitstap verwijderd.", "ok")
+    return redirect(url_for("account.daguitstappen"))
+
+
+# ------------------------------------------------------------------ feestjes --
+
+@bp.route("/feestjes")
+@login_required
+def feestjes():
+    fam = me()
+    lijst = Feestje.query.filter_by(family_id=fam.id) \
+        .order_by(Feestje.datum.desc()).all()
+    return render_template("account/feestjes.html", lijst=lijst, family=fam,
+                           statussen=FEESTJE_STATUSSEN,
+                           title="Mijn feestjes", active=None)
+
+
+@bp.route("/feestje/nieuw", methods=["GET", "POST"])
+@login_required
+@limiter.limit("10/hour", methods=["POST"])
+def feestje_nieuw():
+    """Stap 1 van de wizard: de feestgegevens. Leeftijd rekenen we uit het
+    geboortejaar van het gekozen kind — nooit meer manueel aanpassen."""
+    fam = me()
+    if not get_bool("feestjes_aan"):
+        abort(404)
+    kinderen = Child.query.filter_by(family_id=fam.id).all()
+    if request.method == "POST":
+        try:
+            datum = datetime.strptime(request.form.get("datum", ""), "%Y-%m-%d").date()
+        except ValueError:
+            flash("Kies een geldige feestdatum.", "error")
+            return redirect(url_for("account.feestje_nieuw"))
+        leeftijd = None
+        kind_id = request.form.get("kind")
+        if kind_id and kind_id.isdigit():
+            kind = db.session.get(Child, int(kind_id))
+            if kind and kind.family_id == fam.id:
+                leeftijd = datum.year - kind.birth_year
+        if leeftijd is None and (request.form.get("leeftijd") or "").isdigit():
+            leeftijd = int(request.form["leeftijd"])
+        try:
+            aantal = max(1, min(60, int(request.form.get("aantal", 8))))
+        except ValueError:
+            aantal = 8
+        postcode = re.sub(r"\D", "", request.form.get("postcode") or fam.postcode)[:4]
+        f = Feestje(family_id=fam.id, leeftijd=leeftijd, datum=datum,
+                    aantal_kinderen=aantal, postcode=postcode,
+                    gemeente=(request.form.get("gemeente") or "").strip()[:80] or None,
+                    straal_km=get_int("feest_straal_km", 20) or 20,
+                    budget=(request.form.get("budget") or "").strip()[:12] or None,
+                    wensen=(request.form.get("wensen") or "").strip()[:600] or None)
+        db.session.add(f)
+        db.session.commit()
+        return redirect(url_for("account.feestje_partners", fid=f.id))
+    vandaag = datetime.utcnow().date()
+    return render_template("account/feestje_nieuw.html", family=fam,
+                           kinderen=kinderen, vandaag=vandaag,
+                           soorten=FEEST_SOORTEN,
+                           title="Verjaardagsfeestje plannen", active=None)
+
+
+def _mijn_feestje(fid, fam):
+    f = db.session.get(Feestje, fid)
+    if not f or f.family_id != fam.id:
+        abort(404)
+    return f
+
+
+@bp.route("/feestje/<int:fid>/partners", methods=["GET", "POST"])
+@login_required
+@limiter.limit("10/hour", methods=["POST"])
+def feestje_partners(fid):
+    """Stap 2: passende partners in de buurt aanvinken en offertes versturen."""
+    from ..services import feestjes as fs
+    fam = me()
+    f = _mijn_feestje(fid, fam)
+    gewenst = request.args.getlist("soort") or request.form.getlist("soort") or None
+    partners = fs.zoek_partners(f.postcode, f.straal_km, gewenst)
+    al_gevraagd = {a.event_id for a in f.aanvragen}
+    if request.method == "POST":
+        maxi = get_int("feest_max_aanvragen", 6) or 6
+        gekozen = [int(x) for x in request.form.getlist("partner") if x.isdigit()]
+        toegestaan = {p["event"].id: p for p in partners}
+        verzonden = 0
+        for eid in gekozen:
+            if eid in al_gevraagd or eid not in toegestaan or verzonden >= maxi:
+                continue
+            ev = toegestaan[eid]["event"]
+            try:
+                ok = fs.stuur_offerte(f, ev, fam)
+            except Exception:
+                ok = False
+            if ok:
+                db.session.add(FeestjeAanvraag(feestje_id=f.id, event_id=eid))
+                verzonden += 1
+        if verzonden:
+            pas.ken_toe(fam.id, "feestje", f.id)
+            db.session.commit()
+            flash(f"🎉 {verzonden} offerteaanvra{'gen' if verzonden > 1 else 'ag'} "
+                  "verstuurd! Antwoorden komen rechtstreeks in jullie mailbox; "
+                  "volg hier de status op.", "ok")
+            return redirect(url_for("account.feestje", fid=f.id))
+        flash("Geen aanvragen verstuurd — vink minstens één partner aan.", "error")
+    return render_template("account/feestje_partners.html", f=f, family=fam,
+                           partners=partners, al_gevraagd=al_gevraagd,
+                           soorten=FEEST_SOORTEN, gewenst=gewenst or [],
+                           title="Kies feestpartners", active=None)
+
+
+@bp.route("/feestje/<int:fid>")
+@login_required
+def feestje(fid):
+    fam = me()
+    f = _mijn_feestje(fid, fam)
+    return render_template("account/feestje.html", f=f, family=fam,
+                           statussen=FEESTJE_STATUSSEN,
+                           title="Mijn feestje", active=None)
+
+
+@bp.route("/feestje/<int:fid>/aanvraag/<int:aid>", methods=["POST"])
+@login_required
+def feestje_status(fid, aid):
+    """Gezin werkt zelf de status van een aanvraag bij (beantwoord/bevestigd)."""
+    fam = me()
+    f = _mijn_feestje(fid, fam)
+    a = db.session.get(FeestjeAanvraag, aid)
+    if not a or a.feestje_id != f.id:
+        abort(404)
+    status = request.form.get("status")
+    if status in FEESTJE_STATUSSEN:
+        a.status = status
+        if status == "bevestigd":
+            f.status = "geregeld"
+        db.session.commit()
+    return redirect(url_for("account.feestje", fid=f.id))
+
+
+# ------------------------------------------------------------------ ravotpas --
+
+@bp.route("/ravotpas")
+@login_required
+def ravotpas():
+    """De speelse kant van Ravot: niveau, stempels (verzamelde plekken) en
+    badges — leuk voor de kinderen, retentie voor het gezin."""
+    fam = me()
+    punten_totaal = pas.totaal(fam.id)
+    return render_template("account/ravotpas.html", family=fam,
+                           niveau=pas.niveau(punten_totaal),
+                           stempels=pas.stempelkaart(fam.id),
+                           badges=pas.badges(fam.id),
+                           title="Onze Ravotpas", active=None)

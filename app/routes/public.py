@@ -17,14 +17,89 @@ from flask import (Blueprint, abort, current_app, g, redirect, render_template,
                    request, session, url_for, Response)
 
 from ..extensions import db, limiter
-from ..models import (get_int, Event, Family, Interaction, PostcodeCentroid, Review,
-                      SavedEvent, Share, Connection)
+from ..models import (get_int, get_setting, DagUitstap, Event, Family,
+                      Interaction, PostcodeCentroid, Review, SavedEvent, Share,
+                      Connection)
 from ..pricing import aggregate_ravotscore, euro_indicator, family_price
 from ..scoring import Profile, score_event
 from ..media import poi_image
+from ..types import is_commercieel
 from .. import seo
 
 bp = Blueprint("public", __name__)
+
+
+def _factor(key, fallback):
+    try:
+        return float(get_setting(key))
+    except (TypeError, ValueError):
+        return fallback
+
+
+def partner_actief(ev, now=None):
+    now = now or datetime.utcnow()
+    return bool(ev.partner_until and ev.partner_until > now)
+
+
+def score_zichtbaar(ev):
+    """Ravotscore-afspraak (2c): de score is en blijft van de community.
+    Openbare plekken (speeltuin, park, museum, event, ...) tonen ze altijd.
+    Commerciële plekken (horeca, indoor-speeltuin, pretpark, ...) tonen de
+    badge enkel met een actieve Ravot Partner-status."""
+    if not is_commercieel(ev):
+        return True
+    return partner_actief(ev)
+
+
+def commercieel_factor(ev):
+    """Rankingfactor voor commerciële plekken: lichte bonus mét Partner,
+    lichte demping zonder (3c). Niet-commercieel: neutraal (1.0)."""
+    if not is_commercieel(ev):
+        return 1.0
+    if partner_actief(ev):
+        return _factor("partner_score_bonus", 1.10)
+    return _factor("geen_partner_malus", 0.90)
+
+
+def _profiel_plaats(fam):
+    """(plaatsnaam, lat, lng) van de woonplaats: gezinspostcode of gastpostcode."""
+    postcode = (fam.postcode if fam else None) or guest_profile().get("postcode")
+    if not postcode:
+        return None, None, None
+    centroid = db.session.get(PostcodeCentroid, postcode)
+    if not centroid:
+        return None, None, None
+    return centroid.gemeente or postcode, centroid.lat, centroid.lng
+
+
+def weerbericht(scope, fam, centrum=None, plaats=None):
+    """Weerbericht voor op de lijstpagina's: op de woonplaats, of op de
+    gezochte activiteitenplaats (centrum). None als weer uitstaat of onbekend.
+    Dag = de eerste dag van het gekozen venster (weekend → zaterdag)."""
+    from ..models import get_bool
+    if not get_bool("weer_aan"):
+        return None
+    if centrum:
+        lat, lng = centrum
+    else:
+        p, lat, lng = _profiel_plaats(fam)
+        plaats = plaats or p
+    if lat is None:
+        return None
+    start, _ = window(scope if scope in ("vandaag", "deze-week", "weekend") else "vandaag")
+    dag = max(start.date(), datetime.utcnow().date())
+    from ..weer import voorspelling
+    v = voorspelling(lat, lng, dag)
+    if not v:
+        return None
+    v = dict(v)
+    v["plaats"] = plaats
+    v["vandaag"] = dag == datetime.utcnow().date()
+    dagen = ["maandag", "dinsdag", "woensdag", "donderdag",
+             "vrijdag", "zaterdag", "zondag"]
+    v["dag_label"] = "Vandaag" if v["vandaag"] else \
+        f"{dagen[dag.weekday()].capitalize()} {dag.day}/{dag.month}"
+    return v
 
 # Het tijdvenster (hoe ver vooruit) is instelbaar via de admin: 'toon_maanden_vooruit'.
 
@@ -280,6 +355,23 @@ def vul_aan_met_permanente(rows, profile):
     return rows + [r for r in extra if r["event"].id not in bestaande]
 
 
+def event_agg(e, cache=None):
+    """Ravotscore-aggregaat voor één event: via de reeks als die er is, anders
+    op de eigen reviews (belangrijk voor permanente plekken zonder reeks)."""
+    cache = cache if cache is not None else {}
+    sleutel = ("s", e.series_id) if e.series_id else ("e", e.id)
+    agg = cache.get(sleutel)
+    if agg is None:
+        if e.series_id:
+            revs = Review.query.join(Event, Review.event_id == Event.id) \
+                .filter(Event.series_id == e.series_id).all()
+        else:
+            revs = Review.query.filter_by(event_id=e.id).all()
+        agg = aggregate_ravotscore(revs)
+        cache[sleutel] = agg or False
+    return agg or None
+
+
 def scored_events(profile, scope, extra_filter=None, limit=40, weer=True):
     start, end = window(scope)
     now = datetime.utcnow()
@@ -306,14 +398,11 @@ def scored_events(profile, scope, extra_filter=None, limit=40, weer=True):
     agg_cache = {}
     rows = []
     for e in candidates:
-        agg = agg_cache.get(e.series_id)
-        if agg is None and e.series_id:
-            series_reviews = Review.query.join(Event, Review.event_id == Event.id) \
-                .filter(Event.series_id == e.series_id).all()
-            agg = aggregate_ravotscore(series_reviews)
-            agg_cache[e.series_id] = agg or False
-        agg = agg or None
-        s = score_event(e, profile, ravot_avg=agg["avg"] if agg else None)
+        agg = event_agg(e, agg_cache)
+        toon = score_zichtbaar(e)
+        # 2c: bij commerciële plekken zónder Partner telt de score niet mee.
+        s = score_event(e, profile,
+                        ravot_avg=agg["avg"] if (agg and toon) else None)
         if s > 0:
             # weerbonus: bij regen binnen omhoog, buiten omlaag
             if regen is not None:
@@ -324,8 +413,12 @@ def scored_events(profile, scope, extra_filter=None, limit=40, weer=True):
                     s *= 1.3 if e.indoor else 0.85
                 elif regen <= r_laag and not e.indoor:
                     s *= 1.1
+            s *= commercieel_factor(e)          # 3c: partner-bonus / demping
+            if not e.image_url:                 # 6b: fiche zonder foto zakt wat
+                s *= _factor("foto_malus", 0.92)
             total, _ = family_price(e.price_info, profile.child_ages)
-            rows.append({"event": e, "score": s, "agg": agg,
+            rows.append({"event": e, "score": s, "agg": agg if toon else None,
+                         "toon_score": toon,
                          "family_total": total, "euro": euro_indicator(total),
                          "regen": regen})
     rows.sort(key=lambda r: r["score"], reverse=True)
@@ -450,6 +543,7 @@ def vandaag():
     return render_template("public/lijst.html", rows=rows, scope="vandaag",
                            title="Wat gaan we vandaag doen?", answer=answer,
                            regen=rows[0].get("regen") if rows else None,
+                           weer=weerbericht("vandaag", fam),
                            has_profile=has_profile, family=fam, active="vandaag")
 
 
@@ -461,6 +555,7 @@ def deze_week():
     return render_template("public/lijst.html", rows=rows, scope="deze week",
                            title="Deze week", answer=None,
                            regen=rows[0].get("regen") if rows else None,
+                           weer=weerbericht("deze-week", fam),
                            has_profile=has_profile, family=fam, active="deze-week")
 
 
@@ -472,6 +567,7 @@ def weekend():
     return render_template("public/lijst.html", rows=rows, scope="dit weekend",
                            title="Dit weekend", answer=None,
                            regen=rows[0].get("regen") if rows else None,
+                           weer=weerbericht("weekend", fam),
                            has_profile=has_profile, family=fam, active="weekend")
 
 
@@ -516,6 +612,11 @@ def ontdek():
         q = q.filter(Event.indoor.is_(True))
     elif filter_type == "buiten":
         q = q.filter(Event.indoor.is_(False))
+    # Ouder-filters: enkel positief filteren (True); onbekend blijft onbekend.
+    ouder_filters = {f for f in request.args.getlist("ouder")
+                     if f in ("omheind", "verzorgingstafel", "buggy_ok")}
+    for veld in ouder_filters:
+        q = q.filter(getattr(Event, veld).is_(True))
     if cat:
         # categories is JSON; matchen doen we tekstueel op de opgeslagen lijst
         q = q.filter(db.func.lower(db.cast(Event.categories, db.String)).like(f'%"{cat}"%'))
@@ -530,17 +631,15 @@ def ontdek():
         candidates = _filter_buurt([{"event": e} for e in candidates], centrum, 20)
         candidates = [r["event"] for r in candidates]
 
-    # Ravotscore per reeks ophalen (voor tonen + sorteren)
+    # Ravotscore ophalen (voor tonen + sorteren) — commercieel zonder Partner
+    # toont geen badge en telt niet mee (afspraak 2c/3c).
     rows, agg_cache = [], {}
     for e in candidates:
-        agg = agg_cache.get(e.series_id)
-        if agg is None and e.series_id:
-            revs = Review.query.join(Event, Review.event_id == Event.id) \
-                .filter(Event.series_id == e.series_id).all()
-            agg = aggregate_ravotscore(revs)
-            agg_cache[e.series_id] = agg or False
-        agg = agg or None
-        rows.append({"event": e, "agg": agg, "score": s_helper(e, profile, agg),
+        agg = event_agg(e, agg_cache)
+        toon = score_zichtbaar(e)
+        rows.append({"event": e, "agg": agg if toon else None,
+                     "toon_score": toon,
+                     "score": s_helper(e, profile, agg if toon else None),
                      "family_total": None})
 
     if sort == "score":
@@ -559,7 +658,11 @@ def ontdek():
     pagina_rows = rows[begin:begin + per_pagina]
 
     from ..models import get_bool as _gb
-    return render_template("public/ontdek.html", rows=pagina_rows, sort=sort, zoek=zoek, wanneer=wanneer, cat=cat, verberg_sp=verberg_sp, toon_alles=toon_alles, curatie_aan=_gb("enkel_gecureerd"),
+    # Weerbericht: op de gezóchte plaats als die bekend is, anders woonplaats.
+    weer_scope = wanneer if wanneer in ("vandaag", "deze-week", "weekend") else "vandaag"
+    weer = weerbericht(weer_scope, fam, centrum=centrum,
+                       plaats=zoek.title() if centrum else None)
+    return render_template("public/ontdek.html", rows=pagina_rows, sort=sort, zoek=zoek, wanneer=wanneer, cat=cat, verberg_sp=verberg_sp, toon_alles=toon_alles, curatie_aan=_gb("enkel_gecureerd"), ouder_filters=ouder_filters, weer=weer,
                            filter_type=filter_type, pagina=pagina, max_pagina=max_pagina,
                            totaal=totaal, has_profile=has_profile, family=fam,
                            active="ontdek", title="Ontdek alles")
@@ -663,11 +766,13 @@ def event(slug):
         # SEO §2.3: afgelopen event → permanente reekspagina (301)
         return redirect(url_for("public.reeks", slug=ev.series.slug), code=301)
     profile, fam = build_profile()
-    series_reviews = []
     if ev.series_id:
         series_reviews = Review.query.join(Event, Review.event_id == Event.id) \
             .filter(Event.series_id == ev.series_id).all()
+    else:
+        series_reviews = Review.query.filter_by(event_id=ev.id).all()
     agg = aggregate_ravotscore(series_reviews)
+    toon_score = score_zichtbaar(ev)
     total, _ = family_price(ev.price_info, profile.child_ages)
     friends_interested = []
     saved = shared = False
@@ -685,18 +790,38 @@ def event(slug):
     title, desc = seo.meta_event(ev, total)
     from ..models import Photo
     goedgekeurde_fotos = Photo.query.filter_by(event_id=ev.id, status="approved").all()
+    mijn_daguitstappen = []
+    if fam:
+        mijn_daguitstappen = DagUitstap.query.filter_by(family_id=fam.id) \
+            .order_by(DagUitstap.updated_at.desc()).limit(10).all()
     return render_template(
-        "public/event.html", ev=ev, agg=agg, family_total=total,
+        "public/event.html", ev=ev, agg=agg if toon_score else None,
+        toon_score=toon_score, family_total=total,
+        daguitstappen=mijn_daguitstappen,
         euro=euro_indicator(total), reviews=[r.public_dict() for r in series_reviews[:10]],
         friends=friends_interested, saved=saved, shared=shared, family=fam,
         fotos=goedgekeurde_fotos,
         meta_title=title, meta_desc=desc,
-        jsonld=[seo.event_jsonld(ev, agg, total),
+        jsonld=[seo.event_jsonld(ev, agg if toon_score else None, total),
                 seo.breadcrumb_jsonld([("Ravot", "/"),
                                        (ev.gemeente or "Vlaanderen", f"/{(ev.gemeente or '').lower()}"),
                                        (ev.title, f"/e/{ev.slug}")])],
         active=None, title=ev.title,
     )
+
+
+@bp.route("/d/<token>")
+@limiter.limit("60/minute")
+def daguitstap_publiek(token):
+    """Gedeelde daguitstap — leesbaar zonder account, enkel via de deellink.
+    Geen gezinsgegevens zichtbaar: alleen de titel en de plekken."""
+    d = DagUitstap.query.filter_by(share_token=token).first_or_404()
+    items = [i for i in d.items if i.event and not i.event.hidden]
+    markers = [_kaart_marker(i.event) for i in items
+               if i.event.lat is not None and i.event.lng is not None]
+    return render_template("public/daguitstap_publiek.html", d=d, items=items,
+                           markers=markers, family=None,
+                           title=d.titel, active=None)
 
 
 @bp.route("/uitstap/<slug>")

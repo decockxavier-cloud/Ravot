@@ -5,6 +5,12 @@
 <p class="hint">Dag {{ family.display_name or "ravotters" }}! Hier vind je alles terug.</p>
 
 <div class="dash-snel">
+  <a class="dash-tegel" href="{{ url_for('account.ravotpas') }}"><span class="dash-emoji">🦊</span>
+    <span>Ravotpas</span></a>
+  <a class="dash-tegel" href="{{ url_for('account.daguitstappen') }}"><span class="dash-emoji">🧺</span>
+    <span>daguitstappen</span></a>
+  <a class="dash-tegel" href="{{ url_for('account.feestjes') }}"><span class="dash-emoji">🎂</span>
+    <span>feestjes</span></a>
   <a class="dash-tegel" href="#bewaard"><span class="dash-emoji">❤️</span>
     <span class="dash-cijfer">{{ bewaard_komend|length }}</span><span>bewaard</span></a>
   <a class="dash-tegel" href="#reviewen"><span class="dash-emoji">😄</span>

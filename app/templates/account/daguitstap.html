@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block body_class %}met-sfeer{% endblock %}
+{% block content %}
+<a href="{{ url_for('account.daguitstappen') }}" class="terug-link">← Mijn daguitstappen</a>
+<h1>🧺 {{ d.titel }}</h1>
+<p class="meta">{% if d.datum %}📅 {{ d.datum.strftime('%d/%m/%Y') }} · {% endif %}
+  {{ d.items | length }} stop{{ 's' if d.items | length != 1 }}</p>
+
+{% if d.items %}
+{% for item in d.items %}
+{% set e = item.event %}
+<div class="card mini-card daguitstap-item">
+  <div class="daguitstap-nr">{{ loop.index }}</div>
+  <div style="flex:1">
+    <a href="{{ url_for('public.event', slug=e.slug) }}"><strong>{{ e.title }}</strong></a><br>
+    <span class="meta">{% set t = activiteit_type(e) %}{{ t.emoji }} {{ t.label }} · 📍 {{ e.gemeente }}
+      {% if e.start %} · 🕐 {{ event_datum(e) }}{% endif %}</span>
+    {% if item.nota %}<br><span class="hint">📝 {{ item.nota }}</span>{% endif %}
+  </div>
+  <div class="daguitstap-knopjes">
+    {% if not loop.first %}
+    <form method="post" action="{{ url_for('account.daguitstap_item', uid=d.id, item_id=item.id, actie='op') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="mini-actie" title="Naar boven">↑</button></form>
+    {% endif %}
+    {% if not loop.last %}
+    <form method="post" action="{{ url_for('account.daguitstap_item', uid=d.id, item_id=item.id, actie='neer') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="mini-actie" title="Naar onder">↓</button></form>
+    {% endif %}
+    <form method="post" action="{{ url_for('account.daguitstap_item', uid=d.id, item_id=item.id, actie='weg') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="mini-actie" title="Verwijderen">✕</button></form>
+  </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="card leeg"><span class="groot-emoji">🗺️</span>
+  <p>Nog geen stops. Zoek een leuke plek en tik op "Zet in een daguitstap".</p>
+  <a class="btn btn-stil btn-klein" href="{{ url_for('public.ontdek') }}">Ontdek activiteiten →</a></div>
+{% endif %}
+
+<div class="acties">
+  <form method="post" action="{{ url_for('account.daguitstap_deel', uid=d.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn {{ 'btn-stil' if d.share_token else 'btn-zon' }}" type="submit">
+      {{ '🔗 Deellink uitschakelen' if d.share_token else '🔗 Maak deelbare link' }}</button>
+  </form>
+  <form method="post" action="{{ url_for('account.daguitstap_verwijder', uid=d.id) }}"
+        onsubmit="return confirm('Deze daguitstap verwijderen?')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-stil" type="submit">🗑️ Verwijderen</button>
+  </form>
+</div>
+{% if d.share_token %}
+{% set deellink = url_for('public.daguitstap_publiek', token=d.share_token, _external=True) %}
+<div class="card">
+  <strong>Deellink</strong>
+  <p class="meta" style="word-break:break-all"><a href="{{ deellink }}">{{ deellink }}</a></p>
+  <button type="button" class="btn btn-klein btn-stil deel-knop"
+          data-titel="{{ d.titel }}" data-url="{{ deellink }}">📤 Deel</button>
+  <p class="hint">Iedereen met deze link ziet de daguitstap (zonder jullie gegevens).
+  Schakel de link uit om het delen te stoppen.</p>
+</div>
+{% endif %}
+{% endblock %}

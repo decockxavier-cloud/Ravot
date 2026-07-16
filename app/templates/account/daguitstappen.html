@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block body_class %}met-sfeer{% endblock %}
+{% block content %}
+<a href="{{ url_for('account.mijn_home') }}" class="terug-link">← Mijn Ravot</a>
+<h1>Mijn daguitstappen 🧺</h1>
+<p class="hint">Stel je eigen dag samen: kies plekken, zet ze in volgorde en
+deel je plan met vrienden of familie.</p>
+
+{% if lijst %}
+{% for d in lijst %}
+<div class="card mini-card">
+  <div>
+    <a href="{{ url_for('account.daguitstap', uid=d.id) }}"><strong>{{ d.titel }}</strong></a><br>
+    <span class="meta">{{ d.items | length }} stop{{ 's' if d.items | length != 1 }}
+      {% if d.datum %} · 📅 {{ d.datum.strftime('%d/%m/%Y') }}{% endif %}
+      {% if d.share_token %} · 🔗 gedeeld{% endif %}</span>
+  </div>
+  <a class="btn btn-stil btn-klein" href="{{ url_for('account.daguitstap', uid=d.id) }}">Open</a>
+</div>
+{% endfor %}
+{% else %}
+<div class="card leeg"><span class="groot-emoji">🧺</span>
+  <p>Nog geen daguitstappen. Start er hieronder één, of tik op
+  "Zet in een daguitstap" op eender welke activiteit.</p></div>
+{% endif %}
+
+<div class="card">
+  <h2 style="margin-top:0">Nieuwe daguitstap</h2>
+  <form method="post" action="{{ url_for('account.daguitstap_nieuw') }}" class="meld-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="text" name="titel" maxlength="120" required
+           placeholder="Bv. Zaterdag rond Brugge">
+    <label>Geplande dag (optioneel)
+      <input type="date" name="datum"></label>
+    <button class="btn btn-zon" type="submit">Aanmaken</button>
+  </form>
+</div>
+{% endblock %}

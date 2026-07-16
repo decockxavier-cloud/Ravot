@@ -1,0 +1,52 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<h1>Verjaardagsfeestjes 🎂</h1>
+<p class="hint">Aanvraagvolume per partner — dit is je verkoopargument bij het
+aanbieden van het Partner-abonnement. Enkel plekken met feest=ja én een
+contactadres (of goedgekeurde uitbatersclaim) ontvangen aanvragen.</p>
+
+{% if zonder_contact %}
+<div class="card" style="border-color:var(--zon)">
+  ⚠️ {{ zonder_contact }} feestpartner{{ 's' if zonder_contact != 1 }} zonder
+  offerte-e-mail én zonder geclaimde uitbater — die zijn onzichtbaar in de
+  feestjeswizard. Vul het contactadres in via de fiche-editor.
+</div>
+{% endif %}
+
+<h2>Aanvragen per partner</h2>
+{% if per_partner %}
+<table class="tabel">
+  <tr><th>Partner</th><th>Gemeente</th><th>Aanvragen</th><th>Bevestigd</th><th></th></tr>
+  {% for p in per_partner %}
+  <tr>
+    <td>{{ p.title }}</td>
+    <td>{{ p.gemeente or '—' }}</td>
+    <td>{{ p.n }}</td>
+    <td>{{ p.bevestigd or 0 }}</td>
+    <td><a class="btn btn-klein btn-stil" href="{{ url_for('admin.activiteit_bewerk', event_id=p.id) }}">Fiche</a></td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="hint">Nog geen aanvragen verstuurd.</p>
+{% endif %}
+
+<h2>Recente feestjes</h2>
+{% if recente %}
+<table class="tabel">
+  <tr><th>Datum feest</th><th>Leeftijd</th><th>Kinderen</th><th>Buurt</th><th>Aanvragen</th><th>Status</th></tr>
+  {% for f in recente %}
+  <tr>
+    <td>{{ f.datum.strftime('%d/%m/%Y') }}</td>
+    <td>{{ f.leeftijd or '—' }}</td>
+    <td>{{ f.aantal_kinderen }}</td>
+    <td>{{ f.gemeente or f.postcode or '—' }}</td>
+    <td>{{ f.aanvragen | length }}</td>
+    <td>{{ f.status }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="hint">Nog geen feestjes gepland door gezinnen.</p>
+{% endif %}
+{% endblock %}

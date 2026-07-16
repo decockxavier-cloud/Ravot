@@ -43,6 +43,10 @@ def create_app(config_object=Config):
     app.jinja_env.globals["land_label"] = land_label
     from .types import activiteit_type
     app.jinja_env.globals["activiteit_type"] = activiteit_type
+    from .types import is_commercieel
+    app.jinja_env.globals["is_commercieel"] = is_commercieel
+    from .routes.public import score_zichtbaar
+    app.jinja_env.globals["score_zichtbaar"] = score_zichtbaar
 
     @app.context_processor
     def _inject_nu():
@@ -260,6 +264,19 @@ def register_cli(app):
             db.session.execute(text(
                 "ALTER TABLE families ADD COLUMN active BOOLEAN DEFAULT TRUE NOT NULL"))
             added.append("families.active")
+        # Ouder-filters + feestjes op events (grote ronde 2026-07)
+        cols = {c["name"] for c in insp.get_columns("events")}
+        for kol, ddl in (
+            ("omheind", "ALTER TABLE events ADD COLUMN omheind BOOLEAN"),
+            ("verzorgingstafel", "ALTER TABLE events ADD COLUMN verzorgingstafel BOOLEAN"),
+            ("buggy_ok", "ALTER TABLE events ADD COLUMN buggy_ok BOOLEAN"),
+            ("feest", "ALTER TABLE events ADD COLUMN feest BOOLEAN DEFAULT FALSE NOT NULL"),
+            ("feest_soorten", "ALTER TABLE events ADD COLUMN feest_soorten JSON"),
+            ("feest_contact", "ALTER TABLE events ADD COLUMN feest_contact VARCHAR(255)"),
+        ):
+            if kol not in cols:
+                db.session.execute(text(ddl))
+                added.append(f"events.{kol}")
         # settings-tabel (nieuw in admin-config) — create_all maakt enkel wat ontbreekt
         db.create_all()  # maakt ook friend_invites-tabel aan
         if "settings" not in insp.get_table_names():
@@ -276,7 +293,9 @@ def register_cli(app):
             added.append("enrich_proposals (tabel)")
         if "photos" not in insp.get_table_names():
             added.append("photos (tabel)")
-        for tabel in ("operators", "operator_claims", "edit_proposals", "partner_payments", "feeds"):
+        for tabel in ("operators", "operator_claims", "edit_proposals", "partner_payments", "feeds",
+                      "daguitstappen", "daguitstap_items", "feestjes",
+                      "feestje_aanvragen", "ravot_punten"):
             if tabel not in insp.get_table_names():
                 added.append(f"{tabel} (tabel)")
         # nieuwe kolommen op bestaande operator/betaal-tabellen

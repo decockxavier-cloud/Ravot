@@ -13,6 +13,8 @@
 </div>
 {% endif %}
 
+{% include "public/_weer.html" ignore missing %}
+
 <form method="get" action="{{ url_for('public.ontdek') }}" class="zoekrij">
   <input type="search" name="q" value="{{ zoek }}" class="zoekveld"
          data-plaatsen data-zelf="gemeente"
@@ -21,6 +23,7 @@
   <input type="hidden" name="wanneer" value="{{ wanneer }}">
   <input type="hidden" name="filter" value="{{ filter_type }}">
   <input type="hidden" name="cat" value="{{ cat }}">
+  {% for o in ouder_filters %}<input type="hidden" name="ouder" value="{{ o }}">{% endfor %}
   <button class="btn btn-klein" type="submit">Zoek</button>
 </form>
 
@@ -31,7 +34,7 @@
   <a class="filterchip {{ 'aan' if wanneer not in ('vandaag','deze-week','weekend') }}" href="{{ url_for('public.ontdek', wanneer='alle', sort=sort, filter=filter_type, cat=cat, q=zoek) }}">📆 Alle data</a>
 </div>
 
-<details class="meer-filters" {{ 'open' if filter_type or cat or sort!='datum' }}>
+<details class="meer-filters" {{ 'open' if filter_type or cat or ouder_filters or sort!='datum' }}>
   <summary>⚙️ Filteren &amp; sorteren{% if filter_type or cat %} <span class="filter-punt">•</span>{% endif %}</summary>
   <div class="meer-filters-inhoud">
     <div class="filterrij">
@@ -46,6 +49,15 @@
       {% set cats = [('natuur','🌿 Natuur'),('cultuur','🎭 Cultuur'),('creatief','🎨 Creatief'),('sport','⚽ Sport'),('leren','🔬 Ontdekken')] %}
       {% for code,label in cats %}
       <a class="filterchip {{ 'aan' if cat==code }}" href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, filter=filter_type, cat='' if cat==code else code, q=zoek) }}">{{ label }}</a>
+      {% endfor %}
+    </div>
+    <div class="filterrij">
+      <span class="filter-label">Praktisch:</span>
+      {% set ouder_opts = [('omheind','🚧 Omheind terrein'),('verzorgingstafel','🍼 Verschoontafel'),('buggy_ok','👶 Vlot met buggy')] %}
+      {% for code, label in ouder_opts %}
+        {% set nieuw = ouder_filters | reject('equalto', code) | list if code in ouder_filters else (ouder_filters | list) + [code] %}
+        <a class="filterchip {{ 'aan' if code in ouder_filters }}"
+           href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, filter=filter_type, cat=cat, q=zoek, ouder=nieuw) }}">{{ label }}</a>
       {% endfor %}
     </div>
     <div class="filterrij">

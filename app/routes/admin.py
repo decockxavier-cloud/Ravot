@@ -631,6 +631,9 @@ def nazicht_plek(event_id, actie):
         abort(404)
     if actie == "goedkeuren":
         ev.pending = False
+        if ev.submitted_by:
+            from .. import punten as pas
+            pas.ken_toe(ev.submitted_by, "plek", ev.id)
         audit(f"plek goedgekeurd: {ev.title} (#{ev.id})")
         flash(f"'{ev.title}' is nu zichtbaar.", "ok")
     elif actie == "afwijzen":
@@ -780,9 +783,16 @@ def nazicht_foto(pid, actie):
         abort(404)
     if actie == "goedkeuren":
         p.status = "approved"
+        # Ravotpas: punten voor de uploader; extra bonus voor de állereerste
+        # foto van een plek (lost precies het foto-gat in de catalogus op).
+        from .. import punten as pas
+        if p.family_id:
+            pas.ken_toe(p.family_id, "foto", p.event_id)
         # als de plek nog geen foto had, wordt deze de hoofdafbeelding
         if p.event and not p.event.image_url:
             p.event.image_url = _url("public.foto", pid=p.id)
+            if p.family_id:
+                pas.ken_toe(p.family_id, "eerste_foto", p.event_id)
         audit(f"foto goedgekeurd: #{p.id} (event {p.event_id})")
         flash("Foto goedgekeurd en zichtbaar.", "ok")
     elif actie == "afwijzen":
@@ -958,7 +968,8 @@ def feed_verwijder(fid):
 # Velden die de beheerder rechtstreeks op een fiche mag aanpassen.
 ADMIN_EVENT_VELDEN = ("title", "description", "adres", "postcode", "gemeente",
                       "source_url", "image_url", "indoor", "is_free",
-                      "age_min", "age_max")
+                      "age_min", "age_max", "omheind", "verzorgingstafel",
+                      "buggy_ok", "feest", "feest_contact")
 
 
 @bp.route("/activiteiten")
@@ -1026,8 +1037,10 @@ def activiteit_bewerk(event_id):
                 flash(f"AI-voorstel ingevuld ({bron}) — controleer, pas aan en klik Opslaan.", "ok")
             except Exception as exc:
                 flash(f"AI-verrijking mislukt: {str(exc)[:150]}. Draait Ollama?", "error")
+            from ..models import FEEST_SOORTEN as _FS
             return render_template("admin/activiteit_bewerk.html", ev=ev,
                                    categories=CATEGORIES, voorstel=voorstel,
+                                   feest_soorten=_FS,
                                    title=f"Bewerk: {ev.title}", family=None,
                                    active="activiteiten")
         # --- Opslaan ---
@@ -1036,8 +1049,11 @@ def activiteit_bewerk(event_id):
             if veld not in f:
                 continue
             waarde = (f.get(veld) or "").strip()
-            if veld in ("indoor", "is_free"):
+            if veld in ("indoor", "is_free", "feest"):
                 setattr(ev, veld, f.get(veld) == "1")
+            elif veld in ("omheind", "verzorgingstafel", "buggy_ok"):
+                # tri-state: '' = onbekend (None), '1' = ja, '0' = nee
+                setattr(ev, veld, None if waarde == "" else waarde == "1")
             elif veld in ("age_min", "age_max"):
                 if waarde.isdigit():
                     setattr(ev, veld, int(waarde))
@@ -1045,6 +1061,10 @@ def activiteit_bewerk(event_id):
                 ev.postcode = _re.sub(r"\D", "", waarde)[:8] or None
             else:
                 setattr(ev, veld, waarde or None)
+        from ..models import FEEST_SOORTEN
+        if "feest" in f:
+            ev.feest_soorten = [s for s in f.getlist("feest_soorten")
+                                if s in FEEST_SOORTEN]
         cat = (f.get("categorie") or "").strip()
         if cat:
             ev.categories = [cat]
@@ -1061,8 +1081,10 @@ def activiteit_bewerk(event_id):
         audit(f"activiteit bewerkt door admin: #{ev.id} '{ev.title}'")
         flash("Fiche opgeslagen.", "ok")
         return redirect(url_for("admin.activiteit_bewerk", event_id=ev.id))
+    from ..models import FEEST_SOORTEN as _FS2
     return render_template("admin/activiteit_bewerk.html", ev=ev,
                            categories=CATEGORIES, voorstel=voorstel,
+                           feest_soorten=_FS2,
                            title=f"Bewerk: {ev.title}", family=None,
                            active="activiteiten")
 
@@ -1140,3 +1162,26 @@ def activiteit_waardig(event_id):
     if not terug.startswith("/") or terug.startswith("//"):
         terug = url_for("admin.activiteit_bewerk", event_id=ev.id)
     return redirect(terug)
+
+
+@bp.route("/feestjes")
+@admin_required
+def feestjes():
+    """Overzicht van de feestjesmodule: aanvraagvolume per partner (hét
+    verkoopargument voor het Partner-abonnement) + recente feestjes."""
+    from ..models import Feestje, FeestjeAanvraag, Event
+    recente = Feestje.query.order_by(Feestje.created_at.desc()).limit(50).all()
+    per_partner = db.session.query(
+        Event.id, Event.title, Event.gemeente,
+        db.func.count(FeestjeAanvraag.id).label("n"),
+        db.func.sum(db.case((FeestjeAanvraag.status == "bevestigd", 1),
+                            else_=0)).label("bevestigd"),
+    ).join(FeestjeAanvraag, FeestjeAanvraag.event_id == Event.id) \
+     .group_by(Event.id, Event.title, Event.gemeente) \
+     .order_by(db.desc("n")).limit(100).all()
+    partners_zonder_contact = Event.query.filter(
+        Event.feest.is_(True), Event.feest_contact.is_(None)).count()
+    return render_template("admin/feestjes.html", recente=recente,
+                           per_partner=per_partner,
+                           zonder_contact=partners_zonder_contact,
+                           title="Feestjes", family=None, active="feestjes")

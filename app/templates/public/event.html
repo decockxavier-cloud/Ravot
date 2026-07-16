@@ -23,12 +23,16 @@
   <span class="badge">{{ ev.age_min }}–{{ ev.age_max }} jaar</span>
   {% if ev.is_free %}<span class="badge badge-free">Gratis</span>
   {% elif family_total is not none %}<span class="badge">Voor jullie gezin: €{{ "%.0f"|format(family_total) }}</span>{% endif %}
-  {% if ev.partner_until and ev.partner_until > nu_utc %}<span class="badge badge-partner" title="Deze zaak is betalend partner van Ravot; dit beïnvloedt de score of volgorde niet">⭐ Partner</span>{% endif %}
+  {% if ev.partner_until and ev.partner_until > nu_utc %}<span class="badge badge-partner" title="Deze zaak steunt Ravot als partner. De Ravotscore zelf komt altijd van gezinnen.">⭐ Partner</span>{% endif %}
   {% if euro and not ev.is_free %}<span class="badge">{{ euro }}</span>{% endif %}
   {% if ev.indoor %}<span class="badge">🌧️ binnen</span>{% endif %}
   {% if ev.is_permanent %}<span class="badge">📍 vaste plek — altijd te bezoeken</span>{% endif %}
   {% if ev.has_vlieg %}<span class="badge badge-vlieg">🐛 UiT met Vlieg</span>{% endif %}
-  {% if agg %}<span class="badge badge-score">😄 Ravotscore {{ agg.avg }} ({{ agg.count }} gezinnen)</span>{% endif %}
+  {% if ev.omheind %}<span class="badge">🚧 omheind terrein</span>{% endif %}
+  {% if ev.verzorgingstafel %}<span class="badge">🍼 verschoontafel</span>{% endif %}
+  {% if ev.buggy_ok %}<span class="badge">👶 vlot met buggy</span>{% endif %}
+  {% if agg %}<span class="badge badge-score">😄 Ravotscore {{ agg.avg }} ({{ agg.count }} gezinnen)</span>
+  {% elif toon_score is defined and not toon_score %}<span class="badge badge-leeg" title="Deze zaak toont (nog) geen Ravotscore op Ravot">zonder Ravotscore-badge</span>{% endif %}
 </div>
 
 <img src="{{ poi_image(ev) }}" alt="" style="width:100%;border-radius:16px;margin:10px 0" loading="lazy"
@@ -69,6 +73,32 @@
   </form>
   <a class="btn btn-stil" href="{{ url_for('account.review', event_id=ev.id) }}">😄 Geef een Ravotscore</a>
 </div>
+{% if ev.feest %}
+<div class="card feest-cta">
+  <strong>🎂 Hier kan je een verjaardagsfeestje vieren!</strong>
+  <p class="hint">Plan het feestje via Ravot en vraag in één klik offertes aan bij deze en andere partners in de buurt.</p>
+  <a class="btn btn-zon btn-klein" href="{{ url_for('account.feestje_nieuw') }}">Feestje plannen →</a>
+</div>
+{% endif %}
+<details class="melden">
+  <summary>🧺 Zet in een daguitstap</summary>
+  <div class="meld-form">
+    {% if daguitstappen %}
+    {% for d in daguitstappen %}
+    <form method="post" action="{{ url_for('account.daguitstap_voeg', uid=d.id, event_id=ev.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-klein btn-stil" type="submit">➕ {{ d.titel }}</button>
+    </form>
+    {% endfor %}
+    {% endif %}
+    <form method="post" action="{{ url_for('account.daguitstap_nieuw') }}" class="meld-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="event_id" value="{{ ev.id }}">
+      <input type="text" name="titel" maxlength="120" placeholder="Nieuwe daguitstap (bv. Zaterdag aan zee)">
+      <button class="btn btn-klein" type="submit">Nieuwe daguitstap starten</button>
+    </form>
+  </div>
+</details>
 <p class="hint">Delen staat standaard uit; dit is jouw keuze, per activiteit, enkel zichtbaar voor gekoppelde gezinnen.</p>
 {% else %}
 <div class="acties"><a class="btn" href="{{ url_for('auth.login') }}">Maak een gratis profiel om te bewaren en te scoren</a></div>

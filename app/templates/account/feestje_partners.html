@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block body_class %}met-sfeer{% endblock %}
+{% block content %}
+<a href="{{ url_for('account.feestjes') }}" class="terug-link">← Mijn feestjes</a>
+<h1>Kies je feestpartners 🎉</h1>
+<p class="meta">🎂 {{ f.datum.strftime('%d/%m/%Y') }}
+  {% if f.leeftijd %} · wordt {{ f.leeftijd }} jaar{% endif %}
+  · {{ f.aantal_kinderen }} kinderen · 📍 rond {{ f.gemeente or f.postcode }}</p>
+
+<div class="filterbalk" role="group" aria-label="Soort partner">
+  <a class="filterchip {{ 'aan' if not gewenst }}"
+     href="{{ url_for('account.feestje_partners', fid=f.id) }}">Alles</a>
+  {% for code, label in soorten.items() %}
+  <a class="filterchip {{ 'aan' if code in gewenst }}"
+     href="{{ url_for('account.feestje_partners', fid=f.id, soort=code) }}">{{ label }}</a>
+  {% endfor %}
+</div>
+
+{% if partners %}
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% for s in gewenst %}<input type="hidden" name="soort" value="{{ s }}">{% endfor %}
+  {% for p in partners %}
+  {% set e = p.event %}
+  <label class="card mini-card feest-partner{{ ' kaart-gedempt' if not p.partner }}">
+    <input type="checkbox" name="partner" value="{{ e.id }}"
+           {{ 'checked disabled' if e.id in al_gevraagd }}>
+    <div style="flex:1">
+      <a href="{{ url_for('public.event', slug=e.slug) }}" target="_blank"><strong>{{ e.title }}</strong></a>
+      {% if p.partner %}<span class="badge badge-partner">⭐ Partner</span>{% endif %}
+      {% if e.id in al_gevraagd %}<span class="badge">📨 al gevraagd</span>{% endif %}<br>
+      <span class="meta">📍 {{ e.gemeente }}{% if p.km is not none %} · {{ p.km }} km{% endif %}
+        {% for s in p.soorten %} · {{ soorten[s] }}{% endfor %}</span>
+    </div>
+  </label>
+  {% endfor %}
+  <div class="acties">
+    <button class="btn btn-zon" type="submit">📨 Verstuur offerteaanvragen</button>
+  </div>
+  <p class="hint">Per aangevinkte partner vertrekt één nette mail met jullie
+  feestgegevens. De partner antwoordt rechtstreeks naar jullie e-mailadres.</p>
+</form>
+{% else %}
+<div class="card leeg"><span class="groot-emoji">🔍</span>
+  <p>Nog geen feestpartners gevonden binnen {{ f.straal_km }} km.
+  Ravot groeit elke week — probeer het binnenkort opnieuw, of pas de soort aan.</p></div>
+{% endif %}
+{% endblock %}

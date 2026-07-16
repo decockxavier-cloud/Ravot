@@ -41,6 +41,7 @@ TYPES = {
     "uit_wandeling":     ("🥾", "Wandel- of fietstocht", False),
     "uit_kinderboerderij": ("🐐", "Kinderboerderij", True),
     "uit_indoorspeeltuin": ("🧸", "Indoor speelparadijs", True),
+    "horeca":              ("🍽️", "Kindvriendelijke horeca", True),
     "uit_markt":         ("🛍️", "Markt of braderie", False),
     "uit_kamp":          ("⛺", "Kamp of vakantie", False),
 }
@@ -109,3 +110,15 @@ def verborgen_type_codes():
     except Exception:
         ruw = ""
     return {c.strip() for c in ruw.split(",") if c.strip()}
+
+
+# Commerciële plekken: hier geldt de Partner-afspraak (Ravotscore blijft van de
+# community, maar tonen + meetellen in de volgorde is een Partner-voordeel).
+# Openbare/publieke plekken (speeltuin, park, natuur, museum, ...) tonen hun
+# score altijd — die hebben geen commerciële relatie met Ravot.
+COMMERCIEEL = {"horeca", "uit_indoorspeeltuin", "theme_park", "water_park",
+               "miniature_golf"}
+
+
+def is_commercieel(event):
+    return type_code(event) in COMMERCIEEL

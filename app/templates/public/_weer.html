@@ -1,0 +1,17 @@
+{# Weerbericht-chip. Verwacht: weer = {emoji, label, tmax, tmin, regenkans,
+   plaats, vandaag, datum} of None. #}
+{% if weer %}
+<div class="weer-bericht" title="Weersverwachting via Open-Meteo — Ravot zet bij regen automatisch binnenpret bovenaan.">
+  <span class="weer-emoji">{{ weer.emoji }}</span>
+  <span>
+    <strong>{{ weer.dag_label }}{% if weer.plaats %} in {{ weer.plaats }}{% endif %}:</strong>
+    {{ weer.label }}{% if weer.tmax is not none %}, tot {{ weer.tmax | round | int }}°{% endif %}
+    {% if weer.regenkans is not none %} · ☔ {{ weer.regenkans }}% regenkans{% endif %}
+    {% if weer.regenkans is not none and weer.regenkans >= 50 %}
+      — <em>wij zetten binnenpret bovenaan!</em>
+    {% elif weer.regenkans is not none and weer.regenkans <= 20 %}
+      — <em>perfect om buiten te ravotten!</em>
+    {% endif %}
+  </span>
+</div>
+{% endif %}
