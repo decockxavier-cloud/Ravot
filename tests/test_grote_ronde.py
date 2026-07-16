@@ -298,3 +298,48 @@ def test_weerbericht_uit_te_schakelen(app, seed, monkeypatch):
     db.session.add(Setting(key="weer_aan", value="0"))
     db.session.commit()
     assert weerbericht("vandaag", seed["fam_a"]) is None
+
+
+# ------------------------------------------------------ geboortejaar-invoer --
+
+def test_onboarding_met_geboortejaar(client, app):
+    from app.models import Child, Family
+    with client.session_transaction() as s:
+        s["pending_email"] = "nieuw@test.be"
+    jaar = datetime.utcnow().year
+    r = client.post("/mijn/start", data={
+        "birth_year": [str(jaar - 4), str(jaar - 9)],
+        "postcode": "8800", "radius": "25",
+    }, follow_redirects=False)
+    assert r.status_code == 302
+    fam = Family.query.filter_by(email="nieuw@test.be").first()
+    jaren = sorted(c.birth_year for c in Child.query.filter_by(family_id=fam.id))
+    assert jaren == [jaar - 9, jaar - 4]
+
+
+def test_instellingen_geboortejaar_en_legacy_age(client, seed):
+    """Nieuw veld werkt; oude 'age'-invoer (gecachte PWA) blijft ook werken."""
+    from app.models import Child
+    fam = seed["fam_a"]
+    login_as(client, fam)
+    jaar = datetime.utcnow().year
+    client.post("/mijn/instellingen", data={
+        "birth_year": str(jaar - 3), "age": "10",
+        "postcode": "8800", "radius": "25", "budget": "all",
+    })
+    jaren = sorted(c.birth_year for c in Child.query.filter_by(family_id=fam.id))
+    assert jaren == [jaar - 10, jaar - 3]
+
+
+def test_geboortejaar_validatie(client, seed):
+    """Onzinnige jaartallen (te oud, toekomst) worden genegeerd."""
+    from app.models import Child
+    fam = seed["fam_a"]
+    login_as(client, fam)
+    jaar = datetime.utcnow().year
+    client.post("/mijn/instellingen", data={
+        "birth_year": [str(jaar - 40), str(jaar + 1), str(jaar - 5)],
+        "postcode": "8800", "radius": "25", "budget": "all",
+    })
+    jaren = [c.birth_year for c in Child.query.filter_by(family_id=fam.id)]
+    assert jaren == [jaar - 5]

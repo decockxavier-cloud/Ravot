@@ -5,15 +5,17 @@
 <div class="card">
   <form method="post">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <label>Hoe oud zijn je kinderen?</label>
+    <label>In welk jaar zijn je kinderen geboren?</label>
     <div id="kinderen">
       <div class="kind-rij">
-        <input type="number" name="age" min="0" max="17" placeholder="leeftijd" inputmode="numeric" required>
+        <input type="number" name="birth_year" min="{{ current_year - 17 }}" max="{{ current_year }}"
+               placeholder="geboortejaar (bv. {{ current_year - 6 }})" inputmode="numeric" required>
         <button type="button" class="kind-weg" aria-label="verwijder">×</button>
       </div>
     </div>
     <button type="button" class="kind-toevoegen" data-add-kind>+ nog een kind</button>
-    <p class="hint">We bewaren alleen de leeftijd — geen namen, geen geboortedatum. Zo blijft de privacy van je kinderen maximaal beschermd.</p>
+    <p class="hint">We bewaren alleen het geboortejaar — geen namen, geen geboortedatum.
+    Maximale privacy, en de leeftijd groeit elk jaar vanzelf mee.</p>
     <label for="pc">Postcode</label>
     <input id="pc" type="text" name="postcode" data-plaatsen data-zelf="postcode" inputmode="numeric" maxlength="30" required placeholder="Postcode of gemeente, bv. 8800">
     <label for="rad">Hoe ver willen jullie rijden?</label>

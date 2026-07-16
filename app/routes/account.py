@@ -35,6 +35,23 @@ def me():
     return db.session.get(Family, session["family_id"])
 
 
+def _geboortejaren(form):
+    """Geboortejaren uit het formulier (nieuw), met terugval op de oude
+    leeftijd-velden (verouderde/gecachte PWA-formulieren). Gevalideerd op
+    0-17 jaar, max. 12 kinderen."""
+    huidig = datetime.now(timezone.utc).year
+    jaren = []
+    for j in form.getlist("birth_year"):
+        j = j.strip()
+        if j.isdigit() and huidig - 17 <= int(j) <= huidig:
+            jaren.append(int(j))
+    for a in form.getlist("age"):          # legacy-terugval
+        a = a.strip()
+        if a.isdigit() and 0 <= int(a) <= 17:
+            jaren.append(huidig - int(a))
+    return jaren[:12]
+
+
 # ---------------------------------------------------------------- onboarding --
 
 @bp.route("/start", methods=["GET", "POST"])
@@ -43,12 +60,12 @@ def onboarding():
     if not email and not session.get("family_id"):
         return redirect(url_for("auth.login"))
     if request.method == "POST":
-        current_year = datetime.now(timezone.utc).year
-        ages = [int(a) for a in request.form.getlist("age") if a.strip().isdigit()]
+        jaren = _geboortejaren(request.form)
         postcode = re.sub(r"\D", "", request.form.get("postcode", ""))[:4]
-        if not ages or len(postcode) != 4:
-            flash("Vul minstens één leeftijd en je postcode in.", "error")
+        if not jaren or len(postcode) != 4:
+            flash("Vul minstens één geboortejaar en je postcode in.", "error")
             return render_template("account/onboarding.html", categories=CATEGORIES,
+                                   current_year=datetime.now(timezone.utc).year,
                                    title="Welkom bij Ravot", family=None, active=None)
         fam = Family(
             email=email,
@@ -60,9 +77,8 @@ def onboarding():
         )
         db.session.add(fam)
         db.session.flush()
-        for age in ages[:12]:
-            if 0 <= age <= 17:
-                db.session.add(Child(family_id=fam.id, birth_year=current_year - age))
+        for jaar in jaren:
+            db.session.add(Child(family_id=fam.id, birth_year=jaar))
         for cat in request.form.getlist("interest"):
             if cat in CATEGORIES:
                 db.session.add(Interest(family_id=fam.id, category=cat, weight=1.3))
@@ -72,6 +88,7 @@ def onboarding():
         session.permanent = True
         return redirect(url_for("public.vandaag"))
     return render_template("account/onboarding.html", categories=CATEGORIES,
+                           current_year=datetime.now(timezone.utc).year,
                            title="Welkom bij Ravot", family=None, active=None)
 
 
@@ -96,10 +113,8 @@ def profiel():
         fam.monday_opt_in = request.form.get("monday") == "on"
         fam.display_name = (request.form.get("display_name") or "").strip()[:80] or None
         Child.query.filter_by(family_id=fam.id).delete()
-        current_year = datetime.now(timezone.utc).year
-        for a in request.form.getlist("age"):
-            if a.strip().isdigit() and 0 <= int(a) <= 17:
-                db.session.add(Child(family_id=fam.id, birth_year=current_year - int(a)))
+        for jaar in _geboortejaren(request.form):
+            db.session.add(Child(family_id=fam.id, birth_year=jaar))
         db.session.commit()
         flash("Profiel bewaard.", "ok")
         return redirect(url_for("account.instellingen"))
@@ -145,10 +160,8 @@ def instellingen():
         fam.monday_opt_in = request.form.get("monday") == "on"
         fam.display_name = (request.form.get("display_name") or "").strip()[:80] or None
         Child.query.filter_by(family_id=fam.id).delete()
-        current_year = datetime.now(timezone.utc).year
-        for a in request.form.getlist("age"):
-            if a.strip().isdigit() and 0 <= int(a) <= 17:
-                db.session.add(Child(family_id=fam.id, birth_year=current_year - int(a)))
+        for jaar in _geboortejaren(request.form):
+            db.session.add(Child(family_id=fam.id, birth_year=jaar))
         db.session.commit()
         flash("Instellingen bewaard.", "ok")
         return redirect(url_for("account.instellingen"))

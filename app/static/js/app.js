@@ -25,7 +25,9 @@ document.addEventListener("click", function (e) {
   if (!wrap) return;
   var row = document.createElement("div");
   row.className = "kind-rij";
-  row.innerHTML = '<input type="number" name="age" min="0" max="17" placeholder="leeftijd" inputmode="numeric">' +
+  var jaar = new Date().getFullYear();
+  row.innerHTML = '<input type="number" name="birth_year" min="' + (jaar - 17) + '" max="' + jaar +
+    '" placeholder="geboortejaar (bv. ' + (jaar - 6) + ')" inputmode="numeric">' +
                   '<button type="button" class="kind-weg" aria-label="verwijder">×</button>';
   wrap.appendChild(row);
   row.querySelector("input").focus();
