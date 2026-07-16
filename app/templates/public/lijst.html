@@ -13,6 +13,7 @@
   </div>
   {% endif %}
 
+  {% include "account/_nakijk.html" ignore missing %}
   {% if vakantie.banner %}<div class="vakantie-banner">{{ vakantie.banner }}</div>{% endif %}
   {% include "public/_weer.html" ignore missing %}
   {% if regen is defined and regen is not none and regen >= 50 %}

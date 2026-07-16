@@ -115,6 +115,7 @@ def profiel():
         Child.query.filter_by(family_id=fam.id).delete()
         for jaar in _geboortejaren(request.form):
             db.session.add(Child(family_id=fam.id, birth_year=jaar))
+        fam.gegevens_nagekeken = True
         db.session.commit()
         flash("Profiel bewaard.", "ok")
         return redirect(url_for("account.instellingen"))
@@ -162,6 +163,7 @@ def instellingen():
         Child.query.filter_by(family_id=fam.id).delete()
         for jaar in _geboortejaren(request.form):
             db.session.add(Child(family_id=fam.id, birth_year=jaar))
+        fam.gegevens_nagekeken = True
         db.session.commit()
         flash("Instellingen bewaard.", "ok")
         return redirect(url_for("account.instellingen"))
@@ -318,6 +320,17 @@ def _tags_naar_velden(ev, nieuwe_tags):
         n = 1 + sum(1 for r in alle if tag in (r.tags or []))
         if n >= drempel:
             setattr(ev, veld, True)
+
+
+@bp.route("/gegevens-ok", methods=["POST"])
+@login_required
+def gegevens_ok():
+    """Eénmalige bevestiging na de overstap naar geboortejaren: 'klopt al'."""
+    fam = me()
+    fam.gegevens_nagekeken = True
+    db.session.commit()
+    flash("Top, bedankt om het na te kijken! 🦊", "ok")
+    return redirect(request.referrer or url_for("account.mijn_home"))
 
 
 # ------------------------------------------------- delen (opt-in, per event) --

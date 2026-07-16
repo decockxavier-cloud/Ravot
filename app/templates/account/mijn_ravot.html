@@ -3,6 +3,7 @@
 {% block content %}
 <h1>Mijn Ravot 🏠</h1>
 <p class="hint">Dag {{ family.display_name or "ravotters" }}! Hier vind je alles terug.</p>
+{% include "account/_nakijk.html" ignore missing %}
 
 <div class="dash-snel">
   <a class="dash-tegel" href="{{ url_for('account.ravotpas') }}"><span class="dash-emoji">🦊</span>

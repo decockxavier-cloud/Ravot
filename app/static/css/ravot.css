@@ -678,3 +678,6 @@ section h2 { font-size: 1.25rem; margin: 22px 0 8px; }
   box-shadow: 0 2px 8px rgba(244, 178, 51, 0.25); }
 .badge-kaart.nog-niet { opacity: 0.65; filter: grayscale(0.5); }
 .badge-kaart-emoji { font-size: 2rem; }
+
+/* ---- Nakijk-banner (overstap naar geboortejaren) ---- */
+.nakijk-banner { border: 2px solid var(--zon, #F4B233); background: #fffaf0; }

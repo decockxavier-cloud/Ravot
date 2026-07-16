@@ -1,0 +1,20 @@
+{# Eénmalige nakijk-vraag na de overstap naar geboortejaren. Toont enkel voor
+   ingelogde gezinnen met gegevens_nagekeken=False. #}
+{% if family and not family.gegevens_nagekeken %}
+<div class="personaliseer-banner nakijk-banner">
+  <div>
+    <strong>🦊 Even nakijken — Ravot werkt nu met geboortejaren</strong>
+    <p>Vroeger vulde je de leeftijd van je kinderen in; die hebben we omgerekend
+    naar een geboortejaar zodat alles voortaan vanzelf meegroeit. Kijk even na
+    of de jaartallen kloppen{% if family.children %}
+    ({% for c in family.children %}{{ c.birth_year }}{{ ', ' if not loop.last }}{% endfor %}){% endif %}.</p>
+  </div>
+  <div class="acties" style="flex-direction:column;gap:6px">
+    <a class="btn btn-zon btn-klein" href="{{ url_for('account.instellingen') }}">Nakijken →</a>
+    <form method="post" action="{{ url_for('account.gegevens_ok') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-stil btn-klein" type="submit">Klopt al ✓</button>
+    </form>
+  </div>
+</div>
+{% endif %}

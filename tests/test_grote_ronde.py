@@ -343,3 +343,80 @@ def test_geboortejaar_validatie(client, seed):
     })
     jaren = [c.birth_year for c in Child.query.filter_by(family_id=fam.id)]
     assert jaren == [jaar - 5]
+
+
+# ------------------------------------------------------- OSM-horeca & nakijk --
+
+def _osm_el(tags, oid=1):
+    return {"type": "node", "id": oid, "lat": 50.9, "lon": 3.1, "tags": tags}
+
+
+def test_osm_horeca_normalise(app):
+    from app.services.sources import osm
+    # mét naam + kind-signaal → fiche met subtype horeca en ouder-filters
+    d = osm.normalise(_osm_el({
+        "amenity": "restaurant", "name": "De Speelvogel",
+        "kids_area": "yes", "changing_table": "yes", "wheelchair": "yes",
+        "addr:city": "Roeselare", "addr:postcode": "8800"}))
+    assert d and d["subtype"] == "horeca" and d["title"] == "De Speelvogel"
+    assert d["verzorgingstafel"] is True and d["buggy_ok"] is True
+    assert "speelhoek" in d["description"]
+    # zonder kind-signaal → geen fiche (poort tegen horeca-rommel)
+    assert osm.normalise(_osm_el({"amenity": "restaurant",
+                                  "name": "Frituur X"}, 2)) is None
+    # zonder naam → geen fiche
+    assert osm.normalise(_osm_el({"amenity": "cafe",
+                                  "highchair": "yes"}, 3)) is None
+
+
+def test_upsert_overschrijft_communityvelden_niet(app, seed):
+    """Een hersync mag verzorgingstafel/foto van community of admin niet wissen."""
+    from app.services.sources.base import upsert_event
+    data = {"source": "osm", "ext_id": "node/9", "title": "De Speelvogel",
+            "is_permanent": True, "gemeente": "Roeselare", "postcode": "8800",
+            "lat": 50.9, "lng": 3.1, "age_min": 0, "age_max": 12,
+            "categories": [], "subtype": "horeca", "indoor": True,
+            "is_free": False, "price_info": [], "image_url": None,
+            "verzorgingstafel": True,
+            "venue_ext_id": "node/9", "venue_name": "De Speelvogel"}
+    ev = upsert_event(dict(data))
+    db.session.commit()
+    assert ev.verzorgingstafel is True
+    # community/admin zet extra velden + foto
+    ev.omheind = True
+    ev.image_url = "/foto/123"
+    db.session.commit()
+    # hersync zonder die info → blijft staan
+    data2 = dict(data)
+    data2.pop("verzorgingstafel")
+    ev2 = upsert_event(data2)
+    db.session.commit()
+    assert ev2.id == ev.id
+    assert ev2.omheind is True and ev2.verzorgingstafel is True
+    assert ev2.image_url == "/foto/123"
+
+
+def test_nakijk_banner_flow(client, seed):
+    fam = seed["fam_a"]
+    fam.gegevens_nagekeken = False
+    db.session.commit()
+    login_as(client, fam)
+    r = client.get("/mijn/profiel")
+    assert "geboortejaren" in r.get_data(as_text=True)
+    # 'Klopt al' → banner weg
+    client.post("/mijn/gegevens-ok")
+    assert fam.gegevens_nagekeken is True
+    r = client.get("/mijn/profiel")
+    assert "Even nakijken" not in r.get_data(as_text=True)
+
+
+def test_nakijk_via_instellingen_opslaan(client, seed):
+    fam = seed["fam_b"]
+    fam.gegevens_nagekeken = False
+    db.session.commit()
+    login_as(client, fam)
+    jaar = datetime.utcnow().year
+    client.post("/mijn/instellingen", data={
+        "birth_year": str(jaar - 8), "postcode": "9000",
+        "radius": "25", "budget": "all"})
+    assert fam.gegevens_nagekeken is True

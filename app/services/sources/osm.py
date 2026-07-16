@@ -91,6 +91,23 @@ def _query(tag, bbox):
             f'(nwr["{key}"="{tag}"]({s},{w},{n},{e}););out center tags;')
 
 
+# --- Kindvriendelijke horeca -------------------------------------------------
+# We halen bewust NIET alle horeca binnen (dat zijn tienduizenden fiches zonder
+# meerwaarde), enkel zaken die in OSM expliciet kindvriendelijke voorzieningen
+# aangeven. Die tags zijn meteen goud voor de ouder-filters.
+HORECA_AMENITY = ("restaurant", "cafe", "fast_food", "ice_cream")
+HORECA_SIGNALEN = ("kids_area", "highchair", "changing_table", "playground")
+
+
+def _query_horeca(bbox):
+    s, w, n, e = bbox
+    am = "|".join(HORECA_AMENITY)
+    delen = "".join(
+        f'nwr["amenity"~"^({am})$"]["{sig}"]["{sig}"!="no"]({s},{w},{n},{e});'
+        for sig in HORECA_SIGNALEN)
+    return f'[out:json][timeout:90];({delen});out center tags;'
+
+
 def _run(query):
     """Voer één query uit; probeer de servers op volgorde, maar sla servers over
     die ons recent afremden (429/503/504). Faalt alles, dan geven we [] terug."""
@@ -117,11 +134,12 @@ def _run(query):
 
 def fetch():
     from ...models import get_setting
-    tags = [t.strip() for t in (get_setting("osm_tags") or "").split(",")
-            if t.strip() in TAG_CATEGORIE]
+    ruw = [t.strip() for t in (get_setting("osm_tags") or "").split(",")]
+    tags = [t for t in ruw if t in TAG_CATEGORIE]
+    horeca = "horeca" in ruw
     regios = [r.strip() for r in (get_setting("osm_regios") or "vlaanderen").split(",")
               if r.strip() in REGIOS]
-    if not tags or not regios:
+    if (not tags and not horeca) or not regios:
         return
     for regio in regios:
         for tag in tags:
@@ -129,6 +147,11 @@ def fetch():
                 for el in _run(_query(tag, bbox)):
                     yield el
                 time.sleep(0.5)   # vriendelijk blijven voor de gratis servers
+        if horeca:
+            for bbox in _grid(REGIOS[regio]):
+                for el in _run(_query_horeca(bbox)):
+                    yield el
+                time.sleep(0.5)
 
 
 def normalise(el):
@@ -141,6 +164,8 @@ def normalise(el):
         return None
     kind = next((t for t, key in OSM_KEY.items() if tags.get(key) == t), None)
     if kind not in TAG_CATEGORIE:
+        if tags.get("amenity") in HORECA_AMENITY:
+            return _normalise_horeca(el, tags)
         return None  # POORT: enkel kindvriendelijke tags
     cat, (age_min, age_max), indoor, check, naam_verplicht = TAG_CATEGORIE[kind]
 
@@ -200,3 +225,67 @@ def normalise(el):
         "venue_ext_id": ext_id,
         "venue_name": title,
     }
+
+
+def _normalise_horeca(el, tags):
+    """Kindvriendelijke horeca: enkel mét naam én minstens één expliciet
+    kind-signaal. De OSM-tags vullen meteen de ouder-filters."""
+    signalen = {sig: tags.get(sig) for sig in HORECA_SIGNALEN
+                if tags.get(sig) and tags.get(sig) != "no"}
+    naam = (tags.get("name") or tags.get("name:nl") or tags.get("official_name"))
+    if not signalen or not naam:
+        return None
+    if any(bad in naam.lower() for bad in NIET_KINDVRIENDELIJK):
+        return None
+    ext_id = f"{el.get('type')}/{el.get('id')}"
+    lat = el.get("lat") or (el.get("center") or {}).get("lat")
+    lng = el.get("lon") or (el.get("center") or {}).get("lon")
+    if lat is None or lng is None:
+        return None
+    troeven = []
+    if "kids_area" in signalen:
+        troeven.append("speelhoek voor de kinderen")
+    if "playground" in signalen:
+        troeven.append("speeltuin")
+    if "highchair" in signalen:
+        troeven.append("kinderstoelen")
+    if "changing_table" in signalen:
+        troeven.append("verschoontafel")
+    descr = f"Kindvriendelijke zaak met {', '.join(troeven)}."
+    oh = tags.get("opening_hours")
+    if oh:
+        descr += f" Openingsuren: {oh}"
+    soort = {"restaurant": "restaurant", "cafe": "café",
+             "fast_food": "eethuis", "ice_cream": "ijssalon"}.get(
+                 tags.get("amenity"), "zaak")
+    website = tags.get("website") or tags.get("contact:website") or None
+    uit = {
+        "source": "osm",
+        "ext_id": ext_id,
+        "title": naam,
+        "description": f"{soort.capitalize()}. {descr}"[:2000],
+        "start": None, "end": None,
+        "is_permanent": True,
+        "gemeente": tags.get("addr:city"),
+        "postcode": clean_postcode(tags.get("addr:postcode")),
+        "adres": " ".join(p for p in (tags.get("addr:street"),
+                                      tags.get("addr:housenumber")) if p) or None,
+        "lat": float(lat), "lng": float(lng),
+        "age_min": 0, "age_max": 12,
+        "categories": [],
+        "subtype": "horeca",
+        "indoor": True,
+        "is_free": False,
+        "price_info": [],
+        "image_url": None,
+        "source_url": website,
+        "attribution": "© OpenStreetMap-bijdragers (ODbL)",
+        "venue_ext_id": ext_id,
+        "venue_name": naam,
+    }
+    # Ouder-filters rechtstreeks uit OSM (enkel positieve signalen):
+    if signalen.get("changing_table"):
+        uit["verzorgingstafel"] = True
+    if tags.get("wheelchair") == "yes":
+        uit["buggy_ok"] = True
+    return uit

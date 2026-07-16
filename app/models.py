@@ -27,6 +27,10 @@ class Family(db.Model):
     newsletter_opt_in = db.Column(db.Boolean, default=False, nullable=False)
     monday_opt_in = db.Column(db.Boolean, default=True, nullable=False)
     active = db.Column(db.Boolean, default=True, nullable=False)  # admin kan deactiveren
+    # Eénmalige nakijk-vraag na de overstap naar geboortejaren. Nieuwe gezinnen
+    # krijgen True (zij vulden meteen jaren in); bestaande rijen krijgen via de
+    # migratie FALSE en zien één keer de banner tot ze bevestigen of opslaan.
+    gegevens_nagekeken = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=utcnow)
     last_seen = db.Column(db.DateTime, default=utcnow)
 
@@ -322,8 +326,9 @@ SETTING_DEFS = {
     "bron_wd_aan": ("0", "Bron: Wikidata — musea/attracties met officiële foto's", "bool"),
     "tv_max": ("2000", "Toerisme Vlaanderen: max. attracties per sync", "int"),
     "osm_tags": ("playground,park,nature_reserve,water_park,swimming_area,miniature_golf,"
-                 "theme_park,zoo,aquarium,museum,viewpoint,attraction,castle",
-                 "OSM: soorten plekken (komma-gescheiden)", "text"),
+                 "theme_park,zoo,aquarium,museum,viewpoint,attraction,castle,horeca",
+                 "OSM: soorten plekken (komma-gescheiden; 'horeca' = enkel zaken met "
+                 "kindvriendelijke voorzieningen)", "text"),
     "osm_regios": ("vlaanderen",
                    "OSM: regio's (vlaanderen,brussel,wallonie,nederland,fr-nord)", "text"),
     "verrijk_backend": ("ollama", "AI-verrijking: backend (ollama | cloud)", "text"),

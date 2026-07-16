@@ -115,7 +115,15 @@ def upsert_event(data):
               "categories", "subtype", "indoor", "is_free", "price_info", "image_url",
               "source_url", "attribution", "pending"):
         if f in data:
+            if f == "image_url" and not data[f] and ev.image_url:
+                continue   # een bestaande (bv. gezins)foto nooit wissen bij hersync
             setattr(ev, f, data[f])
+    # Ouder-filters uit de bron: enkel AANzetten als de bron het bevestigt.
+    # Nooit terug naar onbekend/uit — de community (reviews) en de beheerder
+    # kunnen deze velden ook zetten en dat mag een sync niet ongedaan maken.
+    for f in ("omheind", "verzorgingstafel", "buggy_ok"):
+        if data.get(f) is True and getattr(ev, f, None) is not True:
+            setattr(ev, f, True)
     ev.has_vlieg = False  # Vlieg is een publiq-label; nooit op andere bronnen
     if not ev.slug:
         # Volledige ext_id in de slug -> geen botsingen bij naamloze POI's.

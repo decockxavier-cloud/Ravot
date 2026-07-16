@@ -264,6 +264,13 @@ def register_cli(app):
             db.session.execute(text(
                 "ALTER TABLE families ADD COLUMN active BOOLEAN DEFAULT TRUE NOT NULL"))
             added.append("families.active")
+        # Overstap naar geboortejaren: bestaande gezinnen krijgen FALSE en zien
+        # één keer de vraag om hun gegevens na te kijken.
+        if "gegevens_nagekeken" not in fam_cols:
+            db.session.execute(text(
+                "ALTER TABLE families ADD COLUMN gegevens_nagekeken "
+                "BOOLEAN DEFAULT FALSE NOT NULL"))
+            added.append("families.gegevens_nagekeken")
         # Ouder-filters + feestjes op events (grote ronde 2026-07)
         cols = {c["name"] for c in insp.get_columns("events")}
         for kol, ddl in (
