@@ -15,6 +15,10 @@ import secrets
 from flask import current_app
 from PIL import Image, ImageOps
 
+# Decompressie-bommen weren: een piepklein PNG-bestand kan uitpakken tot
+# gigabytes RAM. 40 megapixel volstaat ruim voor elke gezinsfoto.
+Image.MAX_IMAGE_PIXELS = 40_000_000
+
 TOEGESTAAN = {"image/jpeg", "image/png", "image/webp"}
 MAGIC = {
     b"\xff\xd8\xff": "jpeg",           # JPEG

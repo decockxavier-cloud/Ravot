@@ -167,3 +167,33 @@ document.addEventListener("click", function (e) {
     document.addEventListener("DOMContentLoaded", scrub);
   else scrub();
 })();
+
+/* Foto's verkleinen ín de browser vóór het uploaden: sneller op mobiel,
+   minder dataverbruik en minder serverbelasting. De server verkleint sowieso
+   nog eens (veiligheidsnet), dus dit is puur progressive enhancement. */
+document.addEventListener('change', function (e) {
+  var input = e.target;
+  if (!(input instanceof HTMLInputElement) || input.type !== 'file'
+      || input.name !== 'foto' || !input.files || !input.files[0]) return;
+  var file = input.files[0];
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return;
+  if (file.size < 600 * 1024) return;              // al klein genoeg
+  var MAX = 1600, url = URL.createObjectURL(file), img = new Image();
+  img.onload = function () {
+    URL.revokeObjectURL(url);
+    var schaal = Math.min(1, MAX / Math.max(img.width, img.height));
+    if (schaal >= 1) return;                       // klein beeld, groot bestand: laat de server het doen
+    var c = document.createElement('canvas');
+    c.width = Math.round(img.width * schaal);
+    c.height = Math.round(img.height * schaal);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    c.toBlob(function (blob) {
+      if (!blob || blob.size >= file.size) return; // enkel vervangen als het écht kleiner is
+      var dt = new DataTransfer();
+      dt.items.add(new File([blob], 'foto.jpg', {type: 'image/jpeg'}));
+      input.files = dt.files;
+    }, 'image/jpeg', 0.85);
+  };
+  img.onerror = function () { URL.revokeObjectURL(url); };
+  img.src = url;
+});

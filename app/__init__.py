@@ -155,6 +155,18 @@ def create_app(config_object=Config):
     def te_veel(_):
         return render_template("429.html"), 429
 
+    @app.errorhandler(413)
+    def te_groot(_):
+        """Upload boven MAX_CONTENT_LENGTH: vriendelijk terugsturen i.p.v. een
+        kale foutpagina. (In de praktijk zeldzaam: de browser verkleint foto's
+        al vóór het uploaden en de server heringcodeert sowieso.)"""
+        from flask import flash, redirect, request
+        mb = app.config.get("MAX_CONTENT_LENGTH", 0) // (1024 * 1024)
+        flash(f"Dat bestand is te groot (max. {mb} MB). Tip: een foto rechtstreeks "
+              "uit je galerij werkt meestal wél — wij verkleinen ze automatisch.",
+              "error")
+        return redirect(request.referrer or "/")
+
     @app.errorhandler(404)
     def not_found(_):
         return render_template("public/404.html", family=None, active=None,

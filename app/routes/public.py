@@ -1025,7 +1025,10 @@ def foto(pid):
     pad = pad_van(p.filename)
     if not os.path.exists(pad):
         abort(404)
-    return send_file(pad, mimetype="image/jpeg", max_age=3600)
+    # Goedgekeurde foto's cachen browsers/CDN een week: de bestandsnaam is een
+    # random token en verandert nooit, dus lang cachen is veilig én snel.
+    leeftijd = 7 * 24 * 3600 if p.status == "approved" else 0
+    return send_file(pad, mimetype="image/jpeg", max_age=leeftijd)
 
 
 @bp.route("/api/plaatsen")

@@ -16,10 +16,10 @@
   {% include "account/_nakijk.html" ignore missing %}
   {% if vakantie.banner %}<div class="vakantie-banner">{{ vakantie.banner }}</div>{% endif %}
   {% include "public/_weer.html" ignore missing %}
-  {% if regen is defined and regen is not none and regen >= 50 %}
+  {% if (weer is not defined or not weer) and regen is defined and regen is not none and regen >= 50 %}
   <div class="weer-hint">🌧️ Kans op regen ({{ regen }}%) — we zetten binnen-activiteiten bovenaan.
     <span class="weer-uitleg" title="We halen de weersverwachting op voor de locatie en datum van elke activiteit (via Open-Meteo). Bij regen krijgen overdekte activiteiten voorrang.">ⓘ hoe werkt dit?</span></div>
-  {% elif regen is defined and regen is not none and regen <= 20 %}
+  {% elif (weer is not defined or not weer) and regen is defined and regen is not none and regen <= 20 %}
   <div class="weer-hint weer-zon">☀️ Mooi weer op komst — tijd om naar buiten te ravotten!
     <span class="weer-uitleg" title="We halen de weersverwachting op voor de locatie en datum van elke activiteit (via Open-Meteo). Bij mooi weer krijgen buitenactiviteiten voorrang.">ⓘ hoe werkt dit?</span></div>
   {% endif %}

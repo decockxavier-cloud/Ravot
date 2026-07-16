@@ -420,3 +420,45 @@ def test_nakijk_via_instellingen_opslaan(client, seed):
         "birth_year": str(jaar - 8), "postcode": "9000",
         "radius": "25", "budget": "all"})
     assert fam.gegevens_nagekeken is True
+
+
+# -------------------------------------------------------------- foto-limieten --
+
+def test_upload_verkleint_grote_foto(app, tmp_path):
+    """Server-side veiligheidsnet: grote foto's worden verkleind + heringcodeerd."""
+    import io
+    from PIL import Image
+    from app.fotos import verwerk_upload, pad_van
+    from werkzeug.datastructures import FileStorage
+    app.config["UPLOAD_DIR"] = str(tmp_path)
+    buf = io.BytesIO()
+    Image.new("RGB", (4000, 3000), "orange").save(buf, format="JPEG")
+    buf.seek(0)
+    naam = verwerk_upload(FileStorage(buf, filename="groot.jpg",
+                                      content_type="image/jpeg"))
+    assert naam
+    img = Image.open(pad_van(naam))
+    assert max(img.size) <= 1600            # verkleind
+    assert img.format == "JPEG"
+
+
+def test_upload_weigert_geen_afbeelding(app, tmp_path):
+    import io
+    from app.fotos import verwerk_upload
+    from werkzeug.datastructures import FileStorage
+    app.config["UPLOAD_DIR"] = str(tmp_path)
+    nep = FileStorage(io.BytesIO(b"<script>alert(1)</script>"),
+                      filename="foto.jpg", content_type="image/jpeg")
+    assert verwerk_upload(nep) is None
+
+
+def test_413_geeft_vriendelijke_melding(client, seed, app):
+    app.config["MAX_CONTENT_LENGTH"] = 1024   # 1 KB voor de test
+    login_as(client, seed["fam_a"])
+    ev = seed["events"][0]
+    import io
+    r = client.post(f"/mijn/foto/{ev.id}",
+                    data={"akkoord": "1",
+                          "foto": (io.BytesIO(b"x" * 5000), "groot.jpg")},
+                    content_type="multipart/form-data", follow_redirects=False)
+    assert r.status_code == 302               # nette redirect, geen kale 413
