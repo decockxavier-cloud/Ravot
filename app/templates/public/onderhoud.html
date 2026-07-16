@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Even ravotten in de coulissen — Ravot</title>
+  <style>
+    :root {
+      --oranje: #EE8035;
+      --groen: #4CA362;
+      --geel: #F4B233;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #FFF8F0;
+      color: #3a2d23;
+      padding: 24px;
+      text-align: center;
+    }
+    .kaart {
+      max-width: 440px;
+      background: #fff;
+      border-radius: 20px;
+      padding: 40px 28px 32px;
+      box-shadow: 0 8px 30px rgba(238, 128, 53, .15);
+    }
+    .vosje { font-size: 64px; line-height: 1; }
+    h1 { color: var(--oranje); font-size: 1.5rem; margin: 18px 0 10px; }
+    p { font-size: 1rem; line-height: 1.55; color: #5b4a3c; }
+    p + p { margin-top: 10px; }
+    .zigzag {
+      margin: 22px auto 0;
+      width: 160px;
+      height: 12px;
+      background: linear-gradient(135deg, var(--groen) 25%, transparent 25%) -8px 0,
+                  linear-gradient(225deg, var(--groen) 25%, transparent 25%) -8px 0;
+      background-size: 16px 12px;
+      background-repeat: repeat-x;
+    }
+    .accent { color: var(--groen); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <main class="kaart">
+    <div class="vosje" aria-hidden="true">🦊</div>
+    <h1>Het vosje is even aan het werk</h1>
+    <p>We voeren momenteel <span class="accent">onderhoud</span> uit aan Ravot.
+       Daardoor is de site heel even niet bereikbaar.</p>
+    <p>Kom straks zeker terug — dan staan alle leuke uitstapjes weer voor je klaar!</p>
+    <div class="zigzag" aria-hidden="true"></div>
+  </main>
+</body>
+</html>

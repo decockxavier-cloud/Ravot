@@ -123,6 +123,30 @@ def create_app(config_object=Config):
                                     "max-age=31536000; includeSubDomains")
         return resp
 
+    # -- Onderhoudsmodus (instelling 'onderhoud_aan' in /beheer) -------------
+    @app.before_request
+    def onderhoudsmodus():
+        from flask import request, session
+        # Beheer en statische bestanden blijven altijd bereikbaar,
+        # anders kan je de modus niet meer uitzetten.
+        pad = request.path
+        if pad.startswith("/beheer") or pad.startswith("/static"):
+            return None
+        # Ingelogde admins mogen de site gewoon bekijken (preview).
+        if session.get("admin_id") and session.get("admin_2fa_ok"):
+            return None
+        from .models import get_bool
+        if get_bool("onderhoud_aan"):
+            # 503 + Retry-After: zoekmachines weten dat dit tijdelijk is
+            # en de-indexeren niets.
+            resp = app.make_response(
+                render_template("public/onderhoud.html"))
+            resp.status_code = 503
+            resp.headers["Retry-After"] = "3600"
+            resp.headers["Cache-Control"] = "no-store"
+            return resp
+        return None
+
     @app.errorhandler(429)
     def te_veel(_):
         return render_template("429.html"), 429

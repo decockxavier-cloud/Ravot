@@ -327,6 +327,8 @@ SETTING_DEFS = {
     "verborgen_types": ("", "Types die publiek verborgen zijn (komma-gescheiden codes)", "text"),
     "enkel_gecureerd": ("0", "Toon publiek enkel door mensen goedgekeurde ('Ravot-waardige') plekken", "bool"),
     "report_drempel": ("3", "Aantal meldingen waarna een fiche automatisch naar nazicht springt", "int"),
+    # Onderhoud: publieke site offline; /beheer en ingelogde admins blijven werken
+    "onderhoud_aan": ("0", "Onderhoudsmodus: publieke site offline (beheer blijft bereikbaar)", "bool"),
 }
 
 
