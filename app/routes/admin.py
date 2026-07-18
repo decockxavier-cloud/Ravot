@@ -1259,16 +1259,16 @@ def horeca_import():
         else:
             try:
                 if request.form.get("actie") == "ai" and bron == "overture":
-                    # AI-voorsortering: beoordeel de kandidaten in dit gebied
-                    # (max. 75 per klik zodat de pagina vlot blijft; het
-                    # advies wordt bewaard, dus elke klik bouwt verder).
-                    ks = ov_bron.kandidaten_in_gebied(centrum[0], centrum[1], straal)
-                    n = ov_bron.ai_triage(ks[:75])
-                    rest = sum(1 for k in ks if not k.ai_advies)
-                    flash(f"AI beoordeelde {n} zaken"
-                          + (f" — nog {rest} te gaan, klik gerust nog eens."
-                             if rest else " — alles in dit gebied is beoordeeld."),
-                          "ok")
+                    # AI-voorsortering draait op de ACHTERGROND: het model
+                    # denkt minuten na en dat past niet in een webverzoek.
+                    # De pagina toont de voortgang; herladen = bijwerken.
+                    gestart = ov_bron.start_ai_triage_achtergrond(
+                        current_app._get_current_object(),
+                        centrum[0], centrum[1], straal)
+                    flash("AI-voorsortering gestart op de achtergrond. Zoek "
+                          "gerust opnieuw om de voortgang te zien — beoordeelde "
+                          "zaken krijgen meteen hun badge." if gestart else
+                          "Er loopt al een AI-beoordeling — even geduld.", "ok")
                 if bron == "overture":
                     resultaten = ov_bron.zoek_kandidaten(centrum[0], centrum[1], straal)
                 else:
@@ -1278,11 +1278,18 @@ def horeca_import():
                 for r in resultaten:
                     r["bestaat"] = r["ext_id"] in bestaand
             except Exception:
+                db.session.rollback()   # anders sleept een SQL-fout de rest mee
                 current_app.logger.exception("horeca-verkenner faalde")
                 fout = ("De bron antwoordt momenteel niet. Probeer opnieuw, of "
                         "wissel van bron.")
     kandidaten_n = HorecaKandidaat.query.count()
+    ai_klaar = ai_totaal = 0
+    if resultaten is not None and bron == "overture":
+        ai_totaal = len(resultaten)
+        ai_klaar = sum(1 for r in resultaten if r.get("ai"))
     return render_template("admin/horeca_import.html", resultaten=resultaten,
+                           ai_klaar=ai_klaar, ai_totaal=ai_totaal,
+                           ai_bezig=ov_bron.triage_actief(),
                            zoekterm=zoekterm, straal=straal, fout=fout,
                            bron=bron, kandidaten_n=kandidaten_n,
                            title="Horeca-import", family=None,

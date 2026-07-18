@@ -68,7 +68,10 @@ staan bovenaan.</p>
     <div class="acties" style="margin-top:12px">
       <button class="btn" type="submit">Geselecteerde zaken importeren</button>
       <span class="hint">{{ resultaten | length }} gevonden — zaken met
-      kind-signalen zijn alvast aangevinkt.</span>
+      kind-signalen of AI-advies "ja" zijn alvast aangevinkt.
+      {% if bron == 'overture' %} · AI-advies: {{ ai_klaar }}/{{ ai_totaal }} beoordeeld
+      {% if ai_bezig %}<span class="badge pil-bezig">AI is bezig — zoek opnieuw voor de voortgang</span>{% endif %}
+      {% endif %}</span>
     </div>
   </form>
   {% else %}

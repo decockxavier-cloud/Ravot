@@ -246,3 +246,45 @@ def ai_triage(kandidaten, max_batch=25):
                 beoordeeld += 1
         db.session.commit()
     return beoordeeld
+
+
+# --- AI-triage op de achtergrond ---------------------------------------------
+# Het taalmodel (zeker lokale Ollama op cpu) denkt minuten na over een batch;
+# gunicorn breekt webverzoeken na ~30s af. Daarom draait de beoordeling in een
+# achtergrond-thread: de knop start ze, de pagina toont de voortgang.
+import threading
+
+_triage_lock = threading.Lock()
+_triage_bezig = {"actief": False}
+
+
+def triage_actief():
+    return _triage_bezig["actief"]
+
+
+def start_ai_triage_achtergrond(app, lat, lng, straal_km, synchroon=False):
+    """Start de AI-beoordeling van alle onbeoordeelde kandidaten in het gebied.
+    Retourneert False als er al een beoordeling loopt (nooit dubbel werk)."""
+    if not _triage_lock.acquire(blocking=False):
+        return False
+    _triage_bezig["actief"] = True
+
+    def _werk():
+        try:
+            with app.app_context():
+                ks = kandidaten_in_gebied(lat, lng, straal_km)
+                ai_triage(ks)          # batcht + commit per batch
+                db.session.remove()
+        except Exception:
+            with app.app_context():
+                app.logger.exception("AI-triage op de achtergrond faalde")
+        finally:
+            _triage_bezig["actief"] = False
+            _triage_lock.release()
+
+    if synchroon:                      # voor tests
+        _werk()
+        return True
+    threading.Thread(target=_werk, daemon=True,
+                     name="ravot-ai-triage").start()
+    return True

@@ -959,6 +959,21 @@ def test_ai_triage_bewaart_advies(app, seed, monkeypatch):
     assert rows[0]["ai"] == "ja" and rows[-1]["ai"] == "nee"
 
 
+def test_ai_triage_achtergrond_start(app, seed, monkeypatch):
+    from app.models import HorecaKandidaat
+    from app.services.sources import overture as ov
+    db.session.add(HorecaKandidaat(ext_id="bg1", naam="Pannenkoekenhuis",
+                                   categorie="restaurant", lat=50.95, lng=3.12))
+    db.session.commit()
+    import app.enrich as enrich
+    monkeypatch.setattr(enrich, "_generate", lambda p, s:
+                        '{"beoordelingen": [{"id": "bg1", "advies": "ja"}]}')
+    ok = ov.start_ai_triage_achtergrond(app, 50.95, 3.12, 5, synchroon=True)
+    assert ok is True
+    assert ov.triage_actief() is False           # netjes afgerond
+    assert HorecaKandidaat.query.filter_by(ext_id="bg1").first().ai_advies == "ja"
+
+
 # ------------------------------------------------- winterbar & communiefeest --
 
 def test_winterbar_heuristiek_en_import(app, seed):
