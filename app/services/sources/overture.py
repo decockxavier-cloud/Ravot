@@ -34,12 +34,14 @@ _ZOMERBAR_HINTS = ("zomerbar", "zomer bar", "summer bar", "beach", "strandbar",
                    "pop-up", "popup", "bar d'été")
 
 
-def _is_horeca(cat_primair, cat_alt):
-    alles = " ".join([cat_primair or ""] + list(cat_alt or [])).lower()
-    if any(w in alles for w in _CAT_LANG):
+def _is_horeca(cat_primair, cat_alt=None):
+    """Enkel de primaire categorie telt: via de alternatieve categorieën kwam
+    te veel bijvangst binnen (tabakswinkels en supermarkten die ook 'cafe'
+    als bijcategorie dragen)."""
+    c = (cat_primair or "").lower()
+    if any(w in c for w in _CAT_LANG):
         return True
-    tokens = set(alles.replace("_", " ").split())
-    return bool(tokens & _CAT_KORT)
+    return bool(set(c.replace("_", " ").split()) & _CAT_KORT)
 
 
 def lijkt_zomerbar(naam, cat_primair):
@@ -77,6 +79,12 @@ def laad_horeca(bbox=BELGIE_BBOX, log=print):
             if not lat or not lng:
                 continue
             adres = (rec.get("addresses") or [{}])[0] or {}
+            land = (adres.get("country") or "").upper()
+            if land and land != "BE":
+                continue          # de bbox raakt Noord-Frankrijk en Nederland
+            conf = rec.get("confidence")
+            if conf is not None and conf < 0.5:
+                continue          # te onzeker = vaak gesloten of verkeerd
             webs = rec.get("websites") or []
             socials = rec.get("socials") or []
             k = bestaande.get(rec["id"])
@@ -93,7 +101,8 @@ def laad_horeca(bbox=BELGIE_BBOX, log=print):
             k.gemeente = (adres.get("locality") or "")[:80] or None
             k.postcode = clean_postcode(adres.get("postcode"))
             k.lat, k.lng = float(lat), float(lng)
-            k.website = (webs[0] if webs else (socials[0] if socials else None))
+            web = webs[0] if webs else (socials[0] if socials else None)
+            k.website = web[:300] if web else None
             k.zomerbar_hint = lijkt_zomerbar(naam, primair)
             k.confidence = rec.get("confidence")
             if bekeken % 50000 == 0:
