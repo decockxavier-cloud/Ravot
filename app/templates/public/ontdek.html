@@ -7,7 +7,7 @@
 <div class="personaliseer-banner">
   <div>
     <strong>Zie wat bij jouw gezin past</strong>
-    <p>Vul je postcode en de leeftijd van je kinderen in — dan sorteren we op maat.</p>
+    <p>Vul je postcode en de geboortejaren van je kinderen in — dan sorteren we op maat.</p>
   </div>
   <a class="btn btn-zon" href="{{ url_for('public.proberen') }}">Personaliseer →</a>
 </div>
@@ -15,101 +15,49 @@
 
 {% include "public/_weer.html" ignore missing %}
 
-<form method="get" action="{{ url_for('public.ontdek') }}" class="zoekrij">
-  <input type="search" name="q" value="{{ zoek }}" class="zoekveld"
-         data-plaatsen data-zelf="gemeente"
-         placeholder="🔍 Zoek op naam of gemeente…" aria-label="Zoek">
-  <input type="hidden" name="sort" value="{{ sort }}">
-  <input type="hidden" name="wanneer" value="{{ wanneer }}">
-  <input type="hidden" name="filter" value="{{ filter_type }}">
-  <input type="hidden" name="cat" value="{{ cat }}">
-  {% for o in ouder_filters %}<input type="hidden" name="ouder" value="{{ o }}">{% endfor %}
-  {% if soort %}<input type="hidden" name="soort" value="{{ soort }}">{% endif %}
-  <button class="btn btn-klein" type="submit">Zoek</button>
-</form>
+{# Kop: zoeken + wanneer-chips + (mobiel) filterknop. Alle overige filters
+   zitten in de zijbalk (pc) of het uitschuifpaneel (mobiel). #}
+{% include "public/_filters_kop.html" %}
 
-<div class="filterbalk" role="group" aria-label="Wanneer">
-  <a class="filterchip {{ 'aan' if wanneer=='vandaag' }}" href="{{ url_for('public.ontdek', wanneer='vandaag', sort=sort, filter=filter_type, cat=cat, q=zoek) }}">Vandaag</a>
-  <a class="filterchip {{ 'aan' if wanneer=='deze-week' }}" href="{{ url_for('public.ontdek', wanneer='deze-week', sort=sort, filter=filter_type, cat=cat, q=zoek) }}">Deze week</a>
-  <a class="filterchip {{ 'aan' if wanneer=='weekend' }}" href="{{ url_for('public.ontdek', wanneer='weekend', sort=sort, filter=filter_type, cat=cat, q=zoek) }}">Weekend</a>
-  <a class="filterchip {{ 'aan' if wanneer not in ('vandaag','deze-week','weekend') }}" href="{{ url_for('public.ontdek', wanneer='alle', sort=sort, filter=filter_type, cat=cat, q=zoek) }}">📆 Alle data</a>
+<div class="ontdek-layout">
+  {% include "public/_filters_zij.html" %}
+
+  <div class="ontdek-main">
+    <p class="resultaat-teller">{{ totaal }} activiteiten{% if max_pagina > 1 %} · pagina {{ pagina }}/{{ max_pagina }}{% endif %}
+      · <a href="{{ url_for('account.toevoegen') }}">Plek toevoegen →</a></p>
+    {% if curatie_aan %}
+    <p class="hint curatie-melding">
+      {% if toon_alles %}Je ziet nu ook plekken die nog niet door Ravot gecontroleerd zijn.
+        <a href="{{ flink() }}">Toon enkel goedgekeurde →</a>
+      {% else %}✓ Je ziet enkel door Ravot goedgekeurde plekken.
+        <a href="{{ flink(alles_tonen='1') }}">Toon ook niet-gecontroleerde →</a>
+      {% endif %}
+    </p>
+    {% endif %}
+
+    {% if rows %}
+      <div class="kaarten-raster">
+      {% for r in rows %}{% set e = r.event %}
+        {% include "public/_kaart.html" %}
+      {% endfor %}
+      </div>
+
+      {% if max_pagina > 1 %}
+      <nav class="paginering" aria-label="Pagina's">
+        {% if pagina > 1 %}
+          <a class="btn btn-stil btn-klein" href="{{ flink(p=pagina-1) }}">← Vorige</a>
+        {% endif %}
+        <span class="pag-teller">{{ pagina }} / {{ max_pagina }}</span>
+        {% if pagina < max_pagina %}
+          <a class="btn btn-klein" href="{{ flink(p=pagina+1) }}">Volgende →</a>
+        {% endif %}
+      </nav>
+      {% endif %}
+    {% else %}
+      <div class="card leeg"><span class="groot-emoji">🔍</span>
+        <p>Niets gevonden. Probeer een andere zoekterm of
+        <a href="{{ url_for('public.ontdek') }}">wis de filters</a>.</p></div>
+    {% endif %}
+  </div>
 </div>
-
-<details class="meer-filters" {{ 'open' if filter_type or cat or ouder_filters or soort or sort!='datum' }}>
-  <summary>⚙️ Filteren &amp; sorteren{% if filter_type or cat %} <span class="filter-punt">•</span>{% endif %}</summary>
-  <div class="meer-filters-inhoud">
-    <div class="filterrij">
-      <span class="filter-label">Type:</span>
-      <a class="filterchip {{ 'aan' if not filter_type }}" href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, cat=cat, q=zoek) }}">Alles</a>
-      <a class="filterchip {{ 'aan' if filter_type=='gratis' }}" href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, filter='gratis', cat=cat, q=zoek) }}">🆓 Gratis</a>
-      <a class="filterchip {{ 'aan' if filter_type=='binnen' }}" href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, filter='binnen', cat=cat, q=zoek) }}">🏠 Binnen</a>
-      <a class="filterchip {{ 'aan' if filter_type=='buiten' }}" href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, filter='buiten', cat=cat, q=zoek) }}">🌳 Buiten</a>
-    </div>
-    <div class="filterrij">
-      <span class="filter-label">Soort:</span>
-      {% set cats = [('natuur','🌿 Natuur'),('cultuur','🎭 Cultuur'),('creatief','🎨 Creatief'),('sport','⚽ Sport'),('leren','🔬 Ontdekken')] %}
-      {% for code,label in cats %}
-      <a class="filterchip {{ 'aan' if cat==code }}" href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, filter=filter_type, cat='' if cat==code else code, q=zoek) }}">{{ label }}</a>
-      {% endfor %}
-    </div>
-    <div class="filterrij">
-      <span class="filter-label">Soort plek:</span>
-      <select onchange="location.href=this.value" aria-label="Soort plek">
-        <option value="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, filter=filter_type, cat=cat, q=zoek, ouder=ouder_filters|list) }}">alle soorten</option>
-        {% for code, t in soorten.items() if t[2] %}
-        <option value="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, filter=filter_type, cat=cat, q=zoek, ouder=ouder_filters|list, soort=code) }}"
-                {{ 'selected' if soort == code }}>{{ t[0] }} {{ t[1] }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="filterrij">
-      <span class="filter-label">Praktisch:</span>
-      {% set ouder_opts = [('omheind','🚧 Omheind terrein'),('verzorgingstafel','🍼 Verschoontafel'),('buggy_ok','👶 Vlot met buggy')] %}
-      {% for code, label in ouder_opts %}
-        {% set nieuw = ouder_filters | reject('equalto', code) | list if code in ouder_filters else (ouder_filters | list) + [code] %}
-        <a class="filterchip {{ 'aan' if code in ouder_filters }}"
-           href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, filter=filter_type, cat=cat, q=zoek, ouder=nieuw, soort=soort or none) }}">{{ label }}</a>
-      {% endfor %}
-    </div>
-    <div class="filterrij">
-      <span class="filter-label">Sorteer:</span>
-      <a class="filterchip {{ 'aan' if sort!='score' }}" href="{{ url_for('public.ontdek', wanneer=wanneer, filter=filter_type, cat=cat, q=zoek) }}">📅 Eerst gepland</a>
-      <a class="filterchip {{ 'aan' if sort=='score' }}" href="{{ url_for('public.ontdek', wanneer=wanneer, sort='score', filter=filter_type, cat=cat, q=zoek) }}">😄 Best gescoord</a>
-    </div>
-  </div>
-</details>
-<p class="resultaat-teller">{{ totaal }} activiteiten{% if max_pagina > 1 %} · pagina {{ pagina }}/{{ max_pagina }}{% endif %}
-  · <a href="{{ url_for('account.toevoegen') }}">Ken je een plek die ontbreekt? Voeg ze toe →</a></p>
-{% if curatie_aan %}
-<p class="hint curatie-melding">
-  {% if toon_alles %}Je ziet nu ook plekken die nog niet door Ravot gecontroleerd zijn.
-    <a href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, filter=filter_type, cat=cat, q=zoek) }}">Toon enkel goedgekeurde →</a>
-  {% else %}✓ Je ziet enkel door Ravot goedgekeurde plekken.
-    <a href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, filter=filter_type, cat=cat, q=zoek, alles_tonen='1') }}">Toon ook niet-gecontroleerde →</a>
-  {% endif %}
-</p>
-{% endif %}
-
-{% if rows %}
-  <div class="kaarten-raster">
-  {% for r in rows %}{% set e = r.event %}
-    {% include "public/_kaart.html" %}
-  {% endfor %}
-  </div>
-
-  {% if max_pagina > 1 %}
-  <nav class="paginering" aria-label="Pagina's">
-    {% if pagina > 1 %}
-      <a class="btn btn-stil btn-klein" href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, filter=filter_type, q=zoek, p=pagina-1) }}">← Vorige</a>
-    {% endif %}
-    <span class="pag-teller">{{ pagina }} / {{ max_pagina }}</span>
-    {% if pagina < max_pagina %}
-      <a class="btn btn-klein" href="{{ url_for('public.ontdek', wanneer=wanneer, sort=sort, filter=filter_type, q=zoek, p=pagina+1) }}">Volgende →</a>
-    {% endif %}
-  </nav>
-  {% endif %}
-{% else %}
-  <div class="card leeg"><span class="groot-emoji">🔍</span>
-    <p>Niets gevonden. Probeer een andere zoekterm of <a href="{{ url_for('public.ontdek') }}">toon alles</a>.</p></div>
-{% endif %}
 {% endblock %}

@@ -141,10 +141,15 @@ def profiel():
     conns = Connection.query.filter(
         db.or_(Connection.family_a == fam.id, Connection.family_b == fam.id)).all()
 
+    daguitstappen_n = DagUitstap.query.filter_by(family_id=fam.id).count()
+    feestjes_open = Feestje.query.filter_by(family_id=fam.id, status="open").count()
+
     return render_template("account/mijn_ravot.html", family=fam,
                            bewaard_komend=bewaard_komend, bewaard_voorbij=bewaard_voorbij,
                            te_reviewen=te_reviewen, mijn_reviews=mijn_reviews,
                            aantal_vrienden=len(conns),
+                           daguitstappen_n=daguitstappen_n,
+                           feestjes_open=feestjes_open,
                            title="Mijn Ravot", active="profiel")
 
 

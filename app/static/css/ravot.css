@@ -681,3 +681,64 @@ section h2 { font-size: 1.25rem; margin: 22px 0 8px; }
 
 /* ---- Nakijk-banner (overstap naar geboortejaren) ---- */
 .nakijk-banner { border: 2px solid var(--zon, #F4B233); background: #fffaf0; }
+
+/* ---- Ontdek: filters in zijbalk (pc) / uitschuifpaneel (mobiel) ---- */
+.ontdek-kop { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.filters-schakel { display: none; }
+.ontdek-layout { display: grid; grid-template-columns: 230px 1fr; gap: 20px;
+  align-items: start; }
+.ontdek-zij { position: sticky; top: 12px; background: var(--wit, #fff);
+  border: 1px solid var(--lijn, #eee); border-radius: 16px; padding: 14px; }
+.zij-kop { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.zij-kop strong { flex: 1; }
+.zij-wis { font-size: 0.8rem; }
+.zij-sluit { display: none; cursor: pointer; font-size: 1.1rem; padding: 4px 8px; }
+.zij-groep { padding: 10px 0; border-top: 1px solid #f0ede6;
+  display: flex; flex-wrap: wrap; gap: 6px; }
+.zij-titel { display: block; width: 100%; font-size: 0.75rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.04em; color: #77836f;
+  margin-bottom: 2px; }
+.zij-groep select { width: 100%; padding: 8px 10px; border-radius: 10px;
+  border: 1px solid var(--lijn, #ddd); background: #fff; }
+.zij-toon { display: none; }
+.filterknop { display: none; align-items: center; gap: 6px; cursor: pointer; }
+.filter-teller { background: var(--oranje, #EE8035); color: #fff;
+  border-radius: 999px; min-width: 20px; height: 20px; display: inline-flex;
+  align-items: center; justify-content: center; font-size: 0.75rem;
+  font-weight: 800; padding: 0 5px; }
+
+@media (max-width: 860px) {
+  .ontdek-layout { grid-template-columns: 1fr; }
+  .filterknop { display: inline-flex; }
+  /* Paneel: standaard verborgen, via de schakel-checkbox als overlay erbij */
+  .ontdek-zij { display: none; }
+  .filters-schakel:checked ~ .ontdek-layout .ontdek-zij {
+    display: block; position: fixed; inset: auto 0 0 0; top: 8vh; z-index: 60;
+    border-radius: 20px 20px 0 0; overflow-y: auto; max-height: 92vh;
+    box-shadow: 0 -8px 40px rgba(0,0,0,0.25); }
+  .filters-schakel:checked ~ .ontdek-layout::before {
+    content: ""; position: fixed; inset: 0; background: rgba(0,0,0,0.35);
+    z-index: 50; }
+  .zij-sluit { display: block; }
+  .zij-toon { display: block; text-align: center; margin-top: 10px;
+    position: sticky; bottom: 0; }
+}
+
+/* ---- Weergave-schakelaar Lijst/Kaart + kaartbalkje ---- */
+.weergave-switch { display: inline-flex; border: 1.5px solid var(--gras, #4CA362);
+  border-radius: 999px; overflow: hidden; margin-right: 4px; }
+.weergave-switch a { padding: 6px 14px; text-decoration: none; font-size: 0.85rem;
+  font-weight: 700; color: var(--gras, #4CA362); background: #fff; }
+.weergave-switch a.aan { background: var(--gras, #4CA362); color: #fff; }
+.kaart-balkje { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 6px; }
+.ontdek-main #map { border-radius: 16px; }
+
+/* ---- Dashboard-secties (uitstappen / feestje / gezin) ---- */
+.dash-sectie { margin: 14px 0 18px; }
+.dash-sectie-kop { display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.dash-sectie-kop h2 { margin: 0; }
+.dash-feest { background: #fff5fa; border: 1.5px solid #f3cfe0;
+  border-radius: 16px; padding: 12px 14px; }
+.dash-feest .card { margin: 0; }

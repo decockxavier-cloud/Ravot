@@ -1,0 +1,33 @@
+{# Gedeelde kop voor Ontdek (lijst) en Verkennen (kaart): zoekbalk,
+   weergave-schakelaar, wanneer-chips en de mobiele filterknop.
+   Verwacht: zoek_endpoint, weergave ('lijst'|'kaart'), wissel_lijst,
+   wissel_kaart, flink, wanneer, filter_type, cat, soort, ouder_filters,
+   zoek, aantal_actief, (optioneel) sort. #}
+<div class="ontdek-kop">
+  <form method="get" action="{{ url_for(zoek_endpoint) }}" class="zoekrij">
+    <input type="search" name="q" value="{{ zoek }}" class="zoekveld"
+           data-plaatsen data-zelf="gemeente"
+           placeholder="🔍 Zoek op naam of gemeente…" aria-label="Zoek">
+    {% if sort is defined and sort and sort != 'datum' %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
+    <input type="hidden" name="wanneer" value="{{ wanneer }}">
+    {% if filter_type %}<input type="hidden" name="filter" value="{{ filter_type }}">{% endif %}
+    {% if cat %}<input type="hidden" name="cat" value="{{ cat }}">{% endif %}
+    {% for o in ouder_filters %}<input type="hidden" name="ouder" value="{{ o }}">{% endfor %}
+    {% if soort %}<input type="hidden" name="soort" value="{{ soort }}">{% endif %}
+    <button class="btn btn-klein" type="submit">Zoek</button>
+  </form>
+  <div class="filterbalk" role="group" aria-label="Weergave en periode">
+    <span class="weergave-switch" role="group" aria-label="Weergave">
+      <a class="{{ 'aan' if weergave == 'lijst' }}" href="{{ wissel_lijst }}">📃 Lijst</a>
+      <a class="{{ 'aan' if weergave == 'kaart' }}" href="{{ wissel_kaart }}">🗺️ Kaart</a>
+    </span>
+    <a class="filterchip {{ 'aan' if wanneer=='vandaag' }}" href="{{ flink(wanneer='vandaag') }}">Vandaag</a>
+    <a class="filterchip {{ 'aan' if wanneer=='deze-week' }}" href="{{ flink(wanneer='deze-week') }}">Deze week</a>
+    <a class="filterchip {{ 'aan' if wanneer=='weekend' }}" href="{{ flink(wanneer='weekend') }}">Weekend</a>
+    <a class="filterchip {{ 'aan' if wanneer not in ('vandaag','deze-week','weekend') }}" href="{{ flink(wanneer='alle') }}">📆 Alle data</a>
+    <label for="filters-open" class="filterknop btn btn-stil btn-klein">
+      ⚙️ Filters{% if aantal_actief %} <span class="filter-teller">{{ aantal_actief }}</span>{% endif %}
+    </label>
+  </div>
+</div>
+<input type="checkbox" id="filters-open" class="filters-schakel">

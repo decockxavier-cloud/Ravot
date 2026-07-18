@@ -462,3 +462,93 @@ def test_413_geeft_vriendelijke_melding(client, seed, app):
                           "foto": (io.BytesIO(b"x" * 5000), "groot.jpg")},
                     content_type="multipart/form-data", follow_redirects=False)
     assert r.status_code == 302               # nette redirect, geen kale 413
+
+
+# ------------------------------------------ ontdek-zijbalk, kaart & feestjes --
+
+def test_ontdek_zijbalk_en_filterteller(client, seed):
+    ev = seed["events"][0]
+    ev.omheind = True
+    db.session.commit()
+    html = client.get("/ontdek?wanneer=alle&ouder=omheind&filter=gratis") \
+        .get_data(as_text=True)
+    assert "ontdek-zij" in html          # zijbalk aanwezig
+    assert "filter-teller" in html       # actieve-filters-badge
+    assert "wis alles (2)" in html       # gratis + omheind = 2 actief
+
+
+def test_kaart_toont_horeca(client, seed):
+    resto = _maak_feestpartner()         # subtype horeca met coördinaten
+    html = client.get("/verkennen").get_data(as_text=True)
+    assert "Feestzaak Vosje" in html
+
+
+def test_publieke_feestjespagina(client, seed):
+    html = client.get("/feestjes").get_data(as_text=True)
+    assert "Verjaardagsfeestje" in html and "offerte" in html
+    # uitgelogd: CTA loopt via login met next naar de wizard
+    assert "next=/mijn/feestje/nieuw" in html
+
+
+def test_login_next_landt_in_wizard(client, seed):
+    from app.services import magic
+    fam = seed["fam_a"]
+    # 1. bezoek login met next
+    client.get("/login?next=/mijn/feestje/nieuw")
+    # 2. code aanvragen + verifiëren
+    with client.application.app_context():
+        code = magic.issue_code(fam.email)
+    r = client.post("/code", data={"email": fam.email, "code": code},
+                    follow_redirects=False)
+    assert r.status_code == 302
+    assert r.headers["Location"].endswith("/mijn/feestje/nieuw")
+
+
+def test_login_next_weigert_externe_url(client, seed):
+    from app.services import magic
+    fam = seed["fam_b"]
+    client.get("/login?next=https://kwaadaardig.be/phish")
+    with client.application.app_context():
+        code = magic.issue_code(fam.email)
+    r = client.post("/code", data={"email": fam.email, "code": code},
+                    follow_redirects=False)
+    assert "kwaadaardig" not in (r.headers.get("Location") or "")
+
+
+# ------------------------------------- lijst = kaart (zelfde filters) & dash --
+
+def test_kaart_heeft_zelfde_filters_als_lijst(client, seed):
+    """Ouder- en soortfilters werken nu ook op de kaart."""
+    ev = seed["events"][0]
+    ev.omheind = True
+    db.session.commit()
+    # zonder filter: beide events op de kaart
+    html = client.get("/verkennen?wanneer=alle").get_data(as_text=True)
+    assert "Kinderboerderij" in html and "Tienerlab" in html
+    # met ouder-filter: enkel de omheinde plek
+    html = client.get("/verkennen?wanneer=alle&ouder=omheind").get_data(as_text=True)
+    assert "Kinderboerderij" in html and "Tienerlab" not in html
+
+
+def test_weergave_switch_bewaart_filters(client, seed):
+    html = client.get("/ontdek?wanneer=alle&filter=gratis&ouder=omheind") \
+        .get_data(as_text=True)
+    assert "weergave-switch" in html
+    # de kaart-link neemt filter én ouder mee
+    assert "/verkennen?" in html
+    import re
+    kaartlink = re.search(r'href="(/verkennen\?[^"]*)"', html).group(1)
+    assert "filter=gratis" in kaartlink and "ouder=omheind" in kaartlink
+    # en omgekeerd: kaart → lijst
+    html = client.get("/verkennen?wanneer=alle&filter=gratis").get_data(as_text=True)
+    lijstlink = re.search(r'href="(/ontdek\?[^"]*)"', html).group(1)
+    assert "filter=gratis" in lijstlink
+
+
+def test_dashboard_secties(client, seed):
+    login_as(client, seed["fam_a"])
+    html = client.get("/mijn/profiel").get_data(as_text=True)
+    assert "Jullie uitstappen" in html
+    assert "Verjaardagsfeestje" in html
+    assert "Jullie gezin" in html
+    assert "Plan een feestje" in html          # nog geen feestje open

@@ -17,6 +17,11 @@ EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 @bp.route("/login", methods=["GET", "POST"])
 @limiter.limit("20/hour", methods=["POST"])
 def login():
+    # Veilige "kom terug"-bestemming (bv. vanaf de feestjespagina): enkel
+    # interne paden, nooit externe URL's.
+    volgende = request.args.get("next") or ""
+    if volgende.startswith("/") and not volgende.startswith("//"):
+        session["na_login"] = volgende
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
         if not EMAIL_RE.match(email):
@@ -62,6 +67,9 @@ def code_verify():
         session["pending_email"] = email
         return redirect(url_for("account.onboarding"))
     session["family_id"] = family.id
+    doel = session.pop("na_login", None)
+    if doel and doel.startswith("/") and not doel.startswith("//"):
+        return redirect(doel)
     return redirect(url_for("public.vandaag"))
 
 

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block body_class %}met-sfeer{% endblock %}
+{% block content %}
+<section class="hero hero-klein">
+  <h1>Een verjaardagsfeestje?<br><span class="accent">Geregeld.</span> 🎂</h1>
+  <p class="lead">Kies de datum, en Ravot doet de rest: passende feestpartners in
+  jouw buurt, en met één klik een offerteaanvraag in hun mailbox — het antwoord
+  komt rechtstreeks bij jou terecht.</p>
+  <div class="cta-rij">
+    {% if family %}
+    <a class="btn btn-zon btn-groot" href="{{ url_for('account.feestje_nieuw') }}">Start je feestje →</a>
+    {% else %}
+    <a class="btn btn-zon btn-groot" href="{{ url_for('auth.login', next=url_for('account.feestje_nieuw')) }}">Start je feestje →</a>
+    {% endif %}
+  </div>
+  <p class="mini">Gratis · vrijblijvend · jij kiest zélf naar wie de aanvraag vertrekt</p>
+</section>
+
+<section class="sectie">
+  <h2 class="sectie-titel">Zo werkt het</h2>
+  <div class="stappen">
+    <div class="stap"><span class="stap-nr">1</span>
+      <h3>Vertel over het feestje</h3>
+      <p>Datum, aantal kindjes en je buurt. Kies je een kind uit je profiel, dan
+      rekenen we zelf uit hoe oud de jarige wordt.</p></div>
+    <div class="stap"><span class="stap-nr">2</span>
+      <h3>Vink partners aan</h3>
+      <p>Kindvriendelijke horeca, zalen, springkastelen en animatie in de buurt.
+      Jij bepaalt wie jouw aanvraag krijgt.</p></div>
+    <div class="stap"><span class="stap-nr">3</span>
+      <h3>Ontvang offertes</h3>
+      <p>Partners antwoorden rechtstreeks in jouw mailbox. Volg alles op in
+      "Mijn feestjes" en vier zorgeloos.</p></div>
+  </div>
+</section>
+
+<section class="sectie">
+  <h2 class="sectie-titel">Waarvoor kan je hier terecht?</h2>
+  <div class="feature groen">
+    <div class="emoji">🍽️</div>
+    <div><h3>Eten &amp; drinken</h3>
+    <p>Kindvriendelijke restaurants en cafés met speelhoek — voor een feestje mét pannenkoeken.</p></div>
+  </div>
+  <div class="feature geel">
+    <div class="emoji">🏛️</div>
+    <div><h3>Zaalverhuur</h3>
+    <p>Een zaal voor je eigen feest, van parochiezaaltje tot feestlocatie.</p></div>
+  </div>
+  <div class="feature groen">
+    <div class="emoji">🏰</div>
+    <div><h3>Materiaalverhuur</h3>
+    <p>Springkastelen, tafels, geluid — alles wat een tuinfeest onvergetelijk maakt.</p></div>
+  </div>
+  <div class="feature geel">
+    <div class="emoji">🎪</div>
+    <div><h3>Activiteiten &amp; animatie</h3>
+    <p>Van clown tot knutselatelier tot een uitstap met de hele bende.</p></div>
+  </div>
+</section>
+
+<section class="slot-cta">
+  <h2>Klaar om te vieren?</h2>
+  <p>Log in of maak in één minuut een gratis gezinsprofiel — en plan het feestje meteen.</p>
+  {% if family %}
+  <a class="btn btn-groot" href="{{ url_for('account.feestje_nieuw') }}">Feestje plannen →</a>
+  {% else %}
+  <a class="btn btn-groot" href="{{ url_for('auth.login', next=url_for('account.feestje_nieuw')) }}">Feestje plannen →</a>
+  {% endif %}
+</section>
+
+<p style="text-align:center;color:#77836f;font-size:.82rem;margin:14px 16px">
+  Zaakvoerder van een feestlocatie of verhuurbedrijf?
+  <a href="{{ url_for('uitbater.login') }}">Word feestpartner →</a>
+</p>
+{% endblock %}

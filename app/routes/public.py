@@ -667,7 +667,30 @@ def ontdek():
     weer_scope = wanneer if wanneer in ("vandaag", "deze-week", "weekend") else "vandaag"
     weer = weerbericht(weer_scope, fam, centrum=centrum,
                        plaats=zoek.title() if centrum else None)
-    return render_template("public/ontdek.html", rows=pagina_rows, sort=sort, zoek=zoek, wanneer=wanneer, cat=cat, verberg_sp=verberg_sp, toon_alles=toon_alles, curatie_aan=_gb("enkel_gecureerd"), ouder_filters=ouder_filters, weer=weer, soort=soort, soorten=TYPES,
+
+    def _ontdek_url(_endpoint="public.ontdek", **wijzig):
+        """Bouw een filter-URL: huidige selectie + één wijziging. Houdt alle
+        andere filters vast (dat ging voorheen soms verloren) en reset de
+        paginering bij elke filterwissel. Met _endpoint wisselt dezelfde
+        selectie naadloos tussen lijst (ontdek) en kaart (verkennen)."""
+        params = {"wanneer": wanneer, "sort": sort, "filter": filter_type,
+                  "cat": cat, "q": zoek, "soort": soort,
+                  "ouder": sorted(ouder_filters)}
+        params.update(wijzig)
+        params = {k: v for k, v in params.items() if v}
+        if params.get("sort") == "datum":
+            params.pop("sort")           # default niet in de URL
+        if params.get("wanneer") == "deze-week":
+            params.pop("wanneer")
+        return url_for(_endpoint, **params)
+
+    aantal_actief = ((1 if filter_type else 0) + (1 if cat else 0)
+                     + (1 if soort else 0) + len(ouder_filters)
+                     + (1 if sort == "score" else 0))
+    return render_template("public/ontdek.html", rows=pagina_rows, sort=sort, zoek=zoek, wanneer=wanneer, cat=cat, verberg_sp=verberg_sp, toon_alles=toon_alles, curatie_aan=_gb("enkel_gecureerd"), ouder_filters=ouder_filters, weer=weer, soort=soort, soorten=TYPES, flink=_ontdek_url, aantal_actief=aantal_actief,
+                           wissel_lijst=_ontdek_url(), wissel_kaart=_ontdek_url("public.verkennen"),
+                           wis_url=url_for("public.ontdek", wanneer=wanneer, q=zoek),
+                           zoek_endpoint="public.ontdek", weergave="lijst", toon_sorteer=True, kaart=False,
                            filter_type=filter_type, pagina=pagina, max_pagina=max_pagina,
                            totaal=totaal, has_profile=has_profile, family=fam,
                            active="ontdek", title="Ontdek alles")
@@ -703,15 +726,31 @@ def verkennen():
         gedateerd_q = gedateerd_q.filter(
             Event.start <= w_end, (Event.end >= w_start) | (Event.start >= w_start))
     gedateerd = gedateerd_q.order_by(Event.start).limit(500).all()
-    permanent = Event.query.filter(
-        Event.lat.isnot(None), Event.is_permanent.is_(True), Event.hidden.is_(False), Event.pending.is_(False)
-    ).order_by(Event.title).limit(500).all()
-    evs = gedateerd + permanent
+    # Permanente plekken: beste fiches eerst (niet alfabetisch — dan vielen
+    # nieuwe types zoals horeca buiten de limiet). Horeca krijgt een eigen
+    # gegarandeerd deel, zodat kindvriendelijke restaurants altijd op de
+    # kaart staan, hoeveel speeltuinen er ook zijn.
+    perm_basis = Event.query.filter(
+        Event.lat.isnot(None), Event.is_permanent.is_(True),
+        Event.hidden.is_(False), Event.pending.is_(False))
+    horeca = perm_basis.filter(Event.subtype == "horeca") \
+        .order_by(Event.quality.desc().nullslast()).limit(300).all()
+    permanent = perm_basis.filter(db.or_(Event.subtype != "horeca",
+                                         Event.subtype.is_(None))) \
+        .order_by(Event.quality.desc().nullslast(), Event.title).limit(500).all()
+    evs = gedateerd + permanent + horeca
 
-    # Filter op type, categorie, speeltuinen en (indien gezocht) op buurt
+    # Filter op type, categorie, speeltuinen en (indien gezocht) op buurt —
+    # zelfde filterset als Ontdek: lijst en kaart zijn twee weergaven van
+    # dezelfde vraag, dus je kan overal evenveel.
     cat = request.args.get("cat", "")
     verberg_sp = request.args.get("sp") == "0"   # gewone speeltuinen weg
-    from ..types import verborgen_type_codes, type_code
+    from ..types import verborgen_type_codes, type_code, TYPES
+    soort = request.args.get("soort") or ""
+    if soort not in TYPES:
+        soort = ""
+    ouder_filters = {f for f in request.args.getlist("ouder")
+                     if f in ("omheind", "verzorgingstafel", "buggy_ok")}
     from ..models import get_bool
     _verborgen = verborgen_type_codes()
     _enkel_gecureerd = get_bool("enkel_gecureerd") and request.args.get("alles_tonen") != "1"
@@ -726,6 +765,11 @@ def verkennen():
             return False
         if cat and cat not in (e.categories or []):
             return False
+        if soort and type_code(e) != soort:
+            return False
+        for veld in ouder_filters:
+            if getattr(e, veld, None) is not True:
+                return False
         if verberg_sp and e.subtype == "playground":
             return False
         if _verborgen and type_code(e) in _verborgen:
@@ -737,10 +781,31 @@ def verkennen():
         evs = [e for e in evs if haversine_km(centrum[0], centrum[1], e.lat, e.lng) <= 30]
 
     markers = [_kaart_marker(e) for e in evs]
+
+    def _kaart_url(_endpoint="public.verkennen", **wijzig):
+        params = {"wanneer": wanneer, "filter": filter_type, "cat": cat,
+                  "q": zoek, "soort": soort, "ouder": sorted(ouder_filters),
+                  "sp": "0" if verberg_sp else None}
+        params.update(wijzig)
+        params = {k: v for k, v in params.items() if v}
+        if params.get("wanneer") == "deze-week":
+            params.pop("wanneer")
+        return url_for(_endpoint, **params)
+
+    aantal_actief = ((1 if filter_type else 0) + (1 if cat else 0)
+                     + (1 if soort else 0) + len(ouder_filters)
+                     + (1 if verberg_sp else 0))
     return render_template("public/verkennen.html", markers=markers, center=center,
                            zoom=zoom, zoek=zoek, gezocht=bool(centrum),
                            filter_type=filter_type, cat=cat, verberg_sp=verberg_sp,
-                           wanneer=wanneer, aantal=len(markers),
+                           wanneer=wanneer, aantal=len(markers), totaal=len(markers),
+                           soort=soort, soorten=TYPES, ouder_filters=ouder_filters,
+                           flink=_kaart_url, aantal_actief=aantal_actief,
+                           wissel_lijst=_kaart_url("public.ontdek"),
+                           wissel_kaart=_kaart_url(),
+                           wis_url=url_for("public.verkennen", wanneer=wanneer, q=zoek),
+                           zoek_endpoint="public.verkennen", weergave="kaart",
+                           toon_sorteer=False, kaart=True, sort=None,
                            family=fam, active="verkennen", title="Verkennen")
 
 
@@ -813,6 +878,15 @@ def event(slug):
                                        (ev.title, f"/e/{ev.slug}")])],
         active=None, title=ev.title,
     )
+
+
+@bp.route("/feestjes")
+def feestjes_info():
+    """Publieke uitlegpagina: het feestje als tweede toegangspoort tot Ravot,
+    ook zonder login. De CTA stuurt na het inloggen rechtstreeks de wizard in."""
+    _, fam = build_profile()
+    return render_template("public/feestjes.html", family=fam,
+                           title="Verjaardagsfeestje plannen", active=None)
 
 
 @bp.route("/d/<token>")

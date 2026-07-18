@@ -5,22 +5,53 @@
 <p class="hint">Dag {{ family.display_name or "ravotters" }}! Hier vind je alles terug.</p>
 {% include "account/_nakijk.html" ignore missing %}
 
-<div class="dash-snel">
-  <a class="dash-tegel" href="{{ url_for('account.ravotpas') }}"><span class="dash-emoji">🦊</span>
-    <span>Ravotpas</span></a>
-  <a class="dash-tegel" href="{{ url_for('account.daguitstappen') }}"><span class="dash-emoji">🧺</span>
-    <span>daguitstappen</span></a>
-  <a class="dash-tegel" href="{{ url_for('account.feestjes') }}"><span class="dash-emoji">🎂</span>
-    <span>feestjes</span></a>
-  <a class="dash-tegel" href="#bewaard"><span class="dash-emoji">❤️</span>
-    <span class="dash-cijfer">{{ bewaard_komend|length }}</span><span>bewaard</span></a>
-  <a class="dash-tegel" href="#reviewen"><span class="dash-emoji">😄</span>
-    <span class="dash-cijfer">{{ te_reviewen|length }}</span><span>te scoren</span></a>
-  <a class="dash-tegel" href="{{ url_for('account.friends') }}"><span class="dash-emoji">👨‍👩‍👧</span>
-    <span class="dash-cijfer">{{ aantal_vrienden }}</span><span>vrienden</span></a>
-  <a class="dash-tegel" href="{{ url_for('account.instellingen') }}"><span class="dash-emoji">⚙️</span>
-    <span>instellingen</span></a>
-</div>
+{# Dashboard in twee duidelijke werelden: uitstappen en feestjes,
+   met daaronder het gezin zelf. #}
+<section class="dash-sectie">
+  <div class="dash-sectie-kop">
+    <h2>🎡 Jullie uitstappen</h2>
+    <a class="btn btn-zon btn-klein" href="{{ url_for('public.vandaag') }}">Wat doen we vandaag? →</a>
+  </div>
+  <div class="dash-snel">
+    <a class="dash-tegel" href="#bewaard"><span class="dash-emoji">❤️</span>
+      <span class="dash-cijfer">{{ bewaard_komend|length }}</span><span>bewaard</span></a>
+    <a class="dash-tegel" href="#reviewen"><span class="dash-emoji">😄</span>
+      <span class="dash-cijfer">{{ te_reviewen|length }}</span><span>te scoren</span></a>
+    <a class="dash-tegel" href="{{ url_for('account.daguitstappen') }}"><span class="dash-emoji">🧺</span>
+      <span class="dash-cijfer">{{ daguitstappen_n }}</span><span>daguitstappen</span></a>
+    <a class="dash-tegel" href="{{ url_for('account.ravotpas') }}"><span class="dash-emoji">🦊</span>
+      <span>Ravotpas</span></a>
+  </div>
+</section>
+
+<section class="dash-sectie dash-feest">
+  <div class="dash-sectie-kop">
+    <h2>🎂 Verjaardagsfeestje</h2>
+  </div>
+  {% if feestjes_open %}
+  <div class="card mini-card">
+    <div><strong>{{ feestjes_open }} feestje{{ 's' if feestjes_open != 1 }} in voorbereiding</strong><br>
+      <span class="meta">Volg de offertes op en vink af wat geregeld is.</span></div>
+    <a class="btn btn-zon btn-klein" href="{{ url_for('account.feestjes') }}">Mijn feestjes →</a>
+  </div>
+  {% else %}
+  <div class="card mini-card">
+    <div><strong>Een verjaardag op komst?</strong><br>
+      <span class="meta">Kies de datum en vraag met één klik offertes aan bij feestpartners in de buurt.</span></div>
+    <a class="btn btn-zon btn-klein" href="{{ url_for('account.feestje_nieuw') }}">Plan een feestje →</a>
+  </div>
+  {% endif %}
+</section>
+
+<section class="dash-sectie">
+  <div class="dash-sectie-kop"><h2>👨‍👩‍👧 Jullie gezin</h2></div>
+  <div class="dash-snel">
+    <a class="dash-tegel" href="{{ url_for('account.friends') }}"><span class="dash-emoji">🤝</span>
+      <span class="dash-cijfer">{{ aantal_vrienden }}</span><span>vrienden</span></a>
+    <a class="dash-tegel" href="{{ url_for('account.instellingen') }}"><span class="dash-emoji">⚙️</span>
+      <span>instellingen</span></a>
+  </div>
+</section>
 
 {% if te_reviewen %}
 <section id="reviewen">

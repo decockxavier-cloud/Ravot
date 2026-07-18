@@ -1,0 +1,63 @@
+{# Gedeelde filterzijbalk (pc: links, mobiel: uitschuifpaneel).
+   Verwacht dezelfde variabelen als _filters_kop, plus: totaal, wis_url,
+   toon_sorteer (bool), kaart (bool, voegt kaart-opties toe met verberg_sp). #}
+<aside class="ontdek-zij" aria-label="Filters">
+  <div class="zij-kop">
+    <strong>Filters</strong>
+    {% if aantal_actief %}<a class="zij-wis" href="{{ wis_url }}">wis alles ({{ aantal_actief }})</a>{% endif %}
+    <label for="filters-open" class="zij-sluit" aria-label="Sluit filters">✕</label>
+  </div>
+
+  <div class="zij-groep">
+    <span class="zij-titel">Prijs &amp; plaats</span>
+    <a class="filterchip {{ 'aan' if not filter_type }}" href="{{ flink(filter='') }}">Alles</a>
+    <a class="filterchip {{ 'aan' if filter_type=='gratis' }}" href="{{ flink(filter='gratis') }}">🆓 Gratis</a>
+    <a class="filterchip {{ 'aan' if filter_type=='binnen' }}" href="{{ flink(filter='binnen') }}">🏠 Binnen</a>
+    <a class="filterchip {{ 'aan' if filter_type=='buiten' }}" href="{{ flink(filter='buiten') }}">🌳 Buiten</a>
+  </div>
+
+  <div class="zij-groep">
+    <span class="zij-titel">Interesse</span>
+    {% set cats = [('natuur','🌿 Natuur'),('cultuur','🎭 Cultuur'),('creatief','🎨 Creatief'),('sport','⚽ Sport'),('leren','🔬 Ontdekken')] %}
+    {% for code,label in cats %}
+    <a class="filterchip {{ 'aan' if cat==code }}" href="{{ flink(cat='' if cat==code else code) }}">{{ label }}</a>
+    {% endfor %}
+  </div>
+
+  <div class="zij-groep">
+    <span class="zij-titel">Soort plek</span>
+    <select onchange="location.href=this.value" aria-label="Soort plek">
+      <option value="{{ flink(soort='') }}">alle soorten</option>
+      {% for code, t in soorten.items() if t[2] %}
+      <option value="{{ flink(soort=code) }}" {{ 'selected' if soort == code }}>{{ t[0] }} {{ t[1] }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="zij-groep">
+    <span class="zij-titel">Praktisch</span>
+    {% set ouder_opts = [('omheind','🚧 Omheind terrein'),('verzorgingstafel','🍼 Verschoontafel'),('buggy_ok','👶 Vlot met buggy')] %}
+    {% for code, label in ouder_opts %}
+      {% set nieuw = ouder_filters | reject('equalto', code) | list if code in ouder_filters else (ouder_filters | list) + [code] %}
+      <a class="filterchip {{ 'aan' if code in ouder_filters }}" href="{{ flink(ouder=nieuw) }}">{{ label }}</a>
+    {% endfor %}
+  </div>
+
+  {% if toon_sorteer %}
+  <div class="zij-groep">
+    <span class="zij-titel">Sorteer op</span>
+    <a class="filterchip {{ 'aan' if sort!='score' }}" href="{{ flink(sort='datum') }}">📅 Eerst gepland</a>
+    <a class="filterchip {{ 'aan' if sort=='score' }}" href="{{ flink(sort='score') }}">😄 Best gescoord</a>
+  </div>
+  {% endif %}
+
+  {% if kaart %}
+  <div class="zij-groep">
+    <span class="zij-titel">Kaart</span>
+    <a class="filterchip {{ 'aan' if verberg_sp }}" href="{{ flink(sp=None if verberg_sp else '0') }}"
+       title="Verberg de vele gewone speeltuinen">🙈 Speeltuinen {{ 'tonen' if verberg_sp else 'verbergen' }}</a>
+  </div>
+  {% endif %}
+
+  <label for="filters-open" class="btn btn-zon zij-toon">Toon {{ totaal }} {{ 'op de kaart' if kaart else 'activiteiten' }}</label>
+</aside>
