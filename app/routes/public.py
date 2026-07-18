@@ -29,6 +29,13 @@ from .. import seo
 bp = Blueprint("public", __name__)
 
 
+LEEFTIJDEN = [("0-3", "👶 0–3 jaar", 0, 3), ("4-6", "🧒 4–6 jaar", 4, 6),
+             ("7-9", "🧑 7–9 jaar", 7, 9), ("10-12", "🎒 10–12 jaar", 10, 12),
+             ("13-17", "🎧 tiener", 13, 17)]
+
+
+
+
 def _factor(key, fallback):
     try:
         return float(get_setting(key))
@@ -622,6 +629,13 @@ def ontdek():
     soort = request.args.get("soort") or ""
     if soort in TYPES:
         q = q.filter(Event.subtype == soort)
+    # Leeftijd: toon wat (ook) geschikt is voor die leeftijdsband.
+    lft = request.args.get("lft") or ""
+    band = next((b for b in LEEFTIJDEN if b[0] == lft), None)
+    if band:
+        q = q.filter(Event.age_min <= band[3], Event.age_max >= band[2])
+    else:
+        lft = ""
     if cat:
         # categories is JSON; matchen doen we tekstueel op de opgeslagen lijst
         q = q.filter(db.func.lower(db.cast(Event.categories, db.String)).like(f'%"{cat}"%'))
@@ -674,7 +688,7 @@ def ontdek():
         paginering bij elke filterwissel. Met _endpoint wisselt dezelfde
         selectie naadloos tussen lijst (ontdek) en kaart (verkennen)."""
         params = {"wanneer": wanneer, "sort": sort, "filter": filter_type,
-                  "cat": cat, "q": zoek, "soort": soort,
+                  "cat": cat, "q": zoek, "soort": soort, "lft": lft,
                   "ouder": sorted(ouder_filters)}
         params.update(wijzig)
         params = {k: v for k, v in params.items() if v}
@@ -686,8 +700,8 @@ def ontdek():
 
     aantal_actief = ((1 if filter_type else 0) + (1 if cat else 0)
                      + (1 if soort else 0) + len(ouder_filters)
-                     + (1 if sort == "score" else 0))
-    return render_template("public/ontdek.html", rows=pagina_rows, sort=sort, zoek=zoek, wanneer=wanneer, cat=cat, verberg_sp=verberg_sp, toon_alles=toon_alles, curatie_aan=_gb("enkel_gecureerd"), ouder_filters=ouder_filters, weer=weer, soort=soort, soorten=TYPES, flink=_ontdek_url, aantal_actief=aantal_actief,
+                     + (1 if lft else 0) + (1 if sort == "score" else 0))
+    return render_template("public/ontdek.html", lft=lft, leeftijden=LEEFTIJDEN, rows=pagina_rows, sort=sort, zoek=zoek, wanneer=wanneer, cat=cat, verberg_sp=verberg_sp, toon_alles=toon_alles, curatie_aan=_gb("enkel_gecureerd"), ouder_filters=ouder_filters, weer=weer, soort=soort, soorten=TYPES, flink=_ontdek_url, aantal_actief=aantal_actief,
                            wissel_lijst=_ontdek_url(), wissel_kaart=_ontdek_url("public.verkennen"),
                            wis_url=url_for("public.ontdek", wanneer=wanneer, q=zoek),
                            zoek_endpoint="public.ontdek", weergave="lijst", toon_sorteer=True, kaart=False,
@@ -751,6 +765,10 @@ def verkennen():
         soort = ""
     ouder_filters = {f for f in request.args.getlist("ouder")
                      if f in ("omheind", "verzorgingstafel", "buggy_ok")}
+    lft = request.args.get("lft") or ""
+    band = next((b for b in LEEFTIJDEN if b[0] == lft), None)
+    if not band:
+        lft = ""
     from ..models import get_bool
     _verborgen = verborgen_type_codes()
     _enkel_gecureerd = get_bool("enkel_gecureerd") and request.args.get("alles_tonen") != "1"
@@ -770,6 +788,9 @@ def verkennen():
         for veld in ouder_filters:
             if getattr(e, veld, None) is not True:
                 return False
+        if band and not (e.age_min is not None and e.age_min <= band[3]
+                         and e.age_max is not None and e.age_max >= band[2]):
+            return False
         if verberg_sp and e.subtype == "playground":
             return False
         if _verborgen and type_code(e) in _verborgen:
@@ -784,7 +805,8 @@ def verkennen():
 
     def _kaart_url(_endpoint="public.verkennen", **wijzig):
         params = {"wanneer": wanneer, "filter": filter_type, "cat": cat,
-                  "q": zoek, "soort": soort, "ouder": sorted(ouder_filters),
+                  "q": zoek, "soort": soort, "lft": lft,
+                  "ouder": sorted(ouder_filters),
                   "sp": "0" if verberg_sp else None}
         params.update(wijzig)
         params = {k: v for k, v in params.items() if v}
@@ -794,8 +816,8 @@ def verkennen():
 
     aantal_actief = ((1 if filter_type else 0) + (1 if cat else 0)
                      + (1 if soort else 0) + len(ouder_filters)
-                     + (1 if verberg_sp else 0))
-    return render_template("public/verkennen.html", markers=markers, center=center,
+                     + (1 if lft else 0) + (1 if verberg_sp else 0))
+    return render_template("public/verkennen.html", lft=lft, leeftijden=LEEFTIJDEN, markers=markers, center=center,
                            zoom=zoom, zoek=zoek, gezocht=bool(centrum),
                            filter_type=filter_type, cat=cat, verberg_sp=verberg_sp,
                            wanneer=wanneer, aantal=len(markers), totaal=len(markers),
@@ -878,6 +900,17 @@ def event(slug):
                                        (ev.title, f"/e/{ev.slug}")])],
         active=None, title=ev.title,
     )
+
+
+@bp.route("/ravotscore")
+def score_uitleg():
+    """Uitleg over de Ravotscore en de Ravotpas — publiek, want begrip is de
+    basis van vertrouwen (en van meedoen)."""
+    _, fam = build_profile()
+    from ..models import get_int
+    return render_template("public/score_uitleg.html", family=fam,
+                           geldig_maanden=get_int("punten_geldig_maanden", 6),
+                           title="Zo werken de Ravotscore & Ravotpas", active=None)
 
 
 @bp.route("/feestjes")

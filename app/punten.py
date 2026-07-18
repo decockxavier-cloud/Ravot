@@ -8,9 +8,11 @@ Ontwerp:
 - De stempelkaart is de verzameling bevestigde bezoeken ("geweest"), elk met
   het type-emoji van de plek — verzamelen zoals kaarten, maar dan écht buiten.
 """
+from datetime import datetime, timedelta, time as _time
+
 from .extensions import db
 from .models import (Event, Photo, PUNT_REDENEN, RavotPunt, Review,
-                     SavedEvent)
+                     SavedEvent, get_int)
 from .types import activiteit_type
 
 # Vosje-niveaus: (ondergrens punten, emoji, naam)
@@ -52,14 +54,79 @@ def ken_toe(family_id, reden, ref_id=None):
                                         ref_id=ref_id).first()
     if bestaat:
         return 0
+    # Anti-farming: plafonds per dag. Zonder er te veel woorden aan vuil te
+    # maken: boven het plafond gaan de acties gewoon door, maar zonder punten.
+    # Een echt gezin bezoekt 1-3 plekken per dag; een klikker honderd.
+    vandaag_start = datetime.combine(datetime.utcnow().date(), _time.min)
+    q_vandaag = RavotPunt.query.filter(RavotPunt.family_id == family_id,
+                                       RavotPunt.created_at >= vandaag_start)
+    dag_max = get_int("punten_dag_max", 60) or 60
+    if (q_vandaag.with_entities(db.func.coalesce(
+            db.func.sum(RavotPunt.punten), 0)).scalar() or 0) + punten > dag_max:
+        return 0
+    if reden == "geweest":
+        g_max = get_int("geweest_dag_max", 3) or 3
+        if q_vandaag.filter(RavotPunt.reden == "geweest").count() >= g_max:
+            return 0
     db.session.add(RavotPunt(family_id=family_id, reden=reden,
                              ref_id=ref_id, punten=punten))
     return punten
 
 
 def totaal(family_id):
+    """Alles wat ooit verdiend werd — bepaalt het niveau (zakt nooit)."""
     return int(db.session.query(db.func.coalesce(db.func.sum(RavotPunt.punten), 0))
                .filter(RavotPunt.family_id == family_id).scalar() or 0)
+
+
+def _uitgegeven(family_id):
+    from .models import Inwissel
+    return int(db.session.query(
+        db.func.coalesce(db.func.sum(Inwissel.punten), 0))
+        .filter(Inwissel.family_id == family_id,
+                Inwissel.status != "geannuleerd").scalar() or 0)
+
+
+def _verdiend_sinds(family_id, moment):
+    return int(db.session.query(
+        db.func.coalesce(db.func.sum(RavotPunt.punten), 0))
+        .filter(RavotPunt.family_id == family_id,
+                RavotPunt.created_at >= moment).scalar() or 0)
+
+
+def _cutoff():
+    """Punten ouder dan X maanden vervallen (0 = nooit)."""
+    maanden = get_int("punten_geldig_maanden", 6) or 0
+    if maanden <= 0:
+        return None
+    return datetime.utcnow() - timedelta(days=maanden * 30)
+
+
+def saldo(family_id):
+    """Te besteden punten. Regels: inwisselen verbruikt de óudste punten
+    eerst, en punten ouder dan de geldigheidstermijn vervallen. Daardoor is
+    het saldo nooit groter dan wat je recent verdiende: wie de trui wil, moet
+    blijven ravotten — het niveau en de badges vervallen nooit."""
+    basis = totaal(family_id) - _uitgegeven(family_id)
+    cutoff = _cutoff()
+    if cutoff is None:
+        return max(0, basis)
+    return max(0, min(basis, _verdiend_sinds(family_id, cutoff)))
+
+
+def vervalt_binnenkort(family_id, dagen=30):
+    """Hoeveel van het huidige saldo binnen `dagen` vervalt — voor de
+    vriendelijke waarschuwing ('wissel op tijd!')."""
+    cutoff = _cutoff()
+    if cutoff is None:
+        return 0
+    uitgegeven = _uitgegeven(family_id)
+    tot = totaal(family_id)
+    al_vervallen = max(0, (tot - _verdiend_sinds(family_id, cutoff)) - uitgegeven)
+    straks_grens = cutoff + timedelta(days=dagen)
+    straks_oud = tot - _verdiend_sinds(family_id, straks_grens)
+    binnenkort = max(0, straks_oud - uitgegeven) - al_vervallen
+    return max(0, min(binnenkort, saldo(family_id)))
 
 
 def niveau(punten):

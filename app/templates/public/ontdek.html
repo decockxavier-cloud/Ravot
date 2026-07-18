@@ -55,8 +55,15 @@
       {% endif %}
     {% else %}
       <div class="card leeg"><span class="groot-emoji">🔍</span>
+        {% if soort %}
+        <p>Nog geen <strong>{{ soorten[soort][1] | lower }}</strong> gevonden binnen deze
+        selectie. Ravot groeit elke nacht bij — probeer <a href="{{ flink(wanneer='alle') }}">alle data</a>,
+        of ken je zelf zo'n plek?</p>
+        <a class="btn btn-zon btn-klein" href="{{ url_for('account.toevoegen') }}">➕ Voeg ze toe</a>
+        {% else %}
         <p>Niets gevonden. Probeer een andere zoekterm of
-        <a href="{{ url_for('public.ontdek') }}">wis de filters</a>.</p></div>
+        <a href="{{ url_for('public.ontdek') }}">wis de filters</a>.</p>
+        {% endif %}</div>
     {% endif %}
   </div>
 </div>

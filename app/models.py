@@ -176,14 +176,18 @@ class SavedEvent(db.Model):
 REVIEW_TAGS = [
     "mooie natuur", "veel te doen", "top voor kleuters", "lekker eten",
     "dichtbij", "goed bij regen", "gratis parking", "verzorgingstafel",
-    "vlot met buggy", "leuk voor tieners", "omheind terrein",
+    "vlot met de wandelwagen", "leuk voor tieners", "afgesloten speelterrein",
 ]
+
+# Oude tag-bewoording -> nieuwe (migratie herschrijft bestaande reviews).
+OUDE_TAGS = {"vlot met buggy": "vlot met de wandelwagen",
+             "omheind terrein": "afgesloten speelterrein"}
 
 # Review-tags die (bij voldoende bevestigingen) een fiche-veld aanzetten,
 # zodat de community de ouder-filters vanzelf vult.
 TAG_NAAR_VELD = {"verzorgingstafel": "verzorgingstafel",
-                 "vlot met buggy": "buggy_ok",
-                 "omheind terrein": "omheind"}
+                 "vlot met de wandelwagen": "buggy_ok",
+                 "afgesloten speelterrein": "omheind"}
 COST_RANGES = ["0", "<20", "20-50", "50-100", ">100"]
 
 
@@ -329,6 +333,8 @@ SETTING_DEFS = {
                  "theme_park,zoo,aquarium,museum,viewpoint,attraction,castle,horeca",
                  "OSM: soorten plekken (komma-gescheiden; 'horeca' = enkel zaken met "
                  "kindvriendelijke voorzieningen)", "text"),
+    "osm_horeca_aan": ("1", "OSM: kindvriendelijke horeca mee importeren "
+                       "(enkel zaken met speelhoek/kinderstoel/verschoontafel)", "bool"),
     "osm_regios": ("vlaanderen",
                    "OSM: regio's (vlaanderen,brussel,wallonie,nederland,fr-nord)", "text"),
     "verrijk_backend": ("ollama", "AI-verrijking: backend (ollama | cloud)", "text"),
@@ -358,6 +364,14 @@ SETTING_DEFS = {
     "partner_score_bonus": ("1.10", "Commercieel mét Partner: rankingfactor (bv. 1.10)", "text"),
     "geen_partner_malus": ("0.90", "Commercieel zonder Partner: rankingfactor (bv. 0.90)", "text"),
     "foto_malus": ("0.92", "Fiches zonder foto: rankingfactor (bv. 0.92)", "text"),
+    # Beloningen (Ravotpas): promomateriaal en partner-goodies
+    "beloningen_aan": ("1", "Beloningenwinkel: punten inwisselen voor goodies", "bool"),
+    "punt_waarde_eur": ("0.05", "Richtwaarde van 1 ravotpunt in euro (prijs = euro x 20)", "text"),
+    "punten_geldig_maanden": ("6", "Punten vervallen na X maanden (0 = nooit; niveau en badges vervallen nooit)", "int"),
+    # Anti-misbruik (puntenfarming): plafonds per gezin per dag + wisseldrempel
+    "punten_dag_max": ("60", "Max. ravotpunten per gezin per dag (± 2 uitstappen)", "int"),
+    "geweest_dag_max": ("3", "Max. beloonde bezoeken ('geweest') per gezin per dag", "int"),
+    "wissel_min_dagen": ("7", "Inwisselen kan pas vanaf een account van X dagen oud", "int"),
     # Community-filters: vanaf hoeveel gezinnen met dezelfde tag zetten we het
     # bijhorende fiche-veld (verzorgingstafel, buggy, omheind) automatisch aan?
     "tag_drempel": ("2", "Ouder-filters: aantal reviews met tag vóór auto-aanzetten", "int"),
@@ -688,6 +702,64 @@ class RavotPunt(db.Model):
     created_at = db.Column(db.DateTime, default=utcnow, index=True)
     __table_args__ = (db.UniqueConstraint("family_id", "reden", "ref_id",
                                           name="uq_punt_family_reden_ref"),)
+
+
+class HorecaKandidaat(db.Model):
+    """Staging voor de Horeca-verkenner: kandidaten uit Overture Maps.
+    Nog géén fiches — de beheerder kiest wat Ravot-waardig is."""
+    __tablename__ = "horeca_kandidaten"
+    id = db.Column(db.Integer, primary_key=True)
+    ext_id = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    naam = db.Column(db.String(200), nullable=False)
+    categorie = db.Column(db.String(80))
+    adres = db.Column(db.String(200))
+    gemeente = db.Column(db.String(80), index=True)
+    postcode = db.Column(db.String(8))
+    lat = db.Column(db.Float, index=True)
+    lng = db.Column(db.Float, index=True)
+    website = db.Column(db.String(300))
+    zomerbar_hint = db.Column(db.Boolean, default=False)
+    confidence = db.Column(db.Float)
+    created_at = db.Column(db.DateTime, default=utcnow)
+
+
+class Beloning(db.Model):
+    """Catalogus van beloningen: Ravot-promomateriaal en partner-goodies.
+    Vuistregel voor een gerechtvaardigde ravotwaarde: punten = euro x 20
+    (1 punt = €0,05 — een actieve uitstap van ~30 punten is zo ~€1,50 waard)."""
+    __tablename__ = "beloningen"
+    id = db.Column(db.Integer, primary_key=True)
+    emoji = db.Column(db.String(8), default="🎁")
+    naam = db.Column(db.String(120), nullable=False)
+    beschrijving = db.Column(db.String(300))
+    soort = db.Column(db.String(10), default="ravot", nullable=False)  # ravot|partner
+    partner_event_id = db.Column(db.Integer, db.ForeignKey("events.id"))
+    punten = db.Column(db.Integer, nullable=False)
+    waarde_eur = db.Column(db.Float, nullable=False, default=0)
+    voorraad = db.Column(db.Integer)          # None = onbeperkt
+    actief = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=utcnow)
+    partner = db.relationship("Event")
+
+
+class Inwissel(db.Model):
+    """Eén inwisseling: gezin ruilt punten voor een beloning. De code toont
+    het gezin bij afhaling/verzending; de beheerder volgt de status op."""
+    __tablename__ = "inwisselingen"
+    id = db.Column(db.Integer, primary_key=True)
+    family_id = db.Column(db.Integer, db.ForeignKey("families.id"),
+                          nullable=False, index=True)
+    beloning_id = db.Column(db.Integer, db.ForeignKey("beloningen.id"),
+                            nullable=False)
+    punten = db.Column(db.Integer, nullable=False)   # prijs op moment van wissel
+    code = db.Column(db.String(16), unique=True, nullable=False)
+    status = db.Column(db.String(12), default="aangevraagd", nullable=False)
+    created_at = db.Column(db.DateTime, default=utcnow)
+    beloning = db.relationship("Beloning")
+
+
+INWISSEL_STATUSSEN = {"aangevraagd": "⏳ aangevraagd", "verzonden": "📦 onderweg",
+                      "opgehaald": "✅ ontvangen", "geannuleerd": "❌ geannuleerd"}
 
 
 class GeoCache(db.Model):

@@ -13,6 +13,23 @@ _ADRES = "Klaproosstraat 36, 8800 Roeselare"
 _BTW = "BE 0505.624.079"
 _MAIL = "info@complemy.com"
 
+
+# Beloningsvoorwaarden: één bron voor zowel de seed (nieuwe installaties) als
+# de migratie (bestaande, mogelijk bewerkte voorwaardenpagina's aanvullen).
+BELONING_VOORWAARDEN = f"""### Ravotpunten en beloningen
+
+Ravotpunten worden verdiend door acties op Ravot (bezoeken bevestigen, scores
+geven, foto's delen, ...). Ze hebben geen geldwaarde, zijn niet inwisselbaar
+voor geld en niet overdraagbaar. Punten blijven beperkt geldig (momenteel 6
+maanden na het verdienen; de oudste punten worden bij het inwisselen eerst
+gebruikt); niveaus en badges vervallen nooit. Beloningen zijn beschikbaar
+zolang de voorraad strekt en kunnen worden vervangen door een gelijkwaardig
+alternatief. Ravot ({_BEDRIJF}) kan het beloningsprogramma, de puntenwaarden en
+de catalogus te allen tijde aanpassen en kan punten of inwisselingen schrappen
+bij misbruik. Dit is een getrouwheidsprogramma, geen kansspel.
+
+"""
+
 CONTENT_SEED = {
     "privacy": {
         "titel": "Privacyverklaring",
@@ -151,7 +168,7 @@ het gebruik van de informatie op deze website, noch voor de activiteiten zelf di
 door derden worden georganiseerd. Je neemt zelf de beslissing om aan een
 activiteit deel te nemen.
 
-### Wijzigingen
+{BELONING_VOORWAARDEN}### Wijzigingen
 
 We kunnen deze voorwaarden en de dienst zelf van tijd tot tijd aanpassen. De
 meest recente versie vind je steeds op deze pagina.

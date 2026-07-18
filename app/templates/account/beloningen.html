@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block body_class %}met-sfeer{% endblock %}
+{% block content %}
+<a href="{{ url_for('account.ravotpas') }}" class="terug-link">← Onze Ravotpas</a>
+<h1>Beloningen 🎁</h1>
+
+<div class="card ravotpas-kop">
+  <p style="margin:0"><strong>Te besteden: {{ saldo }} ravotpunten</strong>
+  <span class="hint">(in totaal {{ totaal }} verdiend — inwisselen verlaagt je
+  saldo, maar je niveau en badges blijven voor altijd!)</span></p>
+  {% if vervalt %}
+  <p class="verval-melding">⏳ <strong>{{ vervalt }} punten vervallen binnen 30
+  dagen</strong> — wissel ze op tijd in!</p>
+  {% endif %}
+</div>
+
+<div class="beloning-raster">
+  {% for b in catalogus %}
+  <div class="card beloning-kaart {{ 'kan-niet' if saldo < b.punten or (b.voorraad is not none and b.voorraad <= 0) }}">
+    <span class="beloning-emoji">{{ b.emoji }}</span>
+    <strong>{{ b.naam }}</strong>
+    {% if b.beschrijving %}<span class="hint">{{ b.beschrijving }}</span>{% endif %}
+    {% if b.soort == 'partner' and b.partner %}
+    <span class="hint">🎁 aangeboden door <a href="{{ url_for('public.event', slug=b.partner.slug) }}">{{ b.partner.title }}</a></span>
+    {% endif %}
+    <div class="beloning-prijs">
+      <span class="badge badge-score">🦊 {{ b.punten }} punten</span>
+      <span class="hint">waarde €{{ "%.2f"|format(b.waarde_eur) | replace(".", ",") }}</span>
+    </div>
+    {% if b.voorraad is not none and b.voorraad <= 0 %}
+    <span class="badge">tijdelijk op</span>
+    {% elif saldo >= b.punten %}
+    <form method="post" action="{{ url_for('account.beloning_wissel', bid=b.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-zon btn-klein" type="submit">Wissel in</button>
+    </form>
+    {% else %}
+    <span class="hint">nog {{ b.punten - saldo }} punten te gaan</span>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+<p class="hint">Hoe verdien je punten? <a href="{{ url_for('public.score_uitleg') }}">Zo werkt het →</a></p>
+
+{% if mijn %}
+<h2>Jullie inwisselingen</h2>
+{% for i in mijn %}
+<div class="card mini-card">
+  <div>
+    <strong>{{ i.beloning.emoji }} {{ i.beloning.naam }}</strong><br>
+    <span class="meta">code <strong>{{ i.code }}</strong> ·
+      {{ i.created_at.strftime('%d/%m/%Y') }} · {{ statussen.get(i.status, i.status) }}</span>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}

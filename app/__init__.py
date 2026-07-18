@@ -276,6 +276,28 @@ def register_cli(app):
             db.session.execute(text(
                 "ALTER TABLE families ADD COLUMN active BOOLEAN DEFAULT TRUE NOT NULL"))
             added.append("families.active")
+        # Beloningscatalogus: eenmalige startvoorraad (punten = euro x 20).
+        from .models import Beloning
+        if Beloning.query.count() == 0:
+            for emoji, naam, beschr, eur, pt in (
+                ("🦊", "Stickervel het vosje", "Vel met 6 vosje-stickers", 1.5, 30),
+                ("🎈", "Ravot-ballonnen (5 stuks)", "Voor het volgende feestje", 2, 40),
+                ("☂️", "Ravot-paraplu", "Regenridders blijven droog", 8, 160),
+                ("👕", "Ravot-T-shirt (kindermaat)", "Oranje, met het vosje", 12, 240),
+                ("🧥", "Ravot-trui", "Voor de échte Vossenkoning", 25, 500),
+            ):
+                db.session.add(Beloning(emoji=emoji, naam=naam, beschrijving=beschr,
+                                        waarde_eur=eur, punten=pt, soort="ravot"))
+            added.append("beloningscatalogus (5 items)")
+        # Woordgebruik: oude review-tags herschrijven naar de nieuwe bewoording
+        # (wandelwagen i.p.v. buggy, afgesloten speelterrein i.p.v. omheind).
+        from .models import OUDE_TAGS, Review
+        for rv in Review.query.all():
+            tags = rv.tags or []
+            nieuw = [OUDE_TAGS.get(t, t) for t in tags]
+            if nieuw != tags:
+                rv.tags = nieuw
+                added.append(f"review #{rv.id}: tags vernieuwd")
         # Overstap naar geboortejaren: bestaande gezinnen krijgen FALSE en zien
         # één keer de vraag om hun gegevens na te kijken.
         if "gegevens_nagekeken" not in fam_cols:
@@ -314,7 +336,7 @@ def register_cli(app):
             added.append("photos (tabel)")
         for tabel in ("operators", "operator_claims", "edit_proposals", "partner_payments", "feeds",
                       "daguitstappen", "daguitstap_items", "feestjes",
-                      "feestje_aanvragen", "ravot_punten"):
+                      "feestje_aanvragen", "ravot_punten", "horeca_kandidaten", "beloningen", "inwisselingen"):
             if tabel not in insp.get_table_names():
                 added.append(f"{tabel} (tabel)")
         # nieuwe kolommen op bestaande operator/betaal-tabellen
@@ -344,6 +366,20 @@ def register_cli(app):
         n_content = seed_standaard_content()
         if n_content:
             added.append(f"{n_content} standaardteksten")
+        # Beloningsvoorwaarden: bestaande (mogelijk zelf bewerkte) voorwaarden-
+        # pagina's krijgen de ravotpunten-paragraaf erbij als die nog ontbreekt.
+        # We overschrijven bewust niets — enkel aanvullen, vóór "### Wijzigingen"
+        # als dat kopje bestaat, anders achteraan.
+        from .models import ContentPage
+        vw = ContentPage.query.filter_by(slug="voorwaarden").first()
+        if vw and vw.inhoud_md and "Ravotpunten en beloningen" not in vw.inhoud_md:
+            from .content_teksten import BELONING_VOORWAARDEN
+            if "### Wijzigingen" in vw.inhoud_md:
+                vw.inhoud_md = vw.inhoud_md.replace(
+                    "### Wijzigingen", BELONING_VOORWAARDEN + "\n### Wijzigingen", 1)
+            else:
+                vw.inhoud_md = vw.inhoud_md.rstrip() + "\n\n" + BELONING_VOORWAARDEN
+            added.append("voorwaarden: paragraaf ravotpunten & beloningen")
         # Eenmalige backfill: bestaande OSM-speeltuinen krijgen subtype='playground'
         # (de OSM-adapter zette is_free enkel voor speeltuinen -> betrouwbare proxy),
         # zodat de "verberg speeltuinen"-filter meteen werkt zonder re-sync.
@@ -372,6 +408,13 @@ def register_cli(app):
             click.echo(f"  {r['bron']}: {r['verwerkt']} verwerkt, "
                        f"{r['verworpen']} verworpen (niet kindvriendelijk){fout}")
         click.echo("Sync-all klaar.")
+
+    @app.cli.command("laad-overture")
+    def laad_overture_cmd():
+        """Download horeca-kandidaten uit Overture Maps (maandelijks/ad hoc).
+        Duurt 10-30 min; daarna zoekt de Horeca-verkenner lokaal en snel."""
+        from .services.sources import overture
+        overture.laad_horeca(log=print)
 
     @app.cli.command("sync-bron")
     @click.argument("naam")

@@ -2,7 +2,8 @@
 {% block body_class %}met-sfeer{% endblock %}
 {% block content %}
 <a href="{{ url_for('account.mijn_home') }}" class="terug-link">← Mijn Ravot</a>
-<h1>Onze Ravotpas 🦊</h1>
+<h1>Onze Ravotpas 🦊
+  <a class="score-info" href="{{ url_for('public.score_uitleg') }}" title="Hoe werkt dit?">ⓘ hoe werkt dit?</a></h1>
 
 <div class="card ravotpas-kop">
   <div class="ravotpas-niveau">
@@ -20,9 +21,12 @@
       {% endif %}
     </div>
   </div>
-  <p class="hint" style="margin-bottom:0">Verdien punten door plekken te bezoeken
-  (stempel!), Ravotscores te geven en foto's te delen. Samen met de kinderen
-  verzamelen maar!</p>
+  <p class="hint">Verdien punten door plekken te bezoeken (stempel!),
+  Ravotscores te geven en foto's te delen. Samen met de kinderen verzamelen maar!</p>
+  <div class="acties" style="margin-top:6px">
+    <a class="btn btn-zon btn-klein" href="{{ url_for('account.beloningen') }}">🎁 Wissel punten in ({{ saldo }} te besteden)</a>
+    {% if vervalt %}<span class="verval-melding">⏳ {{ vervalt }} punten vervallen binnen 30 dagen</span>{% endif %}
+  </div>
 </div>
 
 <h2>Stempelkaart 🐾 <span class="hint">({{ stempels | length }} plekken verzameld)</span></h2>

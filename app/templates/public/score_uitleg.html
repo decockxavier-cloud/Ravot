@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block body_class %}met-sfeer{% endblock %}
+{% block content %}
+<a href="{{ url_for('public.ontdek') }}" class="terug-link"
+   onclick="if (history.length > 1) { history.back(); return false; }">← Terug</a>
+<h1>Zo werken de Ravotscore &amp; de Ravotpas 🦊</h1>
+
+<div class="card">
+  <h2 style="margin-top:0">😄 De Ravotscore — van gezinnen, voor gezinnen</h2>
+  <p>Elke score op Ravot komt van een gezin dat er écht geweest is. Na een
+  bezoek geef je in één tik aan hoe leuk de kinderen het vonden:</p>
+  <p style="font-size:1.6rem;letter-spacing:6px">😖 🙁 😐 😄 🤩</p>
+  <p>Het gemiddelde daarvan is de Ravotscore op de fiche (bv. <span class="badge badge-score">😄 4.2 (17 gezinnen)</span>).
+  Hoe meer gezinnen scoren, hoe betrouwbaarder — bij heel weinig scores tonen
+  we bewust een voorzichtiger cijfer. Adverteren of betalen verandert
+  <strong>nooit</strong> iets aan de score zelf: die is en blijft van de
+  community.</p>
+  <p class="hint">Zaken met een ⭐ Partner-badge steunen Ravot financieel.
+  Dat geeft hen zichtbaarheid, maar hun score komt exact zoals bij iedereen
+  van gezinnen zoals het jouwe.</p>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">🦊 De Ravotpas — verzamelen met de kinderen</h2>
+  <p>Alles wat jullie op Ravot doen, levert <strong>ravotpunten</strong> op.
+  Elke actie telt één keer per plek, dus gewoon veel ravotten is de enige weg
+  omhoog:</p>
+  <table class="punten-tabel">
+    <tr><td>🐾 Bezoek bevestigen ("wij waren hier!")</td><td>+5</td></tr>
+    <tr><td>😄 Een Ravotscore geven</td><td>+10</td></tr>
+    <tr><td>📷 Een foto delen (na goedkeuring)</td><td>+15</td></tr>
+    <tr><td>🥇 De állereerste foto van een plek</td><td>+10 extra</td></tr>
+    <tr><td>🧺 Een daguitstap samenstellen</td><td>+5</td></tr>
+    <tr><td>🎂 Een feestje organiseren via Ravot</td><td>+10</td></tr>
+    <tr><td>📍 Zelf een nieuwe plek aanbrengen</td><td>+15</td></tr>
+  </table>
+  <p>Met punten klim je door vijf vosje-niveaus:</p>
+  <p><span class="badge">🐣 Welpje (0)</span> <span class="badge">🔍 Speurneus (50)</span>
+  <span class="badge">🦊 Ravotter (150)</span> <span class="badge">⭐ Supervos (300)</span>
+  <span class="badge">👑 Vossenkoning (600)</span></p>
+  <p>Daarnaast verzamel je op je <strong>stempelkaart</strong> elke bezochte
+  plek als stempel, en verdien je <strong>badges</strong> zoals
+  🛝 Speeltuinspeurder of 🌧️ Regenridder. Reken op zo'n 30 punten per actieve
+  uitstap — na een tiental uitstappen ben je een echte Ravotter!</p>
+  {% if family %}
+  <a class="btn btn-zon btn-klein" href="{{ url_for('account.ravotpas') }}">Bekijk jullie Ravotpas →</a>
+  {% else %}
+  <a class="btn btn-zon btn-klein" href="{{ url_for('auth.login') }}">Maak een gratis profiel en begin te verzamelen →</a>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">Veelgestelde vragen</h2>
+  <p><strong>Kan ik punten verliezen?</strong>
+  {% if geldig_maanden %}Punten blijven {{ geldig_maanden }} maanden geldig —
+  wissel ze dus op tijd in (de oudste worden altijd eerst gebruikt). Je
+  <strong>niveau en badges vervallen nooit</strong>: die staan op alles wat je
+  ooit verdiende.{% else %}Nee, punten vervallen niet.{% endif %}</p>
+  <p><strong>Kan je vals spelen?</strong> Niet echt: elke actie telt maar één
+  keer per plek, en foto's worden eerst door een mens nagekeken.</p>
+  <p><strong>Wat kan ik met punten doen?</strong> Inwisselen voor échte
+  beloningen: stickers, een Ravot-paraplu, T-shirts en truien van het vosje,
+  en goodies van partners. Inwisselen verlaagt je saldo, maar je niveau en
+  badges blijven voor altijd staan.
+  {% if family %}<a href="{{ url_for('account.beloningen') }}">Naar de beloningen →</a>{% endif %}</p>
+</div>
+{% endblock %}

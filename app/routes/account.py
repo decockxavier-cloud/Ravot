@@ -245,6 +245,11 @@ def geweest(event_id):
     antwoord = request.form.get("antwoord")
     sv.gevraagd_geweest = True
     if antwoord == "ja":
+        # Tijdslogica: "wij waren hier" kan niet vóór het event begonnen is.
+        if ev.start and ev.start > datetime.utcnow():
+            flash("Dit event moet nog beginnen — kom na jullie bezoek terug "
+                  "voor de stempel! 🦊", "error")
+            return redirect(request.referrer or url_for("public.event", slug=ev.slug))
         sv.geweest = True
         extra = pas.ken_toe(fam.id, "geweest", event_id)
         db.session.commit()
@@ -876,7 +881,66 @@ def ravotpas():
     fam = me()
     punten_totaal = pas.totaal(fam.id)
     return render_template("account/ravotpas.html", family=fam,
+                           saldo=pas.saldo(fam.id),
+                           vervalt=pas.vervalt_binnenkort(fam.id),
                            niveau=pas.niveau(punten_totaal),
                            stempels=pas.stempelkaart(fam.id),
                            badges=pas.badges(fam.id),
                            title="Onze Ravotpas", active=None)
+
+
+# ---------------------------------------------------------------- beloningen --
+
+@bp.route("/beloningen")
+@login_required
+def beloningen():
+    from ..models import Beloning, Inwissel, INWISSEL_STATUSSEN, get_bool
+    if not get_bool("beloningen_aan"):
+        abort(404)
+    fam = me()
+    catalogus = Beloning.query.filter_by(actief=True) \
+        .order_by(Beloning.punten).all()
+    mijn = Inwissel.query.filter_by(family_id=fam.id) \
+        .order_by(Inwissel.created_at.desc()).all()
+    return render_template("account/beloningen.html", family=fam,
+                           catalogus=catalogus, mijn=mijn,
+                           saldo=pas.saldo(fam.id), totaal=pas.totaal(fam.id),
+                           vervalt=pas.vervalt_binnenkort(fam.id),
+                           statussen=INWISSEL_STATUSSEN,
+                           title="Beloningen", active=None)
+
+
+@bp.route("/beloningen/<int:bid>/wissel", methods=["POST"])
+@login_required
+@limiter.limit("10/hour")
+def beloning_wissel(bid):
+    from ..models import Beloning, Inwissel, get_bool
+    if not get_bool("beloningen_aan"):
+        abort(404)
+    fam = me()
+    b = db.session.get(Beloning, bid)
+    if not b or not b.actief:
+        abort(404)
+    if b.voorraad is not None and b.voorraad <= 0:
+        flash("Deze beloning is helaas op — hou de pagina in de gaten!", "error")
+        return redirect(url_for("account.beloningen"))
+    from ..models import get_int as _gi
+    min_dagen = _gi("wissel_min_dagen", 7) or 0
+    if fam.created_at and (datetime.utcnow() - fam.created_at).days < min_dagen:
+        flash(f"Inwisselen kan vanaf een account van {min_dagen} dagen oud — "
+              "de punten blijven ondertussen netjes staan!", "error")
+        return redirect(url_for("account.beloningen"))
+    if pas.saldo(fam.id) < b.punten:
+        flash(f"Nog niet genoeg punten voor {b.naam} — blijven ravotten! 🦊", "error")
+        return redirect(url_for("account.beloningen"))
+    code = "RAVOT-" + secrets.token_hex(3).upper()
+    db.session.add(Inwissel(family_id=fam.id, beloning_id=b.id,
+                            punten=b.punten, code=code))
+    if b.voorraad is not None:
+        b.voorraad -= 1
+    db.session.commit()
+    flash(f"🎉 Gelukt! Jullie code is {code}. "
+          + ("Toon ze bij de partner om je goodie op te halen."
+             if b.soort == "partner" else
+             "We bezorgen je beloning; volg de status hieronder op."), "ok")
+    return redirect(url_for("account.beloningen"))

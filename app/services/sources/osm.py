@@ -136,10 +136,12 @@ def _run(query):
 
 
 def fetch():
-    from ...models import get_setting
+    from ...models import get_setting, get_bool
     ruw = [t.strip() for t in (get_setting("osm_tags") or "").split(",")]
     tags = [t for t in ruw if t in TAG_CATEGORIE]
-    horeca = "horeca" in ruw
+    # Horeca heeft een eigen schakelaar (standaard aan) — zo hoeft niemand
+    # handmatig aan de osm_tags-lijst te prutsen.
+    horeca = get_bool("osm_horeca_aan") or "horeca" in ruw
     regios = [r.strip() for r in (get_setting("osm_regios") or "vlaanderen").split(",")
               if r.strip() in REGIOS]
     if (not tags and not horeca) or not regios:
@@ -292,3 +294,158 @@ def _normalise_horeca(el, tags):
     if tags.get("wheelchair") == "yes":
         uit["buggy_ok"] = True
     return uit
+
+
+# --- Horeca-verkenner (handmatige import in /beheer) -------------------------
+# De automatische nachtsync neemt enkel zaken met expliciete kind-tags mee.
+# De verkenner toont ALLE horeca en bars rond een punt, zodat de beheerder
+# zelf kan kiezen wat Ravot-waardig is — curatie door een mens, zoekwerk door
+# de machine.
+VERKEN_AMENITY = ("restaurant", "cafe", "fast_food", "ice_cream", "bar", "pub",
+                  "biergarten")
+
+_ZOMERBAR_HINTS = ("zomerbar", "zomer bar", "summer bar", "beach", "strandbar",
+                   "pop-up bar", "popup bar", "bar d'été")
+
+
+def lijkt_zomerbar(tags):
+    naam = (tags.get("name") or "").lower()
+    if any(h in naam for h in _ZOMERBAR_HINTS):
+        return True
+    return tags.get("seasonal") in ("yes", "summer") and \
+        tags.get("amenity") in ("bar", "biergarten", "pub")
+
+
+def kind_signalen(tags):
+    return [sig for sig in HORECA_SIGNALEN
+            if tags.get(sig) and tags.get(sig) != "no"]
+
+
+def verken_horeca(lat, lng, straal_km=5):
+    """Live Overpass-zoektocht rond een punt: alle horeca/bars, mét naam.
+    Retourneert kandidaten voor de beheerder om uit te kiezen."""
+    am = "|".join(VERKEN_AMENITY)
+    meter = int(max(1, min(straal_km, 25)) * 1000)
+    q = (f'[out:json][timeout:60];'
+         f'(nwr["amenity"~"^({am})$"]["name"](around:{meter},{lat},{lng}););'
+         f'out center tags;')
+    uit = []
+    for el in _run(q):
+        tags = el.get("tags") or {}
+        naam = tags.get("name")
+        p_lat = el.get("lat") or (el.get("center") or {}).get("lat")
+        p_lng = el.get("lon") or (el.get("center") or {}).get("lng") \
+            or (el.get("center") or {}).get("lon")
+        if not naam or p_lat is None or p_lng is None:
+            continue
+        # Bewust GEEN automatische blokkadelijst hier: in de verkenner kiest
+        # de beheerder zélf — zomerbars zouden anders nooit verschijnen.
+        uit.append({
+            "ext_id": f"{el.get('type')}/{el.get('id')}",
+            "naam": naam,
+            "amenity": tags.get("amenity"),
+            "adres": " ".join(x for x in (tags.get("addr:street"),
+                                          tags.get("addr:housenumber")) if x) or None,
+            "gemeente": tags.get("addr:city"),
+            "postcode": clean_postcode(tags.get("addr:postcode")),
+            "lat": float(p_lat), "lng": float(p_lng),
+            "signalen": kind_signalen(tags),
+            "buiten": tags.get("outdoor_seating") == "yes",
+            "website": tags.get("website") or tags.get("contact:website"),
+            "zomerbar": lijkt_zomerbar(tags),
+        })
+    uit.sort(key=lambda r: (not r["signalen"], r["naam"].lower()))
+    return uit
+
+
+_SOORT_LABEL = {"restaurant": "restaurant", "cafe": "café",
+                "fast_food": "eethuis", "ice_cream": "ijssalon",
+                "bar": "bar", "pub": "café", "biergarten": "zomerbar"}
+
+
+def importeer_horeca(ext_ids_met_soort):
+    """Importeer gekozen zaken: [(ext_id, 'horeca'|'zomerbar'), ...].
+    Haalt de details vers op via Overpass-id-lookup (stateless: geen sessie-
+    opslag nodig tussen zoeken en importeren) en upsert als gecureerde fiche."""
+    from .base import upsert_event
+    per_type = {"node": [], "way": [], "relation": []}
+    soorten = {}
+    for ext_id, soort in ext_ids_met_soort:
+        try:
+            t, nr = ext_id.split("/")
+        except ValueError:
+            continue
+        if t in per_type and nr.isdigit():
+            per_type[t].append(nr)
+            soorten[ext_id] = "zomerbar" if soort == "zomerbar" else "horeca"
+    delen = "".join(f"{t}(id:{','.join(nrs)});" for t, nrs in per_type.items() if nrs)
+    if not delen:
+        return 0
+    # Gemeente-fallback: OSM-adressen zijn vaak onvolledig; zonder gemeente is
+    # een fiche onvindbaar in de lijsten. Eén keer alle centroids laden volstaat.
+    from ...models import PostcodeCentroid
+    from ...scoring import haversine_km
+    centroids = PostcodeCentroid.query.all()
+
+    def _dichtste(lat, lng):
+        best = None
+        for c in centroids:
+            if c.lat is None:
+                continue
+            d = haversine_km(lat, lng, c.lat, c.lng)
+            if best is None or d < best[0]:
+                best = (d, c)
+        return best[1] if best and best[0] <= 10 else None
+
+    aantal = 0
+    for el in _run(f"[out:json][timeout:60];({delen});out center tags;"):
+        tags = el.get("tags") or {}
+        ext_id = f"{el.get('type')}/{el.get('id')}"
+        naam = tags.get("name")
+        lat = el.get("lat") or (el.get("center") or {}).get("lat")
+        lng = el.get("lon") or (el.get("center") or {}).get("lon")
+        if not naam or lat is None or lng is None or ext_id not in soorten:
+            continue
+        soort = soorten[ext_id]
+        signalen = kind_signalen(tags)
+        troeven = {"kids_area": "speelhoek", "playground": "speeltuin",
+                   "highchair": "kinderstoelen", "changing_table": "verschoontafel"}
+        extra = ", ".join(troeven[s] for s in signalen if s in troeven)
+        basis = _SOORT_LABEL.get(tags.get("amenity"), "zaak").capitalize()
+        if soort == "zomerbar":
+            basis = "Gezinsvriendelijke zomerbar"
+        descr = basis + (f" met {extra}." if extra else ".")
+        if tags.get("outdoor_seating") == "yes":
+            descr += " Terras aanwezig."
+        if tags.get("opening_hours"):
+            descr += f" Openingsuren: {tags['opening_hours']}"
+        data = {
+            "source": "osm", "ext_id": ext_id, "title": naam,
+            "description": descr[:2000], "start": None, "end": None,
+            "is_permanent": True,
+            "gemeente": tags.get("addr:city"),
+            "postcode": clean_postcode(tags.get("addr:postcode")),
+            "adres": " ".join(x for x in (tags.get("addr:street"),
+                                          tags.get("addr:housenumber")) if x) or None,
+            "lat": float(lat), "lng": float(lng),
+            "age_min": 0, "age_max": 12, "categories": [],
+            "subtype": soort, "indoor": soort != "zomerbar",
+            "is_free": False, "price_info": [], "image_url": None,
+            "source_url": tags.get("website") or tags.get("contact:website"),
+            "attribution": "© OpenStreetMap-bijdragers (ODbL)",
+            "venue_ext_id": ext_id, "venue_name": naam,
+        }
+        if not data["gemeente"] or not data["postcode"]:
+            buurman = _dichtste(float(lat), float(lng))
+            if buurman:
+                data["gemeente"] = data["gemeente"] or buurman.gemeente
+                data["postcode"] = data["postcode"] or buurman.postcode
+        if "changing_table" in signalen:
+            data["verzorgingstafel"] = True
+        if tags.get("wheelchair") == "yes":
+            data["buggy_ok"] = True
+        ev = upsert_event(data)
+        if ev is not None:
+            ev.curated = True        # door de beheerder zélf gekozen
+            aantal += 1
+    return aantal

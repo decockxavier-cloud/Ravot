@@ -25,6 +25,13 @@
   </div>
 
   <div class="zij-groep">
+    <span class="zij-titel">Leeftijd</span>
+    {% for code, label, lo, hi in leeftijden %}
+    <a class="filterchip {{ 'aan' if lft==code }}" href="{{ flink(lft='' if lft==code else code) }}">{{ label }}</a>
+    {% endfor %}
+  </div>
+
+  <div class="zij-groep">
     <span class="zij-titel">Soort plek</span>
     <select onchange="location.href=this.value" aria-label="Soort plek">
       <option value="{{ flink(soort='') }}">alle soorten</option>
@@ -36,7 +43,7 @@
 
   <div class="zij-groep">
     <span class="zij-titel">Praktisch</span>
-    {% set ouder_opts = [('omheind','🚧 Omheind terrein'),('verzorgingstafel','🍼 Verschoontafel'),('buggy_ok','👶 Vlot met buggy')] %}
+    {% set ouder_opts = [('omheind','🚧 Afgesloten speelterrein'),('verzorgingstafel','🍼 Verschoontafel'),('buggy_ok','👶 Vlot met de wandelwagen')] %}
     {% for code, label in ouder_opts %}
       {% set nieuw = ouder_filters | reject('equalto', code) | list if code in ouder_filters else (ouder_filters | list) + [code] %}
       <a class="filterchip {{ 'aan' if code in ouder_filters }}" href="{{ flink(ouder=nieuw) }}">{{ label }}</a>

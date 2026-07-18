@@ -14,6 +14,7 @@
     {% if cat %}<input type="hidden" name="cat" value="{{ cat }}">{% endif %}
     {% for o in ouder_filters %}<input type="hidden" name="ouder" value="{{ o }}">{% endfor %}
     {% if soort %}<input type="hidden" name="soort" value="{{ soort }}">{% endif %}
+    {% if lft %}<input type="hidden" name="lft" value="{{ lft }}">{% endif %}
     <button class="btn btn-klein" type="submit">Zoek</button>
   </form>
   <div class="filterbalk" role="group" aria-label="Weergave en periode">

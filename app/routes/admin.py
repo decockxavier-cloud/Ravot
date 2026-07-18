@@ -257,7 +257,7 @@ def instellingen():
         ("Feestjes", ["feestjes_aan", "feest_straal_km", "feest_max_aanvragen"]),
         ("Mails", ["weekendmail_aan", "maandagmail_aan"]),
         ("Databronnen", ["bron_uit_aan", "uit_query", "sync_max_pages",
-                         "bron_osm_aan", "osm_tags", "osm_regios",
+                         "bron_osm_aan", "osm_tags", "osm_horeca_aan", "osm_regios",
                          "bron_tv_aan", "tv_max", "bron_tm_aan",
                          "bron_wd_aan", "bron_feed_aan"]),
         ("AI-verrijking", ["verrijk_backend", "ollama_model", "cloud_model"]),
@@ -265,6 +265,7 @@ def instellingen():
                                    "partner_btw_pct", "odoo_product_id",
                                    "odoo_factuur_auto", "founding_aan",
                                    "founding_max"]),
+        ("Beloningen & punten", ["beloningen_aan", "punt_waarde_eur", "punten_geldig_maanden", "punten_dag_max", "geweest_dag_max", "wissel_min_dagen"]),
         ("Beveiliging", ["codes_per_uur"]),
     ]
     gebruikt = {k for _, keys in groepen for k in keys}
@@ -1214,3 +1215,137 @@ def feestjes():
                            per_partner=per_partner,
                            zonder_contact=partners_zonder_contact,
                            title="Feestjes", family=None, active="feestjes")
+
+
+@bp.route("/horeca-import", methods=["GET", "POST"])
+@admin_required
+def horeca_import():
+    """Horeca-verkenner: live alle horeca/bars rond een gemeente uit OSM,
+    waarna de beheerder aanvinkt wat Ravot-waardig is (horeca of zomerbar).
+    Curatie door een mens, zoekwerk door de machine."""
+    from ..geo import zoek_centrum
+    from ..models import HorecaKandidaat
+    from ..services.sources import osm as osm_bron
+    from ..services.sources import overture as ov_bron
+    resultaten, zoekterm, straal, fout = None, "", 5, None
+    bron = request.form.get("bron") or request.args.get("bron") or "overture"
+    if bron not in ("overture", "osm"):
+        bron = "overture"
+    if request.method == "POST" and request.form.get("actie") == "importeer":
+        keuzes = [(ext_id, request.form.get(f"soort_{ext_id}", "horeca"))
+                  for ext_id in request.form.getlist("kies")]
+        try:
+            if bron == "overture":
+                aantal = ov_bron.importeer(keuzes)
+            else:
+                aantal = osm_bron.importeer_horeca(keuzes)
+            db.session.commit()
+            audit(f"horeca-import ({bron}): {aantal} zaken")
+            flash(f"{aantal} zaken geïmporteerd als gecureerde fiche.", "ok")
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception("horeca-import faalde")
+            flash("Import mislukt — probeer opnieuw.", "error")
+        return redirect(url_for("admin.horeca_import", bron=bron))
+    if request.method == "POST":
+        zoekterm = (request.form.get("plaats") or "").strip()
+        try:
+            straal = max(1, min(25, int(request.form.get("straal", 5))))
+        except ValueError:
+            straal = 5
+        centrum = zoek_centrum(zoekterm) if zoekterm else None
+        if not centrum:
+            fout = "Gemeente niet gevonden — probeer een postcode."
+        else:
+            try:
+                if bron == "overture":
+                    resultaten = ov_bron.zoek_kandidaten(centrum[0], centrum[1], straal)
+                else:
+                    resultaten = osm_bron.verken_horeca(centrum[0], centrum[1], straal)
+                bestaand = {e.ext_id for e in Event.query
+                            .filter(Event.subtype.in_(("horeca", "zomerbar"))).all()}
+                for r in resultaten:
+                    r["bestaat"] = r["ext_id"] in bestaand
+            except Exception:
+                current_app.logger.exception("horeca-verkenner faalde")
+                fout = ("De bron antwoordt momenteel niet. Probeer opnieuw, of "
+                        "wissel van bron.")
+    kandidaten_n = HorecaKandidaat.query.count()
+    return render_template("admin/horeca_import.html", resultaten=resultaten,
+                           zoekterm=zoekterm, straal=straal, fout=fout,
+                           bron=bron, kandidaten_n=kandidaten_n,
+                           title="Horeca-import", family=None,
+                           active="horeca-import")
+
+
+@bp.route("/beloningen", methods=["GET", "POST"])
+@admin_required
+def beloningen():
+    """Catalogus van beloningen + opvolging van inwisselingen. De richtprijs
+    (punten = euro x punt_waarde) wordt live meegerekend als hulp."""
+    from ..models import (Beloning, Event, Inwissel, INWISSEL_STATUSSEN,
+                          get_setting)
+    if request.method == "POST" and request.form.get("actie") == "nieuw":
+        try:
+            eur = float((request.form.get("waarde") or "0").replace(",", "."))
+            pt = int(request.form.get("punten") or 0)
+        except ValueError:
+            eur, pt = 0, 0
+        naam = (request.form.get("naam") or "").strip()[:120]
+        if naam and pt > 0:
+            partner_id = request.form.get("partner_id")
+            b = Beloning(
+                emoji=(request.form.get("emoji") or "🎁").strip()[:8],
+                naam=naam,
+                beschrijving=(request.form.get("beschrijving") or "").strip()[:300] or None,
+                soort="partner" if partner_id else "ravot",
+                partner_event_id=int(partner_id) if partner_id and partner_id.isdigit() else None,
+                punten=pt, waarde_eur=eur,
+                voorraad=int(request.form["voorraad"]) if (request.form.get("voorraad") or "").isdigit() else None)
+            db.session.add(b)
+            db.session.commit()
+            audit(f"beloning toegevoegd: {naam} ({pt} pt / €{eur})")
+            flash("Beloning toegevoegd.", "ok")
+        else:
+            flash("Naam en punten zijn verplicht.", "error")
+        return redirect(url_for("admin.beloningen"))
+    if request.method == "POST" and request.form.get("actie") == "toggle":
+        b = db.session.get(Beloning, int(request.form.get("bid", 0))) or abort(404)
+        b.actief = not b.actief
+        db.session.commit()
+        return redirect(url_for("admin.beloningen"))
+    if request.method == "POST" and request.form.get("actie") == "status":
+        i = db.session.get(Inwissel, int(request.form.get("iid", 0))) or abort(404)
+        status = request.form.get("status")
+        if status in INWISSEL_STATUSSEN:
+            if status == "geannuleerd" and i.status != "geannuleerd" \
+                    and i.beloning and i.beloning.voorraad is not None:
+                i.beloning.voorraad += 1     # voorraad terug bij annulatie
+            i.status = status
+            db.session.commit()
+            audit(f"inwissel #{i.id} -> {status}")
+        return redirect(url_for("admin.beloningen"))
+    try:
+        punt_eur = float(get_setting("punt_waarde_eur") or 0.05)
+    except ValueError:
+        punt_eur = 0.05
+    catalogus = Beloning.query.order_by(Beloning.actief.desc(), Beloning.punten).all()
+    inwissels = Inwissel.query.order_by(Inwissel.created_at.desc()).limit(100).all()
+    # Controle: opvallende puntenverdieners van de laatste 7 dagen. Farming
+    # valt hier meteen op (veel punten, veel 'geweest' op korte tijd).
+    from datetime import datetime, timedelta
+    from ..models import RavotPunt
+    week = datetime.utcnow() - timedelta(days=7)
+    controle = db.session.query(
+        RavotPunt.family_id,
+        db.func.sum(RavotPunt.punten).label("pt"),
+        db.func.sum(db.case((RavotPunt.reden == "geweest", 1), else_=0)).label("bezoeken"),
+        db.func.count(RavotPunt.id).label("acties"),
+    ).filter(RavotPunt.created_at >= week)      .group_by(RavotPunt.family_id)      .order_by(db.desc("pt")).limit(10).all()
+    partners = Event.query.filter(Event.partner_until.isnot(None)) \
+        .order_by(Event.title).limit(200).all()
+    return render_template("admin/beloningen.html", catalogus=catalogus,
+                           inwissels=inwissels, controle=controle,
+                           statussen=INWISSEL_STATUSSEN,
+                           partners=partners, punt_eur=punt_eur,
+                           title="Beloningen", family=None, active="beloningen")

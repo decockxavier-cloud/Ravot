@@ -6,6 +6,12 @@ from app.models import Review, SavedEvent
 
 
 def _markeer_geweest(client, fam, ev):
+    from datetime import datetime, timedelta
+    from app.extensions import db
+    if ev.start and ev.start > datetime.utcnow():
+        ev.start = datetime.utcnow() - timedelta(hours=5)
+        ev.end = datetime.utcnow() - timedelta(hours=2)
+        db.session.commit()
     """Bevestig 'we waren erbij' zodat scoren mag (wraak-preventie)."""
     client.post(f"/mijn/geweest/{ev.id}", data={"antwoord": "ja"}, follow_redirects=True)
 

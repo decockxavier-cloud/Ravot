@@ -1,0 +1,111 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<h1>Beloningen</h1>
+<p class="hint">Richtprijs voor een gerechtvaardigde ravotwaarde:
+<strong>punten = euro × {{ (1 / punt_eur) | round | int }}</strong>
+(1 punt = €{{ "%.2f"|format(punt_eur) }}). Een actief gezin verdient ± 30 punten
+per uitstap, dus ± €{{ "%.2f"|format(30 * punt_eur) }} aan beloningswaarde.</p>
+
+<div class="card">
+  <h2>Nieuwe beloning</h2>
+  <form method="post" class="acties" style="align-items:end;flex-wrap:wrap">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="actie" value="nieuw">
+    <label>Emoji<input type="text" name="emoji" value="🎁" style="width:60px"></label>
+    <label style="flex:1;min-width:180px">Naam<input type="text" name="naam" required></label>
+    <label style="flex:1;min-width:180px">Beschrijving<input type="text" name="beschrijving"></label>
+    <label>Waarde (€)<input type="text" name="waarde" id="bel-eur" style="width:90px" placeholder="8"></label>
+    <label>Punten<input type="number" name="punten" id="bel-pt" style="width:90px" required></label>
+    <label>Voorraad <small class="hint">(leeg = onbeperkt)</small><input type="number" name="voorraad" style="width:90px"></label>
+    <label>Partner-goodie van
+      <select name="partner_id"><option value="">— (Ravot zelf)</option>
+        {% for p in partners %}<option value="{{ p.id }}">{{ p.title }}</option>{% endfor %}
+      </select></label>
+    <button class="btn" type="submit">Toevoegen</button>
+  </form>
+  <script>
+    (function () {
+      var eur = document.getElementById('bel-eur'), pt = document.getElementById('bel-pt');
+      eur.addEventListener('input', function () {
+        var v = parseFloat(eur.value.replace(',', '.'));
+        if (!isNaN(v)) pt.value = Math.round(v / {{ punt_eur }} / 10) * 10;
+      });
+    })();
+  </script>
+</div>
+
+<h2>Catalogus</h2>
+<table class="tabel">
+  <tr><th></th><th>Beloning</th><th>Waarde</th><th>Punten</th><th>Voorraad</th><th>Soort</th><th>Status</th><th></th></tr>
+  {% for b in catalogus %}
+  <tr>
+    <td>{{ b.emoji }}</td>
+    <td>{{ b.naam }}{% if b.beschrijving %}<br><small class="hint">{{ b.beschrijving }}</small>{% endif %}</td>
+    <td>€{{ "%.2f"|format(b.waarde_eur) }}</td>
+    <td>{{ b.punten }}</td>
+    <td>{{ b.voorraad if b.voorraad is not none else '∞' }}</td>
+    <td>{{ 'partner' if b.soort == 'partner' else 'Ravot' }}{% if b.partner %} — {{ b.partner.title }}{% endif %}</td>
+    <td><span class="badge {{ 'pil-ok' if b.actief else 'pil-uit' }}">{{ 'actief' if b.actief else 'uit' }}</span></td>
+    <td>
+      <form method="post" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="actie" value="toggle">
+        <input type="hidden" name="bid" value="{{ b.id }}">
+        <button class="btn btn-stil btn-klein" type="submit">{{ 'Zet uit' if b.actief else 'Zet aan' }}</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+
+<h2>Controle: puntenverdieners laatste 7 dagen</h2>
+{% if controle %}
+<table class="tabel">
+  <tr><th>Gezin</th><th>Punten</th><th>Bezoeken ('geweest')</th><th>Acties</th><th></th></tr>
+  {% for c in controle %}
+  <tr class="{{ '' if c.pt < 200 else '' }}">
+    <td>#{{ c.family_id }}</td>
+    <td>{{ c.pt }}{% if c.pt >= 150 %} <span class="badge pil-bezig">bekijk even</span>{% endif %}</td>
+    <td>{{ c.bezoeken }}</td>
+    <td>{{ c.acties }}</td>
+    <td><a class="btn btn-stil btn-klein" href="{{ url_for('admin.family_detail', fid=c.family_id) }}">Gezin</a></td>
+  </tr>
+  {% endfor %}
+</table>
+<p class="hint">Plafonds: max. {{ 60 }} punten en 3 beloonde bezoeken per gezin
+per dag (instelbaar bij Beveiliging). Boven het plafond blijven acties werken,
+maar zonder punten — een klikker merkt dus niets en bereikt niets.</p>
+{% else %}
+<p class="hint">Nog geen puntenactiviteit deze week.</p>
+{% endif %}
+
+<h2>Inwisselingen</h2>
+{% if inwissels %}
+<table class="tabel">
+  <tr><th>Code</th><th>Beloning</th><th>Gezin</th><th>Punten</th><th>Datum</th><th>Status</th></tr>
+  {% for i in inwissels %}
+  <tr>
+    <td><strong>{{ i.code }}</strong></td>
+    <td>{{ i.beloning.emoji }} {{ i.beloning.naam }}</td>
+    <td>#{{ i.family_id }}</td>
+    <td>{{ i.punten }}</td>
+    <td>{{ i.created_at.strftime('%d/%m %H:%M') }}</td>
+    <td>
+      <form method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="actie" value="status">
+        <input type="hidden" name="iid" value="{{ i.id }}">
+        <select name="status" onchange="this.form.submit()">
+          {% for code, label in statussen.items() %}
+          <option value="{{ code }}" {{ 'selected' if i.status == code }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="hint">Nog geen inwisselingen.</p>
+{% endif %}
+{% endblock %}

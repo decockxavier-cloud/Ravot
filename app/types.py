@@ -17,7 +17,7 @@ TYPES = {
     "aquarium":       ("🐟", "Aquarium", True),
     "theme_park":     ("🎢", "Pretpark", True),
     "water_park":     ("🌊", "Waterpretpark", True),
-    "swimming_area":  ("🏊", "Zwemplek", True),
+    "swimming_area":  ("🏊", "Zwemmen", True),
     "miniature_golf": ("⛳", "Minigolf", True),
     "museum":         ("🏛️", "Museum", True),
     "castle":         ("🏰", "Kasteel", True),
@@ -42,6 +42,8 @@ TYPES = {
     "uit_kinderboerderij": ("🐐", "Kinderboerderij", True),
     "uit_indoorspeeltuin": ("🧸", "Indoor speelparadijs", True),
     "horeca":              ("🍽️", "Kindvriendelijke horeca", True),
+    "rommelmarkt":         ("🛍️", "Rommelmarkt of braderie", True),
+    "zomerbar":            ("🍹", "Zomerbar (gezinsvriendelijk)", True),
     "uit_markt":         ("🛍️", "Markt of braderie", False),
     "uit_kamp":          ("⛺", "Kamp of vakantie", False),
 }
@@ -49,6 +51,8 @@ TYPES = {
 # UiT eventType-labels (kleine letters) -> onze code, op trefwoord (robuust voor
 # exacte bewoording). Eerste match wint, dus specifieke termen bovenaan.
 UIT_TYPE_KEYWORDS = [
+    ("rommelmarkt", "rommelmarkt"), ("braderie", "rommelmarkt"),
+    ("markt", "rommelmarkt"), ("zomerbar", "zomerbar"),
     ("indoorspeel", "uit_indoorspeeltuin"), ("speelparadijs", "uit_indoorspeeltuin"),
     ("kinderboerderij", "uit_kinderboerderij"), ("boerderij", "uit_kinderboerderij"),
     ("speeltuin", "playground"), ("pretpark", "theme_park"), ("attractiepark", "theme_park"),
@@ -116,8 +120,8 @@ def verborgen_type_codes():
 # community, maar tonen + meetellen in de volgorde is een Partner-voordeel).
 # Openbare/publieke plekken (speeltuin, park, natuur, museum, ...) tonen hun
 # score altijd — die hebben geen commerciële relatie met Ravot.
-COMMERCIEEL = {"horeca", "uit_indoorspeeltuin", "theme_park", "water_park",
-               "miniature_golf"}
+COMMERCIEEL = {"horeca", "zomerbar", "uit_indoorspeeltuin", "theme_park",
+               "water_park", "miniature_golf"}
 
 
 def is_commercieel(event):

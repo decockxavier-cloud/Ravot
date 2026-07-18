@@ -1,7 +1,8 @@
 {% extends "base.html" %}
 {% block body_class %}met-sfeer{% endblock %}
 {% block content %}
-<a href="javascript:history.back()" class="terug-link">← Terug</a>
+<a href="{{ url_for('public.ontdek') }}" class="terug-link"
+   onclick="if (history.length > 1) { history.back(); return false; }">← Terug</a>
 <div class="event-kop">
   <h1>{{ ev.title }}</h1>
   <button type="button" class="deel-knop" id="deel"
@@ -28,15 +29,20 @@
   {% if ev.indoor %}<span class="badge">🌧️ binnen</span>{% endif %}
   {% if ev.is_permanent %}<span class="badge">📍 vaste plek — altijd te bezoeken</span>{% endif %}
   {% if ev.has_vlieg %}<span class="badge badge-vlieg">🐛 UiT met Vlieg</span>{% endif %}
-  {% if ev.omheind %}<span class="badge">🚧 omheind terrein</span>{% endif %}
+  {% if ev.omheind %}<span class="badge">🚧 afgesloten speelterrein</span>{% endif %}
   {% if ev.verzorgingstafel %}<span class="badge">🍼 verschoontafel</span>{% endif %}
-  {% if ev.buggy_ok %}<span class="badge">👶 vlot met buggy</span>{% endif %}
-  {% if agg %}<span class="badge badge-score">😄 Ravotscore {{ agg.avg }} ({{ agg.count }} gezinnen)</span>
+  {% if ev.buggy_ok %}<span class="badge">👶 vlot met de wandelwagen</span>{% endif %}
+  {% if agg %}<span class="badge badge-score">😄 Ravotscore {{ agg.avg }} ({{ agg.count }} gezinnen)
+    <a class="score-info" href="{{ url_for('public.score_uitleg') }}" title="Hoe werkt de Ravotscore?">ⓘ</a></span>
   {% elif toon_score is defined and not toon_score %}<span class="badge badge-leeg" title="Deze zaak toont (nog) geen Ravotscore op Ravot">zonder Ravotscore-badge</span>{% endif %}
 </div>
 
-<img src="{{ poi_image(ev) }}" alt="" style="width:100%;border-radius:16px;margin:10px 0" loading="lazy"
-     onerror="this.src='{{ url_for('static', filename='img/cat-buiten.svg') }}'">
+{# Bovenaan enkel het officiële beeld van de organisatie (bron of uitbater).
+   Gezinsfoto's staan onderaan in de fotogalerij. #}
+{% if ev.image_url and not ev.image_url.startswith('/foto/') %}
+<img src="{{ ev.image_url }}" alt="" class="fiche-beeld" loading="lazy"
+     onerror="this.remove()">
+{% endif %}
 {% if ev.description %}<p>{{ ev.description }}</p>{% endif %}
 
 <div class="acties">
@@ -72,6 +78,7 @@
     <button class="btn btn-stil" type="submit">{{ '✅ Gedeeld met vrienden' if shared else 'Deel mijn interesse met mijn vrienden' }}</button>
   </form>
   <a class="btn btn-stil" href="{{ url_for('account.review', event_id=ev.id) }}">😄 Geef een Ravotscore</a>
+  <a class="btn btn-stil" href="#foto-blok" data-open-foto>📷 Foto toevoegen</a>
 </div>
 {% if ev.feest %}
 <div class="card feest-cta">
@@ -130,7 +137,7 @@
 {% endif %}
 
 {% if family %}
-<details class="melden">
+<details class="melden" id="foto-blok">
   <summary>📷 Voeg een foto toe</summary>
   <form method="post" action="{{ url_for('account.upload_foto', event_id=ev.id) }}"
         enctype="multipart/form-data" class="meld-form">

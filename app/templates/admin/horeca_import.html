@@ -1,0 +1,71 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<h1>Horeca &amp; zomerbars importeren</h1>
+<p class="hint">Zoek live in OpenStreetMap naar alle horeca en bars rond een
+gemeente, en kies zelf wat Ravot-waardig is. Geselecteerde zaken worden
+meteen als <strong>gecureerde</strong> fiche toegevoegd (of bijgewerkt als ze
+al bestaan). Zaken met kind-signalen (speelhoek, kinderstoel, verschoontafel)
+staan bovenaan.</p>
+
+<div class="card">
+  <form method="post" class="acties" style="align-items:end">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label style="flex:1;min-width:220px">Gemeente of postcode
+      <input type="text" name="plaats" value="{{ zoekterm }}" required
+             placeholder="bv. Roeselare of 8800"></label>
+    <label>Straal (km)
+      <input type="number" name="straal" value="{{ straal }}" min="1" max="25" style="width:90px"></label>
+    <label>Bron
+      <select name="bron">
+        <option value="overture" {{ 'selected' if bron == 'overture' }}>Overture (Facebook/Bing-data, lokaal)</option>
+        <option value="osm" {{ 'selected' if bron == 'osm' }}>OpenStreetMap (live)</option>
+      </select></label>
+    <button class="btn" type="submit">Zoek</button>
+  </form>
+  {% if fout %}<p class="hint" style="color:#b3261e">{{ fout }}</p>{% endif %}
+  <p class="hint">Overture-kandidaten in voorraad: <strong>{{ kandidaten_n }}</strong>.
+  {% if not kandidaten_n %}Laad ze eerst op de server met
+  <code>docker compose exec -T web flask laad-overture</code> (10-30 min, ± maandelijks te
+  herhalen). Overture bundelt o.a. de bedrijfsgegevens van Facebook-pagina's —
+  ideaal voor zomerbars.{% endif %}</p>
+</div>
+
+{% if resultaten is not none %}
+  {% if resultaten %}
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="actie" value="importeer">
+    <input type="hidden" name="bron" value="{{ bron }}">
+    <table class="tabel">
+      <tr><th></th><th>Naam</th><th>Soort</th><th>Waar</th><th>Kind-signalen</th><th>Importeren als</th></tr>
+      {% for r in resultaten %}
+      <tr>
+        <td><input type="checkbox" name="kies" value="{{ r.ext_id }}"
+                   {{ 'checked' if r.signalen and not r.bestaat }}></td>
+        <td>{{ r.naam }}
+          {% if r.bestaat %}<span class="badge pil-ok">al in Ravot</span>{% endif %}
+          {% if r.website %}<a href="{{ r.website }}" target="_blank" rel="noopener">↗</a>{% endif %}</td>
+        <td>{{ r.amenity }}</td>
+        <td>{{ r.gemeente or '' }} {{ r.adres or '' }}{% if r.km is defined and r.km is not none %} · {{ r.km }} km{% endif %}</td>
+        <td>{% for s in r.signalen %}<span class="badge pil-ok">{{ s }}</span>{% endfor %}
+            {% if r.buiten %}<span class="badge">terras</span>{% endif %}</td>
+        <td>
+          <select name="soort_{{ r.ext_id }}">
+            <option value="horeca" {{ 'selected' if not r.zomerbar }}>Kindvriendelijke horeca</option>
+            <option value="zomerbar" {{ 'selected' if r.zomerbar }}>Zomerbar</option>
+          </select>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+    <div class="acties" style="margin-top:12px">
+      <button class="btn" type="submit">Geselecteerde zaken importeren</button>
+      <span class="hint">{{ resultaten | length }} gevonden — zaken met
+      kind-signalen zijn alvast aangevinkt.</span>
+    </div>
+  </form>
+  {% else %}
+  <p class="hint">Geen horeca gevonden binnen deze straal.</p>
+  {% endif %}
+{% endif %}
+{% endblock %}

@@ -197,3 +197,12 @@ document.addEventListener('change', function (e) {
   img.onerror = function () { URL.revokeObjectURL(url); };
   img.src = url;
 });
+
+
+/* Fiche-actie "Foto toevoegen": open het uploadblok en scroll ernaartoe. */
+document.addEventListener('click', function (e) {
+  var knop = e.target.closest('[data-open-foto]');
+  if (!knop) return;
+  var blok = document.getElementById('foto-blok');
+  if (blok) { blok.open = true; blok.scrollIntoView({behavior: 'smooth'}); e.preventDefault(); }
+});

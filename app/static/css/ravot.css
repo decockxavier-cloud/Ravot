@@ -742,3 +742,27 @@ section h2 { font-size: 1.25rem; margin: 22px 0 8px; }
 .dash-feest { background: #fff5fa; border: 1.5px solid #f3cfe0;
   border-radius: 16px; padding: 12px 14px; }
 .dash-feest .card { margin: 0; }
+
+
+/* ---- Ontdek naast de zijbalk: compactere kaarten -> 3 kolommen op pc ---- */
+.ontdek-layout .kaarten-raster { grid-template-columns: repeat(auto-fill, minmax(235px, 1fr)); gap: 12px; }
+
+/* ---- Score-uitleg ---- */
+.score-info { font-size: 0.75em; text-decoration: none; margin-left: 4px; }
+.punten-tabel { width: 100%; border-collapse: collapse; }
+.punten-tabel td { padding: 6px 4px; border-bottom: 1px solid #f0ede6; }
+.punten-tabel td:last-child { text-align: right; font-weight: 800; color: var(--gras, #4CA362); }
+.fiche-beeld { width: 100%; max-height: 340px; object-fit: cover;
+  border-radius: 16px; margin: 10px 0; }
+
+/* ---- Beloningenwinkel ---- */
+.beloning-raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 12px; margin: 12px 0; }
+.beloning-kaart { display: flex; flex-direction: column; align-items: center;
+  gap: 6px; text-align: center; margin: 0; }
+.beloning-kaart.kan-niet { opacity: 0.72; }
+.beloning-emoji { font-size: 2.4rem; }
+.beloning-prijs { display: flex; flex-direction: column; gap: 2px; align-items: center; }
+
+.verval-melding { background: #fff4dd; border: 1px solid var(--zon, #F4B233);
+  border-radius: 10px; padding: 6px 10px; font-size: 0.85rem; display: inline-block; }

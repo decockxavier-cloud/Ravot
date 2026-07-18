@@ -144,6 +144,7 @@ def test_feestje_niet_van_ander_gezin(client, seed):
 def test_punten_geweest_en_review_idempotent(client, seed):
     from app import punten as pas
     fam, ev = seed["fam_a"], seed["events"][0]
+    _voorbij(ev)
     login_as(client, fam)
     client.post(f"/mijn/geweest/{ev.id}", data={"antwoord": "ja"})
     assert pas.totaal(fam.id) == 5
@@ -205,12 +206,12 @@ def test_review_tags_zetten_velden_aan(client, seed):
     fam_a, fam_b = seed["fam_a"], seed["fam_b"]
     # eerste review (bestaande review van ander gezin) met de tag
     db.session.add(Review(family_id=fam_b.id, event_id=ev.id, kid_score=4,
-                          parent_score=3, tags=["omheind terrein"]))
+                          parent_score=3, tags=["afgesloten speelterrein"]))
     db.session.add(SavedEvent(family_id=fam_a.id, event_id=ev.id, geweest=True))
     db.session.commit()
     login_as(client, fam_a)
     client.post(f"/mijn/review/{ev.id}", data={
-        "kid_score": "5", "parent_score": "3", "tag": "omheind terrein"})
+        "kid_score": "5", "parent_score": "3", "tag": "afgesloten speelterrein"})
     assert ev.omheind is True
 
 
@@ -552,3 +553,378 @@ def test_dashboard_secties(client, seed):
     assert "Verjaardagsfeestje" in html
     assert "Jullie gezin" in html
     assert "Plan een feestje" in html          # nog geen feestje open
+
+
+def test_osm_horeca_standaard_aan(app):
+    """Horeca-import staat aan zonder handmatige osm_tags-aanpassing."""
+    from app.models import get_bool
+    assert get_bool("osm_horeca_aan") is True
+
+
+def test_ontdek_lege_soort_geeft_hulp(client, seed):
+    html = client.get("/ontdek?wanneer=alle&soort=water_park").get_data(as_text=True)
+    assert "Voeg ze toe" in html
+
+
+def test_fiche_heeft_foto_actie(client, seed):
+    login_as(client, seed["fam_a"])
+    html = client.get(f"/e/{seed['events'][0].slug}").get_data(as_text=True)
+    assert "data-open-foto" in html and 'id="foto-blok"' in html
+
+
+# --------------------------------------- leeftijdsfilter, uitleg & migratie --
+
+def test_leeftijdsfilter_op_lijst_en_kaart(client, seed):
+    """Kinderboerderij (0-12) wél, Tienerlab (12-16) niet bij 4-6 jaar.
+    Op slug getest: de typenamen staan ook in de soort-dropdown."""
+    html = client.get("/ontdek?wanneer=alle&lft=4-6").get_data(as_text=True)
+    assert "kinderboerderij-roeselare" in html and "tienerlab-roeselare" not in html
+    html = client.get("/ontdek?wanneer=alle&lft=13-17").get_data(as_text=True)
+    assert "tienerlab-roeselare" in html and "kinderboerderij-roeselare" not in html
+    # zelfde filter op de kaart
+    html = client.get("/verkennen?wanneer=alle&lft=4-6").get_data(as_text=True)
+    assert "kinderboerderij-roeselare" in html and "tienerlab-roeselare" not in html
+
+
+def test_score_uitlegpagina(client, seed):
+    html = client.get("/ravotscore").get_data(as_text=True)
+    assert "Ravotscore" in html and "Vossenkoning" in html and "+15" in html
+
+
+def test_migratie_hernoemt_oude_tags(app, seed):
+    from app.models import OUDE_TAGS
+    ev = seed["events"][0]
+    db.session.add(Review(family_id=seed["fam_b"].id, event_id=ev.id,
+                          kid_score=4, parent_score=3,
+                          tags=["vlot met buggy", "mooie natuur"]))
+    db.session.commit()
+    rv = Review.query.filter(Review.family_id == seed["fam_b"].id).first()
+    rv.tags = [OUDE_TAGS.get(t, t) for t in (rv.tags or [])]
+    db.session.commit()
+    assert "vlot met de wandelwagen" in rv.tags and "mooie natuur" in rv.tags
+
+
+# ------------------------------------------------------- horeca-verkenner --
+
+def _nep_overpass(elementen):
+    def _run(query):
+        return iter(elementen)
+    return _run
+
+
+def test_verkenner_en_import(app, seed, monkeypatch):
+    from app.services.sources import osm as ob
+    elementen = [
+        {"type": "node", "id": 1, "lat": 50.95, "lon": 3.12,
+         "tags": {"amenity": "restaurant", "name": "Pannenkoekenhuis Vosje",
+                  "highchair": "yes", "addr:city": "Roeselare"}},
+        {"type": "node", "id": 2, "lat": 50.94, "lon": 3.11,
+         "tags": {"amenity": "bar", "name": "Zomerbar De Vos",
+                  "seasonal": "summer"}},
+        {"type": "node", "id": 3, "lat": 50.93, "lon": 3.10,
+         "tags": {"amenity": "bar"}},          # naamloos -> genegeerd
+    ]
+    monkeypatch.setattr(ob, "_run", _nep_overpass(elementen))
+    rows = ob.verken_horeca(50.95, 3.12, 5)
+    assert len(rows) == 2
+    assert rows[0]["naam"] == "Pannenkoekenhuis Vosje"     # signalen eerst
+    assert rows[1]["zomerbar"] is True
+    # import: beide zaken, met soortkeuze
+    n = ob.importeer_horeca([("node/1", "horeca"), ("node/2", "zomerbar")])
+    db.session.commit()
+    assert n == 2
+    from app.models import Event
+    zb = Event.query.filter_by(ext_id="node/2").first()
+    assert zb.subtype == "zomerbar" and zb.curated is True
+    assert zb.indoor is False
+    # gemeente-fallback via dichtstbijzijnde postcode (seed heeft 8800)
+    assert zb.gemeente == "Roeselare"
+    resto = Event.query.filter_by(ext_id="node/1").first()
+    assert resto.subtype == "horeca" and resto.buggy_ok is not True
+
+
+def test_horeca_import_scherm(client, seed, app):
+    from app.models import Admin
+    admin = Admin(email="a2@t.be", pw_hash="x", totp_secret="s",
+                  totp_confirmed=True, role="admin")
+    db.session.add(admin); db.session.commit()
+    with client.session_transaction() as s:
+        s["admin_id"] = admin.id; s["admin_2fa_ok"] = True
+    r = client.get("/beheer/horeca-import")
+    assert r.status_code == 200
+    assert "OpenStreetMap" in r.get_data(as_text=True)
+
+
+# -------------------------------------------------------- overture-verkenner --
+
+def test_overture_zoek_en_import(app, seed):
+    from app.models import HorecaKandidaat, Event
+    from app.services.sources import overture as ov
+    db.session.add_all([
+        HorecaKandidaat(ext_id="ov1", naam="Zomerbar Zonneke",
+                        categorie="beer_garden", lat=50.95, lng=3.12,
+                        zomerbar_hint=True),
+        HorecaKandidaat(ext_id="ov2", naam="Brasserie 't Vosje",
+                        categorie="restaurant", gemeente="Roeselare",
+                        postcode="8800", lat=50.94, lng=3.13),
+        HorecaKandidaat(ext_id="ver", naam="Te ver", categorie="cafe",
+                        lat=51.5, lng=4.5),
+    ])
+    db.session.commit()
+    rows = ov.zoek_kandidaten(50.95, 3.12, 5)
+    assert [r["ext_id"] for r in rows] == ["ov1", "ov2"]
+    assert rows[0]["zomerbar"] is True
+    n = ov.importeer([("ov1", "zomerbar"), ("ov2", "horeca")])
+    db.session.commit()
+    assert n == 2
+    zb = Event.query.filter_by(source="overture", ext_id="ov1").first()
+    assert zb.subtype == "zomerbar" and zb.curated is True
+    assert zb.gemeente == "Roeselare"      # fallback via postcode-centroid
+    assert Event.query.filter_by(ext_id="ov2").first().subtype == "horeca"
+
+
+def test_overture_categorie_en_zomerbar_heuristiek(app):
+    from app.services.sources.overture import _is_horeca, lijkt_zomerbar
+    assert _is_horeca("belgian_restaurant", []) is True
+    assert _is_horeca("hair_salon", ["barber"]) is False
+    assert lijkt_zomerbar("Strandbar Bredene", "bar") is True
+    assert lijkt_zomerbar("Café Central", "cafe") is False
+    assert lijkt_zomerbar("De Tuin", "beer_garden") is True
+
+
+# --------------------------------------------------------------- beloningen --
+
+def _voorbij(*events):
+    """Zet events in het verleden: 'geweest' kan pas na de start (tijdslogica)."""
+    from datetime import datetime, timedelta
+    for ev in events:
+        ev.start = datetime.utcnow() - timedelta(hours=5)
+        ev.end = datetime.utcnow() - timedelta(hours=2)
+    db.session.commit()
+
+
+def _oud_genoeg(fam):
+    """Zet het gezinsaccount ouder dan de wisseldrempel (anti-misbruik)."""
+    from datetime import datetime, timedelta
+    fam.created_at = datetime.utcnow() - timedelta(days=30)
+    db.session.commit()
+
+
+def _beloning(pt=30, voorraad=None):
+    from app.models import Beloning
+    b = Beloning(emoji="🦊", naam="Stickervel", punten=pt, waarde_eur=1.5,
+                 voorraad=voorraad)
+    db.session.add(b)
+    db.session.commit()
+    return b
+
+
+def test_wisselen_verlaagt_saldo_niet_niveau(client, seed):
+    from app import punten as pas
+    from app.models import Inwissel
+    fam = seed["fam_a"]
+    _oud_genoeg(fam)
+    _voorbij(*seed["events"][:2])
+    login_as(client, fam)
+    # verdien 30 punten (2 bezoeken + 2 reviews)
+    for ev in seed["events"][:2]:
+        client.post(f"/mijn/geweest/{ev.id}", data={"antwoord": "ja"})
+        client.post(f"/mijn/review/{ev.id}", data={"kid_score": "5", "parent_score": "3"})
+    assert pas.totaal(fam.id) == 30 and pas.saldo(fam.id) == 30
+    b = _beloning(pt=30)
+    r = client.post(f"/mijn/beloningen/{b.id}/wissel", follow_redirects=True)
+    assert "RAVOT-" in r.get_data(as_text=True)
+    assert pas.saldo(fam.id) == 0
+    assert pas.totaal(fam.id) == 30            # niveau blijft
+    assert Inwissel.query.filter_by(family_id=fam.id).count() == 1
+    # tweede wissel: onvoldoende saldo
+    client.post(f"/mijn/beloningen/{b.id}/wissel")
+    assert Inwissel.query.filter_by(family_id=fam.id).count() == 1
+
+
+def test_wisselen_respecteert_voorraad(client, seed):
+    from app.models import Inwissel
+    fam = seed["fam_a"]
+    _oud_genoeg(fam)
+    login_as(client, fam)
+    client.post(f"/mijn/geweest/{seed['events'][0].id}", data={"antwoord": "ja"})
+    client.post(f"/mijn/review/{seed['events'][0].id}",
+                data={"kid_score": "5", "parent_score": "3"})
+    b = _beloning(pt=5, voorraad=0)
+    client.post(f"/mijn/beloningen/{b.id}/wissel")
+    assert Inwissel.query.count() == 0          # op = op
+
+
+def test_annulatie_geeft_voorraad_en_punten_terug(client, seed, app):
+    from app import punten as pas
+    from app.models import Admin, Inwissel
+    fam = seed["fam_a"]
+    _oud_genoeg(fam)
+    _voorbij(seed["events"][0])
+    login_as(client, fam)
+    client.post(f"/mijn/geweest/{seed['events'][0].id}", data={"antwoord": "ja"})
+    client.post(f"/mijn/review/{seed['events'][0].id}",
+                data={"kid_score": "4", "parent_score": "3"})
+    b = _beloning(pt=15, voorraad=3)
+    client.post(f"/mijn/beloningen/{b.id}/wissel")
+    assert b.voorraad == 2 and pas.saldo(fam.id) == 0
+    admin = Admin(email="a3@t.be", pw_hash="x", totp_secret="s",
+                  totp_confirmed=True, role="admin")
+    db.session.add(admin); db.session.commit()
+    with client.session_transaction() as s:
+        s["admin_id"] = admin.id; s["admin_2fa_ok"] = True
+    i = Inwissel.query.first()
+    client.post("/beheer/beloningen", data={"actie": "status", "iid": i.id,
+                                            "status": "geannuleerd"})
+    assert b.voorraad == 3 and pas.saldo(fam.id) == 15
+
+
+# ------------------------------------------------------------- anti-misbruik --
+
+def test_geweest_kan_niet_voor_de_start(client, seed):
+    from app import punten as pas
+    fam, ev = seed["fam_a"], seed["events"][0]   # start in de toekomst
+    login_as(client, fam)
+    client.post(f"/mijn/geweest/{ev.id}", data={"antwoord": "ja"})
+    sv = SavedEvent.query.filter_by(family_id=fam.id, event_id=ev.id).first()
+    assert not (sv and sv.geweest)
+    assert pas.totaal(fam.id) == 0
+
+
+def test_dagplafond_bezoeken(client, seed, app):
+    """Vanaf het 4e bezoek op één dag: geen punten meer (actie werkt wel)."""
+    from datetime import datetime, timedelta
+    from app import punten as pas
+    fam = seed["fam_a"]
+    login_as(client, fam)
+    for i in range(5):
+        ev = Event(slug=f"farm-{i}", title=f"Farm {i}", gemeente="Roeselare",
+                   postcode="8800", lat=50.9, lng=3.1,
+                   start=datetime.utcnow() - timedelta(hours=6),
+                   end=datetime.utcnow() - timedelta(hours=3),
+                   age_min=0, age_max=12, categories=[])
+        db.session.add(ev)
+        db.session.commit()
+        client.post(f"/mijn/geweest/{ev.id}", data={"antwoord": "ja"})
+    assert pas.totaal(fam.id) == 15              # 3 x 5, daarna plafond
+
+
+def test_dagplafond_totaal(app, seed):
+    from app import punten as pas
+    fam = seed["fam_a"]
+    # 50 punten verdiend vandaag -> een foto van 15 gaat over het plafond (60)
+    for i in range(5):
+        pas.ken_toe(fam.id, "review", 1000 + i)
+    db.session.commit()
+    assert pas.totaal(fam.id) == 50
+    assert pas.ken_toe(fam.id, "foto", 2000) == 0
+    # kleine actie die er nog onder past, kan wel
+    assert pas.ken_toe(fam.id, "daguitstap", 3000) == 5
+
+
+def test_wissel_vereist_ouder_account(client, seed):
+    from app.models import Inwissel
+    fam = seed["fam_a"]                          # net aangemaakt
+    login_as(client, fam)
+    b = _beloning(pt=1)
+    r = client.post(f"/mijn/beloningen/{b.id}/wissel", follow_redirects=True)
+    assert "dagen oud" in r.get_data(as_text=True)
+    assert Inwissel.query.count() == 0
+
+
+# ------------------------------------------------------------ puntenverval --
+
+def test_saldo_vervalt_niveau_niet(app, seed):
+    """Punten ouder dan de termijn tellen niet meer als saldo, wél voor het
+    niveau. Uitgaven verbruiken de oudste punten eerst."""
+    from datetime import datetime, timedelta
+    from app import punten as pas
+    from app.models import RavotPunt, Setting
+    fam = seed["fam_a"]
+    oud = datetime.utcnow() - timedelta(days=200)      # > 6 maanden
+    vers = datetime.utcnow() - timedelta(days=10)
+    db.session.add_all([
+        RavotPunt(family_id=fam.id, reden="review", ref_id=1, punten=40,
+                  created_at=oud),
+        RavotPunt(family_id=fam.id, reden="review", ref_id=2, punten=30,
+                  created_at=vers),
+    ])
+    db.session.commit()
+    assert pas.totaal(fam.id) == 70                    # niveau op alles
+    assert pas.saldo(fam.id) == 30                     # oude 40 vervallen
+    # geen verval? dan telt alles
+    db.session.add(Setting(key="punten_geldig_maanden", value="0"))
+    db.session.commit()
+    assert pas.saldo(fam.id) == 70
+
+
+def test_uitgaven_verbruiken_oudste_eerst(app, seed):
+    from datetime import datetime, timedelta
+    from app import punten as pas
+    from app.models import Beloning, Inwissel, RavotPunt
+    fam = seed["fam_b"]
+    oud = datetime.utcnow() - timedelta(days=200)
+    vers = datetime.utcnow() - timedelta(days=5)
+    db.session.add_all([
+        RavotPunt(family_id=fam.id, reden="review", ref_id=1, punten=40,
+                  created_at=oud),
+        RavotPunt(family_id=fam.id, reden="review", ref_id=2, punten=30,
+                  created_at=vers),
+    ])
+    b = Beloning(naam="Sticker", punten=40, waarde_eur=2)
+    db.session.add(b)
+    db.session.flush()
+    # gaf destijds 40 uit -> dat waren de oude punten; vandaag rest 30
+    db.session.add(Inwissel(family_id=fam.id, beloning_id=b.id, punten=40,
+                            code="RAVOT-TEST01"))
+    db.session.commit()
+    assert pas.saldo(fam.id) == 30                     # niets dubbel vervallen
+
+
+def test_verval_waarschuwing(app, seed):
+    from datetime import datetime, timedelta
+    from app import punten as pas
+    from app.models import RavotPunt
+    fam = seed["fam_a"]
+    bijna_oud = datetime.utcnow() - timedelta(days=170)   # vervalt over ±10 d
+    db.session.add(RavotPunt(family_id=fam.id, reden="review", ref_id=9,
+                             punten=25, created_at=bijna_oud))
+    db.session.commit()
+    assert pas.vervalt_binnenkort(fam.id, dagen=30) == 25
+    assert pas.vervalt_binnenkort(fam.id, dagen=5) == 0
+
+
+# ---------------------------------------------- beloningsvoorwaarden-migratie --
+
+def test_voorwaarden_paragraaf_seed_en_append(app):
+    """Nieuwe installs krijgen de paragraaf via de seed; bestaande (bewerkte)
+    voorwaardenpagina's krijgen ze via migrate-db aangevuld — zonder de eigen
+    tekst te overschrijven, en idempotent."""
+    from app.content_teksten import BELONING_VOORWAARDEN
+    from app.models import ContentPage
+    # bestaande pagina met eigen tekst, zoals op de live site
+    vw = ContentPage.query.filter_by(slug="voorwaarden").first()
+    if vw is None:
+        vw = ContentPage(slug="voorwaarden", titel="Gebruiksvoorwaarden")
+        db.session.add(vw)
+    vw.inhoud_md = ("## Eigen voorwaarden\n\nEigen intro van Xavier.\n\n"
+                    "### Wijzigingen\n\nWe passen soms iets aan.")
+    db.session.commit()
+    # zelfde logica als in migrate-db
+    def _append():
+        p = ContentPage.query.filter_by(slug="voorwaarden").first()
+        if p and p.inhoud_md and "Ravotpunten en beloningen" not in p.inhoud_md:
+            if "### Wijzigingen" in p.inhoud_md:
+                p.inhoud_md = p.inhoud_md.replace(
+                    "### Wijzigingen", BELONING_VOORWAARDEN + "\n### Wijzigingen", 1)
+            else:
+                p.inhoud_md = p.inhoud_md.rstrip() + "\n\n" + BELONING_VOORWAARDEN
+            db.session.commit()
+            return True
+        return False
+    assert _append() is True
+    tekst = ContentPage.query.filter_by(slug="voorwaarden").first().inhoud_md
+    assert "Eigen intro van Xavier." in tekst          # niets overschreven
+    assert "geen kansspel" in tekst and "YAMY BV" in tekst
+    assert tekst.index("Ravotpunten en beloningen") < tekst.index("### Wijzigingen")
+    assert _append() is False                          # idempotent
