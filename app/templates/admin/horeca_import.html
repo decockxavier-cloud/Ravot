@@ -21,6 +21,9 @@ staan bovenaan.</p>
         <option value="osm" {{ 'selected' if bron == 'osm' }}>OpenStreetMap (live)</option>
       </select></label>
     <button class="btn" type="submit">Zoek</button>
+    <button class="btn btn-stil" type="submit" name="actie" value="ai"
+            title="Laat het AI-model (instelling 'AI-verrijking') de zaken in dit gebied voorsorteren op kindvriendelijkheid. Het advies wordt bewaard.">
+      🤖 AI-voorsortering</button>
   </form>
   {% if fout %}<p class="hint" style="color:#b3261e">{{ fout }}</p>{% endif %}
   <p class="hint">Overture-kandidaten in voorraad: <strong>{{ kandidaten_n }}</strong>.
@@ -41,18 +44,22 @@ staan bovenaan.</p>
       {% for r in resultaten %}
       <tr>
         <td><input type="checkbox" name="kies" value="{{ r.ext_id }}"
-                   {{ 'checked' if r.signalen and not r.bestaat }}></td>
+                   {{ 'checked' if (r.signalen or r.get('ai') == 'ja') and not r.bestaat }}></td>
         <td>{{ r.naam }}
           {% if r.bestaat %}<span class="badge pil-ok">al in Ravot</span>{% endif %}
           {% if r.website %}<a href="{{ r.website }}" target="_blank" rel="noopener">↗</a>{% endif %}</td>
         <td>{{ r.amenity }}</td>
         <td>{{ r.gemeente or '' }} {{ r.adres or '' }}{% if r.km is defined and r.km is not none %} · {{ r.km }} km{% endif %}</td>
         <td>{% for s in r.signalen %}<span class="badge pil-ok">{{ s }}</span>{% endfor %}
-            {% if r.buiten %}<span class="badge">terras</span>{% endif %}</td>
+            {% if r.buiten %}<span class="badge">terras</span>{% endif %}
+            {% if r.get('ai') == 'ja' %}<span class="badge pil-ok">AI: ja</span>
+            {% elif r.get('ai') == 'nee' %}<span class="badge pil-uit">AI: nee</span>
+            {% elif r.get('ai') == 'twijfel' %}<span class="badge pil-bezig">AI: twijfel</span>{% endif %}</td>
         <td>
           <select name="soort_{{ r.ext_id }}">
-            <option value="horeca" {{ 'selected' if not r.zomerbar }}>Kindvriendelijke horeca</option>
+            <option value="horeca" {{ 'selected' if not (r.zomerbar or r.get('winterbar')) }}>Kindvriendelijke horeca</option>
             <option value="zomerbar" {{ 'selected' if r.zomerbar }}>Zomerbar</option>
+            <option value="winterbar" {{ 'selected' if r.get('winterbar') }}>Winterbar</option>
           </select>
         </td>
       </tr>

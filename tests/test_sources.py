@@ -144,12 +144,14 @@ def _add_dated_and_permanent():
     return dated, poi
 
 
-def test_permanente_poi_niet_op_ontdek(client, app):
-    """Permanente plekken horen op de kaart, niet in de Ontdek-lijst."""
+def test_permanente_poi_ook_op_ontdek(client, app):
+    """Lijst = kaart: vaste plekken staan óók in Ontdek (na de gedateerde
+    events, dankzij de sortering) — anders kon je nooit op restaurants of
+    speeltuinen filteren in de lijst."""
     _add_dated_and_permanent()
     r = client.get("/ontdek")
     assert r.status_code == 200
-    assert "Speeltuin Altijd Open" not in r.get_data(as_text=True)
+    assert "Speeltuin Altijd Open" in r.get_data(as_text=True)
 
 
 def test_permanente_poi_op_kaart(client, app):

@@ -16,6 +16,8 @@ Werkwijze in twee stappen, bewust gescheiden:
    bliksemsnel, geen externe afhankelijkheid, en de beheerder kiest wat
    Ravot-waardig is.
 """
+import json
+
 from ...extensions import db
 from ...models import HorecaKandidaat, PostcodeCentroid
 from ...scoring import haversine_km
@@ -32,6 +34,13 @@ _CAT_LANG = ("restaurant", "coffee", "beer_garden", "brasserie", "ice_cream",
 
 _ZOMERBAR_HINTS = ("zomerbar", "zomer bar", "summer bar", "beach", "strandbar",
                    "pop-up", "popup", "bar d'été")
+_WINTERBAR_HINTS = ("winterbar", "winter bar", "après-ski", "apres-ski",
+                    "apres ski", "wintergloed", "winterdorp", "chalet")
+
+
+def lijkt_winterbar(naam):
+    n = (naam or "").lower()
+    return any(h in n for h in _WINTERBAR_HINTS)
 
 
 def _is_horeca(cat_primair, cat_alt=None):
@@ -103,7 +112,9 @@ def laad_horeca(bbox=BELGIE_BBOX, log=print):
             k.lat, k.lng = float(lat), float(lng)
             web = webs[0] if webs else (socials[0] if socials else None)
             k.website = web[:300] if web else None
-            k.zomerbar_hint = lijkt_zomerbar(naam, primair)
+            k.zomerbar_hint = (not lijkt_winterbar(naam)
+                               and lijkt_zomerbar(naam, primair))
+            k.winterbar_hint = lijkt_winterbar(naam)
             k.confidence = rec.get("confidence")
             if bekeken % 50000 == 0:
                 db.session.commit()
@@ -112,6 +123,16 @@ def laad_horeca(bbox=BELGIE_BBOX, log=print):
     log(f"Klaar: {nieuw} nieuwe en {bijgewerkt} bijgewerkte horeca-kandidaten "
         f"({bekeken} plaatsen bekeken).")
     return nieuw + bijgewerkt
+
+
+def kandidaten_in_gebied(lat, lng, straal_km=5):
+    """Modelobjecten binnen de straal (voor de AI-triage)."""
+    marge = straal_km / 90.0
+    q = HorecaKandidaat.query.filter(
+        HorecaKandidaat.lat.between(lat - marge, lat + marge),
+        HorecaKandidaat.lng.between(lng - 1.6 * marge, lng + 1.6 * marge))
+    return [k for k in q.limit(2000).all()
+            if haversine_km(lat, lng, k.lat, k.lng) <= straal_km]
 
 
 def zoek_kandidaten(lat, lng, straal_km=5):
@@ -129,13 +150,20 @@ def zoek_kandidaten(lat, lng, straal_km=5):
                     "adres": k.adres, "gemeente": k.gemeente,
                     "postcode": k.postcode, "lat": k.lat, "lng": k.lng,
                     "signalen": [], "buiten": False, "website": k.website,
-                    "zomerbar": bool(k.zomerbar_hint), "km": round(km, 1)})
-    uit.sort(key=lambda r: r["km"])
+                    "zomerbar": bool(k.zomerbar_hint),
+                    "winterbar": bool(getattr(k, "winterbar_hint", False)),
+                    "km": round(km, 1),
+                    "ai": k.ai_advies})
+    # AI-'ja' bovenaan, daarna twijfel, dan op afstand — zo bevestig je eerst
+    # de meest kansrijke zaken.
+    volgorde = {"ja": 0, "twijfel": 1, None: 1, "nee": 2}
+    uit.sort(key=lambda r: (volgorde.get(r["ai"], 1), r["km"]))
     return uit
 
 
-_SOORT_TEKST = {"horeca": "Kindvriendelijke zaak", "zomerbar":
-                "Gezinsvriendelijke zomerbar"}
+_SOORT_TEKST = {"horeca": "Kindvriendelijke zaak",
+                "zomerbar": "Gezinsvriendelijke zomerbar",
+                "winterbar": "Gezinsvriendelijke winterbar"}
 
 
 def importeer(ext_ids_met_soort):
@@ -146,7 +174,8 @@ def importeer(ext_ids_met_soort):
         k = HorecaKandidaat.query.filter_by(ext_id=ext_id).first()
         if not k:
             continue
-        soort = "zomerbar" if soort == "zomerbar" else "horeca"
+        if soort not in ("zomerbar", "winterbar"):
+            soort = "horeca"
         gemeente, postcode = k.gemeente, k.postcode
         if not gemeente or not postcode:
             if centroids is None:
@@ -167,7 +196,7 @@ def importeer(ext_ids_met_soort):
             "is_permanent": True, "gemeente": gemeente, "postcode": postcode,
             "adres": k.adres, "lat": k.lat, "lng": k.lng,
             "age_min": 0, "age_max": 12, "categories": [],
-            "subtype": soort, "indoor": soort != "zomerbar",
+            "subtype": soort, "indoor": soort not in ("zomerbar",),
             "is_free": False, "price_info": [], "image_url": None,
             "source_url": k.website,
             "attribution": "Bron: Overture Maps Foundation (CDLA Permissive 2.0)",
@@ -178,3 +207,42 @@ def importeer(ext_ids_met_soort):
             ev.curated = True
             aantal += 1
     return aantal
+
+
+# --- AI-voorsortering ---------------------------------------------------------
+def ai_triage(kandidaten, max_batch=25):
+    """Laat het verrijkingsmodel (Ollama of cloud) inschatten welke kandidaten
+    waarschijnlijk kindvriendelijk zijn. Werkt op naam + categorie + gemeente
+    en bewaart het advies per kandidaat — beoordelen gebeurt dus maar één keer.
+    Retourneert het aantal beoordeelde kandidaten."""
+    from ...enrich import _generate, _parse_json
+    te_doen = [k for k in kandidaten if not k.ai_advies]
+    beoordeeld = 0
+    system = ("Je beoordeelt Vlaamse horecazaken voor een gezinsplatform. "
+              "Vraag: is deze zaak waarschijnlijk aantrekkelijk en geschikt om "
+              "met jonge kinderen (0-12) naartoe te gaan? Denk aan ijssalons, "
+              "pannenkoekenhuizen, kinderboerderij-cafés, brasseries met "
+              "speeltuin. Nachtcafés, sterrenrestaurants, shishabars en "
+              "bruine kroegen zijn 'nee'. Bij onvoldoende info: 'twijfel'. "
+              "Antwoord ENKEL met JSON, zonder uitleg.")
+    for i in range(0, len(te_doen), max_batch):
+        batch = te_doen[i:i + max_batch]
+        lijst = [{"id": k.ext_id, "naam": k.naam,
+                  "categorie": k.categorie or "onbekend",
+                  "gemeente": k.gemeente or "?"} for k in batch]
+        prompt = ("Beoordeel deze zaken. Geef JSON: "
+                  '{"beoordelingen": [{"id": "...", "advies": "ja|nee|twijfel"}]}\n'
+                  + json.dumps(lijst, ensure_ascii=False))
+        try:
+            data = _parse_json(_generate(prompt, system)) or {}
+        except Exception:
+            break                      # backend even niet beschikbaar: stop stil
+        per_id = {b.get("id"): b.get("advies") for b in
+                  (data.get("beoordelingen") or []) if isinstance(b, dict)}
+        for k in batch:
+            advies = per_id.get(k.ext_id)
+            if advies in ("ja", "nee", "twijfel"):
+                k.ai_advies = advies
+                beoordeeld += 1
+        db.session.commit()
+    return beoordeeld

@@ -766,6 +766,10 @@ def feestje_nieuw():
         except ValueError:
             flash("Kies een geldige feestdatum.", "error")
             return redirect(url_for("account.feestje_nieuw"))
+        from ..models import FEEST_AANLEIDINGEN
+        aanleiding = request.form.get("aanleiding") or "verjaardag"
+        if aanleiding not in FEEST_AANLEIDINGEN:
+            aanleiding = "verjaardag"
         leeftijd = None
         kind_id = request.form.get("kind")
         if kind_id and kind_id.isdigit():
@@ -779,7 +783,8 @@ def feestje_nieuw():
         except ValueError:
             aantal = 8
         postcode = re.sub(r"\D", "", request.form.get("postcode") or fam.postcode)[:4]
-        f = Feestje(family_id=fam.id, leeftijd=leeftijd, datum=datum,
+        f = Feestje(family_id=fam.id, aanleiding=aanleiding,
+                    leeftijd=leeftijd, datum=datum,
                     aantal_kinderen=aantal, postcode=postcode,
                     gemeente=(request.form.get("gemeente") or "").strip()[:80] or None,
                     straal_km=get_int("feest_straal_km", 20) or 20,
@@ -789,8 +794,9 @@ def feestje_nieuw():
         db.session.commit()
         return redirect(url_for("account.feestje_partners", fid=f.id))
     vandaag = datetime.utcnow().date()
+    from ..models import FEEST_AANLEIDINGEN
     return render_template("account/feestje_nieuw.html", family=fam,
-                           kinderen=kinderen, vandaag=vandaag,
+                           kinderen=kinderen, aanleidingen=FEEST_AANLEIDINGEN, vandaag=vandaag,
                            soorten=FEEST_SOORTEN,
                            title="Verjaardagsfeestje plannen", active=None)
 

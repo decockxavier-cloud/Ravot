@@ -44,6 +44,7 @@ TYPES = {
     "horeca":              ("🍽️", "Kindvriendelijke horeca", True),
     "rommelmarkt":         ("🛍️", "Rommelmarkt of braderie", True),
     "zomerbar":            ("🍹", "Zomerbar (gezinsvriendelijk)", True),
+    "winterbar":           ("❄️", "Winterbar (gezinsvriendelijk)", True),
     "uit_markt":         ("🛍️", "Markt of braderie", False),
     "uit_kamp":          ("⛺", "Kamp of vakantie", False),
 }
@@ -120,9 +121,25 @@ def verborgen_type_codes():
 # community, maar tonen + meetellen in de volgorde is een Partner-voordeel).
 # Openbare/publieke plekken (speeltuin, park, natuur, museum, ...) tonen hun
 # score altijd — die hebben geen commerciële relatie met Ravot.
-COMMERCIEEL = {"horeca", "zomerbar", "uit_indoorspeeltuin", "theme_park",
-               "water_park", "miniature_golf"}
+COMMERCIEEL = {"horeca", "zomerbar", "winterbar", "uit_indoorspeeltuin",
+               "theme_park", "water_park", "miniature_golf"}
 
 
 def is_commercieel(event):
     return type_code(event) in COMMERCIEEL
+
+
+# Seizoensgebonden types: buiten hun seizoen tonen we ze niet in lijsten en
+# op de kaart (een zomerbar in januari is dicht; een winterbar in juli ook).
+_SEIZOEN = {"zomerbar": (4, 5, 6, 7, 8, 9), "winterbar": (10, 11, 12, 1, 2, 3)}
+
+
+def in_seizoen(subtype, maand=None):
+    """True als dit type nú (of in de gegeven maand) in het seizoen zit."""
+    maanden = _SEIZOEN.get(subtype)
+    if not maanden:
+        return True
+    if maand is None:
+        from datetime import date
+        maand = date.today().month
+    return maand in maanden

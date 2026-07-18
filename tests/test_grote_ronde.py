@@ -928,3 +928,119 @@ def test_voorwaarden_paragraaf_seed_en_append(app):
     assert "geen kansspel" in tekst and "YAMY BV" in tekst
     assert tekst.index("Ravotpunten en beloningen") < tekst.index("### Wijzigingen")
     assert _append() is False                          # idempotent
+
+
+def test_ai_triage_bewaart_advies(app, seed, monkeypatch):
+    from app.models import HorecaKandidaat
+    from app.services.sources import overture as ov
+    db.session.add_all([
+        HorecaKandidaat(ext_id="t1", naam="IJssalon Vosje", categorie="ice_cream_shop",
+                        lat=50.95, lng=3.12),
+        HorecaKandidaat(ext_id="t2", naam="Nachtcafé De Uil", categorie="bar",
+                        lat=50.95, lng=3.12),
+        HorecaKandidaat(ext_id="t3", naam="Al beoordeeld", categorie="cafe",
+                        lat=50.95, lng=3.12, ai_advies="ja"),
+    ])
+    db.session.commit()
+    import app.enrich as enrich
+    aanroepen = []
+    def nep_generate(prompt, system):
+        aanroepen.append(prompt)
+        return ('{"beoordelingen": [{"id": "t1", "advies": "ja"}, '
+                '{"id": "t2", "advies": "nee"}]}')
+    monkeypatch.setattr(enrich, "_generate", nep_generate)
+    ks = ov.kandidaten_in_gebied(50.95, 3.12, 5)
+    n = ov.ai_triage(ks)
+    assert n == 2 and len(aanroepen) == 1        # t3 werd overgeslagen
+    assert HorecaKandidaat.query.filter_by(ext_id="t1").first().ai_advies == "ja"
+    assert HorecaKandidaat.query.filter_by(ext_id="t2").first().ai_advies == "nee"
+    # zoekresultaten: 'ja' bovenaan, 'nee' onderaan
+    rows = ov.zoek_kandidaten(50.95, 3.12, 5)
+    assert rows[0]["ai"] == "ja" and rows[-1]["ai"] == "nee"
+
+
+# ------------------------------------------------- winterbar & communiefeest --
+
+def test_winterbar_heuristiek_en_import(app, seed):
+    from app.models import Event, HorecaKandidaat
+    from app.services.sources import overture as ov
+    assert ov.lijkt_winterbar("Winterbar 't Chalet") is True
+    assert ov.lijkt_winterbar("Zomerbar Zon") is False
+    db.session.add(HorecaKandidaat(ext_id="wb1", naam="Après-Ski Bar De Piste",
+                                   categorie="bar", lat=50.95, lng=3.12,
+                                   winterbar_hint=True))
+    db.session.commit()
+    rows = ov.zoek_kandidaten(50.95, 3.12, 5)
+    assert rows[0]["winterbar"] is True
+    ov.importeer([("wb1", "winterbar")])
+    db.session.commit()
+    ev = Event.query.filter_by(ext_id="wb1").first()
+    assert ev.subtype == "winterbar" and ev.indoor is True
+
+
+def test_seizoensfilter(client, seed):
+    """Zomerbar enkel apr-sep, winterbar enkel okt-mrt — tenzij je er
+    expliciet op filtert."""
+    from datetime import date
+    from app.types import in_seizoen
+    zomer = in_seizoen("zomerbar")
+    winter = in_seizoen("winterbar")
+    assert zomer != winter                       # nooit allebei tegelijk
+    assert in_seizoen("zomerbar", maand=7) and not in_seizoen("zomerbar", maand=1)
+    assert in_seizoen("winterbar", maand=12) and not in_seizoen("winterbar", maand=7)
+    assert in_seizoen("playground", maand=1)     # gewone types altijd
+    # in de lijst: het type buiten seizoen verschijnt niet...
+    uit_seizoen = "winterbar" if zomer else "zomerbar"
+    ev = Event(slug="seizoen-test", title="Seizoensbar Test", gemeente="Roeselare",
+               postcode="8800", lat=50.9, lng=3.1, is_permanent=True,
+               subtype=uit_seizoen, age_min=0, age_max=12, categories=[],
+               curated=True, quality=90)
+    db.session.add(ev)
+    db.session.commit()
+    html = client.get("/ontdek?wanneer=alle").get_data(as_text=True)
+    assert "Seizoensbar Test" not in html
+    # ...maar wél als je er bewust op filtert
+    html = client.get(f"/ontdek?wanneer=alle&soort={uit_seizoen}").get_data(as_text=True)
+    assert "Seizoensbar Test" in html
+
+
+def test_feestje_met_aanleiding_communie(client, seed, monkeypatch):
+    from app.models import Feestje
+    fam = seed["fam_a"]
+    login_as(client, fam)
+    from datetime import date, timedelta
+    datum = (date.today() + timedelta(days=60)).isoformat()
+    r = client.post("/mijn/feestje/nieuw", data={
+        "aanleiding": "communie", "datum": datum, "leeftijd": "7",
+        "aantal": "12", "postcode": "8800", "straal": "20"},
+        follow_redirects=False)
+    assert r.status_code == 302
+    f = Feestje.query.filter_by(family_id=fam.id).first()
+    assert f.aanleiding == "communie" and f.leeftijd == 7
+
+
+def test_offertemail_vermeldt_aanleiding(app, seed):
+    from app.services import feestjes as fs
+    from app.models import Feestje
+    from datetime import date, timedelta
+    fam = seed["fam_a"]
+    f = Feestje(family_id=fam.id, aanleiding="lentefeest", leeftijd=12,
+                datum=date.today() + timedelta(days=30), aantal_kinderen=15,
+                postcode="8800", gemeente="Roeselare")
+    db.session.add(f)
+    partner = _maak_feestpartner()
+    db.session.commit()
+    verstuurd = {}
+    def nep_send(naar, onderwerp, html, text=None, headers=None):
+        verstuurd.update(onderwerp=onderwerp, text=text)
+        return True
+    import app.services.feestjes as module
+    orig = module.send_mail
+    module.send_mail = nep_send
+    try:
+        with app.test_request_context():
+            ok = fs.stuur_offerte(f, partner, fam)
+    finally:
+        module.send_mail = orig
+    assert ok
+    assert "lentefeest" in (verstuurd["onderwerp"] + verstuurd["text"]).lower()

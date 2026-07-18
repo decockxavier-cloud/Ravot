@@ -1258,6 +1258,17 @@ def horeca_import():
             fout = "Gemeente niet gevonden — probeer een postcode."
         else:
             try:
+                if request.form.get("actie") == "ai" and bron == "overture":
+                    # AI-voorsortering: beoordeel de kandidaten in dit gebied
+                    # (max. 75 per klik zodat de pagina vlot blijft; het
+                    # advies wordt bewaard, dus elke klik bouwt verder).
+                    ks = ov_bron.kandidaten_in_gebied(centrum[0], centrum[1], straal)
+                    n = ov_bron.ai_triage(ks[:75])
+                    rest = sum(1 for k in ks if not k.ai_advies)
+                    flash(f"AI beoordeelde {n} zaken"
+                          + (f" — nog {rest} te gaan, klik gerust nog eens."
+                             if rest else " — alles in dit gebied is beoordeeld."),
+                          "ok")
                 if bron == "overture":
                     resultaten = ov_bron.zoek_kandidaten(centrum[0], centrum[1], straal)
                 else:

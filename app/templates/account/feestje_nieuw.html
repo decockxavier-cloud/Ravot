@@ -2,7 +2,7 @@
 {% block body_class %}met-sfeer{% endblock %}
 {% block content %}
 <a href="{{ url_for('account.feestjes') }}" class="terug-link">← Mijn feestjes</a>
-<h1>Verjaardagsfeestje plannen 🎂</h1>
+<h1>Kinderfeest plannen 🎂</h1>
 <p class="hint">Vertel het vosje wat je nodig hebt — daarna kies je zelf naar
 welke partners in de buurt een vrijblijvende offerteaanvraag vertrekt.</p>
 
@@ -19,6 +19,15 @@ welke partners in de buurt een vrijblijvende offerteaanvraag vertrekt.</p>
       <option value="">iemand anders</option>
     </select>
   </label>
+  <label>Wat vieren jullie?</label>
+  <div class="filterbalk" role="radiogroup">
+    {% for code, (emo, label) in aanleidingen.items() %}
+    <label class="filterchip">
+      <input type="radio" name="aanleiding" value="{{ code }}"
+             {{ 'checked' if code == 'verjaardag' }} style="margin-right:4px">{{ emo }} {{ label }}</label>
+    {% endfor %}
+  </div>
+
   <p class="hint">De leeftijd op de feestdag rekenen we automatisch uit —
   handig voor de partners.</p>
   {% else %}

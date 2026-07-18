@@ -276,6 +276,24 @@ def register_cli(app):
             db.session.execute(text(
                 "ALTER TABLE families ADD COLUMN active BOOLEAN DEFAULT TRUE NOT NULL"))
             added.append("families.active")
+        hk_cols = {c["name"] for c in insp.get_columns("horeca_kandidaten")} \
+            if insp.has_table("horeca_kandidaten") else set()
+        if hk_cols and "ai_advies" not in hk_cols:
+            db.session.execute(text(
+                "ALTER TABLE horeca_kandidaten ADD COLUMN ai_advies VARCHAR(8)"))
+            added.append("horeca_kandidaten.ai_advies")
+        fj_cols = {c["name"] for c in insp.get_columns("feestjes")} \
+            if insp.has_table("feestjes") else set()
+        if fj_cols and "aanleiding" not in fj_cols:
+            db.session.execute(text(
+                "ALTER TABLE feestjes ADD COLUMN aanleiding VARCHAR(12) "
+                "DEFAULT 'verjaardag' NOT NULL"))
+            added.append("feestjes.aanleiding")
+        if hk_cols and "winterbar_hint" not in hk_cols:
+            db.session.execute(text(
+                "ALTER TABLE horeca_kandidaten ADD COLUMN winterbar_hint "
+                "BOOLEAN DEFAULT FALSE"))
+            added.append("horeca_kandidaten.winterbar_hint")
         # Beloningscatalogus: eenmalige startvoorraad (punten = euro x 20).
         from .models import Beloning
         if Beloning.query.count() == 0:

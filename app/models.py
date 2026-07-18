@@ -638,12 +638,21 @@ FEEST_SOORTEN = {
 }
 
 
+FEEST_AANLEIDINGEN = {
+    "verjaardag": ("🎂", "Verjaardagsfeestje"),
+    "communie": ("🕊️", "Eerste communie"),
+    "lentefeest": ("🌸", "Lentefeest / plechtige communie"),
+    "ander": ("🎉", "Ander kinderfeest"),
+}
+
+
 class Feestje(db.Model):
-    """Verjaardagsfeestje in voorbereiding. Privacy: geen kindnaam — enkel de
-    leeftijd die het kind op de feestdag bereikt."""
+    """Kinderfeest in voorbereiding (verjaardag, communie, lentefeest, ...).
+    Privacy: geen kindnaam — enkel de leeftijd op de feestdag."""
     __tablename__ = "feestjes"
     id = db.Column(db.Integer, primary_key=True)
     family_id = db.Column(db.Integer, db.ForeignKey("families.id"), nullable=False, index=True)
+    aanleiding = db.Column(db.String(12), default="verjaardag", nullable=False)
     leeftijd = db.Column(db.Integer)                # leeftijd op de feestdag
     datum = db.Column(db.Date, nullable=False)
     aantal_kinderen = db.Column(db.Integer, default=8, nullable=False)
@@ -719,7 +728,11 @@ class HorecaKandidaat(db.Model):
     lng = db.Column(db.Float, index=True)
     website = db.Column(db.String(300))
     zomerbar_hint = db.Column(db.Boolean, default=False)
+    winterbar_hint = db.Column(db.Boolean, default=False)
     confidence = db.Column(db.Float)
+    # AI-voorsortering: 'ja' | 'nee' | 'twijfel' (None = nog niet beoordeeld).
+    # Eén keer beoordeeld = voor altijd bewaard.
+    ai_advies = db.Column(db.String(8))
     created_at = db.Column(db.DateTime, default=utcnow)
 
 

@@ -602,11 +602,18 @@ def ontdek():
     now = datetime.utcnow()
 
     toon_alles = request.args.get("alles_tonen") == "1"
-    q = curatie_filter(type_filter(kwaliteit_filter(geldige_events(Event.query, now).filter(Event.is_permanent.is_(False)))), toon_alles)
+    # Lijst = kaart: ook vaste plekken (speeltuinen, musea, horeca, ...) horen
+    # in Ontdek thuis. Gedateerde events komen door de sortering eerst; de
+    # kwaliteits- en curatiefilters houden de POI-vloed beheersbaar.
+    q = curatie_filter(type_filter(kwaliteit_filter(geldige_events(Event.query, now))), toon_alles)
     if wanneer in ("vandaag", "deze-week", "weekend"):
         w_start, w_end = window(wanneer)
-        q = q.filter(Event.start <= w_end,
-                     (Event.end >= w_start) | (Event.start >= w_start))
+        # Vaste plekken zijn "altijd te bezoeken" en blijven dus ook binnen
+        # een datumvenster zichtbaar.
+        q = q.filter(db.or_(
+            Event.is_permanent.is_(True),
+            db.and_(Event.start <= w_end,
+                    (Event.end >= w_start) | (Event.start >= w_start))))
     centrum = _zoek_centrum(zoek, strict=True) if zoek else None
     if zoek and not centrum:
         # Geen exacte plaats → zoek op tekst (titel/gemeente)
@@ -625,10 +632,16 @@ def ontdek():
     for veld in ouder_filters:
         q = q.filter(getattr(Event, veld).is_(True))
     # Soort plek (speeltuin, museum, horeca, ...): filter op subtype.
-    from ..types import TYPES
+    from ..types import TYPES, in_seizoen
     soort = request.args.get("soort") or ""
     if soort in TYPES:
         q = q.filter(Event.subtype == soort)
+    # Seizoensgebonden types (zomer-/winterbar) buiten hun seizoen weglaten —
+    # tenzij er expliciet op gefilterd wordt (dan wil je ze bewust zien).
+    if soort not in ("zomerbar", "winterbar"):
+        q = q.filter(db.or_(Event.subtype.is_(None),
+                            ~Event.subtype.in_([t for t in ("zomerbar", "winterbar")
+                                                if not in_seizoen(t)])))
     # Leeftijd: toon wat (ook) geschikt is voor die leeftijdsband.
     lft = request.args.get("lft") or ""
     band = next((b for b in LEEFTIJDEN if b[0] == lft), None)
@@ -759,7 +772,7 @@ def verkennen():
     # dezelfde vraag, dus je kan overal evenveel.
     cat = request.args.get("cat", "")
     verberg_sp = request.args.get("sp") == "0"   # gewone speeltuinen weg
-    from ..types import verborgen_type_codes, type_code, TYPES
+    from ..types import verborgen_type_codes, type_code, TYPES, in_seizoen
     soort = request.args.get("soort") or ""
     if soort not in TYPES:
         soort = ""
@@ -790,6 +803,9 @@ def verkennen():
                 return False
         if band and not (e.age_min is not None and e.age_min <= band[3]
                          and e.age_max is not None and e.age_max >= band[2]):
+            return False
+        if e.subtype in ("zomerbar", "winterbar") and soort != e.subtype \
+                and not in_seizoen(e.subtype):
             return False
         if verberg_sp and e.subtype == "playground":
             return False

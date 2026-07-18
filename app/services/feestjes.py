@@ -69,9 +69,13 @@ def stuur_offerte(feestje, event, family):
     mail = contact_email(event)
     if not mail:
         return False
+    from ..models import FEEST_AANLEIDINGEN
+    aanleiding = FEEST_AANLEIDINGEN.get(
+        getattr(feestje, "aanleiding", None) or "verjaardag",
+        FEEST_AANLEIDINGEN["verjaardag"])[1].lower()
     mt = db.session.get(MailTemplate, "feestje_offerte")
     onderwerp = (mt.onderwerp if mt and mt.onderwerp else
-                 "Offerteaanvraag verjaardagsfeestje via Ravot ({datum})")
+                 "Offerteaanvraag {aanleiding} via Ravot ({datum})")
     inhoud = (mt.inhoud_md if mt and (mt.inhoud_md or "").strip() else
               _STANDAARD_MAIL)
     velden = {
@@ -82,6 +86,7 @@ def stuur_offerte(feestje, event, family):
         "gemeente": feestje.gemeente or feestje.postcode or "",
         "budget": feestje.budget or "geen voorkeur opgegeven",
         "wensen": feestje.wensen or "geen bijzondere wensen",
+        "aanleiding": aanleiding,
     }
     for k, v in velden.items():
         onderwerp = onderwerp.replace("{%s}" % k, v)
@@ -96,10 +101,10 @@ def stuur_offerte(feestje, event, family):
 _STANDAARD_MAIL = """Dag {plek},
 
 Een gezin uit de buurt van {gemeente} plant via **Ravot.be** een
-verjaardagsfeestje en vraagt jullie graag een vrijblijvende offerte.
+{aanleiding} en vraagt jullie graag een vrijblijvende offerte.
 
 - **Datum:** {datum}
-- **Verjaardag:** het kind wordt {leeftijd} jaar
+- **Feestvarken:** het kind wordt/is {leeftijd} jaar
 - **Aantal kinderen:** {aantal}
 - **Budget (indicatie):** {budget}
 - **Wensen:** {wensen}
