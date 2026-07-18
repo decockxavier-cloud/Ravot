@@ -1,0 +1,35 @@
+{# Herbruikbaar instellingenformulier. Verwacht: groepen, waarden, defs,
+   en optioneel open_eerste (bool). Slaat op via de gedeelde endpoint en
+   beheert ENKEL zijn eigen keys (veld _keys). #}
+<form method="post" action="{{ url_for('admin.instellingen_opslaan') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="_keys"
+         value="{% for _, keys in groepen %}{{ keys | join(',') }}{{ ',' if not loop.last }}{% endfor %}">
+  <input type="hidden" name="_terug" value="{{ request.path }}">
+  {% for groepnaam, keys in groepen %}
+  <details class="inst-groep" {{ 'open' if loop.first and open_eerste | default(true) }}>
+    <summary>{{ groepnaam }}</summary>
+    <div class="inst-lijst">
+      {% for key in keys %}
+        {% set default, label, typ = defs[key] %}
+        <div class="inst-rij">
+          <div class="inst-label">{{ label }}<code>{{ key }} · standaard: {{ default }}</code></div>
+          {% if typ == 'bool' %}
+          <label class="schakel">
+            <input type="checkbox" name="{{ key }}"
+                   {{ 'checked' if waarden[key] in ('1','true','on','yes') }}>
+            <span class="spoor"></span>
+          </label>
+          {% else %}
+          <input id="{{ key }}" type="{{ 'number' if typ == 'int' else 'text' }}"
+                 name="{{ key }}" value="{{ waarden[key] }}">
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </details>
+  {% endfor %}
+  <div class="acties" style="margin-top:14px">
+    <button class="btn" type="submit">Instellingen opslaan</button>
+  </div>
+</form>

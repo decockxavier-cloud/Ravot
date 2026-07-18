@@ -50,6 +50,17 @@ def start():
     return redirect(url_for("uitbater.login"))
 
 
+def _prijzen():
+    from ..models import get_setting
+    def _f(key, standaard):
+        try:
+            return float((get_setting(key) or "").replace(",", ".") or standaard)
+        except ValueError:
+            return standaard
+    return {"maand": _f("partner_prijs_maand", 15),
+            "jaar": _f("partner_prijs_jaar", 150)}
+
+
 @bp.route("/login", methods=["GET", "POST"])
 @limiter.limit("20/hour", methods=["POST"])
 def login():
@@ -58,11 +69,11 @@ def login():
         if not EMAIL_RE.match(email):
             flash("Dat lijkt geen geldig e-mailadres.", "error")
             return render_template("uitbater/login.html", title="Voor uitbaters",
-                                   family=None, active=None)
+                                   prijzen=_prijzen(), family=None, active=None)
         if magic.recent_requests(email) >= current_app.config["MAGIC_REQUESTS_PER_HOUR"]:
             flash("Er zijn al enkele codes verstuurd. Kijk in je mailbox (ook spam).", "error")
             return render_template("uitbater/login.html", title="Voor uitbaters",
-                                   family=None, active=None)
+                                   prijzen=_prijzen(), family=None, active=None)
         code = magic.issue_code(email, purpose="operator")
         magic.send_mail(
             email, f"Jouw Ravot-uitbaterscode: {code}",
@@ -74,7 +85,7 @@ def login():
         return render_template("uitbater/code.html", email=email,
                                title="Voer je code in", family=None, active=None)
     return render_template("uitbater/login.html", title="Voor uitbaters",
-                           family=None, active=None)
+                           prijzen=_prijzen(), family=None, active=None)
 
 
 @bp.route("/code", methods=["POST"])

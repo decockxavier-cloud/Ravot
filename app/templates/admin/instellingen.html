@@ -1,37 +1,11 @@
 {% extends "admin/admin_base.html" %}
 {% block admin_content %}
 <h1>Instellingen</h1>
-<p class="hint">Niet-geheime configuratie. API-keys en SMTP-wachtwoorden staan
+<p class="hint">Kernconfiguratie van het platform. Domeinspecifieke
+instellingen staan bij hun domein: databronnen bij <a
+href="{{ url_for('admin.verbindingen') }}">Verbindingen</a>, prijzen en Odoo bij
+<a href="{{ url_for('admin.facturatie') }}">Facturatie</a>, feest- en
+beloningsinstellingen op hun eigen pagina's. API-keys en wachtwoorden staan
 bewust in <code>.env</code> op de server, niet in de database.</p>
-
-<form method="post">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  {% for groepnaam, keys in groepen %}
-  <details class="inst-groep" {{ 'open' if loop.first }}>
-    <summary>{{ groepnaam }}</summary>
-    <div class="inst-lijst">
-      {% for key in keys %}
-        {% set default, label, typ = defs[key] %}
-        <div class="inst-rij">
-          <div class="inst-label">{{ label }}<code>{{ key }} · standaard: {{ default }}</code></div>
-          {% if typ == 'bool' %}
-          <label class="schakel">
-            <input type="checkbox" name="{{ key }}"
-                   {{ 'checked' if waarden[key] in ('1','true','on','yes') }}>
-            <span class="spoor"></span>
-          </label>
-          {% else %}
-          <input id="{{ key }}" type="{{ 'number' if typ == 'int' else 'text' }}"
-                 name="{{ key }}" value="{{ waarden[key] }}">
-          {% endif %}
-        </div>
-      {% endfor %}
-    </div>
-  </details>
-  {% endfor %}
-  <div class="acties" style="margin-top:14px">
-    <button class="btn" type="submit">Instellingen opslaan</button>
-  </div>
-  <p class="hint">Opslaan bewaart álle groepen tegelijk, ook de dichtgeklapte.</p>
-</form>
+{% include "admin/_instellingen_form.html" %}
 {% endblock %}

@@ -4,7 +4,7 @@ from functools import wraps
 from datetime import datetime, timedelta
 
 import pyotp
-from flask import (Blueprint, abort, flash, redirect, render_template, request,
+from flask import (Blueprint, abort, current_app, flash, redirect, render_template, request,
                    session, url_for)
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
@@ -216,36 +216,11 @@ def delete_review(review_id):
     return redirect(url_for("admin.dashboard"))
 
 
-@bp.route("/instellingen", methods=["GET", "POST"])
-@admin_required
-def instellingen():
-    """Niet-geheime configuratie beheren. Secrets staan bewust NIET hier."""
-    from ..models import Setting, SETTING_DEFS, get_setting
-    if request.method == "POST":
-        gewijzigd = []
-        for key, (default, label, typ) in SETTING_DEFS.items():
-            if typ == "bool":
-                nieuw = "1" if request.form.get(key) == "on" else "0"
-            else:
-                nieuw = (request.form.get(key) or "").strip()
-                if typ == "int" and not nieuw.isdigit():
-                    continue  # ongeldige int negeren
-            row = db.session.get(Setting, key)
-            if row is None:
-                row = Setting(key=key)
-                db.session.add(row)
-            if row.value != nieuw:
-                gewijzigd.append(key)
-            row.value = nieuw
-        db.session.commit()
-        if gewijzigd:
-            audit("instellingen gewijzigd: " + ", ".join(gewijzigd))
-        flash("Instellingen bewaard.", "ok")
-        return redirect(url_for("admin.instellingen"))
-    waarden = {key: get_setting(key) for key in SETTING_DEFS}
-    # Logische groepen (POST verwerkt alle keys, dus elke key MOET in een groep
-    # zitten — de vangnet-groep onderaan vangt vergeten nieuwe settings op).
-    groepen = [
+# Centrale indeling van alle instellingen. Elke SETTING_DEFS-key hoort in
+# precies één pagina thuis; het vangnet "Overige" (op de kernpagina) vangt
+# nieuwe, nog niet ingedeelde keys op.
+INSTELLING_PAGINAS = {
+    "kern": [
         ("Weergave & gedrag", ["default_radius", "toon_maanden_vooruit",
                                "ontdek_per_pagina", "onderhoud_aan"]),
         ("Ranking & kwaliteit", ["kwaliteit_min_lijst", "kwaliteit_hoog",
@@ -254,28 +229,104 @@ def instellingen():
                                  "partner_score_bonus", "geen_partner_malus",
                                  "foto_malus", "tag_drempel", "report_drempel"]),
         ("Weer", ["weer_aan", "regen_drempel", "zon_drempel"]),
-        ("Feestjes", ["feestjes_aan", "feest_straal_km", "feest_max_aanvragen"]),
         ("Mails", ["weekendmail_aan", "maandagmail_aan"]),
-        ("Databronnen", ["bron_uit_aan", "uit_query", "sync_max_pages",
-                         "bron_osm_aan", "osm_tags", "osm_horeca_aan", "osm_regios",
-                         "bron_tv_aan", "tv_max", "bron_tm_aan",
-                         "bron_wd_aan", "bron_feed_aan"]),
+        ("Beveiliging & limieten", ["codes_per_uur", "punten_dag_max",
+                                    "geweest_dag_max", "wissel_min_dagen"]),
         ("AI-verrijking", ["verrijk_backend", "ollama_model", "cloud_model"]),
-        ("Partners & facturatie", ["partner_prijs_maand", "partner_prijs_jaar",
-                                   "partner_btw_pct", "odoo_product_id",
-                                   "odoo_factuur_auto", "founding_aan",
-                                   "founding_max"]),
-        ("Beloningen & punten", ["beloningen_aan", "punt_waarde_eur", "punten_geldig_maanden", "punten_dag_max", "geweest_dag_max", "wissel_min_dagen"]),
-        ("Beveiliging", ["codes_per_uur"]),
-    ]
-    gebruikt = {k for _, keys in groepen for k in keys}
-    rest = [k for k in SETTING_DEFS if k not in gebruikt]
-    if rest:
-        groepen.append(("Overige", rest))
-    return render_template("admin/instellingen.html", defs=SETTING_DEFS,
+    ],
+    "facturatie": [
+        ("Partner-abonnement", ["partner_prijs_maand", "partner_prijs_jaar",
+                                "partner_btw_pct", "founding_aan", "founding_max"]),
+        ("Facturatie (Odoo)", ["odoo_product_id", "odoo_factuur_auto"]),
+    ],
+    "verbindingen": [
+        ("UiTdatabank", ["bron_uit_aan", "uit_query", "sync_max_pages"]),
+        ("OpenStreetMap", ["bron_osm_aan", "osm_tags", "osm_horeca_aan",
+                           "osm_regios"]),
+        ("Overige bronnen", ["bron_tv_aan", "tv_max", "bron_tm_aan",
+                             "bron_wd_aan", "bron_feed_aan"]),
+    ],
+    "feestjes": [
+        ("Feestjesmodule", ["feestjes_aan", "feest_straal_km",
+                            "feest_max_aanvragen"]),
+    ],
+    "beloningen": [
+        ("Beloningen & punten", ["beloningen_aan", "punt_waarde_eur",
+                                 "punten_geldig_maanden"]),
+    ],
+}
+
+
+def _instellingen_context(pagina):
+    """Groepen + waarden voor één instellingenpagina (met vangnet op 'kern')."""
+    from ..models import SETTING_DEFS, get_setting
+    groepen = list(INSTELLING_PAGINAS[pagina])
+    if pagina == "kern":
+        gebruikt = {k for pg in INSTELLING_PAGINAS.values() for _, keys in pg
+                    for k in keys}
+        rest = [k for k in SETTING_DEFS if k not in gebruikt]
+        if rest:
+            groepen.append(("Overige", rest))
+    keys = [k for _, ks in groepen for k in ks]
+    waarden = {k: get_setting(k) for k in keys}
+    return groepen, waarden, SETTING_DEFS
+
+
+@bp.route("/instellingen/opslaan", methods=["POST"])
+@admin_required
+def instellingen_opslaan():
+    """Gedeelde opslag voor álle instellingenpagina's. Verwerkt ENKEL de keys
+    die het formulier zelf beheert (veld _keys) — zo kan een uitgevinkte
+    checkbox op pagina A nooit een schakelaar op pagina B omgooien."""
+    from ..models import Setting, SETTING_DEFS
+    keys = [k for k in (request.form.get("_keys") or "").split(",")
+            if k in SETTING_DEFS]
+    gewijzigd = []
+    for key in keys:
+        default, label, typ = SETTING_DEFS[key]
+        if typ == "bool":
+            nieuw = "1" if request.form.get(key) == "on" else "0"
+        else:
+            nieuw = (request.form.get(key) or "").strip()
+            if typ == "int" and not nieuw.isdigit():
+                continue  # ongeldige int negeren
+        row = db.session.get(Setting, key)
+        if row is None:
+            row = Setting(key=key)
+            db.session.add(row)
+        if row.value != nieuw:
+            gewijzigd.append(key)
+        row.value = nieuw
+    db.session.commit()
+    if gewijzigd:
+        audit("instellingen gewijzigd: " + ", ".join(gewijzigd))
+    flash("Instellingen bewaard.", "ok")
+    doel = request.form.get("_terug") or url_for("admin.instellingen")
+    if not doel.startswith("/beheer"):
+        doel = url_for("admin.instellingen")
+    return redirect(doel)
+
+
+@bp.route("/instellingen")
+@admin_required
+def instellingen():
+    """Kerninstellingen. Domeinspecifieke instellingen staan bij hun domein:
+    bronnen bij Verbindingen, prijzen bij Facturatie, enzovoort."""
+    groepen, waarden, defs = _instellingen_context("kern")
+    return render_template("admin/instellingen.html", defs=defs,
                            waarden=waarden, groepen=groepen,
                            title="Instellingen",
                            family=None, active="instellingen")
+
+
+@bp.route("/facturatie")
+@admin_required
+def facturatie():
+    """Alles rond geld op één plek: abonnementsprijzen, btw en Odoo."""
+    groepen, waarden, defs = _instellingen_context("facturatie")
+    return render_template("admin/facturatie.html", defs=defs,
+                           waarden=waarden, groepen=groepen,
+                           title="Facturatie", family=None, active="facturatie")
 
 
 @bp.route("/verbindingen")
@@ -331,7 +382,9 @@ def verbindingen():
         })
     # Ollama (AI-verrijking): bereikbaar? welk model?
     status["ollama"] = {"url": cfg.get("OLLAMA_URL", ""), "model": cfg.get("OLLAMA_MODEL", "")}
-    return render_template("admin/verbindingen.html", status=status,
+    inst_groepen, inst_waarden, inst_defs = _instellingen_context("verbindingen")
+    return render_template("admin/verbindingen.html",
+                           groepen=inst_groepen, waarden=inst_waarden, defs=inst_defs, status=status,
                            syncstatus=syncstatus, sync_bezig=sync_bezig,
                            title="Verbindingen", family=None, active=None)
 
@@ -1211,7 +1264,9 @@ def feestjes():
      .order_by(db.desc("n")).limit(100).all()
     partners_zonder_contact = Event.query.filter(
         Event.feest.is_(True), Event.feest_contact.is_(None)).count()
-    return render_template("admin/feestjes.html", recente=recente,
+    inst_groepen, inst_waarden, inst_defs = _instellingen_context("feestjes")
+    return render_template("admin/feestjes.html",
+                           groepen=inst_groepen, waarden=inst_waarden, defs=inst_defs, recente=recente,
                            per_partner=per_partner,
                            zonder_contact=partners_zonder_contact,
                            title="Feestjes", family=None, active="feestjes")
@@ -1362,7 +1417,9 @@ def beloningen():
     ).filter(RavotPunt.created_at >= week)      .group_by(RavotPunt.family_id)      .order_by(db.desc("pt")).limit(10).all()
     partners = Event.query.filter(Event.partner_until.isnot(None)) \
         .order_by(Event.title).limit(200).all()
+    inst_groepen, inst_waarden, inst_defs = _instellingen_context("beloningen")
     return render_template("admin/beloningen.html", catalogus=catalogus,
+                           groepen=inst_groepen, waarden=inst_waarden, defs=inst_defs,
                            inwissels=inwissels, controle=controle,
                            statussen=INWISSEL_STATUSSEN,
                            partners=partners, punt_eur=punt_eur,

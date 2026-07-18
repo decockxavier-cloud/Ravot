@@ -1,14 +1,15 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Voor uitbaters 🏪</h1>
+
 <div class="card">
   <p><strong>Staat jouw zaak op Ravot?</strong> Claim ze gratis en houd zelf je
-    gegevens correct: openingsinfo, adres, website en beschrijving. Zo vinden
-    gezinnen altijd de juiste info — en jij bereikt je doelpubliek.</p>
-  <p class="hint">Claimen en corrigeren is gratis. Elke wijziging wordt door ons
-    team nagekeken voor ze verschijnt. Claimen verandert niets aan de
-    Ravotscore: die komt altijd van gezinnen zelf.</p>
+    gegevens correct: openingsinfo, adres, website, foto's en beschrijving. Zo
+    vinden gezinnen altijd de juiste info — en jij bereikt je doelpubliek.</p>
+  <p class="hint">Claimen en corrigeren is en blijft gratis. Elke wijziging
+    wordt door ons team nagekeken voor ze verschijnt.</p>
 </div>
+
 <form method="post" action="{{ url_for('uitbater.login') }}" class="kaart-form">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <label>Jouw e-mailadres (liefst dat van je zaak)
@@ -16,4 +17,46 @@
   </label>
   <div class="acties"><button class="btn btn-zon" type="submit">Stuur mij een inlogcode</button></div>
 </form>
+
+<h2 style="margin-top:26px">Eerlijk over ons verdienmodel 🦊</h2>
+<div class="card">
+  <p>Ravot is gratis voor gezinnen en toont geen advertenties. We verdienen op
+  precies twee manieren, allebei open en bloot:</p>
+  <p><strong>1. Het Partner-abonnement</strong> —
+  €{{ "%.0f"|format(prijzen.maand) }}/maand of
+  €{{ "%.0f"|format(prijzen.jaar) }}/jaar (excl. btw), maandelijks opzegbaar.
+  Als Partner krijgt je zaak een ⭐-badge, een streepje voor in de rangschikking
+  van commerciële zaken, en kan je goodies aanbieden in ons beloningsprogramma —
+  gratis zichtbaarheid bij precies jouw doelpubliek.</p>
+  <p><strong>2. De feestjesmodule</strong> — gezinnen plannen verjaardagen,
+  communies en lentefeesten via Ravot en sturen met één klik offerteaanvragen
+  naar feestpartners. Als Partner met een feestaanbod ontvang je die aanvragen
+  rechtstreeks in je mailbox en antwoord je rechtstreeks aan het gezin — wij
+  zitten daar niet tussen en nemen geen commissie op je omzet.</p>
+  <p class="hint"><strong>Wat nooit te koop is:</strong> de Ravotscore. Die komt
+  uitsluitend van gezinnen die je zaak écht bezochten — betalen verandert daar
+  helemaal niets aan. Net daarom is een goeie score bij ons iets waard.</p>
+</div>
+
+<h2>Wat doen we met jullie gegevens?</h2>
+<div class="card">
+  <p><strong>Waar komt je fiche vandaan?</strong> Uit open databronnen:
+  OpenStreetMap, Overture Maps (o.a. openbare bedrijfsgegevens van
+  Facebook/Bing) en UiTdatabank — telkens met bronvermelding op de fiche.
+  Het gaat uitsluitend om zakelijke, publiek beschikbare gegevens: naam,
+  adres, categorie en website van je zaak.</p>
+  <p><strong>Waarvoor gebruiken we ze?</strong> Om gezinnen kindvriendelijke
+  plekken te tonen. Het openbare e-mailadres van je zaak gebruiken we enkel om
+  offerteaanvragen van gezinnen te bezorgen (alleen als je zaak een
+  feestaanbod heeft) en om je te contacteren over je fiche — nooit voor
+  reclamelijsten, en we verkopen of delen je gegevens nooit met derden.</p>
+  <p><strong>Jouw rechten:</strong> claim je zaak en je past alles zelf aan.
+  Liever niet op Ravot staan, of iets fout gezien? Eén mailtje via
+  <a href="/contact">contact</a> en we passen het aan of verwijderen de fiche.
+  Meer detail vind je in ons <a href="/privacy">privacybeleid</a>.</p>
+</div>
+
+<p class="hint" style="text-align:center">🎂 Feestlocatie, zaalverhuur,
+springkastelen of animatie? Na het claimen vink je je feestaanbod aan en sta
+je meteen in de <a href="{{ url_for('public.feestjes_info') }}">feestjeswizard</a>.</p>
 {% endblock %}

@@ -1059,3 +1059,22 @@ def test_offertemail_vermeldt_aanleiding(app, seed):
         module.send_mail = orig
     assert ok
     assert "lentefeest" in (verstuurd["onderwerp"] + verstuurd["text"]).lower()
+
+
+def test_horeca_import_ai_knop(client, seed, app, monkeypatch):
+    """De AI-knop (POST) zelf — de GET-test miste de current_app-import."""
+    from app.models import Admin, HorecaKandidaat
+    db.session.add(HorecaKandidaat(ext_id="knop1", naam="Testcafé",
+                                   categorie="cafe", lat=50.94, lng=3.13))
+    admin = Admin(email="ai@t.be", pw_hash="x", totp_secret="s",
+                  totp_confirmed=True, role="admin")
+    db.session.add(admin); db.session.commit()
+    with client.session_transaction() as s:
+        s["admin_id"] = admin.id; s["admin_2fa_ok"] = True
+    import app.enrich as enrich
+    monkeypatch.setattr(enrich, "_generate", lambda p, s:
+                        '{"beoordelingen": [{"id": "knop1", "advies": "ja"}]}')
+    r = client.post("/beheer/horeca-import", data={
+        "actie": "ai", "bron": "overture", "plaats": "8800", "straal": "5"})
+    assert r.status_code == 200
+    assert "achtergrond" in r.get_data(as_text=True)

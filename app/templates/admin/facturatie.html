@@ -1,0 +1,10 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<h1>Facturatie</h1>
+<p class="hint">Alles rond geld op één plek: de Partner-abonnementsprijzen
+(deze verschijnen automatisch op de uitbaterspagina), btw en de
+Odoo-koppeling. Mollie- en Odoo-sleutels zelf staan in <code>.env</code>;
+de verbindingsstatus zie je bij
+<a href="{{ url_for('admin.verbindingen') }}">Verbindingen</a>.</p>
+{% include "admin/_instellingen_form.html" %}
+{% endblock %}

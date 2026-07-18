@@ -36,16 +36,21 @@ def test_setting_default_en_override(app):
 
 
 def test_instellingen_opslaan(client, app):
+    """Opslaan via de gedeelde endpoint; enkel de eigen keys (_keys) worden
+    verwerkt — een uitgevinkte checkbox op een ándere pagina blijft dus staan."""
     _login(client, app)
-    resp = client.post("/beheer/instellingen", data={
+    resp = client.post("/beheer/instellingen/opslaan", data={
+        "_keys": "uit_query,sync_max_pages,default_radius,weekendmail_aan",
         "uit_query": "labels:Vlieg", "sync_max_pages": "100",
-        "default_radius": "30",  # bool velden niet aangevinkt = uit
+        "default_radius": "30",  # bool in _keys maar niet aangevinkt = uit
     }, follow_redirects=True)
     assert resp.status_code == 200
     with app.app_context():
         assert get_setting("uit_query") == "labels:Vlieg"
         assert get_int("sync_max_pages") == 100
-        assert get_bool("weekendmail_aan") is False  # niet aangevinkt
+        assert get_bool("weekendmail_aan") is False   # niet aangevinkt
+        # weer_aan zat NIET in _keys en behoudt zijn standaard (aan)
+        assert get_bool("weer_aan") is True
 
 
 def test_verbindingen_toont_geen_secrets(client, app):

@@ -108,4 +108,7 @@ maar zonder punten — een klikker merkt dus niets en bereikt niets.</p>
 {% else %}
 <p class="hint">Nog geen inwisselingen.</p>
 {% endif %}
+
+<h2 style="margin-top:24px">Instellingen beloningen</h2>
+{% with open_eerste = false %}{% include "admin/_instellingen_form.html" %}{% endwith %}
 {% endblock %}
