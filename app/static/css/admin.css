@@ -1,0 +1,111 @@
+/* Ravot BEHEER — professioneel en sober. Bewust een andere wereld dan de
+   speelse publieke site: neutrale kleuren, strakke panelen, zakelijke knoppen.
+   Laadt NA ravot.css en overschrijft gericht binnen .admin-body. */
+
+.admin-body { background: #f4f5f7; font-family: Inter, system-ui, sans-serif; }
+.admin-body h1, .admin-body h2, .admin-body h3 {
+  font-family: Inter, system-ui, sans-serif; color: #1a2332; letter-spacing: 0; }
+.admin-body h1 { font-size: 1.35rem; margin: 0 0 4px; }
+.admin-body h2 { font-size: 1.02rem; margin: 0 0 10px; }
+.admin-body .hint { color: #5c6675; }
+
+/* Zijbalk */
+.admin-body .admin-sidebar { flex-basis: 210px; }
+.admin-body .admin-merk { font-family: Inter, system-ui, sans-serif;
+  font-weight: 600; font-size: 1rem; color: #1a2332; padding: 10px 12px 14px; }
+.admin-body .admin-merk span { color: #5c6675; font-weight: 400; }
+.admin-body .admin-menu { background: #fff; border: 1px solid #e3e6ea;
+  border-radius: 8px; padding: 6px; gap: 1px; }
+.admin-body .admin-menu a { border-radius: 6px; padding: 8px 12px;
+  font-size: 0.9rem; color: #333d4d; font-weight: 500; }
+.admin-body .admin-menu a:hover { background: #eef1f5; }
+.admin-body .admin-menu a.on { background: #1a2332; color: #fff; }
+.admin-body .admin-uit { margin-top: 8px; color: #8a93a2 !important; }
+
+/* Panelen i.p.v. speelse kaarten */
+.admin-body .card { border-radius: 8px; border: 1px solid #e3e6ea;
+  box-shadow: none; background: #fff; padding: 18px 20px; }
+.admin-body .card:hover { transform: none; box-shadow: none; }
+
+/* Knoppen: rechthoekig, neutraal. Standaard = donker; btn-stil = omlijnd wit. */
+.admin-body .btn { border-radius: 6px; font-family: Inter, system-ui, sans-serif;
+  font-weight: 500; font-size: 0.88rem; padding: 8px 14px; box-shadow: none;
+  background: #1a2332; color: #fff; border: 1px solid #1a2332;
+  transform: none !important; }
+.admin-body .btn:hover { background: #2b3648; box-shadow: none; }
+.admin-body .btn-zon { background: #1a2332; border-color: #1a2332; color: #fff; }
+.admin-body .btn-stil { background: #fff; color: #333d4d; border: 1px solid #cdd3db; }
+.admin-body .btn-stil:hover { background: #f2f4f7; }
+.admin-body .btn-gevaar { background: #fff; color: #b3261e; border: 1px solid #e3b4b1; }
+.admin-body .btn-gevaar:hover { background: #fbeeed; }
+.admin-body .btn-klein { padding: 5px 10px; font-size: 0.82rem; }
+
+/* Statuspillen */
+.admin-body .badge { border-radius: 4px; background: #eef1f5; color: #333d4d;
+  border: none; font-weight: 500; font-size: 0.78rem; padding: 3px 8px; }
+.admin-body .pil-ok { background: #e6f2e9; color: #1e6b34; }
+.admin-body .pil-uit { background: #eef1f5; color: #5c6675; }
+.admin-body .pil-fout { background: #fbeeed; color: #b3261e; }
+.admin-body .pil-bezig { background: #fff4dd; color: #8a6100; }
+
+/* Tabellen */
+.admin-body .tabel { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.admin-body .tabel th { text-align: left; color: #5c6675; font-weight: 600;
+  font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em;
+  padding: 8px 10px; border-bottom: 1px solid #e3e6ea; }
+.admin-body .tabel td { padding: 9px 10px; border-bottom: 1px solid #eef0f3; }
+.admin-body .tabel tr:hover td { background: #f8f9fb; }
+
+/* Instellingen: rijen met label links, invoer rechts */
+.admin-body .inst-groep { margin-bottom: 16px; }
+.admin-body .inst-groep > summary { cursor: pointer; list-style: none;
+  background: #fff; border: 1px solid #e3e6ea; border-radius: 8px;
+  padding: 12px 16px; font-weight: 600; color: #1a2332; font-size: 0.95rem;
+  display: flex; justify-content: space-between; align-items: center; }
+.admin-body .inst-groep > summary::after { content: "▾"; color: #8a93a2; }
+.admin-body .inst-groep[open] > summary { border-radius: 8px 8px 0 0;
+  border-bottom: none; }
+.admin-body .inst-groep[open] > summary::after { content: "▴"; }
+.admin-body .inst-lijst { background: #fff; border: 1px solid #e3e6ea;
+  border-top: none; border-radius: 0 0 8px 8px; padding: 4px 16px 12px; }
+.admin-body .inst-rij { display: grid; grid-template-columns: 1fr 260px;
+  gap: 16px; align-items: center; padding: 10px 0;
+  border-bottom: 1px solid #f0f2f5; }
+.admin-body .inst-rij:last-child { border-bottom: none; }
+.admin-body .inst-label { font-size: 0.88rem; color: #1a2332; }
+.admin-body .inst-label code { display: block; font-size: 0.72rem;
+  color: #8a93a2; background: none; padding: 0; margin-top: 2px; }
+.admin-body .inst-rij input[type=text], .admin-body .inst-rij input[type=number] {
+  width: 100%; border: 1px solid #cdd3db; border-radius: 6px; padding: 7px 10px;
+  font-size: 0.88rem; background: #fff; }
+.admin-body .inst-rij input:focus { outline: 2px solid #1a2332; outline-offset: -1px; }
+
+/* Aan/uit-schakelaar */
+.admin-body .schakel { position: relative; display: inline-block;
+  width: 40px; height: 22px; justify-self: start; }
+.admin-body .schakel input { opacity: 0; width: 0; height: 0; }
+.admin-body .schakel .spoor { position: absolute; inset: 0; background: #cdd3db;
+  border-radius: 999px; transition: background 0.15s; cursor: pointer; }
+.admin-body .schakel .spoor::before { content: ""; position: absolute;
+  width: 16px; height: 16px; left: 3px; top: 3px; background: #fff;
+  border-radius: 50%; transition: transform 0.15s; }
+.admin-body .schakel input:checked + .spoor { background: #1e6b34; }
+.admin-body .schakel input:checked + .spoor::before { transform: translateX(18px); }
+
+/* Verbindingen: nette bronpanelen */
+.admin-body .bron { background: #fff; border: 1px solid #e3e6ea;
+  border-radius: 8px; margin-bottom: 12px; }
+.admin-body .bron-kop { display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px; border-bottom: 1px solid #eef0f3; flex-wrap: wrap; }
+.admin-body .bron-kop h2 { margin: 0; flex: 1; font-size: 0.95rem; }
+.admin-body .bron-body { padding: 12px 16px; font-size: 0.88rem; color: #333d4d; }
+.admin-body .bron-acties { display: flex; gap: 8px; align-items: center;
+  padding: 10px 16px; background: #f8f9fb; border-radius: 0 0 8px 8px;
+  flex-wrap: wrap; }
+
+/* Vaste opmaak in de inhoud */
+.admin-body .acties { gap: 8px; }
+.admin-body label.chip { background: none; border: none; padding: 4px 0; }
+@media (max-width: 720px) {
+  .admin-body .inst-rij { grid-template-columns: 1fr; gap: 6px; }
+}

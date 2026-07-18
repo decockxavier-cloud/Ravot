@@ -1,26 +1,37 @@
 {% extends "admin/admin_base.html" %}
 {% block admin_content %}
 <h1>Instellingen</h1>
-<p class="hint">Alleen niet-geheime configuratie. API-keys en SMTP-wachtwoorden staan
-bewust in <code>.env</code> op de server, niet in de database — dat houdt je geheimen veilig.</p>
-<div class="card">
-  <form method="post">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    {% for key, def in defs.items() %}
-      {% set default, label, typ = def %}
-      {% if typ == 'bool' %}
-        <label class="chip" style="margin:10px 0">
-          <input type="checkbox" name="{{ key }}" {{ 'checked' if waarden[key] in ('1','true','on','yes') }}>
-          <span>{{ label }}</span>
-        </label>
-      {% else %}
-        <label for="{{ key }}">{{ label }}</label>
-        <input id="{{ key }}" type="{{ 'number' if typ == 'int' else 'text' }}"
-               name="{{ key }}" value="{{ waarden[key] }}">
-      {% endif %}
-    {% endfor %}
-    <div class="acties"><button class="btn" type="submit">Bewaar instellingen</button></div>
-  </form>
-</div>
-<p><a href="{{ url_for('admin.dashboard') }}">← Terug naar dashboard</a></p>
+<p class="hint">Niet-geheime configuratie. API-keys en SMTP-wachtwoorden staan
+bewust in <code>.env</code> op de server, niet in de database.</p>
+
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% for groepnaam, keys in groepen %}
+  <details class="inst-groep" {{ 'open' if loop.first }}>
+    <summary>{{ groepnaam }}</summary>
+    <div class="inst-lijst">
+      {% for key in keys %}
+        {% set default, label, typ = defs[key] %}
+        <div class="inst-rij">
+          <div class="inst-label">{{ label }}<code>{{ key }} · standaard: {{ default }}</code></div>
+          {% if typ == 'bool' %}
+          <label class="schakel">
+            <input type="checkbox" name="{{ key }}"
+                   {{ 'checked' if waarden[key] in ('1','true','on','yes') }}>
+            <span class="spoor"></span>
+          </label>
+          {% else %}
+          <input id="{{ key }}" type="{{ 'number' if typ == 'int' else 'text' }}"
+                 name="{{ key }}" value="{{ waarden[key] }}">
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </details>
+  {% endfor %}
+  <div class="acties" style="margin-top:14px">
+    <button class="btn" type="submit">Instellingen opslaan</button>
+  </div>
+  <p class="hint">Opslaan bewaart álle groepen tegelijk, ook de dichtgeklapte.</p>
+</form>
 {% endblock %}

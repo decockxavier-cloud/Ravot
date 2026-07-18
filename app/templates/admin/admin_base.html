@@ -1,28 +1,30 @@
 {% extends "base.html" %}
+{% block body_class %}admin-body{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ static_v('css/admin.css') }}">{% endblock %}
 {% block content %}
 <div class="admin-layout">
   <aside class="admin-sidebar">
     <div class="admin-merk">Ravot <span>beheer</span></div>
     <nav class="admin-menu">
       {% if admin_rol == 'reviewer' %}
-        <a href="{{ url_for('admin.activiteiten') }}" class="{{ 'on' if active=='activiteiten' }}">🎡 Activiteiten</a>
-        <a href="{{ url_for('admin.types_beheer') }}" class="{{ 'on' if active=='types' }}">🏷️ Types</a>
-        <a href="{{ url_for('admin.nazicht') }}" class="{{ 'on' if active=='nazicht' }}">🔍 Nazicht</a>
+        <a href="{{ url_for('admin.activiteiten') }}" class="{{ 'on' if active=='activiteiten' }}">Activiteiten</a>
+        <a href="{{ url_for('admin.types_beheer') }}" class="{{ 'on' if active=='types' }}">Types</a>
+        <a href="{{ url_for('admin.nazicht') }}" class="{{ 'on' if active=='nazicht' }}">Nazicht</a>
       {% else %}
-        <a href="{{ url_for('admin.dashboard') }}" class="{{ 'on' if active=='dashboard' }}">📊 Dashboard</a>
-        <a href="{{ url_for('admin.families') }}" class="{{ 'on' if active=='families' }}">👨‍👩‍👧 Gezinnen</a>
-        <a href="{{ url_for('admin.paginas') }}" class="{{ 'on' if active=='paginas' }}">📄 Pagina's</a>
-        <a href="{{ url_for('admin.mails') }}" class="{{ 'on' if active=='mails' }}">✉️ Mailteksten</a>
-        <a href="{{ url_for('admin.instellingen') }}" class="{{ 'on' if active=='instellingen' }}">⚙️ Instellingen</a>
-        <a href="{{ url_for('admin.verbindingen') }}" class="{{ 'on' if active=='verbindingen' }}">🔌 Verbindingen</a>
-        <a href="{{ url_for('admin.nazicht') }}" class="{{ 'on' if active=='nazicht' }}">🔍 Nazicht</a>
-        <a href="{{ url_for('admin.verrijk') }}" class="{{ 'on' if active=='verrijk' }}">🤖 AI-verrijking</a>
-        <a href="{{ url_for('admin.feeds') }}" class="{{ 'on' if active=='feeds' }}">📅 Agenda-feeds</a>
-        <a href="{{ url_for('admin.partners') }}" class="{{ 'on' if active=='partners' }}">⭐ Partners</a>
-        <a href="{{ url_for('admin.feestjes') }}" class="{{ 'on' if active=='feestjes' }}">🎂 Feestjes</a>
-        <a href="{{ url_for('admin.team') }}" class="{{ 'on' if active=='team' }}">👥 Team</a>
+        <a href="{{ url_for('admin.dashboard') }}" class="{{ 'on' if active=='dashboard' }}">Dashboard</a>
+        <a href="{{ url_for('admin.families') }}" class="{{ 'on' if active=='families' }}">Gezinnen</a>
+        <a href="{{ url_for('admin.paginas') }}" class="{{ 'on' if active=='paginas' }}">Pagina's</a>
+        <a href="{{ url_for('admin.mails') }}" class="{{ 'on' if active=='mails' }}">Mailteksten</a>
+        <a href="{{ url_for('admin.instellingen') }}" class="{{ 'on' if active=='instellingen' }}">Instellingen</a>
+        <a href="{{ url_for('admin.verbindingen') }}" class="{{ 'on' if active=='verbindingen' }}">Verbindingen</a>
+        <a href="{{ url_for('admin.nazicht') }}" class="{{ 'on' if active=='nazicht' }}">Nazicht</a>
+        <a href="{{ url_for('admin.verrijk') }}" class="{{ 'on' if active=='verrijk' }}">AI-verrijking</a>
+        <a href="{{ url_for('admin.feeds') }}" class="{{ 'on' if active=='feeds' }}">Agenda-feeds</a>
+        <a href="{{ url_for('admin.partners') }}" class="{{ 'on' if active=='partners' }}">Partners</a>
+        <a href="{{ url_for('admin.feestjes') }}" class="{{ 'on' if active=='feestjes' }}">Feestjes</a>
+        <a href="{{ url_for('admin.team') }}" class="{{ 'on' if active=='team' }}">Team</a>
       {% endif %}
-      <a href="{{ url_for('admin.logout') }}" class="admin-uit">↩ Afmelden</a>
+      <a href="{{ url_for('admin.logout') }}" class="admin-uit">Afmelden</a>
     </nav>
   </aside>
   <main class="admin-inhoud">

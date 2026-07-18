@@ -7,7 +7,7 @@ elke nacht automatisch een sync (cron).</p>
 
 {% if sync_bezig %}
 <div class="card" style="border-left:4px solid var(--zon)">
-  <strong>⏳ Er loopt momenteel een sync.</strong>
+  <strong>Er loopt momenteel een synchronisatie.</strong>
   <span class="hint">Herlaad deze pagina om de voortgang te zien.</span>
 </div>
 {% endif %}
@@ -15,10 +15,10 @@ elke nacht automatisch een sync (cron).</p>
 {% macro sync_controls(code) %}
   {% set st = syncstatus.get(code) %}
   {% if st %}
-    <span class="badge">
-      {% if st.state == 'running' %}⏳ bezig…
-      {% elif st.state == 'done' %}✅ {{ st.last_result }}
-      {% elif st.state == 'error' %}⚠️ fout
+    <span class="badge {% if st.state == 'running' %}pil-bezig{% elif st.state == 'done' %}pil-ok{% elif st.state == 'error' %}pil-fout{% endif %}">
+      {% if st.state == 'running' %}bezig…
+      {% elif st.state == 'done' %}{{ st.last_result }}
+      {% elif st.state == 'error' %}fout
       {% else %}{{ st.last_result or 'nog niet gedraaid' }}{% endif %}
       {% if st.last_run %} · {{ st.last_run.strftime('%d/%m %H:%M') }}{% endif %}
     </span>
@@ -28,13 +28,13 @@ elke nacht automatisch een sync (cron).</p>
   <div class="acties" style="margin-top:6px">
     <form method="post" action="{{ url_for('admin.sync_bron', naam=code) }}" style="display:inline">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button class="btn btn-stil" type="submit"{{ ' disabled' if sync_bezig else '' }}>🔄 Nu syncen</button>
+      <button class="btn btn-stil" type="submit"{{ ' disabled' if sync_bezig else '' }}>Synchroniseer nu</button>
     </form>
     <form method="post" action="{{ url_for('admin.purge_bron', naam=code) }}" style="display:inline">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <label class="hint" style="display:inline-block;margin-right:6px">
         <input type="checkbox" name="bevestig" value="ja"> bevestig</label>
-      <button class="btn btn-stil" type="submit"{{ ' disabled' if sync_bezig else '' }}>🗑️ Verwijder</button>
+      <button class="btn btn-gevaar btn-klein" type="submit"{{ ' disabled' if sync_bezig else '' }}>Verwijder brondata</button>
     </form>
   </div>
 {% endmacro %}
@@ -43,7 +43,7 @@ elke nacht automatisch een sync (cron).</p>
   <div class="acties">
     <form method="post" action="{{ url_for('admin.sync_bron', naam='all') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button class="btn btn-zon" type="submit"{{ ' disabled' if sync_bezig else '' }}>🔄 Alle ingeschakelde bronnen nu syncen</button>
+      <button class="btn btn-zon" type="submit"{{ ' disabled' if sync_bezig else '' }}>Alle ingeschakelde bronnen synchroniseren</button>
     </form>
   </div>
   <p class="hint">Dit doet hetzelfde als de nachtelijke cron: enkel bronnen die
@@ -53,11 +53,11 @@ elke nacht automatisch een sync (cron).</p>
 <div class="card">
   <h2 style="margin-top:0">UiTdatabank (publiq)</h2>
   <div class="badges">
-    {% if status.uit.geconfigureerd %}<span class="badge" style="color:var(--gras)">🔑 key aanwezig</span>
-    {% else %}<span class="badge" style="color:var(--rood)">⚠️ geen key in .env</span>{% endif %}
+    {% if status.uit.geconfigureerd %}<span class="badge pil-ok">key aanwezig</span>
+    {% else %}<span class="badge pil-fout">geen key in .env</span>{% endif %}
     <span class="badge">Omgeving: <strong>{{ status.uit.omgeving }}</strong></span>
-    {% if status.uit.aan %}<span class="badge" style="color:var(--gras)">✅ aan</span>
-    {% else %}<span class="badge" style="color:#b8860b">⏸️ uit (tot go-live)</span>{% endif %}
+    {% if status.uit.aan %}<span class="badge pil-ok">actief</span>
+    {% else %}<span class="badge pil-uit">uit (tot go-live)</span>{% endif %}
     <span class="badge">In databank: {{ status.uit.aantal_events }}</span>
   </div>
   {% if status.uit.omgeving == 'test' %}
@@ -67,7 +67,7 @@ elke nacht automatisch een sync (cron).</p>
   {{ sync_controls('uit') }}
   <form method="post" action="{{ url_for('admin.test_uit') }}" style="margin-top:6px">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button class="btn btn-stil" type="submit">🔌 Test UiT-verbinding</button>
+    <button class="btn btn-stil" type="submit">Test verbinding</button>
   </form>
 </div>
 
@@ -80,17 +80,17 @@ elke nacht automatisch een sync (cron).</p>
   <div style="padding:10px 0;border-top:1px solid #eee">
     <div class="badges">
       <span class="badge"><strong>{{ b.naam }}</strong></span>
-      {% if b.aan %}<span class="badge" style="color:var(--gras)">✅ aan</span>
-      {% else %}<span class="badge" style="color:#b8860b">⏸️ uit</span>{% endif %}
+      {% if b.aan %}<span class="badge pil-ok">actief</span>
+      {% else %}<span class="badge pil-uit">uit</span>{% endif %}
       {% if b.key_nodig %}
-        {% if b.geconfigureerd %}<span class="badge">🔑 key aanwezig</span>
-        {% else %}<span class="badge" style="color:var(--rood)">⚠️ geen key in .env</span>{% endif %}
+        {% if b.geconfigureerd %}<span class="badge pil-ok">key aanwezig</span>
+        {% else %}<span class="badge pil-fout">geen key in .env</span>{% endif %}
       {% else %}<span class="badge">geen key nodig</span>{% endif %}
       <span class="badge">In databank: {{ b.aantal }}</span>
       {% if b.test %}
       <form method="post" action="{{ url_for('admin.test_tm') }}" style="display:inline">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button class="btn btn-stil" type="submit">🔌 Test</button>
+        <button class="btn btn-stil" type="submit">Test</button>
       </form>{% endif %}
     </div>
     {{ sync_controls(b.code) }}
@@ -101,8 +101,8 @@ elke nacht automatisch een sync (cron).</p>
 <div class="card">
   <h2 style="margin-top:0">E-mail (SMTP)</h2>
   <p>Status:
-    {% if status.smtp.geconfigureerd %}<strong style="color:var(--gras)">✅ ingesteld</strong>
-    {% else %}<strong style="color:#b8860b">⚠️ console-modus</strong>{% endif %}
+    {% if status.smtp.geconfigureerd %}<span class="badge pil-ok">ingesteld</span>
+    {% else %}<span class="badge pil-bezig">console-modus</span>{% endif %}
   </p>
   <div class="badges">
     <span class="badge">Server: {{ status.smtp.host }}</span>
@@ -114,7 +114,7 @@ elke nacht automatisch een sync (cron).</p>
   {% endif %}
   <form method="post" action="{{ url_for('admin.test_smtp') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="acties"><button class="btn btn-stil" type="submit">✉️ Stuur testmail naar mezelf</button></div>
+    <div class="acties"><button class="btn btn-stil" type="submit">Stuur testmail naar mezelf</button></div>
   </form>
 </div>
 
@@ -125,7 +125,7 @@ elke nacht automatisch een sync (cron).</p>
     <code>{{ status.ollama.model or 'niet ingesteld' }}</code></p>
   <form method="post" action="{{ url_for('admin.test_ollama') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="acties"><button class="btn btn-stil" type="submit">🤖 Test Ollama</button></div>
+    <div class="acties"><button class="btn btn-stil" type="submit">Test Ollama</button></div>
   </form>
 </div>
 <p><a href="{{ url_for('admin.dashboard') }}">← Terug naar dashboard</a></p>

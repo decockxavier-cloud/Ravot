@@ -243,9 +243,38 @@ def instellingen():
         flash("Instellingen bewaard.", "ok")
         return redirect(url_for("admin.instellingen"))
     waarden = {key: get_setting(key) for key in SETTING_DEFS}
+    # Logische groepen (POST verwerkt alle keys, dus elke key MOET in een groep
+    # zitten — de vangnet-groep onderaan vangt vergeten nieuwe settings op).
+    groepen = [
+        ("Weergave & gedrag", ["default_radius", "toon_maanden_vooruit",
+                               "ontdek_per_pagina", "onderhoud_aan"]),
+        ("Ranking & kwaliteit", ["kwaliteit_min_lijst", "kwaliteit_hoog",
+                                 "enkel_gecureerd", "verborgen_types",
+                                 "score_prior_n", "score_prior_waarde",
+                                 "partner_score_bonus", "geen_partner_malus",
+                                 "foto_malus", "tag_drempel", "report_drempel"]),
+        ("Weer", ["weer_aan", "regen_drempel", "zon_drempel"]),
+        ("Feestjes", ["feestjes_aan", "feest_straal_km", "feest_max_aanvragen"]),
+        ("Mails", ["weekendmail_aan", "maandagmail_aan"]),
+        ("Databronnen", ["bron_uit_aan", "uit_query", "sync_max_pages",
+                         "bron_osm_aan", "osm_tags", "osm_regios",
+                         "bron_tv_aan", "tv_max", "bron_tm_aan",
+                         "bron_wd_aan", "bron_feed_aan"]),
+        ("AI-verrijking", ["verrijk_backend", "ollama_model", "cloud_model"]),
+        ("Partners & facturatie", ["partner_prijs_maand", "partner_prijs_jaar",
+                                   "partner_btw_pct", "odoo_product_id",
+                                   "odoo_factuur_auto", "founding_aan",
+                                   "founding_max"]),
+        ("Beveiliging", ["codes_per_uur"]),
+    ]
+    gebruikt = {k for _, keys in groepen for k in keys}
+    rest = [k for k in SETTING_DEFS if k not in gebruikt]
+    if rest:
+        groepen.append(("Overige", rest))
     return render_template("admin/instellingen.html", defs=SETTING_DEFS,
-                           waarden=waarden, title="Instellingen",
-                           family=None, active=None)
+                           waarden=waarden, groepen=groepen,
+                           title="Instellingen",
+                           family=None, active="instellingen")
 
 
 @bp.route("/verbindingen")

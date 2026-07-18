@@ -31,7 +31,7 @@ def test_buurt_zoeken_toont_naburige_gemeente(client, app):
             gemeente="Gent", postcode="9000", lat=51.054, lng=3.725,
             age_min=3, age_max=10, categories=[], is_free=True, price_info=[{"name":"b","price":0}]))
         db.session.commit()
-    html = client.get("/ontdek?q=Roeselare").get_data(as_text=True)
+    html = client.get("/ontdek?q=Roeselare&wanneer=alle").get_data(as_text=True)
     assert "RoeselareFeest" in html   # de gezochte gemeente
     assert "IzegemFeest" in html      # buurgemeente (~7km) mee
     assert "GentFeest" not in html    # ver weg (~50km) niet

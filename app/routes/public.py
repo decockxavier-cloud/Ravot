@@ -617,6 +617,11 @@ def ontdek():
                      if f in ("omheind", "verzorgingstafel", "buggy_ok")}
     for veld in ouder_filters:
         q = q.filter(getattr(Event, veld).is_(True))
+    # Soort plek (speeltuin, museum, horeca, ...): filter op subtype.
+    from ..types import TYPES
+    soort = request.args.get("soort") or ""
+    if soort in TYPES:
+        q = q.filter(Event.subtype == soort)
     if cat:
         # categories is JSON; matchen doen we tekstueel op de opgeslagen lijst
         q = q.filter(db.func.lower(db.cast(Event.categories, db.String)).like(f'%"{cat}"%'))
@@ -662,7 +667,7 @@ def ontdek():
     weer_scope = wanneer if wanneer in ("vandaag", "deze-week", "weekend") else "vandaag"
     weer = weerbericht(weer_scope, fam, centrum=centrum,
                        plaats=zoek.title() if centrum else None)
-    return render_template("public/ontdek.html", rows=pagina_rows, sort=sort, zoek=zoek, wanneer=wanneer, cat=cat, verberg_sp=verberg_sp, toon_alles=toon_alles, curatie_aan=_gb("enkel_gecureerd"), ouder_filters=ouder_filters, weer=weer,
+    return render_template("public/ontdek.html", rows=pagina_rows, sort=sort, zoek=zoek, wanneer=wanneer, cat=cat, verberg_sp=verberg_sp, toon_alles=toon_alles, curatie_aan=_gb("enkel_gecureerd"), ouder_filters=ouder_filters, weer=weer, soort=soort, soorten=TYPES,
                            filter_type=filter_type, pagina=pagina, max_pagina=max_pagina,
                            totaal=totaal, has_profile=has_profile, family=fam,
                            active="ontdek", title="Ontdek alles")

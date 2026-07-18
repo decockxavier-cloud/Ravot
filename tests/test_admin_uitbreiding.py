@@ -85,7 +85,7 @@ def test_ontdek_paginering(client, app):
                 age_min=3, age_max=10, categories=[], is_free=True,
                 price_info=[{"name":"basis","price":0}]))
         db.session.commit()
-    r = client.get("/ontdek?sort=datum")
+    r = client.get("/ontdek?sort=datum&wanneer=alle")
     html = r.get_data(as_text=True)
     assert r.status_code == 200
     # 30 events, 24 per pagina → pagina 1/2 + volgende-knop

@@ -84,6 +84,6 @@ def test_admin_purge_vereist_bevestiging(client, app):
 def test_verbindingen_toont_knoppen(client, app):
     _login(client, app)
     html = client.get("/beheer/verbindingen").get_data(as_text=True)
-    assert "Nu syncen" in html
-    assert "Alle ingeschakelde bronnen nu syncen" in html
+    assert "Synchroniseer nu" in html
+    assert "Alle ingeschakelde bronnen synchroniseren" in html
     assert "Verwijder" in html
