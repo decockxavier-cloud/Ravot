@@ -88,7 +88,7 @@ def test_codes_per_uur_wordt_gehandhaafd(client, app):
         db.session.commit()
     # 2 aanvragen mogen, de 3e wordt geweigerd
     for i in range(2):
-        r = client.post("/login", data={"email": "limiet@test.be"})
+        r = client.post("/login", data={"email": "limiet@test.be", "nieuw": "1"})
         assert "Voer je code in".encode() in r.data or r.status_code == 200
-    r = client.post("/login", data={"email": "limiet@test.be"})
+    r = client.post("/login", data={"email": "limiet@test.be", "nieuw": "1"})
     assert "al enkele codes verstuurd".encode() in r.data  # geweigerd

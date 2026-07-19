@@ -80,7 +80,7 @@ def test_ontdek_paginering(client, app):
         now = datetime.utcnow()
         for i in range(30):
             db.session.add(Event(uit_id=f"p{i}", slug=f"p-{i}", title=f"Event {i}",
-                start=now+timedelta(days=1, hours=i), end=now+timedelta(days=1, hours=i+1),
+                start=now+timedelta(hours=1, minutes=i), end=now+timedelta(hours=2, minutes=i),
                 gemeente="Gent", postcode="9000", lat=51.0, lng=3.7,
                 age_min=3, age_max=10, categories=[], is_free=True,
                 price_info=[{"name":"basis","price":0}]))
@@ -96,12 +96,12 @@ def test_ontdek_filter_gratis(client, app):
     with app.app_context():
         now = datetime.utcnow()
         db.session.add(Event(uit_id="gr", slug="gr", title="GratisEvent",
-            start=now+timedelta(days=1), end=now+timedelta(days=1, hours=1),
+            start=now+timedelta(hours=1), end=now+timedelta(hours=3),
             gemeente="Gent", postcode="9000", lat=51.0, lng=3.7,
             age_min=3, age_max=10, categories=[], is_free=True,
             price_info=[{"name":"basis","price":0}]))
         db.session.add(Event(uit_id="be", slug="be", title="BetaalEvent",
-            start=now+timedelta(days=1), end=now+timedelta(days=1, hours=1),
+            start=now+timedelta(hours=1), end=now+timedelta(hours=3),
             gemeente="Gent", postcode="9000", lat=51.0, lng=3.7,
             age_min=3, age_max=10, categories=[], is_free=False,
             price_info=[{"name":"basis","price":8}]))

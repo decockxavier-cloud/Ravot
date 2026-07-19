@@ -1,0 +1,39 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<h1>Status</h1>
+<p class="hint">Live controle van alle API's en koppelingen — herlaad de pagina
+om opnieuw te meten.
+{% if problemen %}<strong style="color:#b3261e">{{ problemen }} dienst(en) vragen aandacht.</strong>
+{% else %}<span class="badge pil-ok">alles operationeel</span>{% endif %}</p>
+
+<table class="tabel">
+  <tr><th>Dienst</th><th>Status</th><th>Detail</th><th style="text-align:right">Reactietijd</th></tr>
+  {% for c in checks %}
+  <tr>
+    <td>{{ c.naam }}</td>
+    <td>{% if c.ok is true %}<span class="badge pil-ok">ok</span>
+        {% elif c.ok is false %}<span class="badge pil-fout">probleem</span>
+        {% else %}<span class="badge pil-uit">n.v.t.</span>{% endif %}</td>
+    <td>{{ c.detail }}</td>
+    <td style="text-align:right">{{ c.ms }} ms</td>
+  </tr>
+  {% endfor %}
+</table>
+
+<h2 style="margin-top:22px">Databronnen — laatste synchronisatie</h2>
+<table class="tabel">
+  <tr><th>Bron</th><th>Status</th><th>Laatste run</th><th>Resultaat</th></tr>
+  {% for b in bronnen %}
+  <tr>
+    <td>{{ b.source }}</td>
+    <td><span class="badge {% if b.state == 'done' %}pil-ok{% elif b.state == 'error' %}pil-fout{% elif b.state == 'running' %}pil-bezig{% else %}pil-uit{% endif %}">{{ b.state }}</span></td>
+    <td>{{ b.last_run.strftime('%d/%m %H:%M') if b.last_run else '—' }}</td>
+    <td>{{ b.last_error or b.last_result or '—' }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="4" class="leeg">Nog geen synchronisaties gedraaid.</td></tr>
+  {% endfor %}
+</table>
+<p class="hint">De nachtsync draait om 02:30 (cron); handmatig syncen kan bij
+<a href="{{ url_for('admin.verbindingen') }}">Verbindingen</a>.</p>
+{% endblock %}

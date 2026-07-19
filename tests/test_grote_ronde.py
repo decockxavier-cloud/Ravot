@@ -1078,3 +1078,55 @@ def test_horeca_import_ai_knop(client, seed, app, monkeypatch):
         "actie": "ai", "bron": "overture", "plaats": "8800", "straal": "5"})
     assert r.status_code == 200
     assert "achtergrond" in r.get_data(as_text=True)
+
+
+# ------------------------------------------------ status & partneropvolging --
+
+def _admin_login(client):
+    from app.models import Admin
+    admin = Admin(email="st@t.be", pw_hash="x", totp_secret="s",
+                  totp_confirmed=True, role="admin")
+    db.session.add(admin); db.session.commit()
+    with client.session_transaction() as s:
+        s["admin_id"] = admin.id; s["admin_2fa_ok"] = True
+    return admin
+
+
+def test_status_dashboard(client, seed, monkeypatch):
+    """Alle checks renderen; externe pings gemockt (ok én kapot)."""
+    import app.services.health as health
+    monkeypatch.setattr(health.requests, "get",
+                        lambda *a, **k: (_ for _ in ()).throw(OSError("weg")))
+    _admin_login(client)
+    r = client.get("/beheer/status")
+    h = r.get_data(as_text=True)
+    assert r.status_code == 200
+    assert "Database (PostgreSQL)" in h and "Mollie" in h and "Ollama" in h
+    assert "probleem" in h                     # kapotte pings netjes getoond
+    assert "laatste synchronisatie" in h
+
+
+def test_partners_lidmaatschappen_en_nafacturatie(client, seed, monkeypatch):
+    from datetime import datetime, timedelta
+    from app.models import Operator, PartnerPayment
+    ev = seed["events"][0]
+    ev.partner_until = datetime.utcnow() + timedelta(days=10)   # verloopt snel
+    op = Operator(email="zaak@t.be", bedrijfsnaam="Testzaak BV", btw_nummer="BE0123456789")
+    db.session.add(op); db.session.flush()
+    b = PartnerPayment(operator_id=op.id, event_id=ev.id, plan="jaar",
+                       amount="190.00", status="paid",
+                       paid_at=datetime.utcnow())
+    db.session.add(b); db.session.commit()
+    _admin_login(client)
+    h = client.get("/beheer/partners").get_data(as_text=True)
+    assert "Testzaak BV" in h and "verloopt binnen 14 d" in h
+    assert "€190" in h                       # omzet dit jaar
+    # nafacturatie: odoo gemockt
+    import app.odoo as odoo
+    monkeypatch.setattr(odoo, "actief", lambda: True)
+    def nep_factureer(p, http_post=None):
+        p.odoo_invoice_id, p.odoo_invoice_ref = 7, "INV/2026/0007"
+    monkeypatch.setattr(odoo, "factureer_betaling", nep_factureer)
+    r = client.post(f"/beheer/partners/factuur/{b.id}", follow_redirects=True)
+    assert "INV/2026/0007" in r.get_data(as_text=True)
+    assert b.odoo_invoice_ref == "INV/2026/0007"

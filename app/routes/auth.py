@@ -32,6 +32,15 @@ def login():
         if magic.recent_requests(email) >= max_codes:
             flash("Er zijn al enkele codes verstuurd. Kijk in je mailbox (ook spam).", "error")
             return render_template("auth/login.html", title="Aanmelden", family=None, active=None)
+        # Onbekend adres? Dan sturen we NIET zomaar een code (typfouten en
+        # vreemde adressen krijgen zo nooit ongevraagde mail). We tonen eerst
+        # de vraag of ze een nieuw profiel willen; pas na die bewuste klik
+        # (veld "nieuw") vertrekt de code en volgt de onboarding.
+        bestaat = Family.query.filter_by(email=email).first() is not None
+        if not bestaat and request.form.get("nieuw") != "1":
+            return render_template("auth/nieuw_profiel.html", email=email,
+                                   title="Nieuw bij Ravot?", family=None,
+                                   active=None)
         code = magic.issue_code(email)
         magic.send_mail(
             email, f"Jouw Ravot-inlogcode: {code}",

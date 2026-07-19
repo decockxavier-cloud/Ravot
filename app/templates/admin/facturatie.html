@@ -4,7 +4,11 @@
 <p class="hint">Alles rond geld op één plek: de Partner-abonnementsprijzen
 (deze verschijnen automatisch op de uitbaterspagina), btw en de
 Odoo-koppeling. Mollie- en Odoo-sleutels zelf staan in <code>.env</code>;
-de verbindingsstatus zie je bij
-<a href="{{ url_for('admin.verbindingen') }}">Verbindingen</a>.</p>
+of Mollie en Odoo effectief bereikbaar zijn, zie je live op de
+<a href="{{ url_for('admin.status') }}">Status</a>-pagina; de facturen en
+lidmaatschappen volg je op bij <a href="{{ url_for('admin.partners') }}">Partners</a>.</p>
+<p class="hint">Vereist in <code>.env</code>: <code>MOLLIE_API_KEY</code> (betalingen)
+en <code>ODOO_URL</code>, <code>ODOO_DB</code>, <code>ODOO_USER</code>,
+<code>ODOO_API_KEY</code> (facturatie).</p>
 {% include "admin/_instellingen_form.html" %}
 {% endblock %}

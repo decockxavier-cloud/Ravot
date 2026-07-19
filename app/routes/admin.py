@@ -997,13 +997,58 @@ def nazicht_wijziging(pid, actie):
 @admin_required
 def partners():
     """Overzicht van Partner-betalingen mét Odoo-factuurreferentie."""
+    from datetime import datetime, timedelta
     from ..models import PartnerPayment
-    from .. import odoo
+    from .. import mollie, odoo
+    nu = datetime.utcnow()
     betalingen = PartnerPayment.query.order_by(
         PartnerPayment.created_at.desc()).limit(200).all()
+    # Actieve lidmaatschappen: zaken met een lopende partner-periode, met hun
+    # laatste betaalde plan en de uitbater erbij.
+    actieve = Event.query.filter(Event.partner_until.isnot(None),
+                                 Event.partner_until >= nu)         .order_by(Event.partner_until).all()
+    laatste_per_event = {}
+    for b in betalingen:
+        if b.status == "paid" and b.event_id not in laatste_per_event:
+            laatste_per_event[b.event_id] = b
+    leden = [{"ev": ev, "betaling": laatste_per_event.get(ev.id),
+              "verloopt_snel": ev.partner_until <= nu + timedelta(days=14)}
+             for ev in actieve]
+    jaar_start = datetime(nu.year, 1, 1)
+    omzet_jaar = sum(float(b.amount) for b in betalingen
+                     if b.status == "paid" and b.paid_at and b.paid_at >= jaar_start)
+    zonder_factuur = [b for b in betalingen
+                      if b.status == "paid" and not b.odoo_invoice_ref]
     return render_template("admin/partners.html", betalingen=betalingen,
+                           leden=leden, omzet_jaar=omzet_jaar,
+                           zonder_factuur=zonder_factuur,
+                           mollie_actief=mollie.actief(),
                            odoo_actief=odoo.actief(), title="Partners",
                            family=None, active="partners")
+
+
+@bp.route("/partners/factuur/<int:pid>", methods=["POST"])
+@admin_required
+def partner_factuur_alsnog(pid):
+    """Betaalde betaling zonder Odoo-factuur: alsnog aanmaken (bv. nadat de
+    Odoo-koppeling later geconfigureerd werd)."""
+    from ..models import PartnerPayment
+    from .. import odoo
+    b = db.session.get(PartnerPayment, pid) or abort(404)
+    if b.status != "paid" or b.odoo_invoice_ref:
+        flash("Deze betaling heeft geen factuur nodig.", "error")
+        return redirect(url_for("admin.partners"))
+    try:
+        odoo.factureer_betaling(b)
+        db.session.commit()
+        audit(f"odoo-factuur alsnog aangemaakt voor betaling #{b.id}")
+        flash(f"Factuur aangemaakt: {b.odoo_invoice_ref or 'zie Odoo'}.", "ok")
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("odoo-nafacturatie faalde")
+        flash("Factuur aanmaken mislukte — check de Odoo-koppeling op de "
+              "Status-pagina.", "error")
+    return redirect(url_for("admin.partners"))
 
 
 @bp.route("/feeds", methods=["GET", "POST"])
@@ -1424,3 +1469,16 @@ def beloningen():
                            statussen=INWISSEL_STATUSSEN,
                            partners=partners, punt_eur=punt_eur,
                            title="Beloningen", family=None, active="beloningen")
+
+
+@bp.route("/status")
+@admin_required
+def status():
+    """Health-dashboard: live status van alle API's en koppelingen, plus de
+    laatste run van elke databron. Herladen = opnieuw controleren."""
+    from ..services.health import alle_checks
+    checks, bronnen = alle_checks()
+    problemen = sum(1 for c in checks if c["ok"] is False)
+    return render_template("admin/status.html", checks=checks, bronnen=bronnen,
+                           problemen=problemen, title="Status",
+                           family=None, active="status")

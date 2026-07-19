@@ -760,6 +760,13 @@ def verkennen():
     perm_basis = Event.query.filter(
         Event.lat.isnot(None), Event.is_permanent.is_(True),
         Event.hidden.is_(False), Event.pending.is_(False))
+    # Expliciete soort-keuze? Dan het contingent daarop vernauwen — anders kan
+    # een zeldzaam type (zomerbar, rommelmarkt) verdrongen worden door de 500
+    # best-scorende speeltuinen en lijkt de filter "kapot".
+    from ..types import TYPES as _TYPES
+    _soort_vooraf = request.args.get("soort") or ""
+    if _soort_vooraf in _TYPES:
+        perm_basis = perm_basis.filter(Event.subtype == _soort_vooraf)
     horeca = perm_basis.filter(Event.subtype == "horeca") \
         .order_by(Event.quality.desc().nullslast()).limit(300).all()
     permanent = perm_basis.filter(db.or_(Event.subtype != "horeca",

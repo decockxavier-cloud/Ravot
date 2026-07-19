@@ -121,3 +121,28 @@ def test_uitschrijven_raakt_account_niet(client, app):
         fam = db.session.get(Family, fid)
         assert fam is not None  # account bestaat nog
         assert fam.newsletter_opt_in is False  # enkel opt-in uit
+
+
+def test_onbekend_adres_krijgt_niet_zomaar_een_code(client, app, monkeypatch):
+    """Inlogpoging met onbekend adres: géén mail, wel de nieuw-profiel-vraag.
+    Pas na bewuste bevestiging (nieuw=1) vertrekt de code."""
+    verstuurd = []
+    from app.services import magic
+    monkeypatch.setattr(magic, "send_mail",
+                        lambda *a, **k: verstuurd.append(a) or True)
+    r = client.post("/login", data={"email": "nieuw@voorbeeld.be"})
+    assert "Nieuw bij Ravot" in r.get_data(as_text=True)
+    assert verstuurd == []                        # geen code verstuurd
+    r = client.post("/login", data={"email": "nieuw@voorbeeld.be", "nieuw": "1"})
+    assert "code" in r.get_data(as_text=True).lower()
+    assert len(verstuurd) == 1                    # nu wél
+
+
+def test_bekend_adres_krijgt_meteen_een_code(client, app, seed, monkeypatch):
+    verstuurd = []
+    from app.services import magic
+    monkeypatch.setattr(magic, "send_mail",
+                        lambda *a, **k: verstuurd.append(a) or True)
+    r = client.post("/login", data={"email": seed["fam_a"].email})
+    assert len(verstuurd) == 1
+    assert "code" in r.get_data(as_text=True).lower()

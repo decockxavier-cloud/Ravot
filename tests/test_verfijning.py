@@ -8,8 +8,8 @@ def test_ontdek_werkt_zonder_profiel(client, app):
     """Ontdek toont events zonder dat een postcode nodig is."""
     with app.app_context():
         now = datetime.utcnow()
-        db.session.add(Event(uit_id="o1", slug="o-1", title="Testfeest", start=now+timedelta(days=1),
-            end=now+timedelta(days=1, hours=2), gemeente="Gent", postcode="9000",
+        db.session.add(Event(uit_id="o1", slug="o-1", title="Testfeest", start=now+timedelta(hours=2),
+            end=now+timedelta(hours=4), gemeente="Gent", postcode="9000",
             lat=51.05, lng=3.72, age_min=3, age_max=10, categories=["creatief"], is_free=True,
             price_info=[{"name":"basis","price":0}]))
         db.session.commit()
@@ -63,8 +63,8 @@ def test_instellingen_apart(client, app):
 def test_bewaren_geeft_bevestiging(client, app):
     with app.app_context():
         now = datetime.utcnow()
-        e = Event(uit_id="b1", slug="b-1", title="X", start=now+timedelta(days=1),
-            end=now+timedelta(days=1, hours=2), gemeente="Gent", postcode="9000",
+        e = Event(uit_id="b1", slug="b-1", title="X", start=now+timedelta(hours=2),
+            end=now+timedelta(hours=4), gemeente="Gent", postcode="9000",
             lat=51.05, lng=3.72, age_min=3, age_max=10, categories=[], is_free=True,
             price_info=[{"name":"basis","price":0}])
         db.session.add(e)
@@ -84,8 +84,8 @@ def test_leuk_is_toggle(client, app):
     from app.models import Event, Family, Interaction
     with app.app_context():
         now = datetime.utcnow()
-        e = Event(uit_id="lk1", slug="lk-1", title="Toggle", start=now+timedelta(days=1),
-            end=now+timedelta(days=1, hours=2), gemeente="Gent", postcode="9000",
+        e = Event(uit_id="lk1", slug="lk-1", title="Toggle", start=now+timedelta(hours=2),
+            end=now+timedelta(hours=4), gemeente="Gent", postcode="9000",
             lat=51.05, lng=3.72, age_min=3, age_max=10, categories=["natuur"], is_free=True,
             price_info=[{"name":"basis","price":0}])
         db.session.add(e)
@@ -117,7 +117,7 @@ def test_kaart_markers_bevatten_ficheinfo(client, app):
     with app.app_context():
         now = datetime.utcnow()
         db.session.add(Event(uit_id="k1", slug="k-1", title="Kaartfeest",
-            start=now+timedelta(days=1), end=now+timedelta(days=1, hours=2),
+            start=now+timedelta(hours=2), end=now+timedelta(hours=4),
             gemeente="Brugge", postcode="8000", lat=51.2, lng=3.2,
             age_min=4, age_max=10, categories=["natuur"], is_free=True, indoor=False,
             price_info=[{"name":"basis","price":0}], image_url="https://x/y.jpg"))

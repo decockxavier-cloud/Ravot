@@ -1,6 +1,35 @@
 {% extends "admin/admin_base.html" %}
 {% block admin_content %}
-<h1>Partners ⭐</h1>
+<h1>Partners</h1>
+<div class="dash-snel" style="margin-bottom:14px">
+  <div class="dash-tegel"><span class="dash-cijfer">{{ leden | length }}</span><span>actieve partners</span></div>
+  <div class="dash-tegel"><span class="dash-cijfer">€{{ "%.0f"|format(omzet_jaar) }}</span><span>omzet dit jaar (incl. btw)</span></div>
+  <div class="dash-tegel"><span class="dash-cijfer">{{ zonder_factuur | length }}</span><span>betaald zonder factuur</span></div>
+</div>
+{% if not mollie_actief %}
+<p class="hint" style="color:#b3261e">Mollie is niet geconfigureerd
+(MOLLIE_API_KEY in .env) — uitbaters kunnen dus nog niet online betalen en
+zien de mail-terugval. Zie <a href="{{ url_for('admin.status') }}">Status</a>.</p>
+{% endif %}
+
+<h2>Actieve lidmaatschappen</h2>
+<table class="tabel" style="margin-bottom:20px">
+  <tr><th>Zaak</th><th>Uitbater</th><th>Plan</th><th>Partner tot</th><th>Laatste factuur</th></tr>
+  {% for l in leden %}
+  <tr>
+    <td><a href="{{ url_for('public.event', slug=l.ev.slug) }}" target="_blank">{{ l.ev.title }}</a></td>
+    <td>{{ (l.betaling.operator.bedrijfsnaam or l.betaling.operator.email) if l.betaling and l.betaling.operator else '—' }}</td>
+    <td>{{ l.betaling.plan if l.betaling else '—' }}</td>
+    <td>{{ l.ev.partner_until.strftime('%d/%m/%Y') }}
+        {% if l.verloopt_snel %}<span class="badge pil-bezig">verloopt binnen 14 d</span>{% endif %}</td>
+    <td>{{ l.betaling.odoo_invoice_ref if l.betaling and l.betaling.odoo_invoice_ref else '—' }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="5" class="leeg">Nog geen actieve partners.</td></tr>
+  {% endfor %}
+</table>
+
+<h2>Betalingen</h2>
 {% if not odoo_actief %}
 <p class="hint">⚠️ Odoo-facturatie is nog niet geconfigureerd (ODOO_URL/DB/USER/API_KEY
   in .env). Betalingen werken, maar facturen worden pas aangemaakt zodra de
@@ -20,7 +49,13 @@
       <td>{{ '✅ betaald' if b.status == 'paid' else b.status }}</td>
       <td>{% if b.odoo_invoice_ref %}{{ b.odoo_invoice_ref }}
           <span class="hint">(Odoo #{{ b.odoo_invoice_id }})</span>
-          {% elif b.status == 'paid' %}<span class="hint">nog geen factuur</span>
+          {% elif b.status == 'paid' %}
+            {% if odoo_actief %}
+            <form method="post" action="{{ url_for('admin.partner_factuur_alsnog', pid=b.id) }}" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-stil btn-klein" type="submit">Maak factuur</button>
+            </form>
+            {% else %}<span class="hint">nog geen factuur</span>{% endif %}
           {% else %}—{% endif %}</td>
     </tr>
     {% else %}

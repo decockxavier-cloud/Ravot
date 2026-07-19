@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Nieuw bij Ravot? 🦊</h1>
+<div class="card">
+  <p>We vonden nog geen gezinsprofiel voor <strong>{{ email }}</strong>.</p>
+  <p>Wil je er gratis één maken? Dan sturen we je een inlogcode en helpen we
+  je in twee minuutjes op weg — geen wachtwoord nodig, geen verplichtingen.</p>
+  <form method="post" action="{{ url_for('auth.login') }}" class="acties">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="email" value="{{ email }}">
+    <input type="hidden" name="nieuw" value="1">
+    <button class="btn btn-zon" type="submit">Ja, stuur mij een code</button>
+    <a class="btn btn-stil" href="{{ url_for('auth.login') }}">Ander adres proberen</a>
+  </form>
+  <p class="hint">Tikfout in je adres? Dan is dit je redding: er is nog geen
+  mail verstuurd.</p>
+</div>
+{% endblock %}
