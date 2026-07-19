@@ -769,6 +769,13 @@ def nazicht_plek(event_id, actie):
         abort(404)
     if actie == "goedkeuren":
         ev.pending = False
+        # Goedkeuren ÍS cureren: de beheerder bekeek de plek zelf. Zonder
+        # kwaliteitsscore viel ze bovendien buiten het kaart-contingent en
+        # bleef ze onzichtbaar — de bug van de "verdwenen" gezinsplek.
+        ev.curated = True
+        ev.nagekeken = True
+        from ..kwaliteit import bereken_kwaliteit
+        ev.quality = bereken_kwaliteit(ev, heeft_reviews=False)
         if ev.submitted_by:
             from .. import punten as pas
             pas.ken_toe(ev.submitted_by, "plek", ev.id)

@@ -324,6 +324,21 @@ def register_cli(app):
                 "ALTER TABLE photos ADD COLUMN soort VARCHAR(12) "
                 "DEFAULT 'gezin' NOT NULL"))
             added.append("photos.soort")
+        # Gezinsplekken die vóór deze fix werden goedgekeurd: alsnog cureren
+        # en een kwaliteitsscore geven, anders blijven ze van de kaart vallen.
+        from .kwaliteit import bereken_kwaliteit
+        from .models import Event as _Ev
+        for _e in _Ev.query.filter(_Ev.source == "user",
+                                   _Ev.pending.is_(False)).all():
+            gewijzigd = False
+            if not _e.curated:
+                _e.curated = True
+                gewijzigd = True
+            if _e.quality is None:
+                _e.quality = bereken_kwaliteit(_e, heeft_reviews=False)
+                gewijzigd = True
+            if gewijzigd:
+                added.append(f"gezinsplek #{_e.id} gerepareerd")
         # Overture in de bronnenlijst: beginstatus afleiden uit de voorraad.
         from .models import HorecaKandidaat, SyncStatus
         if insp.has_table("horeca_kandidaten") and insp.has_table("sync_status") \

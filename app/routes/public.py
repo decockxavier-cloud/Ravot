@@ -780,10 +780,14 @@ def verkennen():
         perm_basis = perm_basis.filter(Event.subtype == _soort_vooraf)
     horeca = perm_basis.filter(Event.subtype == "horeca") \
         .order_by(Event.quality.desc().nullslast()).limit(300).all()
+    # Gezinsplekken: eigen contingent — door mensen aangebracht en door de
+    # beheerder goedgekeurd, dus die horen áltijd op de kaart.
+    eigen = perm_basis.filter(Event.source == "user") \
+        .order_by(Event.quality.desc().nullslast()).limit(200).all()
     permanent = perm_basis.filter(db.or_(Event.subtype != "horeca",
                                          Event.subtype.is_(None))) \
         .order_by(Event.quality.desc().nullslast(), Event.title).limit(500).all()
-    evs = gedateerd + permanent + horeca
+    evs = list({e.id: e for e in gedateerd + permanent + horeca + eigen}.values())
 
     # Filter op type, categorie, speeltuinen en (indien gezocht) op buurt —
     # zelfde filterset als Ontdek: lijst en kaart zijn twee weergaven van

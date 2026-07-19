@@ -1491,3 +1491,29 @@ def test_toevoegen_met_kaartpin(client, seed):
         "lat": "48.0", "lng": "2.0", "postcode": "8800"})
     ev2 = Event.query.filter_by(title="Fout Gepind").first()
     assert ev2.lat != 48.0                           # centroid gebruikt
+
+
+def test_goedgekeurde_gezinsplek_op_de_kaart(client, seed):
+    """Toevoegen -> goedkeuren -> zichtbaar op kaart én lijst (de bug van de
+    verdwenen gezinsplek: geen quality/curated na goedkeuring)."""
+    from app.models import Admin, Event
+    fam = seed["fam_a"]
+    login_as(client, fam)
+    client.post("/mijn/toevoegen", data={
+        "titel": "Speelweide De Pin", "categorie": "natuur",
+        "age_min": "0", "age_max": "12", "lat": "50.9480", "lng": "3.1210"})
+    ev = Event.query.filter_by(title="Speelweide De Pin").first()
+    assert ev.pending is True
+    admin = Admin(email="np@t.be", pw_hash="x", totp_secret="s",
+                  totp_confirmed=True, role="admin")
+    db.session.add(admin); db.session.commit()
+    with client.session_transaction() as s:
+        s["admin_id"] = admin.id; s["admin_2fa_ok"] = True
+    client.post(f"/beheer/nazicht/plek/{ev.id}/goedkeuren")
+    assert ev.pending is False and ev.curated is True
+    assert ev.nagekeken is True and ev.quality is not None
+    # zichtbaar op kaart en lijst
+    h = client.get("/verkennen?wanneer=alle").get_data(as_text=True)
+    assert "Speelweide De Pin" in h
+    h = client.get("/ontdek?wanneer=alle").get_data(as_text=True)
+    assert "Speelweide De Pin" in h
