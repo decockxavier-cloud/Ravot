@@ -120,6 +120,12 @@ def laad_horeca(bbox=BELGIE_BBOX, log=print):
                 db.session.commit()
                 log(f"  ... {bekeken} plaatsen bekeken, {nieuw} kandidaten")
     db.session.commit()
+    # Registreer de run als bronstatus, zodat Overture gewoon in de
+    # "Databronnen"-lijst van het Status-dashboard staat, naast uit en osm.
+    from . import _set_status
+    _set_status("overture", "done",
+                result=f"{nieuw} nieuw, {bijgewerkt} bijgewerkt "
+                       f"({bekeken} plaatsen bekeken)")
     log(f"Klaar: {nieuw} nieuwe en {bijgewerkt} bijgewerkte horeca-kandidaten "
         f"({bekeken} plaatsen bekeken).")
     return nieuw + bijgewerkt

@@ -165,5 +165,5 @@ def alle_checks():
     # Enkel de bronnen die nog bestaan — oude statusrijen (tv/tm/wd/feed) zijn
     # spookvermeldingen van geschrapte koppelingen.
     bronnen = [b for b in SyncStatus.query.order_by(SyncStatus.source).all()
-               if b.source in REGISTRY]
+               if b.source in REGISTRY or b.source == "overture"]
     return checks, bronnen

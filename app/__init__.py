@@ -293,6 +293,19 @@ def register_cli(app):
                 "ALTER TABLE horeca_kandidaten ADD COLUMN winterbar_hint "
                 "BOOLEAN DEFAULT FALSE"))
             added.append("horeca_kandidaten.winterbar_hint")
+        # Overture in de bronnenlijst: beginstatus afleiden uit de voorraad.
+        from .models import HorecaKandidaat, SyncStatus
+        if insp.has_table("horeca_kandidaten") and insp.has_table("sync_status") \
+                and db.session.get(SyncStatus, "overture") is None:
+            n_kand = HorecaKandidaat.query.count()
+            if n_kand:
+                laatste = db.session.query(
+                    db.func.max(HorecaKandidaat.created_at)).scalar()
+                st = SyncStatus(source="overture", state="done",
+                                last_result=f"{n_kand} kandidaten in voorraad")
+                st.last_run = laatste
+                db.session.add(st)
+                added.append("bronstatus overture")
         # Beloningscatalogus: eenmalige startvoorraad (punten = euro x 20).
         from .models import Beloning
         if Beloning.query.count() == 0:
