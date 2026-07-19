@@ -944,9 +944,15 @@ def beloning_wissel(bid):
     if pas.saldo(fam.id) < b.punten:
         flash(f"Nog niet genoeg punten voor {b.naam} — blijven ravotten! 🦊", "error")
         return redirect(url_for("account.beloningen"))
+    adres = (request.form.get("adres") or "").strip()[:300]
+    if b.soort != "partner" and not adres:
+        flash("Vul een bezorgadres in (naam + straat, postcode gemeente) — "
+              "anders kunnen we je beloning niet opsturen!", "error")
+        return redirect(url_for("account.beloningen"))
     code = "RAVOT-" + secrets.token_hex(3).upper()
     db.session.add(Inwissel(family_id=fam.id, beloning_id=b.id,
-                            punten=b.punten, code=code))
+                            punten=b.punten, code=code,
+                            bezorg_adres=adres or None))
     if b.voorraad is not None:
         b.voorraad -= 1
     db.session.commit()

@@ -768,6 +768,9 @@ class Inwissel(db.Model):
     beloning_id = db.Column(db.Integer, db.ForeignKey("beloningen.id"),
                             nullable=False)
     punten = db.Column(db.Integer, nullable=False)   # prijs op moment van wissel
+    # Bezorgadres: enkel gevraagd bij fysieke Ravot-goodies, op het moment van
+    # inwisselen (privacy by design: geen adressen "voor het geval dat").
+    bezorg_adres = db.Column(db.String(300))
     code = db.Column(db.String(16), unique=True, nullable=False)
     status = db.Column(db.String(12), default="aangevraagd", nullable=False)
     created_at = db.Column(db.DateTime, default=utcnow)

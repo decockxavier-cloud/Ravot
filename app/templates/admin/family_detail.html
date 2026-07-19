@@ -39,4 +39,80 @@
     <button class="btn btn-klein" type="submit" style="background:var(--rood);color:#fff">Definitief verwijderen</button>
   </form>
 </div>
+
+<h2>🦊 Ravotpas</h2>
+<div class="card">
+  <p><strong>{{ pas_niveau.emoji }} {{ pas_niveau.naam }}</strong> ·
+  {{ pas_totaal }} punten verdiend · {{ pas_saldo }} te besteden</p>
+  <form method="post" class="acties" style="align-items:end">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="actie" value="punten">
+    <label>Correctie (±)<input type="number" name="aantal" style="width:100px" required></label>
+    <label style="flex:1;min-width:200px">Reden<input type="text" name="reden" maxlength="100" required
+      placeholder="bv. wedstrijdbonus of rechtzetting misbruik"></label>
+    <button class="btn btn-stil" type="submit">Ken toe</button>
+  </form>
+  {% if puntlog %}
+  <table class="tabel">
+    <tr><th>Datum</th><th>Reden</th><th>Punten</th></tr>
+    {% for p in puntlog %}
+    <tr><td>{{ p.created_at.strftime('%d/%m %H:%M') }}</td>
+        <td>{{ p.reden }}</td><td>{{ '%+d' | format(p.punten) }}</td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+</div>
+
+<h2>📍 Uitstappen ({{ aantal_bewaard }})</h2>
+<div class="card">
+  {% if bewaard %}
+  <table class="tabel">
+    <tr><th>Plek/event</th><th>Bewaard op</th><th>Geweest?</th></tr>
+    {% for sv, ev in bewaard %}
+    <tr><td><a href="{{ url_for('public.event', slug=ev.slug) }}">{{ ev.title }}</a></td>
+        <td>{{ sv.created_at.strftime('%d/%m/%Y') }}</td>
+        <td>{{ '✅' if sv.geweest else '—' }}</td></tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="hint">Nog geen bewaarde uitstappen.</p>{% endif %}
+</div>
+
+<h2>😄 Toegekende scores ({{ aantal_reviews }})</h2>
+<div class="card">
+  {% if scores %}
+  <table class="tabel">
+    <tr><th>Plek/event</th><th>Kind</th><th>Ouder</th><th>Datum</th></tr>
+    {% for rv, ev in scores %}
+    <tr><td><a href="{{ url_for('public.event', slug=ev.slug) }}">{{ ev.title }}</a></td>
+        <td>{{ rv.kid_score }}/5</td><td>{{ rv.parent_score }}/5</td>
+        <td>{{ rv.created_at.strftime('%d/%m/%Y') }}</td></tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="hint">Nog geen scores gegeven.</p>{% endif %}
+</div>
+
+<h2>🎁 Inwisselingen</h2>
+<div class="card">
+  {% if inwissels %}
+  <table class="tabel">
+    <tr><th>Code</th><th>Beloning</th><th>Adres</th><th>Status</th></tr>
+    {% for i in inwissels %}
+    <tr><td>{{ i.code }}</td><td>{{ i.beloning.emoji }} {{ i.beloning.naam }}</td>
+        <td class="hint" style="white-space:pre-line">{{ i.bezorg_adres or '—' }}</td>
+        <td>{{ statussen.get(i.status, i.status) }}
+          <a class="hint" href="{{ url_for('admin.beloningen') }}">wijzig →</a></td></tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="hint">Nog geen inwisselingen.</p>{% endif %}
+</div>
+
+<h2>📬 Nieuwsbrief</h2>
+<div class="card">
+  <form method="post" class="acties">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="actie" value="nieuwsbrief">
+    <span>Weekendmail: <strong>{{ 'aan' if fam.newsletter_opt_in else 'uit' }}</strong></span>
+    <button class="btn btn-stil btn-klein" type="submit">Zet {{ 'uit' if fam.newsletter_opt_in else 'aan' }}</button>
+  </form>
+</div>
 {% endblock %}

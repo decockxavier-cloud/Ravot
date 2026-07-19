@@ -1,4 +1,5 @@
 import os
+import tempfile
 from datetime import timedelta
 
 
@@ -79,6 +80,8 @@ class Config:
 
 class TestConfig(Config):
     TESTING = True
+    # CI-runners hebben geen /data-volume: foto's naar een tijdelijke map.
+    UPLOAD_DIR = os.path.join(tempfile.gettempdir(), "ravot-test-fotos")
     SQLALCHEMY_DATABASE_URI = "sqlite://"
     WTF_CSRF_ENABLED = False
     SESSION_COOKIE_SECURE = False

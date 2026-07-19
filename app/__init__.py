@@ -299,6 +299,12 @@ def register_cli(app):
             if ev_cols and kol not in ev_cols:
                 db.session.execute(text(f"ALTER TABLE events ADD COLUMN {kol} BOOLEAN"))
                 added.append(f"events.{kol}")
+        iw_cols = {c["name"] for c in insp.get_columns("inwisselingen")} \
+            if insp.has_table("inwisselingen") else set()
+        if iw_cols and "bezorg_adres" not in iw_cols:
+            db.session.execute(text(
+                "ALTER TABLE inwisselingen ADD COLUMN bezorg_adres VARCHAR(300)"))
+            added.append("inwisselingen.bezorg_adres")
         ph_cols = {c["name"] for c in insp.get_columns("photos")} \
             if insp.has_table("photos") else set()
         if ph_cols and "soort" not in ph_cols:

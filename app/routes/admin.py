@@ -584,11 +584,44 @@ def family_detail(fid):
             db.session.commit()
             audit(f"gezin {fid} {'geactiveerd' if fam.active else 'gedeactiveerd'}")
             flash("Gezin " + ("geactiveerd." if fam.active else "gedeactiveerd."), "ok")
+        elif actie == "nieuwsbrief":
+            fam.newsletter_opt_in = not fam.newsletter_opt_in
+            db.session.commit()
+            audit(f"gezin {fid} nieuwsbrief {'aan' if fam.newsletter_opt_in else 'uit'}")
+            flash("Nieuwsbrief " + ("ingeschakeld." if fam.newsletter_opt_in
+                                    else "uitgeschakeld."), "ok")
+        elif actie == "punten":
+            # Handmatige correctie: bonus (bv. wedstrijd) of rechtzetting bij
+            # misbruik. Negatief mag; het niveau volgt het nieuwe totaal.
+            from ..models import RavotPunt
+            try:
+                aantal = int(request.form.get("aantal") or 0)
+            except ValueError:
+                aantal = 0
+            reden = (request.form.get("reden") or "").strip()[:100]
+            if aantal and reden:
+                import time as _t
+                db.session.add(RavotPunt(family_id=fid, reden="admin",
+                                         ref_id=int(_t.time()), punten=aantal))
+                db.session.commit()
+                audit(f"gezin {fid}: {aantal:+d} punten ({reden})")
+                flash(f"{aantal:+d} punten toegekend ({reden}).", "ok")
+            else:
+                flash("Aantal én reden zijn verplicht.", "error")
         elif actie == "verwijder":
             # GDPR: alle gekoppelde data mee verwijderen
+            from ..models import (DagUitstap, Feestje, Inwissel, Photo,
+                                  RavotPunt)
             Review.query.filter_by(family_id=fid).delete()
             SavedEvent.query.filter_by(family_id=fid).delete()
             Interaction.query.filter_by(family_id=fid).delete()
+            RavotPunt.query.filter_by(family_id=fid).delete()
+            Inwissel.query.filter_by(family_id=fid).delete()
+            for f in Feestje.query.filter_by(family_id=fid).all():
+                db.session.delete(f)          # cascade: aanvragen mee
+            DagUitstap.query.filter_by(family_id=fid).delete()
+            Photo.query.filter_by(family_id=fid) \
+                .update({"family_id": None})  # foto's anonimiseren
             db.session.delete(fam)
             db.session.commit()
             audit(f"gezin {fid} volledig verwijderd (GDPR)")
@@ -597,8 +630,29 @@ def family_detail(fid):
         return redirect(url_for("admin.family_detail", fid=fid))
     aantal_reviews = Review.query.filter_by(family_id=fid).count()
     aantal_bewaard = SavedEvent.query.filter_by(family_id=fid).count()
+    # Detail: uitstappen, scores, Ravotpas en inwisselingen — het volledige
+    # dossier op één scherm, zodat je vragen en misbruik zelf kan beoordelen.
+    from ..models import Event, Inwissel, INWISSEL_STATUSSEN, RavotPunt
+    from .. import punten as pas
+    bewaard = db.session.query(SavedEvent, Event) \
+        .join(Event, Event.id == SavedEvent.event_id) \
+        .filter(SavedEvent.family_id == fid) \
+        .order_by(SavedEvent.created_at.desc()).limit(20).all()
+    scores = db.session.query(Review, Event) \
+        .join(Event, Event.id == Review.event_id) \
+        .filter(Review.family_id == fid) \
+        .order_by(Review.created_at.desc()).limit(20).all()
+    puntlog = RavotPunt.query.filter_by(family_id=fid) \
+        .order_by(RavotPunt.created_at.desc()).limit(15).all()
+    inwissels = Inwissel.query.filter_by(family_id=fid) \
+        .order_by(Inwissel.created_at.desc()).all()
+    pas_totaal = pas.totaal(fid)
     return render_template("admin/family_detail.html", fam=fam,
                            aantal_reviews=aantal_reviews, aantal_bewaard=aantal_bewaard,
+                           bewaard=bewaard, scores=scores, puntlog=puntlog,
+                           inwissels=inwissels, statussen=INWISSEL_STATUSSEN,
+                           pas_totaal=pas_totaal, pas_saldo=pas.saldo(fid),
+                           pas_niveau=pas.niveau(pas_totaal),
                            title=f"Gezin {fam.email}", family=None, active=None)
 
 

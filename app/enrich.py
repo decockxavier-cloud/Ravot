@@ -82,7 +82,7 @@ def _ollama_generate(prompt, system, timeout=180):
     return (r.json().get("message") or {}).get("content", "")
 
 
-def _cloud_generate(prompt, system, timeout=60):
+def _cloud_generate(prompt, system, timeout=60, max_tokens=500):
     """Optionele externe backend. Alleen actief als er een key is ingesteld."""
     key = current_app.config.get("ENRICH_CLOUD_KEY")
     if not key:
@@ -93,17 +93,19 @@ def _cloud_generate(prompt, system, timeout=60):
     r = requests.post(url, timeout=timeout,
                       headers={"x-api-key": key, "anthropic-version": "2023-06-01",
                                "content-type": "application/json"},
-                      json={"model": model, "max_tokens": 500, "system": system,
+                      json={"model": model, "max_tokens": max_tokens, "system": system,
                             "messages": [{"role": "user", "content": prompt}]})
     r.raise_for_status()
     blokken = r.json().get("content") or []
     return "".join(b.get("text", "") for b in blokken if b.get("type") == "text")
 
 
-def _generate(prompt, system):
+def _generate(prompt, system, max_tokens=500):
     from .models import get_setting
     backend = (get_setting("verrijk_backend") or "ollama").lower()
-    return (_cloud_generate if backend == "cloud" else _ollama_generate)(prompt, system)
+    if backend == "cloud":
+        return _cloud_generate(prompt, system, max_tokens=max_tokens)
+    return _ollama_generate(prompt, system)
 
 
 # ------------------------------------------------------------- parsing --

@@ -732,7 +732,9 @@ def test_wisselen_verlaagt_saldo_niet_niveau(client, seed):
         client.post(f"/mijn/review/{ev.id}", data={"kid_score": "5", "parent_score": "3"})
     assert pas.totaal(fam.id) == 30 and pas.saldo(fam.id) == 30
     b = _beloning(pt=30)
-    r = client.post(f"/mijn/beloningen/{b.id}/wissel", follow_redirects=True)
+    r = client.post(f"/mijn/beloningen/{b.id}/wissel",
+                    data={"adres": "Fam. Test, Teststraat 1, 8800 Roeselare"},
+                    follow_redirects=True)
     assert "RAVOT-" in r.get_data(as_text=True)
     assert pas.saldo(fam.id) == 0
     assert pas.totaal(fam.id) == 30            # niveau blijft
@@ -766,7 +768,8 @@ def test_annulatie_geeft_voorraad_en_punten_terug(client, seed, app):
     client.post(f"/mijn/review/{seed['events'][0].id}",
                 data={"kid_score": "4", "parent_score": "3"})
     b = _beloning(pt=15, voorraad=3)
-    client.post(f"/mijn/beloningen/{b.id}/wissel")
+    client.post(f"/mijn/beloningen/{b.id}/wissel",
+                data={"adres": "Fam. Test, Teststraat 1, 8800 Roeselare"})
     assert b.voorraad == 2 and pas.saldo(fam.id) == 0
     admin = Admin(email="a3@t.be", pw_hash="x", totp_secret="s",
                   totp_confirmed=True, role="admin")
@@ -944,7 +947,7 @@ def test_ai_triage_bewaart_advies(app, seed, monkeypatch):
     db.session.commit()
     import app.enrich as enrich
     aanroepen = []
-    def nep_generate(prompt, system):
+    def nep_generate(prompt, system, max_tokens=500):
         aanroepen.append(prompt)
         return ('{"beoordelingen": [{"id": "t1", "advies": "ja"}, '
                 '{"id": "t2", "advies": "nee"}]}')
@@ -966,7 +969,7 @@ def test_ai_triage_achtergrond_start(app, seed, monkeypatch):
                                    categorie="restaurant", lat=50.95, lng=3.12))
     db.session.commit()
     import app.enrich as enrich
-    monkeypatch.setattr(enrich, "_generate", lambda p, s:
+    monkeypatch.setattr(enrich, "_generate", lambda p, s, max_tokens=500:
                         '{"beoordelingen": [{"id": "bg1", "advies": "ja"}]}')
     ok = ov.start_ai_triage_achtergrond(app, 50.95, 3.12, 5, synchroon=True)
     assert ok is True
@@ -1318,3 +1321,71 @@ def test_feestje_bewerken_en_annuleren(client, seed):
     # en het feestje staat niet meer in de lijst
     h = client.get("/mijn/feestjes").get_data(as_text=True)
     assert f"/mijn/feestje/{f.id}" not in h
+
+
+def test_ai_triage_overleeft_kapotte_batch(app, seed, monkeypatch):
+    """Eén afgekapt/kapot antwoord mag de rest niet tegenhouden (de
+    7-van-357-bug): volgende batches gaan gewoon door."""
+    from app.models import HorecaKandidaat
+    from app.services.sources import overture as ov
+    from app.models import Setting
+    db.session.merge(Setting(key="verrijk_backend", value="cloud"))
+    db.session.add_all([HorecaKandidaat(ext_id=f"r{i}", naam=f"Zaak {i}",
+                                        categorie="cafe", lat=50.9, lng=3.1)
+                        for i in range(50)])   # 2 cloud-batches van 25
+    db.session.commit()
+    import app.enrich as enrich
+    beurten = []
+    def nep(prompt, system, max_tokens=500):
+        beurten.append(max_tokens)
+        if len(beurten) == 1:
+            return '{"beoordelingen": [{"id": "r0", "advies"'   # afgekapt
+        import json as _j, re as _re
+        ids = _re.findall(r'"id": "(r[0-9]+)"', prompt)
+        return _j.dumps({"beoordelingen": [{"id": i, "advies": "ja"} for i in ids]})
+    monkeypatch.setattr(enrich, "_generate", nep)
+    n = ov.ai_triage(ov.kandidaten_in_gebied(50.9, 3.1, 5))
+    assert len(beurten) == 2                    # doorgegaan na de kapotte batch
+    assert beurten[0] == 2000                   # ruime tokens gevraagd
+    assert n == 25                              # tweede batch volledig gelukt
+
+
+def test_wissel_ravot_vereist_adres_partner_niet(client, seed):
+    from app.models import Beloning, Event, Inwissel
+    fam = seed["fam_a"]
+    _oud_genoeg(fam)
+    login_as(client, fam)
+    from app import punten as pas
+    for i in range(4):
+        pas.ken_toe(fam.id, "review", 5000 + i)
+    db.session.commit()
+    b = _beloning(pt=10)
+    # zonder adres: geweigerd
+    client.post(f"/mijn/beloningen/{b.id}/wissel")
+    assert Inwissel.query.count() == 0
+    # partner-goodie: geen adres nodig (code tonen bij de partner)
+    zaak = seed["events"][0]
+    bp = Beloning(naam="Gratis pannenkoek", punten=10, waarde_eur=3,
+                  soort="partner", partner_event_id=zaak.id)
+    db.session.add(bp); db.session.commit()
+    client.post(f"/mijn/beloningen/{bp.id}/wissel")
+    iw = Inwissel.query.first()
+    assert iw is not None and iw.bezorg_adres is None
+
+
+def test_admin_puntencorrectie_en_gezinsdetail(client, seed):
+    from app.models import Admin
+    from app import punten as pas
+    fam = seed["fam_a"]
+    pas.ken_toe(fam.id, "review", 7000)
+    admin = Admin(email="fd@t.be", pw_hash="x", totp_secret="s",
+                  totp_confirmed=True, role="admin")
+    db.session.add(admin); db.session.commit()
+    with client.session_transaction() as s:
+        s["admin_id"] = admin.id; s["admin_2fa_ok"] = True
+    client.post(f"/beheer/families/{fam.id}", data={
+        "actie": "punten", "aantal": "-5", "reden": "rechtzetting test"})
+    assert pas.totaal(fam.id) == 5
+    h = client.get(f"/beheer/families/{fam.id}").get_data(as_text=True)
+    assert "Ravotpas" in h and "rechtzetting test" in h
+    assert "Toegekende scores" in h and "Nieuwsbrief" in h

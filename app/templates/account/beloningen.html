@@ -30,10 +30,24 @@
     {% if b.voorraad is not none and b.voorraad <= 0 %}
     <span class="badge">tijdelijk op</span>
     {% elif saldo >= b.punten %}
+    {% if b.soort == 'partner' %}
     <form method="post" action="{{ url_for('account.beloning_wissel', bid=b.id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button class="btn btn-zon btn-klein" type="submit">Wissel in</button>
     </form>
+    {% else %}
+    <details class="wissel-vouw">
+      <summary class="btn btn-zon btn-klein">Wissel in</summary>
+      <form method="post" action="{{ url_for('account.beloning_wissel', bid=b.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="hint">Bezorgadres
+          <textarea name="adres" rows="2" maxlength="300" required
+                    placeholder="Naam&#10;Straat nr, postcode gemeente"></textarea></label>
+        <button class="btn btn-zon btn-klein" type="submit">Bevestig</button>
+        <span class="hint">Enkel gebruikt om deze beloning op te sturen.</span>
+      </form>
+    </details>
+    {% endif %}
     {% else %}
     <span class="hint">nog {{ b.punten - saldo }} punten te gaan</span>
     {% endif %}

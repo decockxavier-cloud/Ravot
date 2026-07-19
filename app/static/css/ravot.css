@@ -793,3 +793,9 @@ section h2 { font-size: 1.25rem; margin: 22px 0 8px; }
   overflow: hidden; max-width: 260px; }
 .pas-balk i { display: block; height: 100%; background: var(--gras, #4CA362); }
 .pas-saldo { font-weight: 800; white-space: nowrap; }
+
+.wissel-vouw summary { list-style: none; cursor: pointer; }
+.wissel-vouw summary::-webkit-details-marker { display: none; }
+.wissel-vouw form { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.wissel-vouw textarea { width: 100%; font: inherit; padding: 6px 8px;
+  border-radius: 8px; border: 1px solid #ddd6c8; }

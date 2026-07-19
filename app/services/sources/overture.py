@@ -216,12 +216,18 @@ def importeer(ext_ids_met_soort):
 
 
 # --- AI-voorsortering ---------------------------------------------------------
-def ai_triage(kandidaten, max_batch=25):
+def ai_triage(kandidaten, max_batch=None):
     """Laat het verrijkingsmodel (Ollama of cloud) inschatten welke kandidaten
     waarschijnlijk kindvriendelijk zijn. Werkt op naam + categorie + gemeente
     en bewaart het advies per kandidaat — beoordelen gebeurt dus maar één keer.
     Retourneert het aantal beoordeelde kandidaten."""
     from ...enrich import _generate, _parse_json
+    from ...models import get_setting
+    if max_batch is None:
+        # Kleine batches voor het lokale model: cpu-Ollama wordt onbetrouwbaar
+        # (halve JSON, timeouts) bij lange lijsten; de cloud kan grote happen aan.
+        backend = (get_setting("verrijk_backend") or "ollama").lower()
+        max_batch = 25 if backend == "cloud" else 8
     te_doen = [k for k in kandidaten if not k.ai_advies]
     beoordeeld = 0
     system = ("Je beoordeelt Vlaamse horecazaken voor een gezinsplatform. "
@@ -231,30 +237,48 @@ def ai_triage(kandidaten, max_batch=25):
               "speeltuin. Nachtcafés, sterrenrestaurants, shishabars en "
               "bruine kroegen zijn 'nee'. Bij onvoldoende info: 'twijfel'. "
               "Antwoord ENKEL met JSON, zonder uitleg.")
+    fouten_op_rij = 0
     for i in range(0, len(te_doen), max_batch):
         batch = te_doen[i:i + max_batch]
         lijst = [{"id": k.ext_id, "naam": k.naam,
                   "categorie": k.categorie or "onbekend",
                   "gemeente": k.gemeente or "?"} for k in batch]
-        prompt = ("Beoordeel deze zaken. Geef JSON: "
+        prompt = ("Beoordeel deze zaken. Geef ENKEL compacte, volledig "
+                  "afgewerkte JSON: "
                   '{"beoordelingen": [{"id": "...", "advies": "ja|nee|twijfel"}]}\n'
                   + json.dumps(lijst, ensure_ascii=False))
         try:
-            data = _parse_json(_generate(prompt, system)) or {}
-            _triage_bezig["fout"] = None
+            # Ruime max_tokens: het afgekapte 500-token-antwoord was precies
+            # de "7 van 357"-bug — halve JSON = bijna niets bewaard.
+            data = _parse_json(_generate(prompt, system, max_tokens=2000)) or {}
         except Exception as exc:
-            # Fout bewaren zodat de beheerpagina ze kan tonen — "werkt niet"
-            # zonder uitleg is het ergste wat een knop kan doen.
+            data = {}
             _triage_bezig["fout"] = f"{type(exc).__name__}: {str(exc)[:200]}"
-            break
         per_id = {b.get("id"): b.get("advies") for b in
                   (data.get("beoordelingen") or []) if isinstance(b, dict)}
+        gelukt = 0
         for k in batch:
             advies = per_id.get(k.ext_id)
             if advies in ("ja", "nee", "twijfel"):
                 k.ai_advies = advies
-                beoordeeld += 1
+                gelukt += 1
+            elif data.get("beoordelingen"):
+                # Het model antwoordde wél maar sloeg deze zaak over of gaf
+                # een ongeldig advies -> eerlijk "twijfel", anders blijft
+                # dezelfde zaak elke run opnieuw de batch blokkeren.
+                k.ai_advies = "twijfel"
+                gelukt += 1
+        beoordeeld += gelukt
         db.session.commit()
+        if gelukt:
+            fouten_op_rij = 0
+            _triage_bezig["fout"] = None
+        else:
+            # Kapotte batch? Doorgaan met de volgende — pas na 3 missers op
+            # rij stoppen (dan ligt de backend er echt uit).
+            fouten_op_rij += 1
+            if fouten_op_rij >= 3:
+                break
     return beoordeeld
 
 

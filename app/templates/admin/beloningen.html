@@ -93,12 +93,13 @@ maar zonder punten — een klikker merkt dus niets en bereikt niets.</p>
 <h2>Inwisselingen</h2>
 {% if inwissels %}
 <table class="tabel">
-  <tr><th>Code</th><th>Beloning</th><th>Gezin</th><th>Punten</th><th>Datum</th><th>Status</th></tr>
+  <tr><th>Code</th><th>Beloning</th><th>Gezin</th><th>Bezorgadres</th><th>Punten</th><th>Datum</th><th>Status</th></tr>
   {% for i in inwissels %}
   <tr>
     <td><strong>{{ i.code }}</strong></td>
     <td>{{ i.beloning.emoji }} {{ i.beloning.naam }}</td>
-    <td>#{{ i.family_id }}</td>
+    <td><a href="{{ url_for('admin.family_detail', fid=i.family_id) }}">#{{ i.family_id }}</a></td>
+    <td class="hint" style="white-space:pre-line;max-width:220px">{{ i.bezorg_adres or ('bij partner met code' if i.beloning.soort == 'partner' else '—') }}</td>
     <td>{{ i.punten }}</td>
     <td>{{ i.created_at.strftime('%d/%m %H:%M') }}</td>
     <td>
