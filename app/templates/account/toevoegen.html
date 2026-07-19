@@ -33,6 +33,20 @@
     <input type="text" name="adres" maxlength="255" placeholder="Jan Breydelstraat 5">
   </label>
 
+  <label style="margin-bottom:4px">Of prik de plek op de kaart 📍
+    <span class="hint" style="font-weight:normal">Tik op de juiste plaats —
+    de speld mag je verslepen. Gemeente en postcode vullen we dan zelf in.</span>
+  </label>
+  <div id="prik-kaart" class="prik-kaart"></div>
+  <div class="acties" style="margin:6px 0 10px">
+    <button type="button" class="btn btn-stil btn-klein" id="prik-hier">📍 Gebruik mijn locatie</button>
+    <span class="hint" id="prik-status">nog geen speld gezet</span>
+  </div>
+  <input type="hidden" name="lat" id="prik-lat">
+  <input type="hidden" name="lng" id="prik-lng">
+  <label style="display:none">
+  </label>
+
   <div class="veldrij">
     <label>Vanaf leeftijd
       <input type="number" name="age_min" min="0" max="18" value="0">
@@ -58,4 +72,35 @@
 
   <div class="acties"><button class="btn btn-zon" type="submit">Plek indienen</button></div>
 </form>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function () {
+  var kaart = L.map('prik-kaart').setView([50.85, 4.0], 8);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    { attribution: '© OpenStreetMap' }).addTo(kaart);
+  var marker = null, lat = document.getElementById('prik-lat'),
+      lng = document.getElementById('prik-lng'),
+      status = document.getElementById('prik-status');
+  function zet(ll, zoom) {
+    if (marker) { marker.setLatLng(ll); }
+    else {
+      marker = L.marker(ll, { draggable: true }).addTo(kaart);
+      marker.on('dragend', function () { zet(marker.getLatLng()); });
+    }
+    lat.value = ll.lat.toFixed(6); lng.value = ll.lng.toFixed(6);
+    status.textContent = '✅ speld gezet — versleep gerust om te verfijnen';
+    if (zoom) kaart.setView(ll, Math.max(kaart.getZoom(), 15));
+  }
+  kaart.on('click', function (e) { zet(e.latlng); });
+  document.getElementById('prik-hier').addEventListener('click', function () {
+    if (!navigator.geolocation) return;
+    status.textContent = 'locatie ophalen…';
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      zet(L.latLng(pos.coords.latitude, pos.coords.longitude), true);
+    }, function () { status.textContent = 'locatie niet beschikbaar — tik op de kaart'; });
+  });
+})();
+</script>
 {% endblock %}

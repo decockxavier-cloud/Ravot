@@ -531,12 +531,36 @@ def toevoegen():
         except ValueError:
             lo, hi = 0, 12
         coord = postcode_coord(postcode) if postcode else None
+        # Pin op de kaart wint van de postcode-benadering: exacter kan niet.
+        try:
+            p_lat = float(request.form.get("lat") or "")
+            p_lng = float(request.form.get("lng") or "")
+            if 49.3 <= p_lat <= 51.7 and 2.3 <= p_lng <= 6.7:
+                coord = (p_lat, p_lng)
+        except ValueError:
+            pass
+        gemeente = (request.form.get("gemeente") or "").strip()[:80] or None
+        if coord and (not gemeente or not postcode):
+            # Pin zonder adresgegevens? Dichtstbijzijnde postcode invullen,
+            # anders is de plek onvindbaar in de lijsten.
+            from ..models import PostcodeCentroid
+            from ..scoring import haversine_km
+            best = None
+            for c in PostcodeCentroid.query.all():
+                if c.lat is None:
+                    continue
+                d = haversine_km(coord[0], coord[1], c.lat, c.lng)
+                if best is None or d < best[0]:
+                    best = (d, c)
+            if best and best[0] <= 10:
+                gemeente = gemeente or best[1].gemeente
+                postcode = postcode or best[1].postcode
         ev = Event(
             source="user", pending=True, is_permanent=True, hidden=False,
             submitted_by=fam.id,
             title=titel,
             description=(request.form.get("beschrijving") or "").strip()[:2000],
-            gemeente=(request.form.get("gemeente") or "").strip()[:80] or None,
+            gemeente=gemeente,
             postcode=postcode,
             adres=(request.form.get("adres") or "").strip()[:255] or None,
             lat=coord[0] if coord else None, lng=coord[1] if coord else None,

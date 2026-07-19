@@ -804,3 +804,5 @@ section h2 { font-size: 1.25rem; margin: 22px 0 8px; }
   border-radius: 6px; overflow: hidden; vertical-align: middle; margin: 0 6px; }
 .ai-balk i { display: block; height: 100%; background: var(--gras, #4CA362);
   transition: width 0.4s; }
+
+.prik-kaart { height: 260px; border-radius: 14px; border: 1px solid #ddd6c8; }

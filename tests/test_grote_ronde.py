@@ -1469,3 +1469,25 @@ def test_zaken_werkvoorraad(client, seed):
     assert "Nieuw Geimporteerd Resto" not in h
     h = client.get("/beheer/activiteiten?status=klaar").get_data(as_text=True)
     assert "Nieuw Geimporteerd Resto" in h
+
+
+def test_toevoegen_met_kaartpin(client, seed):
+    from app.models import Event
+    fam = seed["fam_a"]
+    login_as(client, fam)
+    r = client.post("/mijn/toevoegen", data={
+        "titel": "Geprikt Speelbos", "categorie": "natuur",
+        "age_min": "2", "age_max": "10",
+        "lat": "50.9480", "lng": "3.1210",          # pin, géén adres/postcode
+    }, follow_redirects=False)
+    assert r.status_code == 302
+    ev = Event.query.filter_by(title="Geprikt Speelbos").first()
+    assert ev is not None and ev.pending is True
+    assert abs(ev.lat - 50.948) < 0.001 and abs(ev.lng - 3.121) < 0.001
+    assert ev.gemeente == "Roeselare" and ev.postcode == "8800"  # via centroid
+    # ongeldige pin (buiten België) wordt genegeerd
+    client.post("/mijn/toevoegen", data={
+        "titel": "Fout Gepind", "categorie": "natuur",
+        "lat": "48.0", "lng": "2.0", "postcode": "8800"})
+    ev2 = Event.query.filter_by(title="Fout Gepind").first()
+    assert ev2.lat != 48.0                           # centroid gebruikt
