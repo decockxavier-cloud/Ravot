@@ -130,6 +130,33 @@ elke nacht automatisch een sync (cron).</p>
 </div>
 <p><a href="{{ url_for('admin.dashboard') }}">← Terug naar dashboard</a></p>
 
+<h2 style="margin-top:24px">Data per bron</h2>
+<p class="hint">Ravot werkt bewust met een handvol bronnen: <strong>UiT</strong>
+(events), <strong>OSM</strong> en <strong>Overture</strong> (plekken &amp;
+horeca), plus <strong>user</strong> (handmatig door gezinnen of beheer).
+Testdata van een bron wis je hier — fiches met een partner, claim of betaling
+blijven altijd staan.</p>
+<table class="tabel">
+  <tr><th>Bron</th><th>Fiches</th><th></th></tr>
+  {% for bron, n in bron_tellingen | dictsort %}
+  <tr>
+    <td><code>{{ bron }}</code></td>
+    <td>{{ n }}</td>
+    <td>
+      <form method="post" action="{{ url_for('admin.bron_data_wissen') }}" style="display:inline"
+            onsubmit="return confirm('Alle {{ n }} fiches van bron {{ bron }} wissen? Reviews en foto\'s van die fiches gaan mee.')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="bron" value="{{ bron }}">
+        <label class="hint" style="margin-right:8px">
+          <input type="checkbox" name="behoud_gecureerd" value="1" checked>
+          gecureerde fiches behouden</label>
+        <button class="btn btn-stil btn-klein" type="submit">Wis data</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+
 <h2 style="margin-top:24px">Instellingen databronnen</h2>
 {% with open_eerste = false %}{% include "admin/_instellingen_form.html" %}{% endwith %}
 {% endblock %}

@@ -69,21 +69,20 @@ def create_app(config_object=Config):
     # (UiT/UiTinVlaanderen/Vlieg) verschijnt ENKEL als bron_uit_aan aanstaat.
     BRON_INFO = {
         "uit": ("UiTdatabank", "https://www.uitdatabank.be"),
-        "tv": ("Toerisme Vlaanderen", "https://www.toerismevlaanderen.be"),
-        "tm": ("Ticketmaster", "https://www.ticketmaster.be"),
         "osm": ("OpenStreetMap-bijdragers", "https://www.openstreetmap.org/copyright"),
-        "wd": ("Wikidata", "https://www.wikidata.org"),
+        "ov": ("Overture Maps", "https://overturemaps.org"),
     }
 
     @app.context_processor
     def inject_bronnen():
         from .models import get_bool
         try:
-            actief = {k: get_bool(f"bron_{k}_aan") for k in ("uit", "tv", "tm", "osm", "wd")}
+            actief = {k: get_bool(f"bron_{k}_aan") for k in ("uit", "osm")}
+            actief["ov"] = True    # Overture: attributie zolang er data van is
         except Exception:
-            actief = {k: False for k in ("uit", "tv", "tm", "osm", "wd")}
+            actief = {k: False for k in ("uit", "osm", "ov")}
         verm = [{"code": k, "naam": BRON_INFO[k][0], "url": BRON_INFO[k][1]}
-                for k in ("uit", "tv", "tm", "osm", "wd") if actief.get(k)]
+                for k in ("uit", "osm", "ov") if actief.get(k)]
         return {"uit_actief": actief.get("uit", False),
                 "bron_actief": actief, "bron_vermeldingen": verm}
 

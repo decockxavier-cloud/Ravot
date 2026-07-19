@@ -235,8 +235,12 @@ def ai_triage(kandidaten, max_batch=25):
                   + json.dumps(lijst, ensure_ascii=False))
         try:
             data = _parse_json(_generate(prompt, system)) or {}
-        except Exception:
-            break                      # backend even niet beschikbaar: stop stil
+            _triage_bezig["fout"] = None
+        except Exception as exc:
+            # Fout bewaren zodat de beheerpagina ze kan tonen — "werkt niet"
+            # zonder uitleg is het ergste wat een knop kan doen.
+            _triage_bezig["fout"] = f"{type(exc).__name__}: {str(exc)[:200]}"
+            break
         per_id = {b.get("id"): b.get("advies") for b in
                   (data.get("beoordelingen") or []) if isinstance(b, dict)}
         for k in batch:
@@ -255,7 +259,11 @@ def ai_triage(kandidaten, max_batch=25):
 import threading
 
 _triage_lock = threading.Lock()
-_triage_bezig = {"actief": False}
+_triage_bezig = {"actief": False, "fout": None, "backend": None}
+
+
+def triage_status():
+    return dict(_triage_bezig)
 
 
 def triage_actief():
@@ -272,6 +280,9 @@ def start_ai_triage_achtergrond(app, lat, lng, straal_km, synchroon=False):
     def _werk():
         try:
             with app.app_context():
+                from ...models import get_setting
+                _triage_bezig["backend"] = (get_setting("verrijk_backend")
+                                            or "ollama").lower()
                 ks = kandidaten_in_gebied(lat, lng, straal_km)
                 ai_triage(ks)          # batcht + commit per batch
                 db.session.remove()

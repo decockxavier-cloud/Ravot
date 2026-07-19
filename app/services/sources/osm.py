@@ -114,7 +114,9 @@ def _query_horeca(bbox):
 def _run(query):
     """Voer één query uit; probeer de servers op volgorde, maar sla servers over
     die ons recent afremden (429/503/504). Faalt alles, dan geven we [] terug."""
-    headers = {"User-Agent": UA, "Accept": "application/json"}
+    # Accept: */* — sommige mirrors antwoorden 406 op een strikte Accept-header
+    # zodra ze een foutpagina willen teruggeven.
+    headers = {"User-Agent": UA, "Accept": "*/*"}
     nu = time.time()
     kandidaten = [u for u in _endpoints() if _cooldown.get(u, 0) < nu] or _endpoints()
     for url in kandidaten:
@@ -122,13 +124,13 @@ def _run(query):
             r = requests.post(url, data={"data": query}, headers=headers, timeout=90)
             if r.status_code == 200:
                 return r.json().get("elements") or []
-            if r.status_code in (429, 503, 504):   # afgeremd/overbelast -> 2 min mijden
-                _cooldown[url] = time.time() + 120
-                current_app.logger.warning("overpass %s -> %s (2 min afkoelen)",
-                                           url, r.status_code)
-                time.sleep(3)
-                continue
-            current_app.logger.warning("overpass %s -> status %s", url, r.status_code)
+            # Elke niet-200 (ook 406 e.d.): server even mijden en de volgende
+            # proberen — de mirrors verschillen onderling in strengheid.
+            _cooldown[url] = time.time() + 120
+            current_app.logger.warning("overpass %s -> %s (2 min afkoelen)",
+                                       url, r.status_code)
+            time.sleep(2)
+            continue
         except Exception as exc:
             current_app.logger.warning("overpass %s -> %s", url, str(exc)[:100])
         time.sleep(1)

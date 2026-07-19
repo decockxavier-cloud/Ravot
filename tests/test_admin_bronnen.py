@@ -27,16 +27,17 @@ def _osm_event(source="osm"):
 # ---------------------------------------------------------------- status --
 
 def test_sync_one_zet_status(app):
-    """sync_one('tm') met koppeling aan maar zonder key doet niets, maar zet
-    netjes de status op 'done'."""
-    from app.services.sources import sync_one
+    """sync_one op een uitgeschakelde bron doet niets, maar zet netjes de
+    status op 'idle' (tm/tv/wd/feeds bestaan niet meer als bron)."""
+    from app.services.sources import REGISTRY, sync_one
     from app.models import Setting
+    assert "tm" not in REGISTRY and "feed" not in REGISTRY
     with app.app_context():
-        db.session.merge(Setting(key="bron_tm_aan", value="1"))  # koppeling aan
+        db.session.merge(Setting(key="bron_osm_aan", value="0"))  # koppeling uit
         db.session.commit()
-        sync_one("tm")
-        st = db.session.get(SyncStatus, "tm")
-        assert st is not None and st.state == "done"
+        sync_one("osm")
+        st = db.session.get(SyncStatus, "osm")
+        assert st is not None and st.state == "idle"
         assert st.last_run is not None
 
 

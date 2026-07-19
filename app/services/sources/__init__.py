@@ -9,17 +9,18 @@ from flask import current_app
 
 from ...extensions import db
 from ...models import get_bool
-from . import ticketmaster, toerisme, osm, wikidata, feeds
+from . import osm
 from .base import run_source
 
 # naam -> (setting-key, label, adaptermodule)
+# Bewuste beperking tot een handvol bronnen: UiT (events), OSM (plekken) en
+# Overture (horeca via de verkenner, geen sync). Vierde kanaal is "user":
+# handmatige toevoegingen door gezinnen en beheer. Oude adapters (Ticketmaster,
+# Toerisme Vlaanderen, Wikidata, feeds) staan nog in de map maar doen niets
+# meer — minder bronnen, betere curatie.
 REGISTRY = {
     "uit": ("bron_uit_aan", "UiTdatabank (publiq)", None),   # eigen sync-pad
-    "tm": ("bron_tm_aan", "Ticketmaster (Family)", ticketmaster),
-    "tv": ("bron_tv_aan", "Toerisme Vlaanderen", toerisme),
     "osm": ("bron_osm_aan", "OpenStreetMap", osm),
-    "wd": ("bron_wd_aan", "Wikidata", wikidata),
-    "feed": ("bron_feed_aan", "Agenda-feeds (iCal/RSS)", feeds),
 }
 
 

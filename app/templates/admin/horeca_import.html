@@ -71,6 +71,13 @@ staan bovenaan.</p>
       kind-signalen of AI-advies "ja" zijn alvast aangevinkt.
       {% if bron == 'overture' %} · AI-advies: {{ ai_klaar }}/{{ ai_totaal }} beoordeeld
       {% if ai_bezig %}<span class="badge pil-bezig">AI is bezig — zoek opnieuw voor de voortgang</span>{% endif %}
+      {% if ai_status and ai_status.fout %}
+      <span class="badge pil-uit" title="{{ ai_status.fout }}">AI-fout ({{ ai_status.backend or '?' }}): {{ ai_status.fout | truncate(120) }}</span>
+      <span class="hint">Tip: zet bij Instellingen → AI-verrijking de backend op
+      <strong>cloud</strong> en plaats <code>ENRICH_CLOUD_KEY</code> (Anthropic
+      API-key) in <code>.env</code> — snel en betrouwbaar; het lokale model is
+      traag op deze server.</span>
+      {% endif %}
       {% endif %}</span>
     </div>
   </form>

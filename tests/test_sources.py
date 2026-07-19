@@ -207,11 +207,11 @@ def test_uit_vermelding_verschijnt_bij_go_live(client, app):
 
 
 def test_niet_uit_bronnen_wel_vermeld(client, app):
-    """Toegelaten bronnen (bv. Toerisme Vlaanderen) worden wél vermeld,
+    """Toegelaten bronnen (OSM, Overture) worden wél vermeld,
     ook als publiq uit staat."""
-    _zet(app, "bron_tv_aan", "1")
+    _zet(app, "bron_osm_aan", "1")
     html = client.get("/").get_data(as_text=True)
-    assert "Toerisme Vlaanderen" in html
+    assert "OpenStreetMap" in html and "Overture" in html
     assert "uitinvlaanderen" not in html.lower()   # publiq blijft weg
 
 

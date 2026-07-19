@@ -243,8 +243,6 @@ INSTELLING_PAGINAS = {
         ("UiTdatabank", ["bron_uit_aan", "uit_query", "sync_max_pages"]),
         ("OpenStreetMap", ["bron_osm_aan", "osm_tags", "osm_horeca_aan",
                            "osm_regios"]),
-        ("Overige bronnen", ["bron_tv_aan", "tv_max", "bron_tm_aan",
-                             "bron_wd_aan", "bron_feed_aan"]),
     ],
     "feestjes": [
         ("Feestjesmodule", ["feestjes_aan", "feest_straal_km",
@@ -383,7 +381,10 @@ def verbindingen():
     # Ollama (AI-verrijking): bereikbaar? welk model?
     status["ollama"] = {"url": cfg.get("OLLAMA_URL", ""), "model": cfg.get("OLLAMA_MODEL", "")}
     inst_groepen, inst_waarden, inst_defs = _instellingen_context("verbindingen")
+    bron_tellingen = dict(db.session.query(Event.source, db.func.count(Event.id))
+                          .group_by(Event.source).all())
     return render_template("admin/verbindingen.html",
+                           bron_tellingen=bron_tellingen,
                            groepen=inst_groepen, waarden=inst_waarden, defs=inst_defs, status=status,
                            syncstatus=syncstatus, sync_bezig=sync_bezig,
                            title="Verbindingen", family=None, active=None)
@@ -1389,6 +1390,7 @@ def horeca_import():
         ai_klaar = sum(1 for r in resultaten if r.get("ai"))
     return render_template("admin/horeca_import.html", resultaten=resultaten,
                            ai_klaar=ai_klaar, ai_totaal=ai_totaal,
+                           ai_status=ov_bron.triage_status(),
                            ai_bezig=ov_bron.triage_actief(),
                            zoekterm=zoekterm, straal=straal, fout=fout,
                            bron=bron, kandidaten_n=kandidaten_n,
@@ -1431,6 +1433,39 @@ def beloningen():
         b = db.session.get(Beloning, int(request.form.get("bid", 0))) or abort(404)
         b.actief = not b.actief
         db.session.commit()
+        return redirect(url_for("admin.beloningen"))
+    if request.method == "POST" and request.form.get("actie") == "bewerk":
+        b = db.session.get(Beloning, int(request.form.get("bid", 0))) or abort(404)
+        try:
+            b.waarde_eur = float((request.form.get("waarde") or "0").replace(",", "."))
+            b.punten = max(1, int(request.form.get("punten") or b.punten))
+        except ValueError:
+            flash("Waarde of punten ongeldig.", "error")
+            return redirect(url_for("admin.beloningen"))
+        b.emoji = (request.form.get("emoji") or b.emoji).strip()[:8]
+        b.naam = (request.form.get("naam") or b.naam).strip()[:120]
+        b.beschrijving = (request.form.get("beschrijving") or "").strip()[:300] or None
+        vr = (request.form.get("voorraad") or "").strip()
+        b.voorraad = int(vr) if vr.isdigit() else None
+        partner_id = request.form.get("partner_id") or ""
+        b.partner_event_id = int(partner_id) if partner_id.isdigit() else None
+        b.soort = "partner" if b.partner_event_id else "ravot"
+        db.session.commit()
+        audit(f"beloning #{b.id} bewerkt: {b.naam}")
+        flash("Beloning bijgewerkt.", "ok")
+        return redirect(url_for("admin.beloningen"))
+    if request.method == "POST" and request.form.get("actie") == "verwijder":
+        b = db.session.get(Beloning, int(request.form.get("bid", 0))) or abort(404)
+        if Inwissel.query.filter_by(beloning_id=b.id).count():
+            flash("Er bestaan al inwisselingen voor deze beloning — zet ze uit "
+                  "in plaats van ze te wissen (zo blijft de historiek kloppen).",
+                  "error")
+            return redirect(url_for("admin.beloningen"))
+        naam = b.naam
+        db.session.delete(b)
+        db.session.commit()
+        audit(f"beloning verwijderd: {naam}")
+        flash("Beloning verwijderd.", "ok")
         return redirect(url_for("admin.beloningen"))
     if request.method == "POST" and request.form.get("actie") == "status":
         i = db.session.get(Inwissel, int(request.form.get("iid", 0))) or abort(404)
@@ -1482,3 +1517,42 @@ def status():
     return render_template("admin/status.html", checks=checks, bronnen=bronnen,
                            problemen=problemen, title="Status",
                            family=None, active="status")
+
+
+@bp.route("/verbindingen/wis-bron", methods=["POST"])
+@admin_required
+def bron_data_wissen():
+    """Wis alle data van één bron (testdata-opkuis). Veiligheidskleppen:
+    fiches met een partner, claim of betaling blijven ALTIJD staan, net als
+    handmatig gecureerde fiches als de beheerder dat aanvinkt."""
+    from ..models import (EditProposal, Photo, Review, SavedEvent)
+    bron = (request.form.get("bron") or "").strip()
+    bekend = {r[0] for r in db.session.query(Event.source).distinct().all() if r[0]}
+    if bron not in bekend:
+        flash("Onbekende bron.", "error")
+        return redirect(url_for("admin.verbindingen"))
+    behoud_gecureerd = request.form.get("behoud_gecureerd") == "1"
+    q = Event.query.filter(Event.source == bron)
+    if behoud_gecureerd:
+        q = q.filter(Event.curated.is_(False))
+    # nooit wissen: partnerzaken, geclaimde of betaalde fiches
+    from ..models import OperatorClaim, PartnerPayment
+    beschermd_ids = {r[0] for r in db.session.query(OperatorClaim.event_id).all()} \
+        | {r[0] for r in db.session.query(PartnerPayment.event_id).all()}
+    doel = [e for e in q.all()
+            if e.id not in beschermd_ids and e.partner_until is None]
+    ids = [e.id for e in doel]
+    if not ids:
+        flash("Niets te wissen voor deze bron (of alles is beschermd).", "ok")
+        return redirect(url_for("admin.verbindingen"))
+    for model, kolom in ((SavedEvent, SavedEvent.event_id),
+                         (Review, Review.event_id),
+                         (Photo, Photo.event_id),
+                         (EditProposal, EditProposal.event_id)):
+        db.session.query(model).filter(kolom.in_(ids)) \
+            .delete(synchronize_session=False)
+    n = Event.query.filter(Event.id.in_(ids)).delete(synchronize_session=False)
+    db.session.commit()
+    audit(f"bron '{bron}' gewist: {n} fiches (+ gekoppelde data)")
+    flash(f"{n} fiches van bron '{bron}' gewist.", "ok")
+    return redirect(url_for("admin.verbindingen"))

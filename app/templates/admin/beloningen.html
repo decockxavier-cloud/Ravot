@@ -6,22 +6,25 @@
 (1 punt = €{{ "%.2f"|format(punt_eur) }}). Een actief gezin verdient ± 30 punten
 per uitstap, dus ± €{{ "%.2f"|format(30 * punt_eur) }} aan beloningswaarde.</p>
 
+{% set bw = catalogus | selectattr('id', 'equalto', request.args.get('bewerk') | int(-1)) | first %}
 <div class="card">
-  <h2>Nieuwe beloning</h2>
+  <h2>{{ 'Beloning bewerken' if bw else 'Nieuwe beloning' }}</h2>
   <form method="post" class="acties" style="align-items:end;flex-wrap:wrap">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input type="hidden" name="actie" value="nieuw">
-    <label>Emoji<input type="text" name="emoji" value="🎁" style="width:60px"></label>
-    <label style="flex:1;min-width:180px">Naam<input type="text" name="naam" required></label>
-    <label style="flex:1;min-width:180px">Beschrijving<input type="text" name="beschrijving"></label>
-    <label>Waarde (€)<input type="text" name="waarde" id="bel-eur" style="width:90px" placeholder="8"></label>
-    <label>Punten<input type="number" name="punten" id="bel-pt" style="width:90px" required></label>
-    <label>Voorraad <small class="hint">(leeg = onbeperkt)</small><input type="number" name="voorraad" style="width:90px"></label>
+    <input type="hidden" name="actie" value="{{ 'bewerk' if bw else 'nieuw' }}">
+    {% if bw %}<input type="hidden" name="bid" value="{{ bw.id }}">{% endif %}
+    <label>Emoji<input type="text" name="emoji" value="{{ bw.emoji if bw else '🎁' }}" style="width:60px"></label>
+    <label style="flex:1;min-width:180px">Naam<input type="text" name="naam" value="{{ bw.naam if bw else '' }}" required></label>
+    <label style="flex:1;min-width:180px">Beschrijving<input type="text" name="beschrijving" value="{{ bw.beschrijving or '' if bw else '' }}"></label>
+    <label>Waarde (€)<input type="text" name="waarde" id="bel-eur" style="width:90px" placeholder="8" value="{{ bw.waarde_eur if bw else '' }}"></label>
+    <label>Punten<input type="number" name="punten" id="bel-pt" style="width:90px" required value="{{ bw.punten if bw else '' }}"></label>
+    <label>Voorraad <small class="hint">(leeg = onbeperkt)</small><input type="number" name="voorraad" style="width:90px" value="{{ bw.voorraad if bw and bw.voorraad is not none else '' }}"></label>
     <label>Partner-goodie van
       <select name="partner_id"><option value="">— (Ravot zelf)</option>
-        {% for p in partners %}<option value="{{ p.id }}">{{ p.title }}</option>{% endfor %}
+        {% for p in partners %}<option value="{{ p.id }}" {{ 'selected' if bw and bw.partner_event_id == p.id }}>{{ p.title }}</option>{% endfor %}
       </select></label>
-    <button class="btn" type="submit">Toevoegen</button>
+    <button class="btn" type="submit">{{ 'Bewaar wijzigingen' if bw else 'Toevoegen' }}</button>
+    {% if bw %}<a class="btn btn-stil" href="{{ url_for('admin.beloningen') }}">Annuleer</a>{% endif %}
   </form>
   <script>
     (function () {
@@ -47,11 +50,19 @@ per uitstap, dus ± €{{ "%.2f"|format(30 * punt_eur) }} aan beloningswaarde.</
     <td>{{ 'partner' if b.soort == 'partner' else 'Ravot' }}{% if b.partner %} — {{ b.partner.title }}{% endif %}</td>
     <td><span class="badge {{ 'pil-ok' if b.actief else 'pil-uit' }}">{{ 'actief' if b.actief else 'uit' }}</span></td>
     <td>
+      <a class="btn btn-stil btn-klein" href="{{ url_for('admin.beloningen', bewerk=b.id) }}#top">Bewerk</a>
       <form method="post" style="display:inline">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="actie" value="toggle">
         <input type="hidden" name="bid" value="{{ b.id }}">
         <button class="btn btn-stil btn-klein" type="submit">{{ 'Zet uit' if b.actief else 'Zet aan' }}</button>
+      </form>
+      <form method="post" style="display:inline"
+            onsubmit="return confirm('Beloning \'{{ b.naam }}\' definitief verwijderen?')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="actie" value="verwijder">
+        <input type="hidden" name="bid" value="{{ b.id }}">
+        <button class="btn btn-stil btn-klein" type="submit">🗑️</button>
       </form>
     </td>
   </tr>

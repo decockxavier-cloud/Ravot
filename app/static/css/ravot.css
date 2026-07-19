@@ -766,3 +766,20 @@ section h2 { font-size: 1.25rem; margin: 22px 0 8px; }
 
 .verval-melding { background: #fff4dd; border: 1px solid var(--zon, #F4B233);
   border-radius: 10px; padding: 6px 10px; font-size: 0.85rem; display: inline-block; }
+
+/* ---- Compacte, inklapbare filterzijbalk ---- */
+.ontdek-zij { font-size: 0.86rem; }
+.ontdek-zij details.zij-groep { margin: 0 0 4px; border-bottom: 1px solid #f0ede6; padding-bottom: 4px; }
+.ontdek-zij summary.zij-titel { cursor: pointer; list-style: none; display: flex;
+  align-items: center; gap: 6px; padding: 6px 2px; user-select: none; }
+.ontdek-zij summary.zij-titel::-webkit-details-marker { display: none; }
+.ontdek-zij summary.zij-titel::after { content: "▾"; margin-left: auto;
+  font-size: 0.75em; color: #999; transition: transform 0.15s; }
+.ontdek-zij details[open] summary.zij-titel::after { transform: rotate(180deg); }
+.ontdek-zij summary.zij-titel b { color: var(--gras, #4CA362); font-size: 1.3em; line-height: 0; }
+.ontdek-zij .filterchip { padding: 3px 9px; font-size: 0.82rem; margin: 2px 2px 2px 0; }
+.ontdek-zij select { font-size: 0.85rem; padding: 5px 8px; max-width: 100%; }
+@media (min-width: 900px) {
+  .ontdek-zij { position: sticky; top: 12px; max-height: calc(100vh - 24px);
+    overflow-y: auto; }
+}

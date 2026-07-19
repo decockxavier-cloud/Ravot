@@ -1130,3 +1130,64 @@ def test_partners_lidmaatschappen_en_nafacturatie(client, seed, monkeypatch):
     r = client.post(f"/beheer/partners/factuur/{b.id}", follow_redirects=True)
     assert "INV/2026/0007" in r.get_data(as_text=True)
     assert b.odoo_invoice_ref == "INV/2026/0007"
+
+
+# ------------------------------------------- feedback-ronde: crud & bronnen --
+
+def test_beloning_bewerken_en_verwijderen(client, seed):
+    from app.models import Admin, Beloning, Inwissel
+    b = Beloning(naam="Petje", punten=100, waarde_eur=5)
+    db.session.add(b)
+    admin = Admin(email="crud@t.be", pw_hash="x", totp_secret="s",
+                  totp_confirmed=True, role="admin")
+    db.session.add(admin); db.session.commit()
+    with client.session_transaction() as s:
+        s["admin_id"] = admin.id; s["admin_2fa_ok"] = True
+    # bewerken
+    client.post("/beheer/beloningen", data={
+        "actie": "bewerk", "bid": b.id, "naam": "Ravot-petje", "emoji": "🧢",
+        "waarde": "6", "punten": "120", "voorraad": "10", "beschrijving": ""})
+    assert b.naam == "Ravot-petje" and b.punten == 120 and b.voorraad == 10
+    # verwijderen kan zolang er geen inwisselingen zijn
+    client.post("/beheer/beloningen", data={"actie": "verwijder", "bid": b.id})
+    assert db.session.get(Beloning, b.id) is None
+    # met inwisseling: verwijderen geweigerd
+    b2 = Beloning(naam="Sjaal", punten=50, waarde_eur=3)
+    db.session.add(b2); db.session.flush()
+    db.session.add(Inwissel(family_id=seed["fam_a"].id, beloning_id=b2.id,
+                            punten=50, code="RAVOT-CRUD01"))
+    db.session.commit()
+    r = client.post("/beheer/beloningen", data={"actie": "verwijder", "bid": b2.id},
+                    follow_redirects=True)
+    assert db.session.get(Beloning, b2.id) is not None
+    assert "inwisselingen" in r.get_data(as_text=True)
+
+
+def test_bron_data_wissen(client, seed):
+    from app.models import Admin, Review
+    ev_uit = Event(slug="wis-uit", title="UiT Testevent", source="uit",
+                   gemeente="Gent", postcode="9000", lat=51.0, lng=3.7,
+                   age_min=0, age_max=12, categories=[])
+    ev_cur = Event(slug="wis-cur", title="Gecureerd", source="uit", curated=True,
+                   gemeente="Gent", postcode="9000", lat=51.0, lng=3.7,
+                   age_min=0, age_max=12, categories=[])
+    db.session.add_all([ev_uit, ev_cur])
+    admin = Admin(email="wis@t.be", pw_hash="x", totp_secret="s",
+                  totp_confirmed=True, role="admin")
+    db.session.add(admin); db.session.commit()
+    uit_id = ev_uit.id
+    db.session.add(Review(family_id=seed["fam_b"].id, event_id=uit_id,
+                          kid_score=3, parent_score=3))
+    db.session.commit()
+    with client.session_transaction() as s:
+        s["admin_id"] = admin.id; s["admin_2fa_ok"] = True
+    client.post("/beheer/verbindingen/wis-bron",
+                data={"bron": "uit", "behoud_gecureerd": "1"})
+    assert Event.query.filter_by(slug="wis-uit").first() is None
+    assert Event.query.filter_by(slug="wis-cur").first() is not None  # behouden
+    assert Review.query.filter_by(event_id=uit_id).count() == 0       # mee gewist
+
+
+def test_registry_beperkt_tot_kernbronnen(app):
+    from app.services.sources import REGISTRY
+    assert set(REGISTRY) == {"uit", "osm"}

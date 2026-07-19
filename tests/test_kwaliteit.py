@@ -104,23 +104,10 @@ END:VCALENDAR"""
 
 
 def test_feed_sync_end_to_end(app):
-    """Volledige keten: Feed-rij -> sync_one('feed') -> Event in databank."""
-    with app.app_context():
-        db.session.add(Feed(naam="CC Test", url="https://cc.be/a.ics", kind="ical",
-                            gemeente="Roeselare", postcode="8800",
-                            categorie="cultuur", trusted=True))
-        db.session.merge(Setting(key="bron_feed_aan", value="1"))
-        db.session.commit()
-        fake = mock.Mock(status_code=200, text=ICAL)
-        fake.raise_for_status = lambda: None
-        with mock.patch("app.services.sources.feeds.requests.get", return_value=fake):
-            from app.services.sources import sync_one
-            r = sync_one("feed")
-        assert r["verwerkt"] == 1
-        ev = Event.query.filter_by(source="feed").first()
-        assert ev and ev.title == "Kindertheater Pinokkio" and not ev.pending
-        assert ev.quality is not None
-
+    """Feeds zijn bewust geen bron meer: Ravot beperkt zich tot UiT, OSM,
+    Overture en handmatige toevoegingen."""
+    from app.services.sources import REGISTRY
+    assert "feed" not in REGISTRY
 
 def test_verrijking_richt_op_middenzone_dichtst_bij_groen(app):
     """te_verrijken(zone='midden') pakt enkel de middenzone, hoogste score eerst."""

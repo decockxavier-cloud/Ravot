@@ -323,12 +323,7 @@ SETTING_DEFS = {
     # Deze schakelaar stuurt zowel het syncen ALS alle UiT/UiTinVlaanderen-
     # vermeldingen op de site (publiq-voorwaarden: attributie enkel bij live data).
     "bron_uit_aan": ("0", "Bron: UiTdatabank (publiq) — pas AAN zetten bij go-live", "bool"),
-    "bron_tm_aan": ("0", "Bron: Ticketmaster — enkel Family-segment (BE)", "bool"),
-    "bron_tv_aan": ("0", "Bron: Toerisme Vlaanderen — kindvriendelijke attracties", "bool"),
     "bron_osm_aan": ("0", "Bron: OpenStreetMap — speeltuinen, zoo, pretpark, musea", "bool"),
-    "bron_feed_aan": ("0", "Bron: agenda-feeds (iCal/RSS)", "bool"),
-    "bron_wd_aan": ("0", "Bron: Wikidata — musea/attracties met officiële foto's", "bool"),
-    "tv_max": ("2000", "Toerisme Vlaanderen: max. attracties per sync", "int"),
     "osm_tags": ("playground,park,nature_reserve,water_park,swimming_area,miniature_golf,"
                  "theme_park,zoo,aquarium,museum,viewpoint,attraction,castle,horeca",
                  "OSM: soorten plekken (komma-gescheiden; 'horeca' = enkel zaken met "
