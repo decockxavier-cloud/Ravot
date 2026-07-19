@@ -39,8 +39,10 @@ staan bovenaan.</p>
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="actie" value="importeer">
     <input type="hidden" name="bron" value="{{ bron }}">
+    <input type="hidden" name="plaats" value="{{ zoekterm }}">
+    <input type="hidden" name="straal" value="{{ straal }}">
     <table class="tabel">
-      <tr><th></th><th>Naam</th><th>Soort</th><th>Waar</th><th>Kind-signalen</th><th>Importeren als</th></tr>
+      <tr><th></th><th>Naam</th><th>Soort</th><th>Waar</th><th>Kind-signalen &amp; AI</th><th>Importeren als</th><th></th></tr>
       {% for r in resultaten %}
       <tr>
         <td><input type="checkbox" name="kies" value="{{ r.ext_id }}"
@@ -54,7 +56,13 @@ staan bovenaan.</p>
             {% if r.buiten %}<span class="badge">terras</span>{% endif %}
             {% if r.get('ai') == 'ja' %}<span class="badge pil-ok">AI: ja</span>
             {% elif r.get('ai') == 'nee' %}<span class="badge pil-uit">AI: nee</span>
-            {% elif r.get('ai') == 'twijfel' %}<span class="badge pil-bezig">AI: twijfel</span>{% endif %}</td>
+            {% elif r.get('ai') == 'twijfel' %}<span class="badge pil-bezig">AI: twijfel</span>{% endif %}
+            {% if r.get('ai_uitleg') %}<br><small class="hint">💭 {{ r.ai_uitleg }}</small>{% endif %}</td>
+        <td>
+          <button class="btn btn-stil btn-klein" type="submit"
+                  name="actie_gesloten" value="{{ r.ext_id }}"
+                  title="Deze zaak bestaat niet meer: verberg ze overal">✖ gesloten</button>
+        </td>
         <td>
           <select name="soort_{{ r.ext_id }}">
             <option value="horeca" {{ 'selected' if not (r.zomerbar or r.get('winterbar')) }}>Kindvriendelijke horeca</option>

@@ -136,7 +136,9 @@ def kandidaten_in_gebied(lat, lng, straal_km=5):
     marge = straal_km / 90.0
     q = HorecaKandidaat.query.filter(
         HorecaKandidaat.lat.between(lat - marge, lat + marge),
-        HorecaKandidaat.lng.between(lng - 1.6 * marge, lng + 1.6 * marge))
+        HorecaKandidaat.lng.between(lng - 1.6 * marge, lng + 1.6 * marge),
+        db.or_(HorecaKandidaat.gesloten.is_(False),
+               HorecaKandidaat.gesloten.is_(None)))
     return [k for k in q.limit(2000).all()
             if haversine_km(lat, lng, k.lat, k.lng) <= straal_km]
 
@@ -146,7 +148,9 @@ def zoek_kandidaten(lat, lng, straal_km=5):
     marge = straal_km / 90.0     # ruwe graden-box, daarna exact op afstand
     q = HorecaKandidaat.query.filter(
         HorecaKandidaat.lat.between(lat - marge, lat + marge),
-        HorecaKandidaat.lng.between(lng - 1.6 * marge, lng + 1.6 * marge))
+        HorecaKandidaat.lng.between(lng - 1.6 * marge, lng + 1.6 * marge),
+        db.or_(HorecaKandidaat.gesloten.is_(False),
+               HorecaKandidaat.gesloten.is_(None)))
     uit = []
     for k in q.limit(2000).all():
         km = haversine_km(lat, lng, k.lat, k.lng)
@@ -159,7 +163,7 @@ def zoek_kandidaten(lat, lng, straal_km=5):
                     "zomerbar": bool(k.zomerbar_hint),
                     "winterbar": bool(getattr(k, "winterbar_hint", False)),
                     "km": round(km, 1),
-                    "ai": k.ai_advies})
+                    "ai": k.ai_advies, "ai_uitleg": k.ai_uitleg})
     # AI-'ja' bovenaan, daarna twijfel, dan op afstand — zo bevestig je eerst
     # de meest kansrijke zaken.
     volgorde = {"ja": 0, "twijfel": 1, None: 1, "nee": 2}
@@ -236,7 +240,8 @@ def ai_triage(kandidaten, max_batch=None):
               "pannenkoekenhuizen, kinderboerderij-cafés, brasseries met "
               "speeltuin. Nachtcafés, sterrenrestaurants, shishabars en "
               "bruine kroegen zijn 'nee'. Bij onvoldoende info: 'twijfel'. "
-              "Antwoord ENKEL met JSON, zonder uitleg.")
+              "Geef per zaak een korte motivatie (max 12 woorden, Nederlands). "
+              "Antwoord ENKEL met JSON.")
     fouten_op_rij = 0
     for i in range(0, len(te_doen), max_batch):
         batch = te_doen[i:i + max_batch]
@@ -245,22 +250,25 @@ def ai_triage(kandidaten, max_batch=None):
                   "gemeente": k.gemeente or "?"} for k in batch]
         prompt = ("Beoordeel deze zaken. Geef ENKEL compacte, volledig "
                   "afgewerkte JSON: "
-                  '{"beoordelingen": [{"id": "...", "advies": "ja|nee|twijfel"}]}\n'
+                  '{"beoordelingen": [{"id": "...", "advies": "ja|nee|twijfel", '
+                  '"uitleg": "korte reden"}]}\n'
                   + json.dumps(lijst, ensure_ascii=False))
         try:
             # Ruime max_tokens: het afgekapte 500-token-antwoord was precies
             # de "7 van 357"-bug — halve JSON = bijna niets bewaard.
-            data = _parse_json(_generate(prompt, system, max_tokens=2000)) or {}
+            data = _parse_json(_generate(prompt, system, max_tokens=3000)) or {}
         except Exception as exc:
             data = {}
             _triage_bezig["fout"] = f"{type(exc).__name__}: {str(exc)[:200]}"
-        per_id = {b.get("id"): b.get("advies") for b in
+        per_id = {b.get("id"): b for b in
                   (data.get("beoordelingen") or []) if isinstance(b, dict)}
         gelukt = 0
         for k in batch:
-            advies = per_id.get(k.ext_id)
+            b = per_id.get(k.ext_id) or {}
+            advies = b.get("advies")
             if advies in ("ja", "nee", "twijfel"):
                 k.ai_advies = advies
+                k.ai_uitleg = (str(b.get("uitleg") or "")).strip()[:200] or None
                 gelukt += 1
             elif data.get("beoordelingen"):
                 # Het model antwoordde wél maar sloeg deze zaak over of gaf
@@ -329,3 +337,17 @@ def start_ai_triage_achtergrond(app, lat, lng, straal_km, synchroon=False):
     threading.Thread(target=_werk, daemon=True,
                      name="ravot-ai-triage").start()
     return True
+
+
+def markeer_gesloten(ext_id):
+    """Beheerder: 'deze zaak bestaat niet meer'. De kandidaat verdwijnt uit
+    alle zoekresultaten, en een al geïmporteerde fiche gaat mee op verborgen —
+    zo houdt curatie de databank eerlijker dan eender welke bron."""
+    from ...models import Event
+    k = HorecaKandidaat.query.filter_by(ext_id=ext_id).first()
+    if k:
+        k.gesloten = True
+    ev = Event.query.filter_by(ext_id=ext_id).first()
+    if ev:
+        ev.hidden = True
+    return k is not None or ev is not None

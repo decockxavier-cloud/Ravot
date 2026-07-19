@@ -288,6 +288,13 @@ def register_cli(app):
                 "ALTER TABLE feestjes ADD COLUMN aanleiding VARCHAR(12) "
                 "DEFAULT 'verjaardag' NOT NULL"))
             added.append("feestjes.aanleiding")
+        if hk_cols and "ai_uitleg" not in hk_cols:
+            db.session.execute(text(
+                "ALTER TABLE horeca_kandidaten ADD COLUMN ai_uitleg VARCHAR(200)"))
+            db.session.execute(text(
+                "ALTER TABLE horeca_kandidaten ADD COLUMN gesloten "
+                "BOOLEAN DEFAULT FALSE"))
+            added.append("horeca_kandidaten.ai_uitleg + gesloten")
         if hk_cols and "winterbar_hint" not in hk_cols:
             db.session.execute(text(
                 "ALTER TABLE horeca_kandidaten ADD COLUMN winterbar_hint "
@@ -295,6 +302,11 @@ def register_cli(app):
             added.append("horeca_kandidaten.winterbar_hint")
         ev_cols = {c["name"] for c in insp.get_columns("events")} \
             if insp.has_table("events") else set()
+        if ev_cols and "nagekeken" not in ev_cols:
+            db.session.execute(text(
+                "ALTER TABLE events ADD COLUMN nagekeken BOOLEAN "
+                "DEFAULT FALSE NOT NULL"))
+            added.append("events.nagekeken")
         for kol in ("kinderstoel", "speelhoek", "kindermenu"):
             if ev_cols and kol not in ev_cols:
                 db.session.execute(text(f"ALTER TABLE events ADD COLUMN {kol} BOOLEAN"))

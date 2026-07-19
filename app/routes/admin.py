@@ -1177,7 +1177,9 @@ def activiteiten():
     from ..models import Event, EnrichProposal, get_int
     zoek = (request.args.get("q") or "").strip()
     bron = request.args.get("bron", "")
-    status = request.args.get("status", "")
+    # Standaard opent de pagina op de werkvoorraad: gecureerde fiches die je
+    # nog niet nakeek. Afwerken in plaats van zoeken.
+    status = request.args.get("status", "nakijken")
     sort = request.args.get("sort", "kwaliteit-op")   # kwaliteit-op|kwaliteit-af|recent
     q = Event.query
     if zoek:
@@ -1200,6 +1202,12 @@ def activiteiten():
                      ~Event.id.in_(heeft_voorstel))
     elif status == "gecureerd":
         q = q.filter(Event.curated.is_(True))
+    elif status == "nakijken":
+        q = q.filter(Event.curated.is_(True), Event.nagekeken.is_(False),
+                     Event.hidden.is_(False))
+    elif status == "klaar":
+        q = q.filter(Event.curated.is_(True), Event.nagekeken.is_(True),
+                     Event.hidden.is_(False))
     elif status == "tebeoordelen":
         q = q.filter(Event.curated.is_(False), Event.is_permanent.is_(True))
     if sort == "kwaliteit-af":
@@ -1210,9 +1218,18 @@ def activiteiten():
         q = q.order_by(Event.quality.asc().nullsfirst())
     rijen = q.limit(200).all()
     from ..services.sources import REGISTRY
+    tellers = {
+        "nakijken": Event.query.filter(Event.curated.is_(True),
+                                       Event.nagekeken.is_(False),
+                                       Event.hidden.is_(False)).count(),
+        "klaar": Event.query.filter(Event.curated.is_(True),
+                                    Event.nagekeken.is_(True),
+                                    Event.hidden.is_(False)).count(),
+        "pending": Event.query.filter(Event.pending.is_(True)).count(),
+    }
     return render_template("admin/activiteiten.html", rijen=rijen, zoek=zoek,
                            bron=bron, status=status, sort=sort,
-                           bronnen=list(REGISTRY),
+                           bronnen=list(REGISTRY), tellers=tellers,
                            title="Activiteiten", family=None, active="activiteiten")
 
 
@@ -1400,7 +1417,8 @@ def horeca_import():
     bron = request.form.get("bron") or request.args.get("bron") or "overture"
     if bron not in ("overture", "osm"):
         bron = "overture"
-    if request.method == "POST" and request.form.get("actie") == "importeer":
+    if request.method == "POST" and request.form.get("actie") == "importeer" \
+            and not request.form.get("actie_gesloten"):
         keuzes = [(ext_id, request.form.get(f"soort_{ext_id}", "horeca"))
                   for ext_id in request.form.getlist("kies")]
         try:
@@ -1427,6 +1445,14 @@ def horeca_import():
             fout = "Gemeente niet gevonden — probeer een postcode."
         else:
             try:
+                if request.form.get("actie_gesloten") and bron == "overture":
+                    ext_id = request.form.get("actie_gesloten") or ""
+                    if ov_bron.markeer_gesloten(ext_id):
+                        db.session.commit()
+                        audit(f"horeca-kandidaat gesloten gemarkeerd: {ext_id}")
+                        flash("Gemarkeerd als gesloten — verdwijnt uit alle "
+                              "lijsten (en de fiche is verborgen als ze al "
+                              "bestond).", "ok")
                 if request.form.get("actie") == "ai" and bron == "overture":
                     # AI-voorsortering draait op de ACHTERGROND: het model
                     # denkt minuten na en dat past niet in een webverzoek.
@@ -1646,3 +1672,14 @@ def horeca_ai_voortgang():
     st = ov_bron.triage_status()
     return {"bezig": st.get("actief", False), "fout": st.get("fout"),
             "klaar": klaar, "totaal": totaal}
+
+
+@bp.route("/activiteiten/<int:event_id>/nagekeken", methods=["POST"])
+@admin_required
+def activiteit_nagekeken(event_id):
+    """Vinkje in de werkvoorraad: deze fiche is met eigen ogen bekeken."""
+    ev = db.session.get(Event, event_id) or abort(404)
+    ev.nagekeken = not ev.nagekeken
+    db.session.commit()
+    audit(f"fiche #{event_id} nagekeken={'ja' if ev.nagekeken else 'nee'}")
+    return redirect(request.referrer or url_for("admin.activiteiten"))

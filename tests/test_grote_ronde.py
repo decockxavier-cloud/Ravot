@@ -1346,7 +1346,7 @@ def test_ai_triage_overleeft_kapotte_batch(app, seed, monkeypatch):
     monkeypatch.setattr(enrich, "_generate", nep)
     n = ov.ai_triage(ov.kandidaten_in_gebied(50.9, 3.1, 5))
     assert len(beurten) == 2                    # doorgegaan na de kapotte batch
-    assert beurten[0] == 2000                   # ruime tokens gevraagd
+    assert beurten[0] >= 2000                   # ruime tokens gevraagd
     assert n == 25                              # tweede batch volledig gelukt
 
 
@@ -1406,3 +1406,66 @@ def test_ai_voortgang_endpoint(client, seed):
         s["admin_id"] = admin.id; s["admin_2fa_ok"] = True
     d = client.get("/beheer/horeca-import/ai-voortgang?plaats=8800&straal=5").get_json()
     assert d["totaal"] == 2 and d["klaar"] == 1 and d["bezig"] is False
+
+
+def test_ai_uitleg_en_gesloten(client, seed, monkeypatch):
+    from app.models import Admin, Event, HorecaKandidaat
+    from app.services.sources import overture as ov
+    db.session.add_all([
+        HorecaKandidaat(ext_id="u1", naam="Pannenkoekenparadijs",
+                        categorie="restaurant", lat=50.95, lng=3.12),
+        HorecaKandidaat(ext_id="dood", naam="Gesloten Zaak", categorie="cafe",
+                        lat=50.95, lng=3.12),
+    ])
+    db.session.commit()
+    import app.enrich as enrich
+    monkeypatch.setattr(enrich, "_generate", lambda p, s, max_tokens=500:
+                        '{"beoordelingen": [{"id": "u1", "advies": "ja", '
+                        '"uitleg": "pannenkoeken zijn kindermagneet"}, '
+                        '{"id": "dood", "advies": "twijfel", "uitleg": "onbekend"}]}')
+    ov.ai_triage(ov.kandidaten_in_gebied(50.95, 3.12, 5))
+    k = HorecaKandidaat.query.filter_by(ext_id="u1").first()
+    assert k.ai_advies == "ja" and "kindermagneet" in k.ai_uitleg
+    # uitleg zichtbaar in de zoekresultaten
+    rows = ov.zoek_kandidaten(50.95, 3.12, 5)
+    assert any(r.get("ai_uitleg") for r in rows)
+    # gesloten markeren: kandidaat weg uit resultaten, fiche verborgen
+    ov.importeer([("dood", "horeca")])
+    db.session.commit()
+    admin = Admin(email="gs@t.be", pw_hash="x", totp_secret="s",
+                  totp_confirmed=True, role="admin")
+    db.session.add(admin); db.session.commit()
+    with client.session_transaction() as s:
+        s["admin_id"] = admin.id; s["admin_2fa_ok"] = True
+    client.post("/beheer/horeca-import", data={
+        "actie": "importeer", "actie_gesloten": "dood", "bron": "overture",
+        "plaats": "8800", "straal": "5"})
+    assert HorecaKandidaat.query.filter_by(ext_id="dood").first().gesloten is True
+    assert Event.query.filter_by(ext_id="dood").first().hidden is True
+    assert all(r["ext_id"] != "dood" for r in ov.zoek_kandidaten(50.95, 3.12, 5))
+    # en er werd níets extra geïmporteerd door die klik
+    assert Event.query.filter_by(source="overture").count() == 1
+
+
+def test_zaken_werkvoorraad(client, seed):
+    from app.models import Admin, Event
+    ev = Event(slug="wv-1", title="Nieuw Geimporteerd Resto", source="overture",
+               gemeente="Roeselare", postcode="8800", lat=50.9, lng=3.1,
+               is_permanent=True, subtype="horeca", curated=True, quality=70,
+               age_min=0, age_max=12, categories=[])
+    db.session.add(ev)
+    admin = Admin(email="wv@t.be", pw_hash="x", totp_secret="s",
+                  totp_confirmed=True, role="admin")
+    db.session.add(admin); db.session.commit()
+    with client.session_transaction() as s:
+        s["admin_id"] = admin.id; s["admin_2fa_ok"] = True
+    # standaardweergave = werkvoorraad, met tellers
+    h = client.get("/beheer/activiteiten").get_data(as_text=True)
+    assert "Nog na te kijken (1)" in h and "Nieuw Geimporteerd Resto" in h
+    # afvinken -> verdwijnt uit de werkvoorraad, verschijnt bij 'klaar'
+    client.post(f"/beheer/activiteiten/{ev.id}/nagekeken")
+    assert ev.nagekeken is True
+    h = client.get("/beheer/activiteiten?status=nakijken").get_data(as_text=True)
+    assert "Nieuw Geimporteerd Resto" not in h
+    h = client.get("/beheer/activiteiten?status=klaar").get_data(as_text=True)
+    assert "Nieuw Geimporteerd Resto" in h

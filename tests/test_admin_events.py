@@ -128,5 +128,5 @@ def test_activiteiten_aanvullen_filter_en_sortering(client, app):
     assert "Plek mid" in html
     assert "Plek laag" not in html and "Plek hoog" not in html
     # sorteren hoogste eerst: 'hoog' vóór 'laag' in de HTML
-    h2 = client.get("/beheer/activiteiten?sort=kwaliteit-af").get_data(as_text=True)
+    h2 = client.get("/beheer/activiteiten?status=alles&sort=kwaliteit-af").get_data(as_text=True)
     assert h2.index("Plek hoog") < h2.index("Plek laag")

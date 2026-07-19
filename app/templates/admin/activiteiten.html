@@ -1,6 +1,13 @@
 {% extends "admin/admin_base.html" %}
 {% block admin_content %}
 <h1>Activiteiten</h1>
+<div class="filterbalk" style="margin:8px 0 14px">
+  <a class="filterchip {{ 'aan' if status == 'nakijken' }}" href="{{ url_for('admin.activiteiten', status='nakijken') }}">📋 Nog na te kijken ({{ tellers.nakijken }})</a>
+  <a class="filterchip {{ 'aan' if status == 'klaar' }}" href="{{ url_for('admin.activiteiten', status='klaar') }}">✅ Nagekeken &amp; live ({{ tellers.klaar }})</a>
+  <a class="filterchip {{ 'aan' if status == 'pending' }}" href="{{ url_for('admin.activiteiten', status='pending') }}">⏳ Wachtrij ({{ tellers.pending }})</a>
+  <a class="filterchip {{ 'aan' if status == 'aanvullen' }}" href="{{ url_for('admin.activiteiten', status='aanvullen') }}">✍️ Aan te vullen</a>
+  <a class="filterchip {{ 'aan' if status == '' or status == 'alles' }}" href="{{ url_for('admin.activiteiten', status='alles') }}">Alles</a>
+</div>
 <p class="hint">Zoek en bewerk élke fiche — ook permanente plekken (die staan niet
   in Ontdek) en items in de wachtrij. Kies <strong>"aan te vullen"</strong> om
   gericht de fiches te zien die verrijking nodig hebben, zwakste of dichtst bij
@@ -49,9 +56,16 @@
       {%- if not e.source_url %}{% set _ = mist.append('web') %}{% endif -%}
       {{ mist|join(', ') if mist else '—' }}
     </td>
-    <td>{{ '⏳ wachtrij' if e.pending else '✅ live' }}{% if e.curated %} · <span title="Ravot-waardig" style="color:var(--gras)">✓</span>{% endif %}</td>
+    <td>{{ '🙈 verborgen' if e.hidden else ('⏳ wachtrij' if e.pending else '✅ live') }}{% if e.curated %} · <span title="Ravot-waardig" style="color:var(--gras)">✓</span>{% endif %}
+      {% if e.curated and not e.nagekeken %}<span class="badge pil-bezig">na te kijken</span>{% endif %}</td>
     <td>
       <a class="btn btn-klein" href="{{ url_for('admin.activiteit_bewerk', event_id=e.id) }}">Bewerk / verrijk</a>
+      <a class="btn btn-stil btn-klein" href="{{ url_for('public.event', slug=e.slug) }}" target="_blank" rel="noopener">Bekijk ↗</a>
+      <form method="post" action="{{ url_for('admin.activiteit_nagekeken', event_id=e.id) }}" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-stil btn-klein" type="submit"
+                title="Afvinken in de werkvoorraad">{{ '↩ toch nakijken' if e.nagekeken else '✓ nagekeken' }}</button>
+      </form>
       <form method="post" action="{{ url_for('admin.activiteit_waardig', event_id=e.id) }}" style="display:inline">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="terug" value="{{ request.full_path }}">

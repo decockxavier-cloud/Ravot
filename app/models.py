@@ -105,6 +105,9 @@ class Event(db.Model):
     hidden = db.Column(db.Boolean, default=False, nullable=False, index=True)  # dubbel: verborgen in lijsten
     dupe_of = db.Column(db.Integer, index=True)   # id van het canonieke event waar dit een dubbel van is
     pending = db.Column(db.Boolean, default=False, nullable=False, index=True)  # door gebruiker ingediend, wacht op review
+    # Werkvoorraad voor de beheerder: geïmporteerde/gecureerde fiches die nog
+    # niet met eigen ogen zijn nagekeken (beschrijving, foto, voorzieningen).
+    nagekeken = db.Column(db.Boolean, default=False, nullable=False)
     partner_until = db.Column(db.DateTime, index=True)   # Ravot Partner actief tot (betaald, nooit invloed op score)
     quality = db.Column(db.Integer, index=True)         # 0-100 volledigheid van de fiche (app/kwaliteit.py)
     subtype = db.Column(db.String(40), index=True)      # fijn OSM-type: playground, park, zoo, museum…
@@ -734,8 +737,12 @@ class HorecaKandidaat(db.Model):
     winterbar_hint = db.Column(db.Boolean, default=False)
     confidence = db.Column(db.Float)
     # AI-voorsortering: 'ja' | 'nee' | 'twijfel' (None = nog niet beoordeeld).
-    # Eén keer beoordeeld = voor altijd bewaard.
+    # Eén keer beoordeeld = voor altijd bewaard, mét korte motivatie zodat de
+    # beheerder kan zien HOE het model tot zijn oordeel kwam.
     ai_advies = db.Column(db.String(8))
+    ai_uitleg = db.Column(db.String(200))
+    # Door de beheerder gemarkeerd als "bestaat niet meer": nooit meer tonen.
+    gesloten = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=utcnow)
 
 
