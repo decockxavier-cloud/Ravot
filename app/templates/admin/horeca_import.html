@@ -69,8 +69,9 @@ staan bovenaan.</p>
       <button class="btn" type="submit">Geselecteerde zaken importeren</button>
       <span class="hint">{{ resultaten | length }} gevonden — zaken met
       kind-signalen of AI-advies "ja" zijn alvast aangevinkt.
-      {% if bron == 'overture' %} · AI-advies: {{ ai_klaar }}/{{ ai_totaal }} beoordeeld
-      {% if ai_bezig %}<span class="badge pil-bezig">AI is bezig — zoek opnieuw voor de voortgang</span>{% endif %}
+      {% if bron == 'overture' %} · <span id="ai-teller">AI-advies: {{ ai_klaar }}/{{ ai_totaal }} beoordeeld</span>
+      <span class="ai-balk" id="ai-balk" {{ '' if ai_bezig else 'hidden' }}><i id="ai-balk-vul" style="width:{{ (ai_klaar / ai_totaal * 100) | round | int if ai_totaal else 0 }}%"></i></span>
+      {% if ai_bezig %}<span class="badge pil-bezig" id="ai-bezig">AI is bezig…</span>{% endif %}
       {% if ai_status and ai_status.fout %}
       <span class="badge pil-uit" title="{{ ai_status.fout }}">AI-fout ({{ ai_status.backend or '?' }}): {{ ai_status.fout | truncate(120) }}</span>
       <span class="hint">Tip: zet bij Instellingen → AI-verrijking de backend op
@@ -84,5 +85,36 @@ staan bovenaan.</p>
   {% else %}
   <p class="hint">Geen horeca gevonden binnen deze straal.</p>
   {% endif %}
+{% endif %}
+
+{% if resultaten is not none and bron == 'overture' %}
+<script>
+(function () {
+  var bezig = {{ 'true' if ai_bezig else 'false' }};
+  if (!bezig) return;
+  var url = "{{ url_for('admin.horeca_ai_voortgang') }}?plaats=" +
+            encodeURIComponent("{{ zoekterm }}") + "&straal={{ straal }}";
+  var teller = document.getElementById('ai-teller');
+  var vul = document.getElementById('ai-balk-vul');
+  var badge = document.getElementById('ai-bezig');
+  var timer = setInterval(function () {
+    fetch(url).then(function (r) { return r.json(); }).then(function (d) {
+      teller.textContent = 'AI-advies: ' + d.klaar + '/' + d.totaal + ' beoordeeld';
+      if (d.totaal) vul.style.width = Math.round(d.klaar / d.totaal * 100) + '%';
+      if (d.fout && badge) { badge.textContent = 'AI-fout: ' + d.fout; badge.className = 'badge pil-uit'; }
+      if (!d.bezig) {
+        clearInterval(timer);
+        if (badge && !d.fout) badge.textContent = 'AI klaar — lijst wordt ververst…';
+        // Klaar: het zoekformulier één keer automatisch opnieuw indienen
+        // zodat de badges en sortering meteen kloppen.
+        if (!d.fout) {
+          var form = document.querySelector('form.acties') || document.forms[0];
+          if (form) form.submit();
+        }
+      }
+    }).catch(function () {});
+  }, 2500);
+})();
+</script>
 {% endif %}
 {% endblock %}

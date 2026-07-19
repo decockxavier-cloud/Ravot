@@ -1624,3 +1624,25 @@ def bron_data_wissen():
     audit(f"bron '{bron}' gewist: {n} fiches (+ gekoppelde data)")
     flash(f"{n} fiches van bron '{bron}' gewist.", "ok")
     return redirect(url_for("admin.verbindingen"))
+
+
+@bp.route("/horeca-import/ai-voortgang")
+@admin_required
+def horeca_ai_voortgang():
+    """Klein JSON-endpoint voor de live voortgangsbalk van de AI-triage."""
+    from ..geo import zoek_centrum
+    from ..services.sources import overture as ov_bron
+    plaats = (request.args.get("plaats") or "").strip()
+    try:
+        straal = max(1, min(25, int(request.args.get("straal", 5))))
+    except ValueError:
+        straal = 5
+    centrum = zoek_centrum(plaats) if plaats else None
+    klaar = totaal = 0
+    if centrum:
+        ks = ov_bron.kandidaten_in_gebied(centrum[0], centrum[1], straal)
+        totaal = len(ks)
+        klaar = sum(1 for k in ks if k.ai_advies)
+    st = ov_bron.triage_status()
+    return {"bezig": st.get("actief", False), "fout": st.get("fout"),
+            "klaar": klaar, "totaal": totaal}

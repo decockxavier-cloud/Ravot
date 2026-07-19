@@ -799,3 +799,8 @@ section h2 { font-size: 1.25rem; margin: 22px 0 8px; }
 .wissel-vouw form { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
 .wissel-vouw textarea { width: 100%; font: inherit; padding: 6px 8px;
   border-radius: 8px; border: 1px solid #ddd6c8; }
+
+.ai-balk { display: inline-block; width: 140px; height: 8px; background: #f0ede6;
+  border-radius: 6px; overflow: hidden; vertical-align: middle; margin: 0 6px; }
+.ai-balk i { display: block; height: 100%; background: var(--gras, #4CA362);
+  transition: width 0.4s; }

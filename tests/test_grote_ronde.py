@@ -1389,3 +1389,20 @@ def test_admin_puntencorrectie_en_gezinsdetail(client, seed):
     h = client.get(f"/beheer/families/{fam.id}").get_data(as_text=True)
     assert "Ravotpas" in h and "rechtzetting test" in h
     assert "Toegekende scores" in h and "Nieuwsbrief" in h
+
+
+def test_ai_voortgang_endpoint(client, seed):
+    from app.models import Admin, HorecaKandidaat, PostcodeCentroid
+    db.session.add_all([
+        HorecaKandidaat(ext_id="v1", naam="Zaak 1", categorie="cafe",
+                        lat=50.95, lng=3.12, ai_advies="ja"),
+        HorecaKandidaat(ext_id="v2", naam="Zaak 2", categorie="cafe",
+                        lat=50.95, lng=3.12),
+    ])
+    admin = Admin(email="vg@t.be", pw_hash="x", totp_secret="s",
+                  totp_confirmed=True, role="admin")
+    db.session.add(admin); db.session.commit()
+    with client.session_transaction() as s:
+        s["admin_id"] = admin.id; s["admin_2fa_ok"] = True
+    d = client.get("/beheer/horeca-import/ai-voortgang?plaats=8800&straal=5").get_json()
+    assert d["totaal"] == 2 and d["klaar"] == 1 and d["bezig"] is False
