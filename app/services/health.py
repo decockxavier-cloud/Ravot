@@ -66,6 +66,32 @@ def _odoo():
     return (True, f"login ok (uid {uid})") if uid else (False, "login geweigerd")
 
 
+def _ai():
+    """Status van de gekozen AI-backend: cloud (Anthropic) of lokaal (Ollama).
+    Toont dus wat er ECHT gebruikt wordt bij verrijking en horeca-triage."""
+    from ..models import get_setting
+    backend = (get_setting("verrijk_backend") or "ollama").lower()
+    if backend == "cloud":
+        key = current_app.config.get("ENRICH_CLOUD_KEY")
+        if not key:
+            return False, ("backend 'cloud' gekozen maar geen ENRICH_CLOUD_KEY "
+                           "in .env")
+        r = requests.get("https://api.anthropic.com/v1/models", timeout=6,
+                         headers={"x-api-key": key,
+                                  "anthropic-version": "2023-06-01"})
+        model = get_setting("cloud_model") or "claude-haiku-4-5-20251001"
+        if r.status_code == 200:
+            return True, f"cloud actief ({model}) — API-key geldig"
+        if r.status_code in (401, 403):
+            return False, "cloud: API-key ongeldig of verlopen"
+        return False, f"cloud: Anthropic antwoordt {r.status_code}"
+    ok, detail = _ollama()
+    hint = ""
+    if current_app.config.get("ENRICH_CLOUD_KEY"):
+        hint = " · tip: er staat een cloud-key klaar — wissel bij Instellingen"
+    return ok, f"lokaal (ollama) — {detail}{hint}"
+
+
 def _ollama():
     url = (current_app.config.get("OLLAMA_URL") or "http://ollama:11434").rstrip("/")
     r = requests.get(f"{url}/api/tags", timeout=3)
@@ -126,7 +152,7 @@ def alle_checks():
         ("Mail (SMTP)", _smtp),
         ("Mollie (betalingen)", _mollie),
         ("Odoo (facturatie)", _odoo),
-        ("Ollama (AI-verrijking)", _ollama),
+        ("AI-verrijking (cloud/Ollama)", _ai),
         ("Overpass (OSM live)", _overpass),
         ("Open-Meteo (weer)", _open_meteo),
         ("UiTdatabank", _uit),

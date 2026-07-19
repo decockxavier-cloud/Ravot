@@ -1101,7 +1101,7 @@ def test_status_dashboard(client, seed, monkeypatch):
     r = client.get("/beheer/status")
     h = r.get_data(as_text=True)
     assert r.status_code == 200
-    assert "Database (PostgreSQL)" in h and "Mollie" in h and "Ollama" in h
+    assert "Database (PostgreSQL)" in h and "Mollie" in h and "AI-verrijking" in h
     assert "probleem" in h                     # kapotte pings netjes getoond
     assert "laatste synchronisatie" in h
 
