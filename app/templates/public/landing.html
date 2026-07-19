@@ -22,10 +22,10 @@
   </svg>
 </section>
 
-{% if stats.events %}
+{% if stats.events or stats.plekken %}
 <div class="stat-band">
   <div class="stat"><b>{{ stats.events }}</b><span>activiteiten</span></div>
-  <div class="stat"><b>{{ stats.gemeenten }}</b><span>plaatsen</span></div>
+  <div class="stat"><b>{{ stats.plekken }}</b><span>plekken om te ravotten</span></div>
   <div class="stat"><b>gratis</b><span>voor gezinnen</span></div>
 </div>
 {% endif %}

@@ -52,7 +52,10 @@ class Config:
     # memory:// als fallback voor lokaal en tests.
     RATELIMIT_STORAGE_URI = os.environ.get("RATELIMIT_STORAGE_URI", "memory://")
     # Optionele cloud-backend voor verrijking (leeg = uit).
-    ENRICH_CLOUD_KEY = os.environ.get("ENRICH_CLOUD_KEY", "")
+    # Cloud-AI-key: ENRICH_CLOUD_KEY, met ANTHROPIC_API_KEY als terugval
+    # (de gangbare naam — zo werkt een key uit een ander project meteen).
+    ENRICH_CLOUD_KEY = (os.environ.get("ENRICH_CLOUD_KEY")
+                        or os.environ.get("ANTHROPIC_API_KEY", ""))
     # Mollie (Ravot Partner). Leeg = betalingen uit (portaal blijft gratis werken).
     MOLLIE_API_KEY = os.environ.get("MOLLIE_API_KEY", "")
     # Odoo (Peppol-conforme facturatie). Alles leeg = facturatie uit.

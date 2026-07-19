@@ -472,7 +472,12 @@ def welkom():
     """Landingspagina, ook zichtbaar mét actieve zoekopdracht/profiel."""
     from ..models import Event, Review
     stats = {
-        "events": Event.query.count(),
+        # Eerlijke cijfers: activiteiten = échte gedateerde events;
+        # plekken = vaste locaties (speeltuinen, musea, horeca, ...).
+        "events": Event.query.filter(Event.is_permanent.is_(False),
+                                     Event.hidden.is_(False)).count(),
+        "plekken": Event.query.filter(Event.is_permanent.is_(True),
+                                      Event.hidden.is_(False)).count(),
         "gemeenten": db.session.query(Event.gemeente).filter(
             Event.gemeente.isnot(None)).distinct().count(),
         "reviews": Review.query.count(),
@@ -519,7 +524,12 @@ def home():
         return redirect(url_for("public.vandaag"))
     from ..models import Event, Review
     stats = {
-        "events": Event.query.count(),
+        # Eerlijke cijfers: activiteiten = échte gedateerde events;
+        # plekken = vaste locaties (speeltuinen, musea, horeca, ...).
+        "events": Event.query.filter(Event.is_permanent.is_(False),
+                                     Event.hidden.is_(False)).count(),
+        "plekken": Event.query.filter(Event.is_permanent.is_(True),
+                                      Event.hidden.is_(False)).count(),
         "gemeenten": db.session.query(Event.gemeente).filter(
             Event.gemeente.isnot(None)).distinct().count(),
         "reviews": Review.query.count(),

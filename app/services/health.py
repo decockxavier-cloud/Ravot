@@ -74,8 +74,9 @@ def _ai():
     if backend == "cloud":
         key = current_app.config.get("ENRICH_CLOUD_KEY")
         if not key:
-            return False, ("backend 'cloud' gekozen maar geen ENRICH_CLOUD_KEY "
-                           "in .env")
+            return False, ("backend 'cloud' gekozen maar geen key in .env — zet "
+                           "ENRICH_CLOUD_KEY of ANTHROPIC_API_KEY, en herlaad de "
+                           "container met: docker compose up -d --force-recreate web")
         r = requests.get("https://api.anthropic.com/v1/models", timeout=6,
                          headers={"x-api-key": key,
                                   "anthropic-version": "2023-06-01"})
@@ -164,6 +165,16 @@ def alle_checks():
     from .sources import REGISTRY
     # Enkel de bronnen die nog bestaan — oude statusrijen (tv/tm/wd/feed) zijn
     # spookvermeldingen van geschrapte koppelingen.
-    bronnen = [b for b in SyncStatus.query.order_by(SyncStatus.source).all()
-               if b.source in REGISTRY or b.source == "overture"]
+    from datetime import datetime, timedelta
+    ruw = [b for b in SyncStatus.query.order_by(SyncStatus.source).all()
+           if b.source in REGISTRY or b.source == "overture"]
+    grens = datetime.utcnow() - timedelta(hours=2)
+    bronnen = []
+    for b in ruw:
+        vastgelopen = (b.state == "running"
+                       and (b.updated_at or b.last_run or grens) < grens)
+        bronnen.append({"source": b.source, "state": b.state,
+                        "last_run": b.last_run, "last_result": b.last_result,
+                        "last_error": b.last_error,
+                        "vastgelopen": vastgelopen})
     return checks, bronnen
