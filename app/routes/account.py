@@ -525,6 +525,32 @@ def toevoegen():
             return redirect(url_for("account.toevoegen"))
         postcode = re.sub(r"\D", "", request.form.get("postcode") or "")[:4] or None
         cats = [c for c in request.form.getlist("categorie") if c in CATEGORIES] or ["buiten"]
+        # Soort plek: zelfde lijst als de filters, zodat wat je toevoegt ook
+        # meteen juist filtert en het juiste kaartspeldje krijgt.
+        from ..types import TYPES
+        soort = request.form.get("soort") or ""
+        if soort not in TYPES or not TYPES[soort][2]:
+            soort = None
+        # Vast of tijdelijk? Een zomerbar met einddatum is een tijdelijke
+        # activiteit; een zomerbar als vaste plek volgt de seizoenslogica.
+        aard = request.form.get("aard") or "vast"
+        start_dt = eind_dt = None
+        if aard == "tijdelijk":
+            from datetime import date as _date, datetime as _dt, time as _time
+            try:
+                d1 = _date.fromisoformat(request.form.get("datum_van") or "")
+                d2 = _date.fromisoformat(request.form.get("datum_tot") or "") \
+                    if request.form.get("datum_tot") else d1
+            except ValueError:
+                flash("Geef een geldige datum voor de activiteit.", "error")
+                return redirect(url_for("account.toevoegen"))
+            if d2 < d1:
+                d1, d2 = d2, d1
+            if d2 < _date.today():
+                flash("De einddatum ligt al in het verleden.", "error")
+                return redirect(url_for("account.toevoegen"))
+            start_dt = _dt.combine(d1, _time(0, 0))
+            eind_dt = _dt.combine(d2, _time(23, 59))
         try:
             lo = max(0, min(18, int(request.form.get("age_min") or 0)))
             hi = max(lo, min(18, int(request.form.get("age_max") or 12)))
@@ -556,7 +582,9 @@ def toevoegen():
                 gemeente = gemeente or best[1].gemeente
                 postcode = postcode or best[1].postcode
         ev = Event(
-            source="user", pending=True, is_permanent=True, hidden=False,
+            source="user", pending=True, hidden=False,
+            is_permanent=(aard != "tijdelijk"),
+            start=start_dt, end=eind_dt, subtype=soort,
             submitted_by=fam.id,
             title=titel,
             description=(request.form.get("beschrijving") or "").strip()[:2000],
@@ -575,7 +603,9 @@ def toevoegen():
         db.session.commit()
         flash("Bedankt! Je plek is ingediend en verschijnt zodra we ze nagekeken hebben.", "ok")
         return redirect(url_for("public.vandaag"))
+    from ..types import TYPES
     return render_template("account/toevoegen.html", categories=CATEGORIES,
+                           soorten=TYPES,
                            family=fam, active=None, title="Plek toevoegen")
 
 

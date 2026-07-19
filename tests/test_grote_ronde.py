@@ -1517,3 +1517,42 @@ def test_goedgekeurde_gezinsplek_op_de_kaart(client, seed):
     assert "Speelweide De Pin" in h
     h = client.get("/ontdek?wanneer=alle").get_data(as_text=True)
     assert "Speelweide De Pin" in h
+
+
+def test_toevoegen_soort_en_tijdelijk(client, seed):
+    """Zomerbar als vaste plek (seizoenslogica) én een tijdelijke activiteit
+    met datums — de twee nieuwe smaken van het toevoegformulier."""
+    from datetime import date, timedelta
+    from app.models import Event
+    fam = seed["fam_a"]
+    login_as(client, fam)
+    # 1. vaste zomerbar
+    client.post("/mijn/toevoegen", data={
+        "titel": "Zomerbar 't Weitje", "categorie": "buiten",
+        "aard": "vast", "soort": "zomerbar",
+        "lat": "50.9480", "lng": "3.1210"})
+    zb = Event.query.filter_by(title="Zomerbar 't Weitje").first()
+    assert zb.is_permanent is True and zb.subtype == "zomerbar"
+    assert zb.start is None
+    # 2. tijdelijke activiteit met periode
+    d1 = date.today() + timedelta(days=10)
+    d2 = date.today() + timedelta(days=12)
+    client.post("/mijn/toevoegen", data={
+        "titel": "Kermis Krottegem", "categorie": "buiten",
+        "aard": "tijdelijk", "soort": "rommelmarkt",
+        "datum_van": d1.isoformat(), "datum_tot": d2.isoformat(),
+        "postcode": "8800"})
+    km = Event.query.filter_by(title="Kermis Krottegem").first()
+    assert km.is_permanent is False and km.subtype == "rommelmarkt"
+    assert km.start.date() == d1 and km.end.date() == d2
+    # 3. einddatum in het verleden: geweigerd
+    client.post("/mijn/toevoegen", data={
+        "titel": "Te Laat Feest", "categorie": "buiten", "aard": "tijdelijk",
+        "datum_van": (date.today() - timedelta(days=5)).isoformat(),
+        "postcode": "8800"})
+    assert Event.query.filter_by(title="Te Laat Feest").first() is None
+    # 4. ongeldig soort wordt genegeerd
+    client.post("/mijn/toevoegen", data={
+        "titel": "Raar Soort", "categorie": "buiten", "aard": "vast",
+        "soort": "hacksoort", "postcode": "8800"})
+    assert Event.query.filter_by(title="Raar Soort").first().subtype is None

@@ -161,7 +161,9 @@ def test_ontdek_standaard_deze_week_en_alle_verruimt(client, app):
     now = datetime.utcnow()
     with app.app_context():
         db.session.add(Event(source="uit", ext_id="w", slug="dw", title="DezeWeekEvent",
-            start=now + timedelta(hours=5), gemeente="Gent", postcode="9000",
+            # +5 min: gegarandeerd nog "deze week", ook op zondagavond
+            # (met +5 uur kantelde de test elke zondag over de weekgrens).
+            start=now + timedelta(minutes=5), gemeente="Gent", postcode="9000",
             lat=51.0, lng=3.7, age_min=0, age_max=12, categories=["cultuur"], quality=70))
         db.session.add(Event(source="uit", ext_id="l", slug="lm", title="LaterEvent",
             start=now + timedelta(days=40), gemeente="Gent", postcode="9000",

@@ -174,15 +174,22 @@
       <div class="nazicht-acties">
         <form method="post" action="{{ url_for('admin.nazicht_melding', report_id=r.id, actie='verberg') }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button class="btn btn-klein" type="submit">Verberg plek</button>
+          <button class="btn btn-klein" type="submit"
+                  title="Weg van kaart en lijsten, maar omkeerbaar — de beste keuze bij 'gesloten'. Blijft ook na een sync verborgen.">Verberg plek</button>
         </form>
+        <p class="hint" style="margin:6px 0 0">Verberg = omkeerbaar (beste bij
+        gesloten zaken) · Verwijder = definitief weg · Afvinken = melding
+        sluiten zonder actie.</p>
         <form method="post" action="{{ url_for('admin.nazicht_melding', report_id=r.id, actie='verwijder') }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button class="btn btn-klein btn-stil" type="submit">Verwijder plek</button>
+          <button class="btn btn-klein btn-stil" type="submit"
+                  title="Definitief wissen, mét reviews en foto's. Let op: een bronplek (OSM/Overture) kan bij een volgende sync terugkomen — verbergen niet."
+                  onclick="return confirm('Definitief verwijderen? Verbergen is omkeerbaar, dit niet.')">Verwijder plek</button>
         </form>
         <form method="post" action="{{ url_for('admin.nazicht_melding', report_id=r.id, actie='ok') }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button class="btn btn-klein btn-stil" type="submit">Enkel afvinken</button>
+          <button class="btn btn-klein btn-stil" type="submit"
+                  title="Melding sluiten zonder iets aan de plek te doen — voor onterechte meldingen.">Enkel afvinken</button>
         </form>
       </div>
     </div>

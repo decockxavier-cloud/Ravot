@@ -1,6 +1,33 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Een plek toevoegen 📍</h1>
+
+  <label>Wat voeg je toe?</label>
+  <div class="filterbalk" role="radiogroup" style="margin-bottom:10px">
+    <label class="filterchip"><input type="radio" name="aard" value="vast" checked
+      style="margin-right:4px"> 🏠 Vaste plek (altijd te bezoeken)</label>
+    <label class="filterchip"><input type="radio" name="aard" value="tijdelijk"
+      style="margin-right:4px"> 📅 Tijdelijke activiteit (met datum)</label>
+  </div>
+  <div id="aard-datums" hidden>
+    <div class="twee-kolommen">
+      <label>Van <input type="date" name="datum_van"></label>
+      <label>Tot en met <input type="date" name="datum_tot"></label>
+    </div>
+    <p class="hint">Eendaags? Laat "tot en met" gewoon leeg.</p>
+  </div>
+
+  <label>Soort plek of activiteit
+    <select name="soort">
+      <option value="">— kies het best passende —</option>
+      {% for code, t in soorten.items() if t[2] %}
+      <option value="{{ code }}">{{ t[0] }} {{ t[1] }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <p class="hint">Zomer- of winterbar als vaste plek? Prima — we tonen ze
+  automatisch enkel in hun seizoen.</p>
+
 <p class="intro">Ken je een leuke plek die nog niet op Ravot staat? Voeg ze toe!
   We kijken elke inzending even na voor ze verschijnt.</p>
 

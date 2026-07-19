@@ -33,3 +33,14 @@
     });
   });
 })();
+
+// Datumvelden enkel tonen bij "tijdelijke activiteit".
+(function () {
+  var blok = document.getElementById("aard-datums");
+  if (!blok) return;
+  document.querySelectorAll('input[name="aard"]').forEach(function (r) {
+    r.addEventListener("change", function () {
+      blok.hidden = document.querySelector('input[name="aard"]:checked').value !== "tijdelijk";
+    });
+  });
+})();
