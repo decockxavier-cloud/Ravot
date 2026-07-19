@@ -46,7 +46,7 @@ def _smtp():
 
 
 def _mollie():
-    from . import mollie
+    from .. import mollie
     if not mollie.actief():
         return False, "geen MOLLIE_API_KEY in .env — uitbaters zien de mail-terugval"
     key = current_app.config["MOLLIE_API_KEY"]
@@ -59,7 +59,7 @@ def _mollie():
 
 
 def _odoo():
-    from . import odoo
+    from .. import odoo
     if not odoo.actief():
         return False, "niet geconfigureerd (ODOO_URL/DB/USER/API_KEY in .env)"
     uid = odoo._login()
@@ -76,8 +76,21 @@ def _ollama():
 
 
 def _overpass():
-    r = requests.get("https://overpass-api.de/api/status", timeout=4)
-    return r.status_code == 200, f"hoofdserver antwoordt {r.status_code}"
+    servers = ("https://overpass-api.de/api/status",
+               "https://overpass.kumi.systems/api/status",
+               "https://overpass.private.coffee/api/status")
+    laatste = None
+    for url in servers:
+        try:
+            r = requests.get(url, timeout=4, headers={
+                "User-Agent": "Ravot/1.0 (+https://ravot.be)",
+                "Accept": "*/*"})
+            if r.status_code == 200:
+                return True, f"{url.split('/')[2]} antwoordt 200"
+            laatste = f"{url.split('/')[2]} antwoordt {r.status_code}"
+        except Exception as exc:
+            laatste = f"{url.split('/')[2]}: {type(exc).__name__}"
+    return False, laatste or "geen server bereikbaar"
 
 
 def _open_meteo():
@@ -122,5 +135,9 @@ def alle_checks():
         ok, detail, ms = _ping(fn)
         checks.append({"naam": naam, "ok": ok, "detail": detail, "ms": ms})
     from ..models import SyncStatus
-    bronnen = SyncStatus.query.order_by(SyncStatus.source).all()
+    from .sources import REGISTRY
+    # Enkel de bronnen die nog bestaan — oude statusrijen (tv/tm/wd/feed) zijn
+    # spookvermeldingen van geschrapte koppelingen.
+    bronnen = [b for b in SyncStatus.query.order_by(SyncStatus.source).all()
+               if b.source in REGISTRY]
     return checks, bronnen
