@@ -1191,3 +1191,130 @@ def test_bron_data_wissen(client, seed):
 def test_registry_beperkt_tot_kernbronnen(app):
     from app.services.sources import REGISTRY
     assert set(REGISTRY) == {"uit", "osm"}
+
+
+# ------------------------------------------- filtermatrix + fiche-verdieping --
+
+def _matrix_events():
+    from datetime import datetime, timedelta
+    nu = datetime.utcnow()
+    evs = [
+        Event(slug="m-gratis-nat", title="GratisNatuur", gemeente="Roeselare",
+              postcode="8800", lat=50.95, lng=3.12, start=nu + timedelta(hours=1),
+              end=nu + timedelta(hours=3), is_free=True, indoor=False,
+              age_min=4, age_max=8, categories=["natuur"]),
+        Event(slug="m-binnen-cult", title="BinnenCultuur", gemeente="Roeselare",
+              postcode="8800", lat=50.94, lng=3.11, start=nu + timedelta(hours=1),
+              end=nu + timedelta(hours=3), is_free=False, indoor=True,
+              age_min=10, age_max=14, categories=["cultuur"]),
+        Event(slug="m-resto", title="RestoKind", gemeente="Roeselare",
+              postcode="8800", lat=50.93, lng=3.10, is_permanent=True,
+              subtype="horeca", curated=True, quality=80, indoor=True,
+              kinderstoel=True, kindermenu=True, speelhoek=False,
+              age_min=0, age_max=12, categories=[]),
+    ]
+    db.session.add_all(evs)
+    db.session.commit()
+    return evs
+
+
+def test_filtermatrix_lijst_en_kaart(client, seed):
+    _matrix_events()
+    T = lambda url: client.get(url).get_data(as_text=True)
+    # elke filter apart
+    h = T("/ontdek?wanneer=alle&filter=gratis")
+    assert "GratisNatuur" in h and "BinnenCultuur" not in h
+    h = T("/ontdek?wanneer=alle&filter=binnen")
+    assert "BinnenCultuur" in h and "RestoKind" in h and "GratisNatuur" not in h
+    h = T("/ontdek?wanneer=alle&cat=natuur")
+    assert "GratisNatuur" in h and "BinnenCultuur" not in h
+    h = T("/ontdek?wanneer=alle&lft=10-12")
+    assert "BinnenCultuur" in h and "GratisNatuur" not in h
+    h = T("/ontdek?wanneer=alle&soort=horeca")
+    assert "RestoKind" in h and "GratisNatuur" not in h
+    h = T("/ontdek?wanneer=alle&ouder=kinderstoel&ouder=kindermenu")
+    assert "RestoKind" in h and "BinnenCultuur" not in h
+    h = T("/ontdek?wanneer=alle&ouder=speelhoek")
+    assert "RestoKind" not in h                     # heeft géén speelhoek
+    # combinaties
+    h = T("/ontdek?wanneer=alle&filter=gratis&cat=natuur&lft=4-6")
+    assert "GratisNatuur" in h and "BinnenCultuur" not in h and "RestoKind" not in h
+    h = T("/ontdek?wanneer=alle&filter=binnen&lft=10-12&cat=cultuur")
+    assert "BinnenCultuur" in h and "RestoKind" not in h
+    h = T("/ontdek?wanneer=alle&soort=horeca&ouder=kindermenu&lft=4-6")
+    assert "RestoKind" in h
+    # zelfde combinaties op de kaart
+    h = T("/verkennen?wanneer=alle&filter=gratis&cat=natuur")
+    assert "m-gratis-nat" in h and "m-binnen-cult" not in h
+    h = T("/verkennen?wanneer=alle&soort=horeca&ouder=kinderstoel")
+    assert "m-resto" in h and "m-gratis-nat" not in h
+    # zoekterm + filter samen
+    h = T("/ontdek?wanneer=alle&q=RestoKind&soort=horeca")
+    assert "RestoKind" in h
+
+
+def test_kindfotos_apart_blok(client, seed, app):
+    from app.models import Photo
+    ev = _matrix_events()[2]
+    db.session.add_all([
+        Photo(event_id=ev.id, filename="menu.jpg", soort="kindermenu",
+              status="approved"),
+        Photo(event_id=ev.id, filename="hoek.jpg", soort="kinderhoek",
+              status="approved"),
+        Photo(event_id=ev.id, filename="gezin.jpg", soort="gezin",
+              status="approved"),
+    ])
+    db.session.commit()
+    h = client.get(f"/e/{ev.slug}").get_data(as_text=True)
+    assert "Voor de kinderen" in h and "Kindermenu" in h
+
+
+def test_uitbater_voorzieningen_en_upload(client, seed, app):
+    import io
+    from app.models import EditProposal, Event, Operator, OperatorClaim, Photo
+    ev = Event.query.filter_by(slug="kinderboerderij-roeselare-1").first()
+    op = Operator(email="zaak@test.be")
+    db.session.add(op); db.session.flush()
+    db.session.add(OperatorClaim(operator_id=op.id, event_id=ev.id,
+                                 status="approved"))
+    db.session.commit()
+    with client.session_transaction() as s:
+        s["operator_id"] = op.id
+    r = client.post(f"/uitbater/fiche/{ev.id}", data={
+        "kinderstoel": "on", "kindermenu": "on"})
+    prop = EditProposal.query.filter_by(event_id=ev.id).first()
+    assert prop and prop.changes.get("kinderstoel") is True
+    # upload kindermenu-foto -> pending (echte mini-PNG, anders faalt Pillow)
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.new("RGB", (4, 4), (238, 128, 53)).save(buf, format="PNG")
+    buf.seek(0)
+    r = client.post(f"/uitbater/fiche/{ev.id}/foto", data={
+        "soort": "kindermenu", "foto": (buf, "menu.png")},
+        content_type="multipart/form-data", follow_redirects=True)
+    p = Photo.query.filter_by(event_id=ev.id, soort="kindermenu").first()
+    assert p is not None and p.status == "pending"
+
+
+def test_feestje_bewerken_en_annuleren(client, seed):
+    from datetime import date, timedelta
+    from app.models import Feestje, FeestjeAanvraag
+    fam = seed["fam_a"]
+    login_as(client, fam)
+    f = Feestje(family_id=fam.id, datum=date.today() + timedelta(days=40),
+                leeftijd=6, aantal_kinderen=10, postcode="8800")
+    db.session.add(f); db.session.flush()
+    db.session.add(FeestjeAanvraag(feestje_id=f.id,
+                                   event_id=seed["events"][0].id))
+    db.session.commit()
+    client.post(f"/mijn/feestje/{f.id}/bewerk", data={
+        "aanleiding": "communie", "datum": (date.today() + timedelta(days=50)).isoformat(),
+        "leeftijd": "7", "aantal": "20", "wensen": "glutenvrij"})
+    assert f.aanleiding == "communie" and f.aantal_kinderen == 20
+    client.post(f"/mijn/feestje/{f.id}/annuleer")
+    assert f.status == "geannuleerd"
+    # aanvraag blijft bestaan -> partner-evaluatie blijft kloppen
+    assert FeestjeAanvraag.query.filter_by(feestje_id=f.id).count() == 1
+    # en het feestje staat niet meer in de lijst
+    h = client.get("/mijn/feestjes").get_data(as_text=True)
+    assert f"/mijn/feestje/{f.id}" not in h

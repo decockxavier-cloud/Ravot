@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block body_class %}met-sfeer{% endblock %}
+{% block content %}
+<a href="{{ url_for('account.feestje', fid=f.id) }}" class="terug-link">← Terug naar het feestje</a>
+<h1>Feestje bewerken ✏️</h1>
+<form method="post" class="kaart-form card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label>Wat vieren jullie?
+    <select name="aanleiding">
+      {% for code, (emo, label) in aanleidingen.items() %}
+      <option value="{{ code }}" {{ 'selected' if f.aanleiding == code }}>{{ emo }} {{ label }}</option>
+      {% endfor %}
+    </select></label>
+  <label>Datum <input type="date" name="datum" value="{{ f.datum.isoformat() }}" required></label>
+  <label>Leeftijd op de feestdag <input type="number" name="leeftijd" min="1" max="17" value="{{ f.leeftijd or '' }}"></label>
+  <label>Aantal kinderen <input type="number" name="aantal" min="1" max="60" value="{{ f.aantal_kinderen }}"></label>
+  <label>Budget (indicatie) <input type="text" name="budget" value="{{ f.budget or '' }}" placeholder="bv. 150-250"></label>
+  <label>Wensen <textarea name="wensen" rows="3" maxlength="600">{{ f.wensen or '' }}</textarea></label>
+  <div class="acties">
+    <button class="btn btn-zon" type="submit">Bewaar wijzigingen</button>
+  </div>
+</form>
+{% if f.aanvragen %}
+<p class="hint">Let op: {{ f.aanvragen | length }} zaken kregen al een
+offerteaanvraag met de vórige gegevens — verwittig hen zelf even bij grote
+wijzigingen (datum!).</p>
+{% endif %}
+{% endblock %}

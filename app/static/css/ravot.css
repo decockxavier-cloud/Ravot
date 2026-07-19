@@ -783,3 +783,13 @@ section h2 { font-size: 1.25rem; margin: 22px 0 8px; }
   .ontdek-zij { position: sticky; top: 12px; max-height: calc(100vh - 24px);
     overflow-y: auto; }
 }
+
+/* ---- Ravotpas-kaart op het dashboard ---- */
+.pas-kop { display: flex; align-items: center; gap: 14px; text-decoration: none;
+  color: inherit; border: 2px solid var(--zon, #F4B233); }
+.pas-emoji { font-size: 2.2rem; }
+.pas-tekst { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.pas-balk { display: block; height: 8px; background: #f0ede6; border-radius: 6px;
+  overflow: hidden; max-width: 260px; }
+.pas-balk i { display: block; height: 100%; background: var(--gras, #4CA362); }
+.pas-saldo { font-weight: 800; white-space: nowrap; }

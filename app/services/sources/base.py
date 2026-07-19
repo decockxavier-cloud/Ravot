@@ -121,7 +121,8 @@ def upsert_event(data):
     # Ouder-filters uit de bron: enkel AANzetten als de bron het bevestigt.
     # Nooit terug naar onbekend/uit — de community (reviews) en de beheerder
     # kunnen deze velden ook zetten en dat mag een sync niet ongedaan maken.
-    for f in ("omheind", "verzorgingstafel", "buggy_ok"):
+    for f in ("omheind", "verzorgingstafel", "buggy_ok",
+              "kinderstoel", "speelhoek", "kindermenu"):
         if data.get(f) is True and getattr(ev, f, None) is not True:
             setattr(ev, f, True)
     ev.has_vlieg = False  # Vlieg is een publiq-label; nooit op andere bronnen

@@ -3,6 +3,14 @@
 {% block content %}
 <a href="{{ url_for('account.feestjes') }}" class="terug-link">← Mijn feestjes</a>
 <h1>🎂 Feestje op {{ f.datum.strftime('%d/%m/%Y') }}</h1>
+<div class="acties" style="margin:6px 0 12px">
+  <a class="btn btn-stil btn-klein" href="{{ url_for('account.feestje_bewerk', fid=f.id) }}">✏️ Bewerk</a>
+  <form method="post" action="{{ url_for('account.feestje_annuleer', fid=f.id) }}" style="display:inline"
+        onsubmit="return confirm('Feestje annuleren? De verstuurde aanvragen blijven zichtbaar voor je eigen overzicht.')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-stil btn-klein" type="submit">🗑️ Annuleer feestje</button>
+  </form>
+</div>
 <p class="meta">{% if f.leeftijd %}wordt {{ f.leeftijd }} jaar · {% endif %}
   {{ f.aantal_kinderen }} kinderen · 📍 rond {{ f.gemeente or f.postcode }}
   {% if f.status == 'geregeld' %} · <span class="badge badge-score">✅ geregeld</span>{% endif %}</p>

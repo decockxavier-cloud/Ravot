@@ -63,4 +63,27 @@ zien de mail-terugval. Zie <a href="{{ url_for('admin.status') }}">Status</a>.</
     {% endfor %}
   </table>
 </section>
+
+<h2 style="margin-top:24px">Feestpartner-evaluatie</h2>
+<p class="hint">Hoeveel offerteaanvragen kreeg elke zaak, en wat deden ze
+ermee? "Bevestigd" is door het gezin gemeld — een zaak met veel aanvragen en
+weinig respons is een gesprek waard (of geen partnerverlenging).</p>
+{% if feest_stats %}
+<table class="tabel">
+  <tr><th>Zaak</th><th>Aanvragen</th><th>Beantwoord</th><th>Bevestigd</th><th>Score</th></tr>
+  {% for r in feest_stats %}
+  {% set z = feest_zaken.get(r.event_id) %}
+  <tr>
+    <td>{% if z %}<a href="{{ url_for('public.event', slug=z.slug) }}">{{ z.title }}</a>{% else %}#{{ r.event_id }}{% endif %}
+      {% if z and z.partner_until %}<span class="badge pil-ok">⭐ partner</span>{% endif %}</td>
+    <td>{{ r.aanvragen }}</td>
+    <td>{{ r.beantwoord or 0 }}</td>
+    <td>{{ r.bevestigd or 0 }}</td>
+    <td>{{ ((r.bevestigd or 0) / r.aanvragen * 100) | round | int }}%</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="hint">Nog geen offerteaanvragen verstuurd.</p>
+{% endif %}
 {% endblock %}

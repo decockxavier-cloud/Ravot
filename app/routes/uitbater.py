@@ -208,6 +208,13 @@ def fiche(op, event_id):
             wijzigingen["indoor"] = indoor
         if gratis != bool(ev.is_free):
             wijzigingen["is_free"] = gratis
+        # Kindvriendelijke voorzieningen — dit zijn dé parameters die van een
+        # gewoon café een kindvriendelijke zaak maken.
+        for veld in ("kinderstoel", "speelhoek", "kindermenu",
+                     "verzorgingstafel", "buggy_ok", "omheind"):
+            nieuw = bool(request.form.get(veld))
+            if nieuw != bool(getattr(ev, veld)):
+                wijzigingen[veld] = nieuw
         # Verjaardagsfeestjes: aanbod + contactadres (ook via nazicht)
         from ..models import FEEST_SOORTEN
         feest = bool(request.form.get("feest"))
@@ -230,6 +237,34 @@ def fiche(op, event_id):
         return redirect(url_for("uitbater.dashboard"))
     return render_template("uitbater/fiche.html", ev=ev, title=f"Fiche: {ev.title}",
                            family=None, active=None)
+
+
+@bp.route("/fiche/<int:event_id>/foto", methods=["POST"])
+@operator_required
+@limiter.limit("20/hour")
+def fiche_foto(op, event_id):
+    """Kindermenu of kinderhoek-foto uploaden — komt na nazicht in het
+    'Voor de kinderen'-blok op de fiche."""
+    ev = db.session.get(Event, event_id)
+    if not ev or not _mijn_goedgekeurde_claim(op, event_id):
+        abort(403)
+    soort = request.form.get("soort")
+    if soort not in ("kindermenu", "kinderhoek"):
+        abort(400)
+    from .. import fotos
+    from ..models import Photo
+    bestand = request.files.get("foto")
+    if not bestand or not bestand.filename:
+        flash("Kies eerst een foto.", "error")
+        return redirect(url_for("uitbater.fiche", event_id=ev.id))
+    filename = fotos.verwerk_upload(bestand)
+    if not filename:
+        flash("Dat lijkt geen geldige foto (jpg/png/webp).", "error")
+        return redirect(url_for("uitbater.fiche", event_id=ev.id))
+    db.session.add(Photo(event_id=ev.id, filename=filename, soort=soort))
+    db.session.commit()
+    flash("Foto ontvangen! Ze verschijnt op de fiche zodra ze is nagekeken.", "ok")
+    return redirect(url_for("uitbater.fiche", event_id=ev.id))
 
 
 # ------------------------------------------------------- Ravot Partner --

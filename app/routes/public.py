@@ -638,7 +638,8 @@ def ontdek():
         q = q.filter(Event.indoor.is_(False))
     # Ouder-filters: enkel positief filteren (True); onbekend blijft onbekend.
     ouder_filters = {f for f in request.args.getlist("ouder")
-                     if f in ("omheind", "verzorgingstafel", "buggy_ok")}
+                     if f in ("omheind", "verzorgingstafel", "buggy_ok",
+                              "kinderstoel", "speelhoek", "kindermenu")}
     for veld in ouder_filters:
         q = q.filter(getattr(Event, veld).is_(True))
     # Soort plek (speeltuin, museum, horeca, ...): filter op subtype.
@@ -794,7 +795,8 @@ def verkennen():
     if soort not in TYPES:
         soort = ""
     ouder_filters = {f for f in request.args.getlist("ouder")
-                     if f in ("omheind", "verzorgingstafel", "buggy_ok")}
+                     if f in ("omheind", "verzorgingstafel", "buggy_ok",
+                              "kinderstoel", "speelhoek", "kindermenu")}
     lft = request.args.get("lft") or ""
     band = next((b for b in LEEFTIJDEN if b[0] == lft), None)
     if not band:

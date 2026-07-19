@@ -27,6 +27,17 @@
     <label class="check"><input type="checkbox" name="indoor" {{ 'checked' if ev.indoor }}> 🏠 Binnen</label>
     <label class="check"><input type="checkbox" name="is_free" {{ 'checked' if ev.is_free }}> 🆓 Gratis toegang</label>
   </div>
+  <h3>Kindvriendelijke voorzieningen</h3>
+  <p class="hint">Dit zijn dé dingen waar gezinnen op filteren — vink aan wat
+  jullie écht hebben.</p>
+  <div class="check-rij">
+    <label class="check"><input type="checkbox" name="kinderstoel" {{ 'checked' if ev.kinderstoel }}> 🪑 Kinderstoelen</label>
+    <label class="check"><input type="checkbox" name="speelhoek" {{ 'checked' if ev.speelhoek }}> 🧸 Speelhoek of speeltuin</label>
+    <label class="check"><input type="checkbox" name="kindermenu" {{ 'checked' if ev.kindermenu }}> 🍟 Kindermenu</label>
+    <label class="check"><input type="checkbox" name="verzorgingstafel" {{ 'checked' if ev.verzorgingstafel }}> 🍼 Verschoontafel</label>
+    <label class="check"><input type="checkbox" name="buggy_ok" {{ 'checked' if ev.buggy_ok }}> 👶 Vlot met de wandelwagen</label>
+    <label class="check"><input type="checkbox" name="omheind" {{ 'checked' if ev.omheind }}> 🚧 Afgesloten speelterrein</label>
+  </div>
   <div class="card" style="margin:10px 0">
     <strong>🎂 Verjaardagsfeestjes</strong>
     <p class="hint">Bied je feestjes aan? Gezinnen vragen dan via Ravot met één
@@ -44,4 +55,22 @@
   </div>
   <div class="acties"><button class="btn btn-zon" type="submit">Wijziging indienen</button></div>
 </form>
+
+<div class="card">
+  <h2>📸 Voor de kinderen</h2>
+  <p class="hint">Laad jullie <strong>kindermenukaart</strong> en een foto van de
+  <strong>speelhoek of het speelterrein</strong> op — die krijgen een eigen blok
+  bovenaan jullie fiche. Foto's verschijnen na nazicht.</p>
+  <form method="post" action="{{ url_for('uitbater.fiche_foto', event_id=ev.id) }}"
+        enctype="multipart/form-data" class="acties" style="align-items:end">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Soort
+      <select name="soort">
+        <option value="kindermenu">🍟 Kindermenukaart</option>
+        <option value="kinderhoek">🧸 Speelhoek / speelterrein</option>
+      </select></label>
+    <label>Foto <input type="file" name="foto" accept="image/*" required></label>
+    <button class="btn" type="submit">Upload</button>
+  </form>
+</div>
 {% endblock %}

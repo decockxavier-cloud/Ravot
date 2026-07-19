@@ -32,6 +32,9 @@
   {% if ev.omheind %}<span class="badge">🚧 afgesloten speelterrein</span>{% endif %}
   {% if ev.verzorgingstafel %}<span class="badge">🍼 verschoontafel</span>{% endif %}
   {% if ev.buggy_ok %}<span class="badge">👶 vlot met de wandelwagen</span>{% endif %}
+  {% if ev.kinderstoel %}<span class="badge">🪑 kinderstoelen</span>{% endif %}
+  {% if ev.speelhoek %}<span class="badge">🧸 speelhoek</span>{% endif %}
+  {% if ev.kindermenu %}<span class="badge">🍟 kindermenu</span>{% endif %}
   {% if agg %}<span class="badge badge-score">😄 Ravotscore {{ agg.avg }} ({{ agg.count }} gezinnen)
     <a class="score-info" href="{{ url_for('public.score_uitleg') }}" title="Hoe werkt de Ravotscore?">ⓘ</a></span>
   {% elif toon_score is defined and not toon_score %}<span class="badge badge-leeg" title="Deze zaak toont (nog) geen Ravotscore op Ravot">zonder Ravotscore-badge</span>{% endif %}
@@ -127,6 +130,21 @@
 
 {% if ev.series %}<p class="hint">Keert dit jaarlijks terug? Bekijk de <a href="{{ url_for('public.reeks', slug=ev.series.slug) }}">reekspagina met historiek</a>.</p>{% endif %}
 
+{% set kindfotos = (fotos or []) | selectattr("soort", "in", ("kindermenu", "kinderhoek")) | list %}
+{% if kindfotos %}
+<div class="card">
+  <h2 style="margin-top:0">🧸 Voor de kinderen</h2>
+  <div class="foto-galerij">
+    {% for f in kindfotos %}
+    <figure>
+      <img src="{{ url_for('public.foto', pid=f.id) }}" alt="" loading="lazy">
+      <figcaption class="hint">{{ '🍟 Kindermenu' if f.soort == 'kindermenu' else '🧸 Speelhoek' }}</figcaption>
+    </figure>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% set fotos = (fotos or []) | selectattr("soort", "equalto", "gezin") | list %}
 {% if fotos %}
 <div class="card">
   <h2 style="margin-top:0">Foto's van gezinnen</h2>

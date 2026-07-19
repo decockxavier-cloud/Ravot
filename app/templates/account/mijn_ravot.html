@@ -2,6 +2,18 @@
 {% block body_class %}met-sfeer{% endblock %}
 {% block content %}
 <h1>Mijn Ravot 🏠</h1>
+
+<a class="card pas-kop" href="{{ url_for('account.ravotpas') }}">
+  <span class="pas-emoji">{{ pas_niveau.emoji }}</span>
+  <span class="pas-tekst">
+    <strong>{{ pas_niveau.naam }}</strong> · {{ pas_totaal }} ravotpunten
+    {% if pas_niveau.volgende %}
+    <span class="pas-balk"><i style="width:{{ pas_niveau.procent }}%"></i></span>
+    <span class="hint">nog {{ pas_niveau.te_gaan }} punten tot {{ pas_niveau.volgende }}</span>
+    {% else %}<span class="hint">het hoogste niveau — 👑 chapeau!</span>{% endif %}
+  </span>
+  <span class="pas-saldo">🎁 {{ pas_saldo }} te besteden</span>
+</a>
 <p class="hint">Dag {{ family.display_name or "ravotters" }}! Hier vind je alles terug.</p>
 {% include "account/_nakijk.html" ignore missing %}
 

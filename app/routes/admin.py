@@ -1020,7 +1020,21 @@ def partners():
                      if b.status == "paid" and b.paid_at and b.paid_at >= jaar_start)
     zonder_factuur = [b for b in betalingen
                       if b.status == "paid" and not b.odoo_invoice_ref]
-    return render_template("admin/partners.html", betalingen=betalingen,
+    # Feestpartner-evaluatie: wie krijgt aanvragen, en wie maakt ze waar?
+    from ..models import FeestjeAanvraag
+    feest_stats = db.session.query(
+        FeestjeAanvraag.event_id,
+        db.func.count(FeestjeAanvraag.id).label("aanvragen"),
+        db.func.sum(db.case((FeestjeAanvraag.status == "bevestigd", 1),
+                            else_=0)).label("bevestigd"),
+        db.func.sum(db.case((FeestjeAanvraag.status == "beantwoord", 1),
+                            else_=0)).label("beantwoord"),
+    ).group_by(FeestjeAanvraag.event_id) \
+     .order_by(db.desc("aanvragen")).limit(30).all()
+    feest_zaken = {e.id: e for e in Event.query.filter(
+        Event.id.in_([r.event_id for r in feest_stats])).all()} if feest_stats else {}
+    return render_template("admin/partners.html",
+                           feest_stats=feest_stats, feest_zaken=feest_zaken, betalingen=betalingen,
                            leden=leden, omzet_jaar=omzet_jaar,
                            zonder_factuur=zonder_factuur,
                            mollie_actief=mollie.actief(),

@@ -4,7 +4,7 @@ en de AVG-selfservice: export (JSON) + verwijderen met één knop."""
 import json
 import re
 import secrets
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from functools import wraps
 
 from flask import (Blueprint, Response, abort, flash, redirect, render_template,
@@ -144,7 +144,11 @@ def profiel():
     daguitstappen_n = DagUitstap.query.filter_by(family_id=fam.id).count()
     feestjes_open = Feestje.query.filter_by(family_id=fam.id, status="open").count()
 
+    pas_totaal = pas.totaal(fam.id)
     return render_template("account/mijn_ravot.html", family=fam,
+                           pas_totaal=pas_totaal,
+                           pas_niveau=pas.niveau(pas_totaal),
+                           pas_saldo=pas.saldo(fam.id),
                            bewaard_komend=bewaard_komend, bewaard_voorbij=bewaard_voorbij,
                            te_reviewen=te_reviewen, mijn_reviews=mijn_reviews,
                            aantal_vrienden=len(conns),
@@ -419,7 +423,7 @@ def nieuwe_vriendcode(family_id):
     """Genereer een verse, willekeurige code die 24u geldig is. Enkel de hash
     wordt bewaard, gekoppeld aan het gezin. Niet te raden, niet voorspelbaar."""
     from ..models import FriendInvite
-    from datetime import datetime, timezone, timedelta
+    from datetime import date, datetime, timezone, timedelta
     # Bestaande geldige code hergebruiken zodat de pagina stabiel blijft bij refresh
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     code = _leesbare_code()
@@ -443,7 +447,7 @@ def _hash_friend(code):
 def magic_friend_lookup(code):
     """Zoek het gezin achter een geldige, niet-verlopen, ongebruikte code."""
     from ..models import FriendInvite
-    from datetime import datetime, timezone
+    from datetime import date, datetime, timezone
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     inv = FriendInvite.query.filter_by(code_hash=_hash_friend(code), used_at=None).first()
     if inv is None or inv.expires_at < now:
@@ -743,7 +747,8 @@ def daguitstap_verwijder(uid):
 @login_required
 def feestjes():
     fam = me()
-    lijst = Feestje.query.filter_by(family_id=fam.id) \
+    lijst = Feestje.query.filter(Feestje.family_id == fam.id,
+                                 Feestje.status != "geannuleerd") \
         .order_by(Feestje.datum.desc()).all()
     return render_template("account/feestjes.html", lijst=lijst, family=fam,
                            statussen=FEESTJE_STATUSSEN,
@@ -950,3 +955,57 @@ def beloning_wissel(bid):
              if b.soort == "partner" else
              "We bezorgen je beloning; volg de status hieronder op."), "ok")
     return redirect(url_for("account.beloningen"))
+
+
+@bp.route("/feestje/<int:fid>/bewerk", methods=["GET", "POST"])
+@login_required
+def feestje_bewerk(fid):
+    """Datum verschoven, meer vriendjes, ander thema? Gewoon aanpassen.
+    Reeds verstuurde offerteaanvragen blijven bewaard (partner-evaluatie)."""
+    from ..models import FEEST_AANLEIDINGEN
+    fam = me()
+    f = db.session.get(Feestje, fid)
+    if not f or f.family_id != fam.id or f.status == "geannuleerd":
+        abort(404)
+    if request.method == "POST":
+        aanleiding = request.form.get("aanleiding") or f.aanleiding
+        if aanleiding in FEEST_AANLEIDINGEN:
+            f.aanleiding = aanleiding
+        try:
+            f.datum = date.fromisoformat(request.form.get("datum") or "")
+        except ValueError:
+            pass
+        try:
+            f.leeftijd = max(1, min(17, int(request.form.get("leeftijd") or 0))) or f.leeftijd
+        except ValueError:
+            pass
+        try:
+            f.aantal_kinderen = max(1, min(60, int(request.form.get("aantal") or f.aantal_kinderen)))
+        except ValueError:
+            pass
+        f.wensen = (request.form.get("wensen") or "").strip()[:600] or None
+        f.budget = (request.form.get("budget") or "").strip()[:12] or None
+        db.session.commit()
+        flash("Feestje bijgewerkt! Nieuwe offerteaanvragen gebruiken meteen "
+              "de nieuwe gegevens.", "ok")
+        return redirect(url_for("account.feestje", fid=f.id))
+    return render_template("account/feestje_bewerk.html", family=fam, f=f,
+                           aanleidingen=FEEST_AANLEIDINGEN,
+                           title="Feestje bewerken", active=None)
+
+
+@bp.route("/feestje/<int:fid>/annuleer", methods=["POST"])
+@login_required
+def feestje_annuleer(fid):
+    """Zacht schrappen: het feestje verdwijnt uit jullie lijst, maar de
+    verstuurde aanvragen blijven bestaan zodat Ravot partners kan evalueren
+    (hoeveel aanvragen kreeg wie, en wat werd er bevestigd)."""
+    fam = me()
+    f = db.session.get(Feestje, fid)
+    if not f or f.family_id != fam.id:
+        abort(404)
+    f.status = "geannuleerd"
+    db.session.commit()
+    flash("Feestje geannuleerd. Al gecontacteerde zaken mag je gerust zelf "
+          "even verwittigen.", "ok")
+    return redirect(url_for("account.feestjes"))

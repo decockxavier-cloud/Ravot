@@ -131,9 +131,14 @@ class Event(db.Model):
     price_info = db.Column(db.JSON, default=list)  # [{name, price, min_age, max_age}]
     image_url = db.Column(db.String(500))
     # Ouder-filters (nullable = onbekend; enkel True filtert positief):
-    omheind = db.Column(db.Boolean)            # omheind terrein (peuters!)
+    omheind = db.Column(db.Boolean)            # afgesloten speelterrein (peuters!)
     verzorgingstafel = db.Column(db.Boolean)   # verschoontafel aanwezig
-    buggy_ok = db.Column(db.Boolean)           # vlot toegankelijk met buggy
+    buggy_ok = db.Column(db.Boolean)           # vlot met de wandelwagen
+    # Kindvriendelijk is meetbaar: een café IS kindvriendelijk zodra er échte
+    # voorzieningen zijn. Deze drie maken dat concreet en filterbaar:
+    kinderstoel = db.Column(db.Boolean)        # kinderstoelen aanwezig
+    speelhoek = db.Column(db.Boolean)          # speelhoek of speeltuin bij de zaak
+    kindermenu = db.Column(db.Boolean)         # kindermenu beschikbaar
     # Verjaardagsfeestjes: biedt deze plek feestjes aan, en wat precies?
     feest = db.Column(db.Boolean, default=False, nullable=False, index=True)
     feest_soorten = db.Column(db.JSON, default=list)   # subset van FEEST_SOORTEN
@@ -487,6 +492,9 @@ class Photo(db.Model):
     event_id = db.Column(db.Integer, db.ForeignKey("events.id"), nullable=False, index=True)
     family_id = db.Column(db.Integer, db.ForeignKey("families.id"))   # uploader
     filename = db.Column(db.String(120), nullable=False)   # veilige, zelfgekozen bestandsnaam
+    # gezin (galerij) | kindermenu | kinderhoek — de laatste twee zijn
+    # uitbater-uploads en krijgen een eigen blok op de fiche.
+    soort = db.Column(db.String(12), default="gezin", nullable=False)
     status = db.Column(db.String(12), default="pending", nullable=False, index=True)  # pending|approved|rejected
     created_at = db.Column(db.DateTime, default=utcnow, index=True)
     event = db.relationship("Event")

@@ -293,6 +293,19 @@ def register_cli(app):
                 "ALTER TABLE horeca_kandidaten ADD COLUMN winterbar_hint "
                 "BOOLEAN DEFAULT FALSE"))
             added.append("horeca_kandidaten.winterbar_hint")
+        ev_cols = {c["name"] for c in insp.get_columns("events")} \
+            if insp.has_table("events") else set()
+        for kol in ("kinderstoel", "speelhoek", "kindermenu"):
+            if ev_cols and kol not in ev_cols:
+                db.session.execute(text(f"ALTER TABLE events ADD COLUMN {kol} BOOLEAN"))
+                added.append(f"events.{kol}")
+        ph_cols = {c["name"] for c in insp.get_columns("photos")} \
+            if insp.has_table("photos") else set()
+        if ph_cols and "soort" not in ph_cols:
+            db.session.execute(text(
+                "ALTER TABLE photos ADD COLUMN soort VARCHAR(12) "
+                "DEFAULT 'gezin' NOT NULL"))
+            added.append("photos.soort")
         # Overture in de bronnenlijst: beginstatus afleiden uit de voorraad.
         from .models import HorecaKandidaat, SyncStatus
         if insp.has_table("horeca_kandidaten") and insp.has_table("sync_status") \

@@ -446,6 +446,10 @@ def importeer_horeca(ext_ids_met_soort):
             data["verzorgingstafel"] = True
         if tags.get("wheelchair") == "yes":
             data["buggy_ok"] = True
+        if "highchair" in signalen:
+            data["kinderstoel"] = True
+        if "kids_area" in signalen or "playground" in signalen:
+            data["speelhoek"] = True
         ev = upsert_event(data)
         if ev is not None:
             ev.curated = True        # door de beheerder zélf gekozen
