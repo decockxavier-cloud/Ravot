@@ -1306,7 +1306,7 @@ def kampen():
         thema = ""
     # Praktische factoren (aanvinkbaar) — enkel filteren op wat aangevinkt is
     prakt = {
-        "opvang": Event.kamp_voZorg, "maaltijd": Event.kamp_maaltijd,
+        "opvang": Event.kamp_opvang, "maaltijd": Event.kamp_maaltijd,
         "fiscaal": Event.kamp_fiscaal, "mutualiteit": Event.kamp_mutualiteit,
         "overnachting": Event.kamp_overnachting,
     }

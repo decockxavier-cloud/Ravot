@@ -475,7 +475,7 @@ def kamp_nieuw(op):
             kamp_start=start, kamp_eind=eind, kamp_inschrijf_url=url or None,
             kamp_prijs=prijs or None, description=samenvatting or None,
             kamp_thema=thema, kamp_taal=taal,
-            kamp_voZorg=bool(request.form.get("opvang")),
+            kamp_opvang=bool(request.form.get("opvang")),
             kamp_maaltijd=bool(request.form.get("maaltijd")),
             kamp_fiscaal=bool(request.form.get("fiscaal")),
             kamp_mutualiteit=bool(request.form.get("mutualiteit")),

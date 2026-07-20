@@ -328,23 +328,30 @@ def register_cli(app):
             added.append("horeca_kandidaten.winterbar_hint")
         ev_cols = {c["name"] for c in insp.get_columns("events")} \
             if insp.has_table("events") else set()
-        if ev_cols and "is_kamp" not in ev_cols:
-            for coldef in ("is_kamp BOOLEAN DEFAULT FALSE",
-                           "kamp_start DATE", "kamp_eind DATE",
-                           "kamp_inschrijf_url VARCHAR(500)",
-                           "kamp_prijs VARCHAR(40)"):
-                db.session.execute(text(f"ALTER TABLE events ADD COLUMN {coldef}"))
+        # Kamp-kolommen per stuk idempotent (ADD COLUMN IF NOT EXISTS): zo is
+        # een half-gelopen migratie geen probleem.
+        _kamp_kolommen = [
+            "is_kamp BOOLEAN DEFAULT FALSE", "kamp_start DATE", "kamp_eind DATE",
+            "kamp_inschrijf_url VARCHAR(500)", "kamp_prijs VARCHAR(40)",
+            "kamp_organisator VARCHAR(200)", "kamp_opvang BOOLEAN DEFAULT FALSE",
+            "kamp_maaltijd BOOLEAN DEFAULT FALSE", "kamp_fiscaal BOOLEAN DEFAULT FALSE",
+            "kamp_mutualiteit BOOLEAN DEFAULT FALSE",
+            "kamp_overnachting BOOLEAN DEFAULT FALSE",
+            "kamp_thema VARCHAR(40)", "kamp_taal VARCHAR(40)",
+        ]
+        # Ruim een eventueel eerder (fout) aangemaakte kleinletter-kolom op.
+        if ev_cols and "kamp_vozorg" in ev_cols:
+            db.session.execute(text("ALTER TABLE events DROP COLUMN IF EXISTS kamp_vozorg"))
+            added.append("events.kamp_vozorg opgeruimd")
+        _kamp_nieuw = False
+        for coldef in _kamp_kolommen:
+            kol = coldef.split()[0]
+            if kol not in (ev_cols or []):
+                db.session.execute(text(
+                    f"ALTER TABLE events ADD COLUMN IF NOT EXISTS {coldef}"))
+                _kamp_nieuw = True
+        if _kamp_nieuw:
             added.append("events.kamp-velden")
-        if ev_cols and "kamp_organisator" not in ev_cols:
-            for coldef in ("kamp_organisator VARCHAR(200)",
-                           "kamp_voZorg BOOLEAN DEFAULT FALSE",
-                           "kamp_maaltijd BOOLEAN DEFAULT FALSE",
-                           "kamp_fiscaal BOOLEAN DEFAULT FALSE",
-                           "kamp_mutualiteit BOOLEAN DEFAULT FALSE",
-                           "kamp_overnachting BOOLEAN DEFAULT FALSE",
-                           "kamp_thema VARCHAR(40)", "kamp_taal VARCHAR(40)"):
-                db.session.execute(text(f"ALTER TABLE events ADD COLUMN {coldef}"))
-            added.append("events.kamp-praktisch")
         if ev_cols and "label_niveau" not in ev_cols:
             db.session.execute(text("ALTER TABLE events ADD COLUMN label_niveau INTEGER DEFAULT 0"))
             db.session.execute(text("ALTER TABLE events ADD COLUMN label_jaar INTEGER"))

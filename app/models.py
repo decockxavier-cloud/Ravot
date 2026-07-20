@@ -158,7 +158,7 @@ class Event(db.Model):
     kamp_prijs = db.Column(db.String(40))
     kamp_organisator = db.Column(db.String(200))
     # Praktische kampfactoren — aanvinkbaar, filterbaar, als icoontjes zichtbaar.
-    kamp_voZorg = db.Column(db.Boolean, default=False)      # voor- en naopvang
+    kamp_opvang = db.Column(db.Boolean, default=False)      # voor- en naopvang
     kamp_maaltijd = db.Column(db.Boolean, default=False)    # warme maaltijd 's middags
     kamp_fiscaal = db.Column(db.Boolean, default=False)     # fiscaal attest kinderopvang
     kamp_mutualiteit = db.Column(db.Boolean, default=False) # attest ziekenfonds
