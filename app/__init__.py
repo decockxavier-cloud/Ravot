@@ -525,6 +525,15 @@ def register_cli(app):
         click.echo("3/3 Contactgegevens verrijken…")
         ov.verrijk_contact(log=print)
 
+    @app.cli.command("herindeel-voorraad")
+    def herindeel_voorraad_cmd():
+        """Pas de gezin/feest-splitsing toe op de reeds geladen voorraad
+        (zonder opnieuw downloaden). Draai dit eenmalig na de update die
+        feestprospecten introduceerde."""
+        from .services.sources import overture as ov
+        g, f = ov.herindeel_voorraad(log=print)
+        click.echo(f"Klaar: {g} gezin, {f} feest.")
+
     @app.cli.command("kuis-kandidaten")
     def kuis_kandidaten_cmd():
         """Ruim ingeladen horeca-kandidaten op die niet door de strengere

@@ -510,3 +510,26 @@ def kuis_kandidaten(log=print):
     db.session.commit()
     log(f"Opgekuist: {weg} kandidaten verwijderd (categorie/adres/confidence).")
     return weg
+
+
+def herindeel_voorraad(log=print):
+    """Pas de gezin/feest-splitsing toe op de REEDS geladen voorraad, zonder
+    opnieuw te downloaden. Zo krijg je meteen je feestprospectlijst en beoordeelt
+    de AI geen traiteurs meer als kaart-horeca. Idempotent: gewoon herhaalbaar."""
+    gezin = feest = 0
+    for k in HorecaKandidaat.query.all():
+        c = (k.categorie or "").lower()
+        is_gezin = _is_horeca(k.categorie)
+        is_feest = (c in _CAT_FEEST or any(w in c for w in _CAT_FEEST))
+        if is_gezin and any(w in c for w in ("restaurant", "brasserie",
+                                             "banquet", "event")):
+            is_feest = True
+        k.is_feest = is_feest
+        k.doel = "gezin" if is_gezin else ("feest" if is_feest else "gezin")
+        if is_feest:
+            feest += 1
+        if is_gezin:
+            gezin += 1
+    db.session.commit()
+    log(f"Heringedeeld: {gezin} gezin-kandidaten, {feest} feestprospecten.")
+    return gezin, feest
