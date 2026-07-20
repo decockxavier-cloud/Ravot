@@ -1215,3 +1215,15 @@ def api_plaatsen():
                 if len(uit) >= 8:
                     break
     return {"suggesties": uit}
+
+
+@bp.route("/help")
+def help_gezinnen():
+    return _content_of_template("help-gezinnen", "public/help_gezinnen.html",
+                                "Handleiding voor gezinnen")
+
+
+@bp.route("/help/partners")
+def help_partners():
+    return _content_of_template("help-partners", "public/help_partners.html",
+                                "Handleiding voor partners")

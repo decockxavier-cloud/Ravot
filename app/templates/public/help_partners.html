@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Handleiding voor partners 🤝</h1>
+<p class="hint">Zo zet je jouw zaak of activiteit in de kijker bij duizenden
+Vlaamse gezinnen.</p>
+
+<div class="card">
+  <h2>👋 Wat is Ravot?</h2>
+  <p>Ravot helpt gezinnen met kinderen tot 12 jaar ontdekken wat er in hun buurt
+  te doen is. Staat jouw speeltuin, restaurant, museum of indoorspeeltuin er al op?
+  Dan kun je die fiche <strong>claimen</strong> en beheren. Zo niet, dan voeg je
+  ze eenvoudig toe.</p>
+</div>
+
+<div class="card">
+  <h2>✅ Je zaak claimen</h2>
+  <p>Zoek je zaak op Ravot en klik op <strong>"Ben jij de uitbater?"</strong>, of
+  ga rechtstreeks naar <a href="{{ url_for('uitbater.login') }}">het
+  uitbatersportaal</a>. Je meldt je aan met je e-mailadres (via een code, geen
+  wachtwoord) en wij bevestigen je claim. Daarna beheer je de fiche zelf.</p>
+</div>
+
+<div class="card">
+  <h2>✏️ Je fiche verrijken</h2>
+  <p>Vul je fiche aan met een goede beschrijving, openingsuren, prijzen en je
+  website. Vink de <strong>kindvriendelijke voorzieningen</strong> aan die je
+  echt hebt — kinderstoelen, speelhoek, kindermenu, verschoontafel — want daar
+  filteren gezinnen op. Je kunt ook je <strong>kindermenukaart</strong> en een
+  foto van je <strong>speelhoek</strong> opladen; die krijgen een eigen blok
+  bovenaan je fiche. Alle wijzigingen worden kort nagekeken voor ze live gaan.</p>
+</div>
+
+<div class="card">
+  <h2>⭐ Partner worden</h2>
+  <p>Als betalende partner krijgt je zaak een <strong>hogere plaats</strong> in de
+  resultaten en op de kaart, een herkenbaar partnerlabel, en toegang tot extra's
+  zoals het aanbieden van beloningen in de Ravotpas-winkel. Zo bereik je gericht
+  gezinnen die actief op zoek zijn naar een uitstap. De voorwaarden en tarieven
+  vind je in het uitbatersportaal onder <strong>Partner worden</strong>.</p>
+</div>
+
+<div class="card">
+  <h2>🎁 Beloningen aanbieden</h2>
+  <p>Partners kunnen een voordeel koppelen aan de Ravotpas — bijvoorbeeld een
+  gratis pannenkoek of korting op een ticket. Gezinnen wisselen hun punten in en
+  tonen jou een code ter plaatse. Een laagdrempelige manier om nieuwe gezinnen
+  over de vloer te krijgen.</p>
+</div>
+
+<div class="card">
+  <h2>🎂 Verjaardagsfeestjes ontvangen</h2>
+  <p>Bied je feestjes aan? Vink dat aan op je fiche en ontvang rechtstreeks
+  offerteaanvragen van gezinnen in je buurt, met alle details (datum, leeftijd,
+  aantal kinderen, budget). Reageer snel — gezinnen zien je respons en dat telt
+  mee in je betrouwbaarheid als feestpartner.</p>
+</div>
+
+<div class="card">
+  <h2>📬 Vragen?</h2>
+  <p>Neem gerust contact op via de <a href="{{ url_for('public.contact') }}">contactpagina</a>.
+  We helpen je graag op weg.</p>
+</div>
+
+<p><a class="btn btn-groen" href="{{ url_for('uitbater.login') }}">Naar het uitbatersportaal →</a></p>
+{% endblock %}

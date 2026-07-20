@@ -114,6 +114,8 @@ def laad_horeca(bbox=BELGIE_BBOX, log=print):
             k.website = web[:300] if web else None
             tel = rec.get("phones") or []
             k.telefoon = (tel[0][:40] if tel else None)
+            mails = rec.get("emails") or []
+            k.email = (mails[0][:255] if mails else None)
             k.zomerbar_hint = (not lijkt_winterbar(naam)
                                and lijkt_zomerbar(naam, primair))
             k.winterbar_hint = lijkt_winterbar(naam)

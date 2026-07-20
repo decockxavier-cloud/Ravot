@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Handleiding voor gezinnen 🦊</h1>
+<p class="hint">Alles wat je nodig hebt om met Ravot de leukste uitstappen te vinden.</p>
+
+<div class="card">
+  <h2>🔍 Activiteiten vinden</h2>
+  <p>Op de startpagina kies je meteen <strong>Vandaag</strong>, <strong>Deze week</strong>
+  of <strong>Weekend</strong>. Vul je postcode in en Ravot toont wat er in je buurt
+  te doen is — gesorteerd op wat het best past bij de leeftijd van je kinderen,
+  de afstand en het budget. Onder <strong>Ontdek</strong> vind je álles met filters;
+  op de <strong>Kaart</strong> zie je alle plekken rondom je met een speldje.</p>
+</div>
+
+<div class="card">
+  <h2>🎛️ Filteren op wat past</h2>
+  <p>Links (of bovenaan op je telefoon) stel je filters in: prijs, binnen of buiten,
+  interesse (natuur, cultuur, sport…), leeftijd van je kind en soort plek. Onder
+  <strong>Praktisch</strong> filter je op wat écht telt met kleine kinderen:
+  kinderstoelen, een speelhoek, kindermenu, verschoontafel, vlot met de wandelwagen
+  of een afgesloten speelterrein.</p>
+</div>
+
+<div class="card">
+  <h2>🌦️ Slim met het weer</h2>
+  <p>Regent het straks? Dan zet Ravot automatisch overdekte activiteiten bovenaan.
+  Is het mooi weer? Dan krijgen buitenplekken voorrang. Je ziet altijd een
+  weerberichtje bovenaan de lijst, met uitleg waarom de volgorde verandert. Je
+  blijft uiteraard vrij om zelf op "binnen" of "buiten" te filteren.</p>
+</div>
+
+<div class="card">
+  <h2>😄 Scores &amp; de echte kost</h2>
+  <p>Elke plek heeft een <strong>Ravotscore</strong>: een eerlijke beoordeling
+  door gezinnen zoals dat van jou, apart voor kinderen en ouders. Na een uitstap
+  mag je zelf scoren en de <strong>echte kost</strong> delen — niet enkel de
+  ticketprijs, maar parking en pannenkoeken inbegrepen. Zo weten anderen wat een
+  uitstap werkelijk kost.</p>
+</div>
+
+<div class="card">
+  <h2>🦊 De Ravotpas: punten &amp; beloningen</h2>
+  <p>Voor elke bijdrage — een plek toevoegen, een score geven, een foto delen —
+  verdien je <strong>ravotpunten</strong>. Je klimt door niveaus en wisselt punten
+  in voor beloningen in de <strong>winkel</strong>. Bij een goodie van Ravot vragen
+  we je bezorgadres pas op het moment dat je inwisselt; bij een partnervoordeel
+  toon je gewoon je code ter plaatse.</p>
+</div>
+
+<div class="card">
+  <h2>➕ Zelf een plek toevoegen</h2>
+  <p>Ken je een verborgen pareltje? Via <strong>Mijn Ravot → Plek toevoegen</strong>
+  voeg je het toe. Je kiest of het een <strong>vaste plek</strong> is of een
+  <strong>tijdelijke activiteit</strong> met datum, en je duidt de locatie aan door
+  simpelweg op de kaart te prikken. Onze redactie kijkt elke toevoeging na voor ze
+  online komt.</p>
+</div>
+
+<div class="card">
+  <h2>🎂 Een verjaardagsfeestje regelen</h2>
+  <p>Onder <strong>Feestjes</strong> beschrijf je wat je zoekt (aanleiding, datum,
+  leeftijd, aantal kinderen, budget) en stuur je in één keer een offerteaanvraag
+  naar geschikte feestpartners in je buurt. Je kunt je aanvraag altijd nog
+  aanpassen of annuleren.</p>
+</div>
+
+<div class="card">
+  <h2>👨‍👩‍👧‍👦 Je gezin &amp; privacy</h2>
+  <p>Ravot is gratis en toont geen reclame. We vragen enkel je e-mailadres (je logt
+  in met een code, geen wachtwoord) en de leeftijd van je kinderen om te
+  personaliseren. Je nieuwsbrief schrijf je met één klik uit onderaan elke mail.
+  Je kunt je gegevens altijd laten verwijderen via de contactpagina.</p>
+</div>
+
+<p><a class="btn btn-groen" href="{{ url_for('public.vandaag') }}">Aan de slag → Wat doen we vandaag?</a></p>
+{% endblock %}

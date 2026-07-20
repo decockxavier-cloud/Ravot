@@ -291,7 +291,9 @@ def register_cli(app):
         if hk_cols and "telefoon" not in hk_cols:
             db.session.execute(text(
                 "ALTER TABLE horeca_kandidaten ADD COLUMN telefoon VARCHAR(40)"))
-            added.append("horeca_kandidaten.telefoon")
+            db.session.execute(text(
+                "ALTER TABLE horeca_kandidaten ADD COLUMN email VARCHAR(255)"))
+            added.append("horeca_kandidaten.telefoon + email")
         if hk_cols and "ai_uitleg" not in hk_cols:
             db.session.execute(text(
                 "ALTER TABLE horeca_kandidaten ADD COLUMN ai_uitleg VARCHAR(200)"))

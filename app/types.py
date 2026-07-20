@@ -43,6 +43,7 @@ TYPES = {
     "uit_indoorspeeltuin": ("🧸", "Indoor speelparadijs", True),
     "horeca":              ("🍽️", "Kindvriendelijke horeca", True),
     "rommelmarkt":         ("🛍️", "Rommelmarkt of braderie", True),
+    "avondmarkt":          ("🌙", "Avondmarkt", True),
     "zomerbar":            ("🍹", "Zomerbar (gezinsvriendelijk)", True),
     "winterbar":           ("❄️", "Winterbar (gezinsvriendelijk)", True),
     "uit_markt":         ("🛍️", "Markt of braderie", False),
@@ -52,6 +53,7 @@ TYPES = {
 # UiT eventType-labels (kleine letters) -> onze code, op trefwoord (robuust voor
 # exacte bewoording). Eerste match wint, dus specifieke termen bovenaan.
 UIT_TYPE_KEYWORDS = [
+    ("avondmarkt", "avondmarkt"), ("nachtmarkt", "avondmarkt"),
     ("rommelmarkt", "rommelmarkt"), ("braderie", "rommelmarkt"),
     ("markt", "rommelmarkt"), ("zomerbar", "zomerbar"),
     ("indoorspeel", "uit_indoorspeeltuin"), ("speelparadijs", "uit_indoorspeeltuin"),

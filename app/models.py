@@ -735,6 +735,7 @@ class HorecaKandidaat(db.Model):
     lng = db.Column(db.Float, index=True)
     website = db.Column(db.String(300))
     telefoon = db.Column(db.String(40))
+    email = db.Column(db.String(255))
     zomerbar_hint = db.Column(db.Boolean, default=False)
     winterbar_hint = db.Column(db.Boolean, default=False)
     confidence = db.Column(db.Float)

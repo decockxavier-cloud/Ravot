@@ -1672,3 +1672,43 @@ def test_overture_verrijkt_contact(app, seed):
     n = ov.verrijk_contact(log=lambda *a: None)
     assert n == 1
     assert ev.source_url == "https://debron.be" and ev.telefoon == "09 123 45 67"
+
+
+# --------------------------------------------------- feedback: markt/export/help
+
+def test_avondmarkt_en_rommelmarkt_types(app):
+    from app.types import TYPES
+    assert TYPES["avondmarkt"][2] is True
+    assert TYPES["rommelmarkt"][2] is True
+
+
+def test_horeca_partner_export(client, seed):
+    from app.models import Admin, Event, HorecaKandidaat
+    ev = Event(slug="exp-1", title="Café De Vos", source="overture",
+               subtype="horeca", is_permanent=True, curated=True,
+               gemeente="Roeselare", postcode="8800", lat=50.9, lng=3.1,
+               ext_id="exp-k", age_min=0, age_max=12, categories=[])
+    db.session.add(ev)
+    db.session.add(HorecaKandidaat(ext_id="exp-k", naam="Café De Vos",
+                                   categorie="cafe", lat=50.9, lng=3.1,
+                                   website="https://devos.be",
+                                   telefoon="051 20 30 40", email="info@devos.be"))
+    admin = Admin(email="exp@t.be", pw_hash="x", totp_secret="s",
+                  totp_confirmed=True, role="admin")
+    db.session.add(admin); db.session.commit()
+    with client.session_transaction() as s:
+        s["admin_id"] = admin.id; s["admin_2fa_ok"] = True
+    r = client.get("/beheer/horeca-import/export.csv")
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert "Café De Vos" in body and "info@devos.be" in body
+    assert "051 20 30 40" in body and "https://devos.be" in body
+    assert r.headers["Content-Type"].startswith("text/csv")
+
+
+def test_handleidingen_publiek(client):
+    for url in ("/help", "/help/partners"):
+        r = client.get(url)
+        assert r.status_code == 200
+    assert "gezinnen" in client.get("/help").get_data(as_text=True).lower()
+    assert "partner" in client.get("/help/partners").get_data(as_text=True).lower()

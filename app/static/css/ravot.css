@@ -806,3 +806,16 @@ section h2 { font-size: 1.25rem; margin: 22px 0 8px; }
   transition: width 0.4s; }
 
 .prik-kaart { height: 260px; border-radius: 14px; border: 1px solid #ddd6c8; }
+
+/* ---- Nette, uitgelijnde footerlinks ---- */
+.foot-links { display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: center;
+  margin: 8px 0; }
+.foot-links a { white-space: nowrap; }
+.foot-intro { text-align: center; margin-bottom: 4px; }
+
+/* ---- Uitlijning van filter- en actiebalken ---- */
+.filterbalk { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.acties { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.zoekbalk-admin { align-items: center; }
+.zoekbalk-admin select, .zoekbalk-admin input { height: 38px; box-sizing: border-box; }
+.btn-klein { display: inline-flex; align-items: center; gap: 4px; }

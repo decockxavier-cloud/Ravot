@@ -1,6 +1,12 @@
 {% extends "admin/admin_base.html" %}
 {% block admin_content %}
 <h1>Horeca &amp; zomerbars importeren</h1>
+<p class="acties">
+  <a class="btn btn-stil btn-klein" href="{{ url_for('admin.horeca_export_csv') }}">
+    ⬇️ Exporteer partnerlijst (CSV)</a>
+  <span class="hint">Alle live horeca-zaken met contactgegevens — voor je
+  mailactie rond het partnermodel.</span>
+</p>
 <p class="hint">Zoek live in OpenStreetMap naar alle horeca en bars rond een
 gemeente, en kies zelf wat Ravot-waardig is. Geselecteerde zaken worden
 meteen als <strong>gecureerde</strong> fiche toegevoegd (of bijgewerkt als ze

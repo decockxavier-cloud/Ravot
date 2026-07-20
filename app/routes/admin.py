@@ -1748,3 +1748,44 @@ def activiteiten_bulk_nagekeken():
     flash(f"{n} fiches in één keer als nagekeken gemarkeerd.", "ok")
     return redirect(request.referrer or url_for("admin.activiteiten"))
 
+
+
+@bp.route("/horeca-import/export.csv")
+@admin_required
+def horeca_export_csv():
+    """Exporteer geïmporteerde horeca-zaken met hun contactgegevens als CSV —
+    voor een gerichte mailactie om het partnermodel voor te stellen. Enkel
+    zaken die al als fiche op Ravot staan (dus door de triage/curatie geraakt),
+    met de contactdata uit Overture ernaast."""
+    import csv
+    import io
+    from ..models import Event, HorecaKandidaat, OperatorClaim
+    # zaken die live staan als horeca-fiche
+    fiches = Event.query.filter(Event.source == "overture",
+                                Event.subtype == "horeca",
+                                Event.hidden.is_(False)).all()
+    ext_ids = [e.ext_id for e in fiches if e.ext_id]
+    kand = {k.ext_id: k for k in HorecaKandidaat.query.filter(
+        HorecaKandidaat.ext_id.in_(ext_ids)).all()} if ext_ids else {}
+    geclaimd = {c.event_id for c in OperatorClaim.query.filter_by(
+        status="approved").all()}
+    buf = io.StringIO()
+    w = csv.writer(buf, delimiter=";")
+    w.writerow(["naam", "gemeente", "postcode", "adres", "website",
+                "telefoon", "email", "al_partner", "ravot_fiche"])
+    for e in fiches:
+        k = kand.get(e.ext_id)
+        w.writerow([
+            e.title, e.gemeente or "", e.postcode or "",
+            (k.adres if k else "") or "",
+            (k.website if k else "") or e.source_url or "",
+            (k.telefoon if k else "") or e.telefoon or "",
+            (k.email if k else "") or "",
+            "ja" if e.id in geclaimd else "nee",
+            url_for("public.event", slug=e.slug, _external=True),
+        ])
+    audit(f"horeca-export gedownload: {len(fiches)} zaken")
+    from flask import Response
+    return Response(buf.getvalue(), mimetype="text/csv",
+                    headers={"Content-Disposition":
+                             "attachment; filename=ravot-horeca-partners.csv"})
