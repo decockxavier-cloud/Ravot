@@ -104,10 +104,6 @@ def laad_horeca(bbox=BELGIE_BBOX, log=print):
             c = (primair or "").lower()
             is_gezin = _is_horeca(primair, cats.get("alternate"))
             is_feest = (c in _CAT_FEEST or any(w in c for w in _CAT_FEEST))
-            # Restaurant/brasserie kan óók feesten doen -> beide.
-            if is_gezin and any(w in c for w in ("restaurant", "brasserie",
-                                                 "banquet", "event")):
-                is_feest = True
             if not is_gezin and not is_feest:
                 continue
             namen = rec.get("names") or {}
@@ -521,9 +517,6 @@ def herindeel_voorraad(log=print):
         c = (k.categorie or "").lower()
         is_gezin = _is_horeca(k.categorie)
         is_feest = (c in _CAT_FEEST or any(w in c for w in _CAT_FEEST))
-        if is_gezin and any(w in c for w in ("restaurant", "brasserie",
-                                             "banquet", "event")):
-            is_feest = True
         k.is_feest = is_feest
         k.doel = "gezin" if is_gezin else ("feest" if is_feest else "gezin")
         if is_feest:
@@ -533,3 +526,43 @@ def herindeel_voorraad(log=print):
     db.session.commit()
     log(f"Heringedeeld: {gezin} gezin-kandidaten, {feest} feestprospecten.")
     return gezin, feest
+
+
+def vul_contact_aan(bbox=BELGIE_BBOX, log=print):
+    """Werk ENKEL de contactvelden (website, telefoon, e-mail) bij van de reeds
+    geladen kandidaten. Raakt niets anders aan — geen doel, geen AI-advies, geen
+    nieuwe kandidaten. Voor bestaande voorraad die vóór het e-mailveld werd
+    geladen. Downloadt wel de Overture-stroom (kan niet anders), maar verwerkt
+    alleen bestaande ext_id's."""
+    from overturemaps import core
+    reader = core.record_batch_reader("place", bbox)
+    if reader is None:
+        raise RuntimeError("Overture gaf geen data terug")
+    bestaande = {k.ext_id: k for k in HorecaKandidaat.query.all()}
+    bijgewerkt = mails_erbij = bekeken = 0
+    for batch in reader:
+        for rec in batch.to_pylist():
+            bekeken += 1
+            k = bestaande.get(rec.get("id"))
+            if k is None:
+                continue                 # enkel bestaande kandidaten aanvullen
+            webs = rec.get("websites") or []
+            socials = rec.get("socials") or []
+            web = webs[0] if webs else (socials[0] if socials else None)
+            tel = rec.get("phones") or []
+            mails = rec.get("emails") or []
+            veranderd = False
+            if web and not k.website:
+                k.website = web[:300]; veranderd = True
+            if tel and not k.telefoon:
+                k.telefoon = tel[0][:40]; veranderd = True
+            if mails and not k.email:
+                k.email = mails[0][:255]; mails_erbij += 1; veranderd = True
+            if veranderd:
+                bijgewerkt += 1
+        if bekeken % 50000 < 5000:
+            db.session.commit()
+    db.session.commit()
+    log(f"Contact aangevuld: {bijgewerkt} kandidaten bijgewerkt, "
+        f"waarvan {mails_erbij} met een nieuw e-mailadres ({bekeken} bekeken).")
+    return bijgewerkt

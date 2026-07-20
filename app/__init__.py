@@ -525,6 +525,15 @@ def register_cli(app):
         click.echo("3/3 Contactgegevens verrijken…")
         ov.verrijk_contact(log=print)
 
+    @app.cli.command("vul-contact")
+    def vul_contact_cmd():
+        """Werk enkel website/telefoon/e-mail van bestaande kandidaten bij uit
+        Overture (voor voorraad die vóór het e-mailveld werd geladen). Raakt
+        doel/AI-advies niet aan; voegt geen nieuwe kandidaten toe."""
+        from .services.sources import overture as ov
+        n = ov.vul_contact_aan(log=print)
+        click.echo(f"Klaar: {n} kandidaten aangevuld.")
+
     @app.cli.command("herindeel-voorraad")
     def herindeel_voorraad_cmd():
         """Pas de gezin/feest-splitsing toe op de reeds geladen voorraad

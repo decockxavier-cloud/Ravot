@@ -109,3 +109,13 @@
 @media (max-width: 720px) {
   .admin-body .inst-rij { grid-template-columns: 1fr; gap: 6px; }
 }
+
+/* ---- Gegroepeerd admin-menu met sectiekopjes ---- */
+.admin-body .admin-menu-kop {
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; color: #9aa3b2;
+  padding: 12px 12px 4px; margin-top: 4px;
+  border-top: 1px solid #eef1f5;
+}
+.admin-body .admin-menu-kop:first-of-type { border-top: none; margin-top: 0; }
+.admin-body .admin-menu a { display: block; }

@@ -1778,6 +1778,10 @@ def test_feest_gezin_splitsing(app):
     # feestcategorieën zijn geen kaart-horeca
     assert not _is_horeca("caterer") and not _is_horeca("banquet_hall")
     assert "caterer" in _CAT_FEEST and "event_venue" in _CAT_FEEST
+    # restaurant is gezin, NIET automatisch feest (anders wordt de lijst zinloos)
+    assert _is_horeca("restaurant")
+    assert "restaurant" not in _CAT_FEEST
+    assert not any(w in "restaurant" for w in _CAT_FEEST)
 
 
 def test_feestprospecten_lijst_en_export(client, seed):
