@@ -1443,8 +1443,9 @@ def test_ai_uitleg_en_gesloten(client, seed, monkeypatch):
     assert HorecaKandidaat.query.filter_by(ext_id="dood").first().gesloten is True
     assert Event.query.filter_by(ext_id="dood").first().hidden is True
     assert all(r["ext_id"] != "dood" for r in ov.zoek_kandidaten(50.95, 3.12, 5))
-    # en er werd níets extra geïmporteerd door die klik
-    assert Event.query.filter_by(source="overture").count() == 1
+    # 'dood' handmatig + 'u1' automatisch live (AI-ja) = 2 overture-fiches;
+    # de gesloten-klik zelf importeert niets extra.
+    assert Event.query.filter_by(source="overture").count() == 2
 
 
 def test_zaken_werkvoorraad(client, seed):
@@ -1556,3 +1557,118 @@ def test_toevoegen_soort_en_tijdelijk(client, seed):
         "titel": "Raar Soort", "categorie": "buiten", "aard": "vast",
         "soort": "hacksoort", "postcode": "8800"})
     assert Event.query.filter_by(title="Raar Soort").first().subtype is None
+
+
+def test_horeca_ai_alles_cli(app, monkeypatch):
+    """Bulk-triage + auto-import: de bespaarknop voor de initiële curatie."""
+    from app.models import Event, HorecaKandidaat, Setting
+    with app.app_context():
+        db.session.merge(Setting(key="verrijk_backend", value="cloud"))
+        db.session.add_all([
+            HorecaKandidaat(ext_id=f"b{i}", naam=f"Bulkzaak {i}",
+                            categorie="restaurant", lat=50.9, lng=3.1)
+            for i in range(4)])
+        db.session.commit()
+        import app.enrich as enrich
+        import json as _j, re as _re
+        def nep(prompt, system, max_tokens=500):
+            ids = _re.findall(r'"id": "(b[0-9]+)"', prompt)
+            return _j.dumps({"beoordelingen": [
+                {"id": i, "advies": "ja" if i != "b3" else "nee",
+                 "uitleg": "test"} for i in ids]})
+        monkeypatch.setattr(enrich, "_generate", nep)
+        runner = app.test_cli_runner()
+        uit = runner.invoke(args=["horeca-ai-alles", "--importeer"])
+        assert "Klaar." in uit.output
+        assert Event.query.filter_by(source="overture").count() == 3  # 3x ja
+        ev = Event.query.filter_by(source="overture").first()
+        assert ev.curated is True and ev.nagekeken is True
+        # herstartbaar: tweede run heeft niets meer te doen
+        uit2 = runner.invoke(args=["horeca-ai-alles"])
+        assert "Te beoordelen: 0" in uit2.output
+
+
+def test_bulk_alles_nagekeken(client, seed):
+    from app.models import Admin, Event
+    for i in range(3):
+        db.session.add(Event(slug=f"bulk-{i}", title=f"Bulk {i}",
+                             source="overture", gemeente="Gent",
+                             postcode="9000", lat=51.0, lng=3.7,
+                             is_permanent=True, curated=True, quality=60,
+                             age_min=0, age_max=12, categories=[]))
+    admin = Admin(email="bk@t.be", pw_hash="x", totp_secret="s",
+                  totp_confirmed=True, role="admin")
+    db.session.add(admin); db.session.commit()
+    with client.session_transaction() as s:
+        s["admin_id"] = admin.id; s["admin_2fa_ok"] = True
+    client.post("/beheer/activiteiten/alles-nagekeken")
+    assert Event.query.filter(Event.curated.is_(True),
+                              Event.nagekeken.is_(False)).count() == 0
+
+
+# ------------------------------------------ datapakket: auto-live + vangnet --
+
+def test_ai_ja_gaat_automatisch_live(app, seed, monkeypatch):
+    from app.models import Event, HorecaKandidaat
+    from app.services.sources import overture as ov
+    db.session.add_all([
+        HorecaKandidaat(ext_id="live1", naam="Kindercafe De Speeltuin",
+                        categorie="cafe", lat=50.95, lng=3.12),
+        HorecaKandidaat(ext_id="nee1", naam="Nachtkroeg", categorie="bar",
+                        lat=50.95, lng=3.12),
+    ])
+    db.session.commit()
+    import app.enrich as enrich
+    monkeypatch.setattr(enrich, "_generate", lambda p, s, max_tokens=500:
+                        '{"beoordelingen": [{"id": "live1", "advies": "ja", '
+                        '"uitleg": "speeltuin"}, {"id": "nee1", "advies": "nee", '
+                        '"uitleg": "nachtcafe"}]}')
+    ov.beoordeel_voorraad(log=lambda *a: None)
+    # ja-zaak staat meteen live (curated + nagekeken), nee-zaak niet
+    ev = Event.query.filter_by(ext_id="live1").first()
+    assert ev is not None and ev.curated is True and ev.nagekeken is True
+    assert Event.query.filter_by(ext_id="nee1").first() is None
+
+
+def test_bulk_nagekeken_en_typefilter(client, seed):
+    from app.models import Admin, Event
+    db.session.add_all([
+        Event(slug="b-play", title="Speeltuin Bulk", source="osm",
+              subtype="playground", is_permanent=True, curated=True,
+              nagekeken=False, quality=60, gemeente="Gent", postcode="9000",
+              lat=51.0, lng=3.7, age_min=0, age_max=12, categories=[]),
+        Event(slug="b-hor", title="Horeca Bulk", source="overture",
+              subtype="horeca", is_permanent=True, curated=True,
+              nagekeken=False, quality=60, gemeente="Gent", postcode="9000",
+              lat=51.0, lng=3.7, age_min=0, age_max=12, categories=[]),
+    ])
+    admin = Admin(email="bulk@t.be", pw_hash="x", totp_secret="s",
+                  totp_confirmed=True, role="admin")
+    db.session.add(admin); db.session.commit()
+    with client.session_transaction() as s:
+        s["admin_id"] = admin.id; s["admin_2fa_ok"] = True
+    # typefilter: enkel speeltuinen
+    h = client.get("/beheer/activiteiten?status=nakijken&soort=_speeltuin").get_data(as_text=True)
+    assert "Speeltuin Bulk" in h and "Horeca Bulk" not in h
+    # bulk enkel osm-plekken nakijken
+    client.post("/beheer/activiteiten/bulk-nagekeken",
+                data={"bron": "osm", "soort": ""})
+    assert Event.query.filter_by(slug="b-play").first().nagekeken is True
+    assert Event.query.filter_by(slug="b-hor").first().nagekeken is False  # overture ongemoeid
+
+
+def test_overture_verrijkt_contact(app, seed):
+    from app.models import Event, HorecaKandidaat
+    from app.services.sources import overture as ov
+    ev = Event(slug="v-plek", title="Speelpark De Bron", source="osm",
+               is_permanent=True, gemeente="Gent", postcode="9000",
+               lat=51.0500, lng=3.7000, age_min=0, age_max=12, categories=[])
+    db.session.add(ev)
+    db.session.add(HorecaKandidaat(
+        ext_id="v-k", naam="Speelpark De Bron", categorie="attraction",
+        lat=51.0500, lng=3.7000, website="https://debron.be",
+        telefoon="09 123 45 67"))
+    db.session.commit()
+    n = ov.verrijk_contact(log=lambda *a: None)
+    assert n == 1
+    assert ev.source_url == "https://debron.be" and ev.telefoon == "09 123 45 67"

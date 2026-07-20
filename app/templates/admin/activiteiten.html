@@ -7,7 +7,24 @@
   <a class="filterchip {{ 'aan' if status == 'pending' }}" href="{{ url_for('admin.activiteiten', status='pending') }}">⏳ Wachtrij ({{ tellers.pending }})</a>
   <a class="filterchip {{ 'aan' if status == 'aanvullen' }}" href="{{ url_for('admin.activiteiten', status='aanvullen') }}">✍️ Aan te vullen</a>
   <a class="filterchip {{ 'aan' if status == '' or status == 'alles' }}" href="{{ url_for('admin.activiteiten', status='alles') }}">Alles</a>
+  {% if status == 'nakijken' and tellers.nakijken > 20 %}
+  <form method="post" action="{{ url_for('admin.activiteiten_alles_nagekeken') }}" style="display:inline"
+        onsubmit="return confirm('Alle {{ tellers.nakijken }} fiches in één keer afvinken? Meldingen van gezinnen blijven je vangnet.')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="filterchip" type="submit">⚡ Alles afvinken ({{ tellers.nakijken }})</button>
+  </form>
+  {% endif %}
 </div>
+{% if status == 'nakijken' and rijen %}
+<form method="post" action="{{ url_for('admin.activiteiten_bulk_nagekeken') }}"
+      style="margin:0 0 14px" onsubmit="return confirm('Alle fiches in de huidige selectie (bron/type) als nagekeken markeren?')">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="bron" value="{{ bron }}">
+  <input type="hidden" name="soort" value="{{ soort }}">
+  <button class="btn btn-stil btn-klein" type="submit">✓✓ Markeer hele selectie als nagekeken</button>
+  <span class="hint">Handig voor de initiële vulling: publieke plekken en AI-gecureerde zaken in bulk afvinken.</span>
+</form>
+{% endif %}
 <p class="hint">Zoek en bewerk élke fiche — ook permanente plekken (die staan niet
   in Ontdek) en items in de wachtrij. Kies <strong>"aan te vullen"</strong> om
   gericht de fiches te zien die verrijking nodig hebben, zwakste of dichtst bij
@@ -17,6 +34,15 @@
   <input type="search" name="q" value="{{ zoek }}" placeholder="Naam, gemeente of postcode…" style="min-width:200px">
   <select name="bron"><option value="">alle bronnen</option>
     {% for b in bronnen %}<option value="{{ b }}" {{ 'selected' if bron==b }}>{{ b }}</option>{% endfor %}
+  </select>
+  <select name="soort"><option value="">alle soorten</option>
+    <option value="_events" {{ 'selected' if soort=='_events' }}>📅 alle activiteiten (met datum)</option>
+    <option value="_plekken" {{ 'selected' if soort=='_plekken' }}>🏠 alle vaste plekken</option>
+    <option value="_horeca" {{ 'selected' if soort=='_horeca' }}>🍽️ alle horeca</option>
+    <option value="_speeltuin" {{ 'selected' if soort=='_speeltuin' }}>🛝 speeltuinen &amp; parken</option>
+    {% for code, t in soorten.items() if t[2] %}
+    <option value="{{ code }}" {{ 'selected' if soort==code }}>{{ t[0] }} {{ t[1] }}</option>
+    {% endfor %}
   </select>
   <select name="status"><option value="">alle statussen</option>
     <option value="live" {{ 'selected' if status=='live' }}>live</option>

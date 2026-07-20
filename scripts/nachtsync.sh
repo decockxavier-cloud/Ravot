@@ -1,23 +1,25 @@
-#!/bin/bash
-# Nachtelijke sync voor Ravot: alle INGESCHAKELDE bronnen (UiT, Ticketmaster,
-# Toerisme Vlaanderen, OSM, Wikidata, feeds) + kwaliteitsherberekening + dedup.
-# Bronnen die in /beheer/instellingen uitstaan, worden automatisch overgeslagen.
+#!/usr/bin/env bash
+# Ravot-syncs met een ritme per bron — elke bron heeft zijn eigen tempo:
 #
-# INSTALLEREN op de VPS (eenmalig):
-#   chmod +x /srv/ravot/scripts/nachtsync.sh
-#   crontab -e   → voeg toe:
-#   30 2 * * *  /srv/ravot/scripts/nachtsync.sh        >> /var/log/ravot-sync.log 2>&1
-#   0 17 * * 4  /srv/ravot/scripts/mail.sh weekend     >> /var/log/ravot-mail.log 2>&1
-#   0 10 * * 1  /srv/ravot/scripts/mail.sh maandag     >> /var/log/ravot-mail.log 2>&1
+#   UiT       : elke nacht      (nieuwe events komen dagelijks binnen)
+#   OSM       : wekelijks       (speeltuinen/parken veranderen traag; zware sync)
+#   Overture  : maandelijks     (releases ~per kwartaal; hier hangt de AI-triage aan)
 #
-# (De backup draait al apart om 03:15 — de sync om 02:30 zit daar bewust vóór,
-#  zodat de backup meteen de verse data bevat.)
-
+# Zet in crontab (crontab -e):
+#   0 3 * * *   /srv/ravot/scripts/nachtsync.sh uit       >> /var/log/ravot-sync.log 2>&1
+#   30 3 * * 0  /srv/ravot/scripts/nachtsync.sh osm       >> /var/log/ravot-sync.log 2>&1
+#   0 4 1 * *   /srv/ravot/scripts/nachtsync.sh overture  >> /var/log/ravot-sync.log 2>&1
+#
+# (Zondag = 0. De maandelijkse Overture-run laadt nieuwe voorraad, triëert de
+#  volledige achterstand — AI-'ja' gaat automatisch live — en verrijkt contact.)
 set -euo pipefail
 cd /srv/ravot
-
-echo "=== Ravot nachtsync $(date '+%F %T') ==="
-docker compose exec -T web flask sync-all
-docker compose exec -T web flask herbereken-kwaliteit
-docker compose exec -T web flask dedup
-echo "=== Klaar $(date '+%F %T') ==="
+WAT="${1:-uit}"
+echo "=== Ravot sync '$WAT' $(date '+%F %T') ==="
+case "$WAT" in
+  uit)      docker compose exec -T web flask sync-uit ;;
+  osm)      docker compose exec -T web flask sync-osm ;;
+  overture) docker compose exec -T web flask overture-maandelijks ;;
+  *) echo "onbekend: $WAT (kies uit|osm|overture)"; exit 1 ;;
+esac
+echo "=== klaar $(date '+%F %T') ==="

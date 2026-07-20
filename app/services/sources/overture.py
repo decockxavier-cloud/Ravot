@@ -112,6 +112,8 @@ def laad_horeca(bbox=BELGIE_BBOX, log=print):
             k.lat, k.lng = float(lat), float(lng)
             web = webs[0] if webs else (socials[0] if socials else None)
             k.website = web[:300] if web else None
+            tel = rec.get("phones") or []
+            k.telefoon = (tel[0][:40] if tel else None)
             k.zomerbar_hint = (not lijkt_winterbar(naam)
                                and lijkt_zomerbar(naam, primair))
             k.winterbar_hint = lijkt_winterbar(naam)
@@ -176,8 +178,11 @@ _SOORT_TEKST = {"horeca": "Kindvriendelijke zaak",
                 "winterbar": "Gezinsvriendelijke winterbar"}
 
 
-def importeer(ext_ids_met_soort):
-    """Gekozen kandidaten omzetten naar gecureerde fiches."""
+def importeer(ext_ids_met_soort, auto_nagekeken=False):
+    """Gekozen kandidaten omzetten naar gecureerde fiches. Met
+    auto_nagekeken=True gaan ze meteen live (voor de AI-ja-automaat);
+    handmatige import laat nagekeken=False zodat ze in de werkvoorraad
+    belanden."""
     centroids = None
     aantal = 0
     for ext_id, soort in ext_ids_met_soort:
@@ -215,6 +220,8 @@ def importeer(ext_ids_met_soort):
         ev = upsert_event(data)
         if ev is not None:
             ev.curated = True
+            if auto_nagekeken:
+                ev.nagekeken = True
             aantal += 1
     return aantal
 
@@ -276,6 +283,13 @@ def ai_triage(kandidaten, max_batch=None):
                 # dezelfde zaak elke run opnieuw de batch blokkeren.
                 k.ai_advies = "twijfel"
                 gelukt += 1
+        # AI-ja => automatisch live. De beheerder koos hiervoor: snelheid nu,
+        # met de "Zaken & fiches"-pagina als vangnet om achteraf bij te sturen.
+        ja = [k.ext_id for k in batch if k.ai_advies == "ja"]
+        if ja:
+            geimporteerd = importeer([(e, "horeca") for e in ja],
+                                     auto_nagekeken=True)
+            _triage_bezig["live"] = _triage_bezig.get("live", 0) + geimporteerd
         beoordeeld += gelukt
         db.session.commit()
         if gelukt:
@@ -297,7 +311,7 @@ def ai_triage(kandidaten, max_batch=None):
 import threading
 
 _triage_lock = threading.Lock()
-_triage_bezig = {"actief": False, "fout": None, "backend": None}
+_triage_bezig = {"actief": False, "fout": None, "backend": None, "live": 0}
 
 
 def triage_status():
@@ -351,3 +365,74 @@ def markeer_gesloten(ext_id):
     if ev:
         ev.hidden = True
     return k is not None or ev is not None
+
+
+def beoordeel_voorraad(log=print, max_kandidaten=None):
+    """Beoordeel de VOLLEDIGE nog-niet-beoordeelde voorraad in één run —
+    heel Vlaanderen, zonder per gemeente te zoeken. AI-ja-zaken gaan meteen
+    live (auto-import in ai_triage). Bedoeld voor de maandelijkse Overture-run
+    en de eenmalige initiële vulling."""
+    q = HorecaKandidaat.query.filter(
+        HorecaKandidaat.ai_advies.is_(None),
+        db.or_(HorecaKandidaat.gesloten.is_(False),
+               HorecaKandidaat.gesloten.is_(None)))
+    if max_kandidaten:
+        q = q.limit(max_kandidaten)
+    kandidaten = q.all()
+    log(f"Te beoordelen: {len(kandidaten)} kandidaten.")
+    if not kandidaten:
+        return 0
+    n = ai_triage(kandidaten)
+    live = _triage_bezig.get("live", 0)
+    log(f"Klaar: {n} beoordeeld, {live} automatisch live gezet.")
+    return n
+
+
+def verrijk_contact(log=print, max_afstand_km=0.15):
+    """Vul ontbrekende website/telefoon op bestaande fiches (OSM-plekken,
+    geïmporteerde horeca) aan met Overture-data, gematcht op naam + nabijheid.
+    Nul curatiewerk: enkel lege velden worden ingevuld, bestaande blijven
+    onaangeroerd."""
+    from ...models import Event
+    from ...scoring import haversine_km
+    doel = Event.query.filter(
+        Event.lat.isnot(None), Event.is_permanent.is_(True),
+        db.or_(Event.source_url.is_(None), Event.telefoon.is_(None))).all()
+    log(f"{len(doel)} fiches met een leeg contactveld.")
+    # kandidaten met contactdata, licht gebucket op afgeronde coord voor snelheid
+    kand = HorecaKandidaat.query.filter(
+        db.or_(HorecaKandidaat.website.isnot(None),
+               HorecaKandidaat.telefoon.isnot(None))).all()
+    bucket = {}
+    for k in kand:
+        if k.lat is None:
+            continue
+        bucket.setdefault((round(k.lat, 2), round(k.lng, 2)), []).append(k)
+    verrijkt = 0
+    for ev in doel:
+        naam = (ev.title or "").lower()
+        beste = None
+        for dl in (0, -0.01, 0.01):
+            for dg in (0, -0.01, 0.01):
+                for k in bucket.get((round(ev.lat, 2) + dl,
+                                     round(ev.lng, 2) + dg), []):
+                    if not naam or not k.naam:
+                        continue
+                    kn = k.naam.lower()
+                    if naam not in kn and kn not in naam:
+                        continue
+                    d = haversine_km(ev.lat, ev.lng, k.lat, k.lng)
+                    if d <= max_afstand_km and (beste is None or d < beste[0]):
+                        beste = (d, k)
+        if beste:
+            k = beste[1]
+            gewijzigd = False
+            if not ev.source_url and k.website:
+                ev.source_url = k.website[:500]; gewijzigd = True
+            if not ev.telefoon and k.telefoon:
+                ev.telefoon = k.telefoon[:40]; gewijzigd = True
+            if gewijzigd:
+                verrijkt += 1
+    db.session.commit()
+    log(f"{verrijkt} fiches verrijkt met contactgegevens uit Overture.")
+    return verrijkt

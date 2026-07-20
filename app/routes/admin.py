@@ -1196,6 +1196,17 @@ def activiteiten():
                             db.func.lower(Event.postcode).like(like)))
     if bron:
         q = q.filter(Event.source == bron)
+    soort = request.args.get("soort", "")
+    if soort == "_events":
+        q = q.filter(Event.is_permanent.is_(False))
+    elif soort == "_plekken":
+        q = q.filter(Event.is_permanent.is_(True))
+    elif soort == "_horeca":
+        q = q.filter(Event.subtype == "horeca")
+    elif soort == "_speeltuin":
+        q = q.filter(Event.subtype.in_(("playground", "park")))
+    elif soort:
+        q = q.filter(Event.subtype == soort)
     if status == "pending":
         q = q.filter(Event.pending.is_(True))
     elif status == "live":
@@ -1234,9 +1245,11 @@ def activiteiten():
                                     Event.hidden.is_(False)).count(),
         "pending": Event.query.filter(Event.pending.is_(True)).count(),
     }
+    from ..types import TYPES
     return render_template("admin/activiteiten.html", rijen=rijen, zoek=zoek,
-                           bron=bron, status=status, sort=sort,
-                           bronnen=list(REGISTRY), tellers=tellers,
+                           bron=bron, status=status, sort=sort, soort=soort,
+                           bronnen=["uit", "osm", "overture", "user"],
+                           soorten=TYPES, tellers=tellers,
                            title="Activiteiten", family=None, active="activiteiten")
 
 
@@ -1681,6 +1694,20 @@ def horeca_ai_voortgang():
             "klaar": klaar, "totaal": totaal}
 
 
+@bp.route("/activiteiten/alles-nagekeken", methods=["POST"])
+@admin_required
+def activiteiten_alles_nagekeken():
+    """Bulk: de hele huidige werkvoorraad afvinken. Voor wie de initiële
+    machine-import vertrouwt en de curatie aan meldingen/reviews overlaat."""
+    n = Event.query.filter(Event.curated.is_(True),
+                           Event.nagekeken.is_(False)) \
+        .update({"nagekeken": True}, synchronize_session=False)
+    db.session.commit()
+    audit(f"werkvoorraad in bulk afgevinkt: {n} fiches")
+    flash(f"{n} fiches gemarkeerd als nagekeken.", "ok")
+    return redirect(url_for("admin.activiteiten"))
+
+
 @bp.route("/activiteiten/<int:event_id>/nagekeken", methods=["POST"])
 @admin_required
 def activiteit_nagekeken(event_id):
@@ -1690,3 +1717,34 @@ def activiteit_nagekeken(event_id):
     db.session.commit()
     audit(f"fiche #{event_id} nagekeken={'ja' if ev.nagekeken else 'nee'}")
     return redirect(request.referrer or url_for("admin.activiteiten"))
+
+
+@bp.route("/activiteiten/bulk-nagekeken", methods=["POST"])
+@admin_required
+def activiteiten_bulk_nagekeken():
+    """Bulk-curatie: markeer een hele selectie (bron/type/status) in één keer
+    als nagekeken. Voor de initiële vulling: publieke infrastructuur en
+    AI-gecureerde zaken hoeven niet stuk voor stuk je blik."""
+    from ..models import Event, get_int, EnrichProposal
+    bron = request.form.get("bron", "")
+    soort = request.form.get("soort", "")
+    q = Event.query.filter(Event.curated.is_(True), Event.nagekeken.is_(False),
+                           Event.hidden.is_(False))
+    if bron:
+        q = q.filter(Event.source == bron)
+    if soort == "_plekken":
+        q = q.filter(Event.is_permanent.is_(True))
+    elif soort == "_events":
+        q = q.filter(Event.is_permanent.is_(False))
+    elif soort == "_horeca":
+        q = q.filter(Event.subtype == "horeca")
+    elif soort == "_speeltuin":
+        q = q.filter(Event.subtype.in_(("playground", "park")))
+    elif soort:
+        q = q.filter(Event.subtype == soort)
+    n = q.update({"nagekeken": True}, synchronize_session=False)
+    db.session.commit()
+    audit(f"bulk nagekeken: {n} fiches (bron={bron or 'alle'}, soort={soort or 'alle'})")
+    flash(f"{n} fiches in één keer als nagekeken gemarkeerd.", "ok")
+    return redirect(request.referrer or url_for("admin.activiteiten"))
+

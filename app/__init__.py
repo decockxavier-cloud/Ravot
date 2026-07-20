@@ -288,6 +288,10 @@ def register_cli(app):
                 "ALTER TABLE feestjes ADD COLUMN aanleiding VARCHAR(12) "
                 "DEFAULT 'verjaardag' NOT NULL"))
             added.append("feestjes.aanleiding")
+        if hk_cols and "telefoon" not in hk_cols:
+            db.session.execute(text(
+                "ALTER TABLE horeca_kandidaten ADD COLUMN telefoon VARCHAR(40)"))
+            added.append("horeca_kandidaten.telefoon")
         if hk_cols and "ai_uitleg" not in hk_cols:
             db.session.execute(text(
                 "ALTER TABLE horeca_kandidaten ADD COLUMN ai_uitleg VARCHAR(200)"))
@@ -302,6 +306,9 @@ def register_cli(app):
             added.append("horeca_kandidaten.winterbar_hint")
         ev_cols = {c["name"] for c in insp.get_columns("events")} \
             if insp.has_table("events") else set()
+        if ev_cols and "telefoon" not in ev_cols:
+            db.session.execute(text("ALTER TABLE events ADD COLUMN telefoon VARCHAR(40)"))
+            added.append("events.telefoon")
         if ev_cols and "nagekeken" not in ev_cols:
             db.session.execute(text(
                 "ALTER TABLE events ADD COLUMN nagekeken BOOLEAN "
@@ -475,6 +482,51 @@ def register_cli(app):
         n = run_sync()
         click.echo(f"Sync klaar: {n} events verwerkt.")
 
+    @app.cli.command("sync-osm")
+    def sync_osm():
+        """Wekelijkse OSM-sync (cron: zondagnacht). Zwaar via Overpass, maar
+        speeltuinen/parken veranderen traag — één keer per week volstaat."""
+        from .services.sources import sync_one
+        r = sync_one("osm", force=True)
+        click.echo(f"OSM: {r.get('verwerkt', 0)} verwerkt, "
+                   f"{r.get('verworpen', 0)} verworpen.")
+
+    @app.cli.command("overture-maandelijks")
+    def overture_maandelijks():
+        """Maandelijkse Overture-run (cron: 1e van de maand): nieuwe voorraad
+        laden, dan de volledige nog-niet-beoordeelde voorraad triëren.
+        AI-'ja' gaat automatisch live; de rest wacht op curatie in de
+        werkvoorraad."""
+        from .services.sources import overture as ov
+        from .models import get_setting
+        click.echo("1/2 Overture-voorraad verversen…")
+        ov.laad_horeca(log=print)
+        if (get_setting("verrijk_backend") or "ollama").lower() != "cloud":
+            click.echo("⚠️  Backend staat op ollama — triage overgeslagen. "
+                       "Zet 'cloud' bij Instellingen en draai 'flask "
+                       "beoordeel-voorraad'.")
+            return
+        click.echo("2/3 Volledige voorraad beoordelen…")
+        ov.beoordeel_voorraad(log=print)
+        click.echo("3/3 Contactgegevens verrijken…")
+        ov.verrijk_contact(log=print)
+
+    @app.cli.command("verrijk-contact")
+    def verrijk_contact_cmd():
+        """Vul lege website/telefoon op bestaande fiches aan met Overture-data
+        (gematcht op naam + nabijheid). Nul curatiewerk, draai na een
+        Overture-run."""
+        from .services.sources import overture as ov
+        ov.verrijk_contact(log=print)
+
+    @app.cli.command("beoordeel-voorraad")
+    def beoordeel_voorraad_cmd():
+        """Beoordeel de VOLLEDIGE nog-niet-beoordeelde Overture-voorraad in
+        één keer (heel Vlaanderen, zonder per gemeente te zoeken). AI-'ja'
+        gaat automatisch live. Dé bespaarknop voor de initiële curatie."""
+        from .services.sources import overture as ov
+        ov.beoordeel_voorraad(log=print)
+
     @app.cli.command("sync-all")
     def sync_all_cmd():
         """Alle INGESCHAKELDE bronnen syncen (UiT + Ticketmaster + Toerisme Vl. + OSM)."""
@@ -491,6 +543,66 @@ def register_cli(app):
         Duurt 10-30 min; daarna zoekt de Horeca-verkenner lokaal en snel."""
         from .services.sources import overture
         overture.laad_horeca(log=print)
+
+    @app.cli.command("horeca-ai-alles")
+    @click.option("--importeer", is_flag=True,
+                  help="Importeer AI-'ja' meteen als gecureerde fiche.")
+    @click.option("--limiet", default=0,
+                  help="Max. aantal kandidaten deze run (0 = alles).")
+    def horeca_ai_alles(importeer, limiet):
+        """AI-triage over de VOLLEDIGE kandidatenvoorraad, met optionele
+        auto-import van alle 'ja'-oordelen. Dé bespaarknop voor de initiële
+        curatie: machines doen de bulk, meldingen van gezinnen doen de rest.
+
+        Kosten-indicatie met de cloud-backend (Haiku): ~1000 kandidaten per
+        ~40 batches, samen enkele centen. De hele voorraad van ~48k blijft
+        onder een handvol euro. Herstartbaar: al beoordeelde kandidaten
+        worden overgeslagen."""
+        from .models import Event, HorecaKandidaat, get_setting
+        from .services.sources import overture as ov
+        al_fiche = db.session.query(Event.ext_id).filter(
+            Event.source == "overture", Event.ext_id.isnot(None))
+        if (get_setting("verrijk_backend") or "ollama").lower() != "cloud":
+            print("⚠️  Backend staat op ollama — dat duurt dagen. Zet bij "
+                  "Instellingen → AI-verrijking de backend op 'cloud'.")
+        q = HorecaKandidaat.query.filter(
+            HorecaKandidaat.ai_advies.is_(None),
+            db.or_(HorecaKandidaat.gesloten.is_(False),
+                   HorecaKandidaat.gesloten.is_(None)),
+            ~HorecaKandidaat.ext_id.in_(al_fiche))
+        te_doen = q.limit(limiet).all() if limiet else q.all()
+        print(f"Te beoordelen: {len(te_doen)} kandidaten…")
+        stap = 500
+        totaal_beoordeeld = 0
+        for i in range(0, len(te_doen), stap):
+            blok = te_doen[i:i + stap]
+            n = ov.ai_triage(blok)
+            totaal_beoordeeld += n
+            print(f"  {min(i + stap, len(te_doen))}/{len(te_doen)} "
+                  f"({totaal_beoordeeld} beoordeeld)")
+            if n == 0:
+                print("  ⚠️  Backend antwoordt niet meer — gestopt. Herstart "
+                      "dit commando gerust; het pikt op waar het bleef.")
+                break
+        if importeer:
+            jas = HorecaKandidaat.query.filter_by(ai_advies="ja") \
+                .filter(~HorecaKandidaat.ext_id.in_(al_fiche),
+                        db.or_(HorecaKandidaat.gesloten.is_(False),
+                               HorecaKandidaat.gesloten.is_(None))).all()
+            print(f"Auto-import van {len(jas)} AI-'ja'-zaken…")
+            n = ov.importeer([(k.ext_id,
+                               "zomerbar" if k.zomerbar_hint else
+                               ("winterbar" if k.winterbar_hint else "horeca"))
+                              for k in jas])
+            # Machine-gecureerd = geen werkvoorraad: meldingen en reviews van
+            # gezinnen zijn vanaf nu de onderhoudsploeg.
+            from .models import Event
+            Event.query.filter(Event.source == "overture",
+                               Event.nagekeken.is_(False)) \
+                .update({"nagekeken": True}, synchronize_session=False)
+            db.session.commit()
+            print(f"Geïmporteerd: {n} fiches (gecureerd, geen nazicht nodig).")
+        print("Klaar.")
 
     @app.cli.command("sync-bron")
     @click.argument("naam")
