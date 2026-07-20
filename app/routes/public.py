@@ -481,6 +481,12 @@ def welkom():
         "gemeenten": db.session.query(Event.gemeente).filter(
             Event.gemeente.isnot(None)).distinct().count(),
         "reviews": Review.query.count(),
+        # Activiteiten-tegel enkel tonen met échte events: UiT op productie.
+        # Op de demo-testkey is het aanbod verzonnen, dus dan verbergen we het.
+        "echte_events": "search.uitdatabank" in
+                        (current_app.config.get("UIT_SEARCH_URL") or "")
+                        and "test" not in
+                        (current_app.config.get("UIT_SEARCH_URL") or ""),
     }
     return render_template("public/landing.html", stats=stats,
                            family=current_family(), active=None,
@@ -533,6 +539,12 @@ def home():
         "gemeenten": db.session.query(Event.gemeente).filter(
             Event.gemeente.isnot(None)).distinct().count(),
         "reviews": Review.query.count(),
+        # Activiteiten-tegel enkel tonen met échte events: UiT op productie.
+        # Op de demo-testkey is het aanbod verzonnen, dus dan verbergen we het.
+        "echte_events": "search.uitdatabank" in
+                        (current_app.config.get("UIT_SEARCH_URL") or "")
+                        and "test" not in
+                        (current_app.config.get("UIT_SEARCH_URL") or ""),
     }
     return render_template("public/landing.html", stats=stats,
                            family=None, active=None,

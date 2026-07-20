@@ -33,7 +33,7 @@
 
   <details class="zij-groep" {{ "open" if soort }}>
     <summary class="zij-titel">Soort plek{% if soort %} <b>·</b>{% endif %}</summary>
-    <select onchange="location.href=this.value" aria-label="Soort plek">
+    <select data-nav aria-label="Soort plek">
       <option value="{{ flink(soort='') }}">alle soorten</option>
       {% for code, t in soorten.items() if t[2] %}
       <option value="{{ flink(soort=code) }}" {{ 'selected' if soort == code }}>{{ t[0] }} {{ t[1] }}</option>

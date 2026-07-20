@@ -91,8 +91,11 @@ def create_app(config_object=Config):
         from flask import session
         g = session.get("guest") or {}
         from .vakantie import vakantiecontext
+        from .models import get_bool
         ctx = {"guest": g, "has_guest": bool(g.get("postcode")),
-               "vakantie": vakantiecontext(), "bewaard_ids": set(), "geliked_ids": set()}
+               "vakantie": vakantiecontext(), "bewaard_ids": set(),
+               "geliked_ids": set(),
+               "feestjes_aan": get_bool("feestjes_aan")}
         # Welke events heeft dit gezin bewaard? (voor de hartjes op de kaarten)
         fid = session.get("family_id")
         if fid:

@@ -97,7 +97,7 @@
     {% endif %}
     <div class="card leeg" id="geen-resultaat" style="display:none">
       <span class="groot-emoji">🔍</span>
-      <p>Niets gevonden met deze filter of zoekterm.<br>Probeer iets anders of <a href="#" onclick="document.querySelector('.filterchip[data-filter=alles]').click();document.getElementById('zoek').value='';document.getElementById('zoek').dispatchEvent(new Event('input'));return false">wis alles</a>.</p>
+      <p>Niets gevonden met deze filter of zoekterm.<br>Probeer iets anders of <a href="{{ url_for(zoek_endpoint if zoek_endpoint is defined else 'public.ontdek') }}">wis alles</a>.</p>
     </div>
   {% else %}
     <div class="card">

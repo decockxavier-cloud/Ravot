@@ -14,7 +14,7 @@
     <a class="btn btn-zon btn-groot" href="{{ url_for('public.proberen') }}">Kijk wat er vandaag kan →</a>
     <a class="btn btn-stil btn-groot" href="{{ url_for('auth.login') }}">Maak gratis profiel</a>
     {% endif %}
-    <a class="btn btn-stil btn-groot" href="{{ url_for('public.feestjes_info') }}">🎂 Feestje plannen</a>
+    {% if feestjes_aan %}<a class="btn btn-stil btn-groot" href="{{ url_for('public.feestjes_info') }}">🎂 Feestje plannen</a>{% endif %}
   </div>
   <p class="mini">Gratis · geen reclame · geen account nodig om te proberen</p>
   <svg class="hero-golf" viewBox="0 0 1440 60" preserveAspectRatio="none" aria-hidden="true">
@@ -24,7 +24,7 @@
 
 {% if stats.events or stats.plekken %}
 <div class="stat-band">
-  <div class="stat"><b>{{ stats.events }}</b><span>activiteiten</span></div>
+  {% if stats.echte_events %}<div class="stat"><b>{{ stats.events }}</b><span>activiteiten</span></div>{% endif %}
   <div class="stat"><b>{{ stats.plekken }}</b><span>plekken om te ravotten</span></div>
   <div class="stat"><b>gratis</b><span>voor gezinnen</span></div>
 </div>

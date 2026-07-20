@@ -1846,3 +1846,48 @@ def test_uit_health_test_vs_productie(app):
         app.config["UIT_SEARCH_URL"] = "https://search.uitdatabank.be"
         ok, detail = health._uit()
         assert ok is True and "PRODUCTIE" in detail
+
+
+# ---------------------------------------- feedback: filters/feestjes/tegels ---
+
+def test_soort_filter_csp_proof(client, seed):
+    """Horeca-filter werkt (subtype-match), en de select gebruikt geen inline
+    onchange meer (CSP blokkeerde dat -> filter deed niets)."""
+    from app.models import Event
+    db.session.add(Event(slug="hr-1", title="Kindercafe Zonneke", source="overture",
+                         subtype="horeca", is_permanent=True, curated=True,
+                         quality=80, gemeente="Roeselare", postcode="8800",
+                         lat=50.9, lng=3.1, age_min=0, age_max=12, categories=[]))
+    db.session.add(Event(slug="sp-1", title="Speeltuin Park", source="osm",
+                         subtype="playground", is_permanent=True, curated=True,
+                         quality=70, gemeente="Roeselare", postcode="8800",
+                         lat=50.9, lng=3.1, age_min=0, age_max=12, categories=[]))
+    db.session.commit()
+    h = client.get("/ontdek?wanneer=alle&soort=horeca").get_data(as_text=True)
+    assert "Kindercafe Zonneke" in h and "Speeltuin Park" not in h
+    # geen inline onchange meer
+    assert "onchange=" not in h
+    assert "js/filters.js" in h
+
+
+def test_feestjes_nav_respecteert_schakelaar(client, seed):
+    from app.models import Setting
+    db.session.merge(Setting(key="feestjes_aan", value="0")); db.session.commit()
+    h = client.get("/").get_data(as_text=True)
+    assert ">Feestjes</a>" not in h            # nav-item weg
+    assert "Feestje plannen" not in h          # landing-knop weg
+    db.session.merge(Setting(key="feestjes_aan", value="1")); db.session.commit()
+    h = client.get("/").get_data(as_text=True)
+    assert "Feestjes" in h
+
+
+def test_activiteiten_tegel_enkel_bij_echte_events(client, seed, app):
+    app.config["UIT_SEARCH_URL"] = "https://search-test.uitdatabank.be"
+    h = client.get("/welkom").get_data(as_text=True)
+    assert "plekken om te ravotten" in h
+    # met testdata GEEN activiteiten-tegel
+    import re
+    assert not re.search(r'<b>\d+</b><span>activiteiten', h)
+    app.config["UIT_SEARCH_URL"] = "https://search.uitdatabank.be"
+    h = client.get("/welkom").get_data(as_text=True)
+    assert re.search(r'activiteiten', h)
