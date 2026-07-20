@@ -33,6 +33,14 @@ _CAT_KORT = {"bar", "pub", "cafe", "snack", "bistro"}
 # Harde NEE: verkooppunten en productie die als "food" binnensluipen maar geen
 # plek zijn waar een gezin op uitstap gaat. Slagers, bakkers, traiteurs,
 # groothandel, fabrieken... — precies de bijvangst die Xavier signaleerde.
+# Feest-leveranciers: NIET op de gezinskaart, WÉL bruikbaar als feestprospect.
+# Deze horen niet in _CAT_UITSLUIT (dan gooien we ze weg) maar in hun eigen laag.
+_CAT_FEEST = {
+    "caterer", "catering", "event_venue", "banquet_hall", "event_planning",
+    "party_supply", "party_equipment_rental", "event_space", "wedding_venue",
+    "function_room", "reception_hall",
+}
+
 _CAT_UITSLUIT = {
     "bakery", "butcher", "butcher_shop", "deli", "delicatessen",
     "grocery", "supermarket", "convenience", "greengrocer", "farm_shop",
@@ -93,7 +101,14 @@ def laad_horeca(bbox=BELGIE_BBOX, log=print):
             bekeken += 1
             cats = rec.get("categories") or {}
             primair = cats.get("primary")
-            if not _is_horeca(primair, cats.get("alternate")):
+            c = (primair or "").lower()
+            is_gezin = _is_horeca(primair, cats.get("alternate"))
+            is_feest = (c in _CAT_FEEST or any(w in c for w in _CAT_FEEST))
+            # Restaurant/brasserie kan óók feesten doen -> beide.
+            if is_gezin and any(w in c for w in ("restaurant", "brasserie",
+                                                 "banquet", "event")):
+                is_feest = True
+            if not is_gezin and not is_feest:
                 continue
             namen = rec.get("names") or {}
             naam = namen.get("primary")
@@ -141,6 +156,8 @@ def laad_horeca(bbox=BELGIE_BBOX, log=print):
             k.telefoon = (tel[0][:40] if tel else None)
             mails = rec.get("emails") or []
             k.email = (mails[0][:255] if mails else None)
+            k.is_feest = is_feest
+            k.doel = "gezin" if is_gezin else "feest"
             k.zomerbar_hint = (not lijkt_winterbar(naam)
                                and lijkt_zomerbar(naam, primair))
             k.winterbar_hint = lijkt_winterbar(naam)
@@ -161,13 +178,15 @@ def laad_horeca(bbox=BELGIE_BBOX, log=print):
 
 
 def kandidaten_in_gebied(lat, lng, straal_km=5):
-    """Modelobjecten binnen de straal (voor de AI-triage)."""
+    """Modelobjecten binnen de straal (voor de AI-triage). Enkel gezin-doel:
+    feestprospecten horen niet in de kaart-triage."""
     marge = straal_km / 90.0
     q = HorecaKandidaat.query.filter(
         HorecaKandidaat.lat.between(lat - marge, lat + marge),
         HorecaKandidaat.lng.between(lng - 1.6 * marge, lng + 1.6 * marge),
         db.or_(HorecaKandidaat.gesloten.is_(False),
-               HorecaKandidaat.gesloten.is_(None)))
+               HorecaKandidaat.gesloten.is_(None)),
+        db.or_(HorecaKandidaat.doel == "gezin", HorecaKandidaat.doel.is_(None)))
     return [k for k in q.limit(2000).all()
             if haversine_km(lat, lng, k.lat, k.lng) <= straal_km]
 
@@ -179,7 +198,8 @@ def zoek_kandidaten(lat, lng, straal_km=5):
         HorecaKandidaat.lat.between(lat - marge, lat + marge),
         HorecaKandidaat.lng.between(lng - 1.6 * marge, lng + 1.6 * marge),
         db.or_(HorecaKandidaat.gesloten.is_(False),
-               HorecaKandidaat.gesloten.is_(None)))
+               HorecaKandidaat.gesloten.is_(None)),
+        db.or_(HorecaKandidaat.doel == "gezin", HorecaKandidaat.doel.is_(None)))
     uit = []
     for k in q.limit(2000).all():
         km = haversine_km(lat, lng, k.lat, k.lng)
@@ -477,8 +497,10 @@ def kuis_kandidaten(log=print):
     for k in HorecaKandidaat.query.all():
         if k.ext_id in fiche_ids:
             continue                      # al een (mogelijk gecureerde) fiche
+        # Feestprospecten mogen blijven ook al zijn ze geen kaart-horeca.
+        geen_doel = not _is_horeca(k.categorie) and not getattr(k, "is_feest", False)
         slecht = (
-            not _is_horeca(k.categorie)
+            geen_doel
             or not (k.adres or k.postcode)
             or (k.confidence is not None and k.confidence < 0.6)
         )

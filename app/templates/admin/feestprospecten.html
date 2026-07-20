@@ -1,0 +1,39 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<h1>Feestprospecten 🎂</h1>
+<p class="hint">Feest-leveranciers uit Overture — traiteurs, feestzalen,
+catering. Die horen <strong>niet</strong> op de gezinskaart, maar zijn wél
+waardevol om later als feestpartner te benaderen. Zaken met "ook op kaart = ja"
+zijn gezinsrestaurants die óók feesten doen — je ideale eerste partners.</p>
+
+<p class="acties">
+  <a class="btn btn-stil btn-klein" href="{{ url_for('admin.feestprospecten_export') }}">
+    ⬇️ Exporteer prospectlijst (CSV)</a>
+  <span class="hint">{{ totaal }} feestprospecten in voorraad.</span>
+</p>
+
+<form method="get" class="zoekbalk-admin" style="display:flex;gap:8px;margin-bottom:14px">
+  <input type="search" name="q" value="{{ zoek }}" placeholder="Naam of gemeente…" style="min-width:200px">
+  <button class="btn btn-stil" type="submit">Zoek</button>
+</form>
+
+<table class="admin-tabel">
+  <tr><th>Naam</th><th>Soort</th><th>Plaats</th><th>Contact</th><th>Ook op kaart</th></tr>
+  {% for k in rijen %}
+  <tr>
+    <td>{{ k.naam }}</td>
+    <td class="hint">{{ k.categorie or '—' }}</td>
+    <td>{{ k.gemeente or '' }} {{ k.postcode or '' }}</td>
+    <td class="hint">
+      {% if k.website %}<a href="{{ k.website }}" target="_blank" rel="noopener">web</a>{% endif %}
+      {% if k.telefoon %} · {{ k.telefoon }}{% endif %}
+      {% if k.email %} · {{ k.email }}{% endif %}
+      {% if not (k.website or k.telefoon or k.email) %}—{% endif %}
+    </td>
+    <td>{{ '✅' if k.doel == 'gezin' else '—' }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% if not rijen %}<p class="hint">Nog geen feestprospecten — die verschijnen na
+een Overture-run met de nieuwe categorie-splitsing.</p>{% endif %}
+{% endblock %}

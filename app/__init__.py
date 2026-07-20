@@ -294,6 +294,14 @@ def register_cli(app):
             db.session.execute(text(
                 "ALTER TABLE horeca_kandidaten ADD COLUMN email VARCHAR(255)"))
             added.append("horeca_kandidaten.telefoon + email")
+        if hk_cols and "doel" not in hk_cols:
+            db.session.execute(text(
+                "ALTER TABLE horeca_kandidaten ADD COLUMN doel VARCHAR(8) "
+                "DEFAULT 'gezin'"))
+            db.session.execute(text(
+                "ALTER TABLE horeca_kandidaten ADD COLUMN is_feest BOOLEAN "
+                "DEFAULT FALSE"))
+            added.append("horeca_kandidaten.doel + is_feest")
         if hk_cols and "ai_uitleg" not in hk_cols:
             db.session.execute(text(
                 "ALTER TABLE horeca_kandidaten ADD COLUMN ai_uitleg VARCHAR(200)"))
@@ -308,6 +316,10 @@ def register_cli(app):
             added.append("horeca_kandidaten.winterbar_hint")
         ev_cols = {c["name"] for c in insp.get_columns("events")} \
             if insp.has_table("events") else set()
+        if ev_cols and "in_feestlijst" not in ev_cols:
+            db.session.execute(text(
+                "ALTER TABLE events ADD COLUMN in_feestlijst BOOLEAN DEFAULT FALSE"))
+            added.append("events.in_feestlijst")
         if ev_cols and "telefoon" not in ev_cols:
             db.session.execute(text("ALTER TABLE events ADD COLUMN telefoon VARCHAR(40)"))
             added.append("events.telefoon")

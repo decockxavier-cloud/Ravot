@@ -1789,3 +1789,52 @@ def horeca_export_csv():
     return Response(buf.getvalue(), mimetype="text/csv",
                     headers={"Content-Disposition":
                              "attachment; filename=ravot-horeca-partners.csv"})
+
+
+@bp.route("/feestprospecten")
+@admin_required
+def feestprospecten():
+    """Aparte lijst van feest-leveranciers (traiteurs, zalen, catering) uit
+    Overture — niet op de kaart, wél voor gerichte feestpartner-werving."""
+    from ..models import HorecaKandidaat
+    q = HorecaKandidaat.query.filter(
+        HorecaKandidaat.is_feest.is_(True),
+        db.or_(HorecaKandidaat.gesloten.is_(False),
+               HorecaKandidaat.gesloten.is_(None)))
+    zoek = (request.args.get("q") or "").strip()
+    if zoek:
+        like = f"%{zoek.lower()}%"
+        q = q.filter(db.or_(db.func.lower(HorecaKandidaat.naam).like(like),
+                            db.func.lower(HorecaKandidaat.gemeente).like(like)))
+    rijen = q.order_by(HorecaKandidaat.gemeente, HorecaKandidaat.naam).limit(500).all()
+    totaal = HorecaKandidaat.query.filter(HorecaKandidaat.is_feest.is_(True)).count()
+    return render_template("admin/feestprospecten.html", rijen=rijen, zoek=zoek,
+                           totaal=totaal, title="Feestprospecten",
+                           family=None, active="feestprospecten")
+
+
+@bp.route("/feestprospecten/export.csv")
+@admin_required
+def feestprospecten_export():
+    import csv
+    import io
+    from ..models import HorecaKandidaat
+    rijen = HorecaKandidaat.query.filter(
+        HorecaKandidaat.is_feest.is_(True),
+        db.or_(HorecaKandidaat.gesloten.is_(False),
+               HorecaKandidaat.gesloten.is_(None))).order_by(
+        HorecaKandidaat.gemeente, HorecaKandidaat.naam).all()
+    buf = io.StringIO()
+    w = csv.writer(buf, delimiter=";")
+    w.writerow(["naam", "categorie", "gemeente", "postcode", "adres",
+                "website", "telefoon", "email", "ook_op_kaart"])
+    for k in rijen:
+        w.writerow([k.naam, k.categorie or "", k.gemeente or "",
+                    k.postcode or "", k.adres or "", k.website or "",
+                    k.telefoon or "", k.email or "",
+                    "ja" if k.doel == "gezin" else "nee"])
+    audit(f"feestprospect-export: {len(rijen)} zaken")
+    from flask import Response
+    return Response(buf.getvalue(), mimetype="text/csv",
+                    headers={"Content-Disposition":
+                             "attachment; filename=ravot-feestprospecten.csv"})

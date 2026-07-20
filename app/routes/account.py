@@ -809,6 +809,18 @@ def feestjes():
                            title="Mijn feestjes", active=None)
 
 
+def _feest_straal(ingevoerd):
+    """Zoekstraal voor feestpartners: keuze van het gezin (5-50 km), met de
+    admininstelling als standaard."""
+    from ..models import get_int
+    standaard = get_int("feest_straal_km", 20) or 20
+    try:
+        v = int(ingevoerd)
+        return max(5, min(50, v))
+    except (TypeError, ValueError):
+        return standaard
+
+
 @bp.route("/feestje/nieuw", methods=["GET", "POST"])
 @login_required
 @limiter.limit("10/hour", methods=["POST"])
@@ -846,7 +858,7 @@ def feestje_nieuw():
                     leeftijd=leeftijd, datum=datum,
                     aantal_kinderen=aantal, postcode=postcode,
                     gemeente=(request.form.get("gemeente") or "").strip()[:80] or None,
-                    straal_km=get_int("feest_straal_km", 20) or 20,
+                    straal_km=_feest_straal(request.form.get("straal")),
                     budget=(request.form.get("budget") or "").strip()[:12] or None,
                     wensen=(request.form.get("wensen") or "").strip()[:600] or None)
         db.session.add(f)

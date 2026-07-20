@@ -146,6 +146,10 @@ class Event(db.Model):
     # Verjaardagsfeestjes: biedt deze plek feestjes aan, en wat precies?
     feest = db.Column(db.Boolean, default=False, nullable=False, index=True)
     feest_soorten = db.Column(db.JSON, default=list)   # subset van FEEST_SOORTEN
+    # Partner-upsell: een betalende partner kan ervoor kiezen extra opgenomen te
+    # worden in de feestpartner-lijst (zichtbaar bij offerteaanvragen). Enkel
+    # zinvol met een actieve partner_until.
+    in_feestlijst = db.Column(db.Boolean, default=False)
     feest_contact = db.Column(db.String(255))          # e-mail voor offertes
     organizer_id = db.Column(db.Integer, db.ForeignKey("organizers.id"))
     venue_id = db.Column(db.Integer, db.ForeignKey("venues.id"))
@@ -359,7 +363,7 @@ SETTING_DEFS = {
     # Onderhoud: publieke site offline; /beheer en ingelogde admins blijven werken
     "onderhoud_aan": ("0", "Onderhoudsmodus: publieke site offline (beheer blijft bereikbaar)", "bool"),
     # Verjaardagsfeestjes
-    "feestjes_aan": ("1", "Feestjesmodule: gezinnen kunnen offertes aanvragen", "bool"),
+    "feestjes_aan": ("0", "Feestjesmodule: gezinnen kunnen offertes aanvragen (pas aanzetten met genoeg partners)", "bool"),
     "feest_straal_km": ("20", "Feestjes: standaard zoekstraal (km)", "int"),
     "feest_max_aanvragen": ("6", "Feestjes: max. partners per offerteronde", "int"),
     # Ravotscore × Partner (commerciële plekken): score is en blijft van de
@@ -746,6 +750,12 @@ class HorecaKandidaat(db.Model):
     ai_uitleg = db.Column(db.String(200))
     # Door de beheerder gemarkeerd als "bestaat niet meer": nooit meer tonen.
     gesloten = db.Column(db.Boolean, default=False)
+    # 'gezin' = kaart-flow (kindvriendelijke horeca) · 'feest' = feestprospect
+    # (traiteur, feestzaal, cateraar — niet op de kaart, wel voor werving).
+    # Een zaak kan beide zijn (restaurant dat ook communies doet): dan staat ze
+    # als gezin op de kaart én als feestprospect in de lijst.
+    doel = db.Column(db.String(8), default="gezin", index=True)
+    is_feest = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=utcnow)
 
 

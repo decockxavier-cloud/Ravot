@@ -49,6 +49,16 @@ welke partners in de buurt een vrijblijvende offerteaanvraag vertrekt.</p>
            value="{{ family.postcode }}">
   </label>
 
+  <label>Hoe ver mag het zijn?
+    <select name="straal">
+      <option value="5">tot 5 km — vlakbij</option>
+      <option value="10">tot 10 km</option>
+      <option value="20" selected>tot 20 km (standaard)</option>
+      <option value="30">tot 30 km</option>
+      <option value="50">tot 50 km — ruime omgeving</option>
+    </select>
+  </label>
+
   <label>Budget (optioneel, indicatie in €)
     <input type="text" name="budget" maxlength="12" placeholder="bv. 150-250">
   </label>

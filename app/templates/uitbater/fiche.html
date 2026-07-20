@@ -52,6 +52,14 @@
     </div>
     <label>E-mail voor offertes <small class="hint">(leeg = je logingegevens)</small>
       <input type="email" name="feest_contact" value="{{ ev.feest_contact or '' }}" placeholder="feest@jouwzaak.be"></label>
+    {% if ev.partner_until %}
+    <label class="check" style="margin-top:6px">
+      <input type="checkbox" name="in_feestlijst" {{ 'checked' if ev.in_feestlijst }}>
+      ⭐ Neem mij ook op in de feestpartner-lijst</label>
+    <p class="hint">Als Ravot Partner kun je extra opgenomen worden in onze
+    lijst van feestpartners — zo bereik je gezinnen die specifiek een
+    feestlocatie of traiteur zoeken.</p>
+    {% endif %}
   </div>
   <div class="acties"><button class="btn btn-zon" type="submit">Wijziging indienen</button></div>
 </form>

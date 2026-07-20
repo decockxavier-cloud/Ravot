@@ -1747,3 +1747,56 @@ def test_overture_filtert_winkels_en_adresloos(app):
     assert n == 3                                          # bakker, geenadres, onzeker
     over = {k.ext_id for k in HorecaKandidaat.query.all()}
     assert over == {"goed", "gecureerd_bakker"}            # fiche-bakker gespaard
+
+
+# --------------------------------------------- feestjes: straal + prospecten --
+
+def test_feest_straal_instelbaar(client, seed):
+    from datetime import date, timedelta
+    from app.models import Feestje, Setting, Child
+    db.session.merge(Setting(key="feestjes_aan", value="1"))
+    fam = seed["fam_a"]
+    db.session.add(Child(family_id=fam.id, birth_year=2018))
+    db.session.commit()
+    login_as(client, fam)
+    d = (date.today() + timedelta(days=30)).isoformat()
+    client.post("/mijn/feestje/nieuw", data={
+        "aanleiding": "verjaardag", "datum": d, "aantal": "10",
+        "postcode": "8800", "straal": "35"})
+    f = Feestje.query.filter_by(family_id=fam.id).order_by(Feestje.id.desc()).first()
+    assert f.straal_km == 35
+    # buiten bereik wordt geklemd
+    client.post("/mijn/feestje/nieuw", data={
+        "aanleiding": "verjaardag", "datum": d, "aantal": "10",
+        "postcode": "8800", "straal": "999"})
+    f2 = Feestje.query.filter_by(family_id=fam.id).order_by(Feestje.id.desc()).first()
+    assert f2.straal_km == 50   # max
+
+
+def test_feest_gezin_splitsing(app):
+    from app.services.sources.overture import _is_horeca, _CAT_FEEST
+    # feestcategorieën zijn geen kaart-horeca
+    assert not _is_horeca("caterer") and not _is_horeca("banquet_hall")
+    assert "caterer" in _CAT_FEEST and "event_venue" in _CAT_FEEST
+
+
+def test_feestprospecten_lijst_en_export(client, seed):
+    from app.models import Admin, HorecaKandidaat
+    db.session.add_all([
+        HorecaKandidaat(ext_id="tr1", naam="Traiteur Delux", categorie="caterer",
+                        gemeente="Roeselare", postcode="8800", adres="Straat 1",
+                        lat=50.9, lng=3.1, email="info@delux.be",
+                        is_feest=True, doel="feest"),
+        HorecaKandidaat(ext_id="rk1", naam="Kaartrestaurant", categorie="restaurant",
+                        gemeente="Roeselare", lat=50.9, lng=3.1,
+                        is_feest=False, doel="gezin"),   # niet in feestlijst
+    ])
+    admin = Admin(email="fp@t.be", pw_hash="x", totp_secret="s",
+                  totp_confirmed=True, role="admin")
+    db.session.add(admin); db.session.commit()
+    with client.session_transaction() as s:
+        s["admin_id"] = admin.id; s["admin_2fa_ok"] = True
+    h = client.get("/beheer/feestprospecten").get_data(as_text=True)
+    assert "Traiteur Delux" in h and "Kaartrestaurant" not in h
+    csv = client.get("/beheer/feestprospecten/export.csv").get_data(as_text=True)
+    assert "Traiteur Delux" in csv and "info@delux.be" in csv

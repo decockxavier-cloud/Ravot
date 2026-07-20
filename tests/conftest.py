@@ -57,6 +57,10 @@ def seed(app):
     db.session.add_all([Child(family_id=fam_a.id, birth_year=datetime.utcnow().year - 4),
                         Child(family_id=fam_a.id, birth_year=datetime.utcnow().year - 7),
                         Child(family_id=fam_b.id, birth_year=datetime.utcnow().year - 15)])
+    # Feestjesmodule staat in productie standaard uit (uitrol na genoeg
+    # partners); voor de tests zetten we ze aan zodat de flow dekbaar blijft.
+    from app.models import Setting
+    db.session.merge(Setting(key="feestjes_aan", value="1"))
     db.session.commit()
     return {"fam_a": fam_a, "fam_b": fam_b, "events": events}
 
