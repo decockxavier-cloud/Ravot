@@ -1794,22 +1794,20 @@ def horeca_export_csv():
 @bp.route("/feestprospecten")
 @admin_required
 def feestprospecten():
-    """Aparte lijst van feest-leveranciers (traiteurs, zalen, catering) uit
-    Overture — niet op de kaart, wél voor gerichte feestpartner-werving."""
-    from ..models import HorecaKandidaat
-    q = HorecaKandidaat.query.filter(
-        HorecaKandidaat.is_feest.is_(True),
-        db.or_(HorecaKandidaat.gesloten.is_(False),
-               HorecaKandidaat.gesloten.is_(None)))
+    """Feestpartners: zaken die zelf aangaven feestjes te organiseren
+    (uitbater vinkte 'wij doen feestjes' aan). Dit vult zich organisch — niet
+    uit Overture, want feest-leveranciers zitten daar buiten de horeca-tak."""
+    from ..models import Event, OperatorClaim
     zoek = (request.args.get("q") or "").strip()
+    q = Event.query.filter(Event.feest.is_(True), Event.hidden.is_(False))
     if zoek:
         like = f"%{zoek.lower()}%"
-        q = q.filter(db.or_(db.func.lower(HorecaKandidaat.naam).like(like),
-                            db.func.lower(HorecaKandidaat.gemeente).like(like)))
-    rijen = q.order_by(HorecaKandidaat.gemeente, HorecaKandidaat.naam).limit(500).all()
-    totaal = HorecaKandidaat.query.filter(HorecaKandidaat.is_feest.is_(True)).count()
+        q = q.filter(db.or_(db.func.lower(Event.title).like(like),
+                            db.func.lower(Event.gemeente).like(like)))
+    rijen = q.order_by(Event.gemeente, Event.title).limit(500).all()
+    totaal = Event.query.filter(Event.feest.is_(True)).count()
     return render_template("admin/feestprospecten.html", rijen=rijen, zoek=zoek,
-                           totaal=totaal, title="Feestprospecten",
+                           totaal=totaal, title="Feestpartners",
                            family=None, active="feestprospecten")
 
 
@@ -1818,23 +1816,20 @@ def feestprospecten():
 def feestprospecten_export():
     import csv
     import io
-    from ..models import HorecaKandidaat
-    rijen = HorecaKandidaat.query.filter(
-        HorecaKandidaat.is_feest.is_(True),
-        db.or_(HorecaKandidaat.gesloten.is_(False),
-               HorecaKandidaat.gesloten.is_(None))).order_by(
-        HorecaKandidaat.gemeente, HorecaKandidaat.naam).all()
+    from ..models import Event
+    from ..services.feestjes import contact_email
+    rijen = Event.query.filter(Event.feest.is_(True), Event.hidden.is_(False)) \
+        .order_by(Event.gemeente, Event.title).all()
     buf = io.StringIO()
     w = csv.writer(buf, delimiter=";")
-    w.writerow(["naam", "categorie", "gemeente", "postcode", "adres",
-                "website", "telefoon", "email", "ook_op_kaart"])
-    for k in rijen:
-        w.writerow([k.naam, k.categorie or "", k.gemeente or "",
-                    k.postcode or "", k.adres or "", k.website or "",
-                    k.telefoon or "", k.email or "",
-                    "ja" if k.doel == "gezin" else "nee"])
-    audit(f"feestprospect-export: {len(rijen)} zaken")
+    w.writerow(["naam", "gemeente", "postcode", "contact_email",
+                "telefoon", "website", "partner"])
+    for e in rijen:
+        w.writerow([e.title, e.gemeente or "", e.postcode or "",
+                    contact_email(e) or "", e.telefoon or "",
+                    e.source_url or "", "ja" if e.partner_until else "nee"])
+    audit(f"feestpartner-export: {len(rijen)} zaken")
     from flask import Response
     return Response(buf.getvalue(), mimetype="text/csv",
                     headers={"Content-Disposition":
-                             "attachment; filename=ravot-feestprospecten.csv"})
+                             "attachment; filename=ravot-feestpartners.csv"})

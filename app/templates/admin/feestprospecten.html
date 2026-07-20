@@ -1,15 +1,16 @@
 {% extends "admin/admin_base.html" %}
 {% block admin_content %}
-<h1>Feestprospecten 🎂</h1>
-<p class="hint">Feest-leveranciers uit Overture — traiteurs, feestzalen,
-catering. Die horen <strong>niet</strong> op de gezinskaart, maar zijn wél
-waardevol om later als feestpartner te benaderen. Zaken met "ook op kaart = ja"
-zijn gezinsrestaurants die óók feesten doen — je ideale eerste partners.</p>
+<h1>Feestpartners 🎂</h1>
+<p class="hint">Zaken die zélf aangaven feestjes te organiseren — uitbaters die
+op hun fiche "wij bieden verjaardagsfeestjes aan" aanvinkten. Deze lijst vult
+zich organisch naarmate meer zaken hun fiche claimen; het is meteen je meest
+relevante wervingslijst, want elke zaak hier wíl feesten doen.</p>
 
+{% if totaal %}
 <p class="acties">
   <a class="btn btn-stil btn-klein" href="{{ url_for('admin.feestprospecten_export') }}">
-    ⬇️ Exporteer prospectlijst (CSV)</a>
-  <span class="hint">{{ totaal }} feestprospecten in voorraad.</span>
+    ⬇️ Exporteer lijst (CSV)</a>
+  <span class="hint">{{ totaal }} feestpartners.</span>
 </p>
 
 <form method="get" class="zoekbalk-admin" style="display:flex;gap:8px;margin-bottom:14px">
@@ -18,22 +19,22 @@ zijn gezinsrestaurants die óók feesten doen — je ideale eerste partners.</p>
 </form>
 
 <table class="admin-tabel">
-  <tr><th>Naam</th><th>Soort</th><th>Plaats</th><th>Contact</th><th>Ook op kaart</th></tr>
-  {% for k in rijen %}
+  <tr><th>Naam</th><th>Plaats</th><th>Feest-soorten</th><th>Partner</th></tr>
+  {% for e in rijen %}
   <tr>
-    <td>{{ k.naam }}</td>
-    <td class="hint">{{ k.categorie or '—' }}</td>
-    <td>{{ k.gemeente or '' }} {{ k.postcode or '' }}</td>
-    <td class="hint">
-      {% if k.website %}<a href="{{ k.website }}" target="_blank" rel="noopener">web</a>{% endif %}
-      {% if k.telefoon %} · {{ k.telefoon }}{% endif %}
-      {% if k.email %} · {{ k.email }}{% endif %}
-      {% if not (k.website or k.telefoon or k.email) %}—{% endif %}
-    </td>
-    <td>{{ '✅' if k.doel == 'gezin' else '—' }}</td>
+    <td><a href="{{ url_for('public.event', slug=e.slug) }}" target="_blank" rel="noopener">{{ e.title }}</a></td>
+    <td>{{ e.gemeente or '' }} {{ e.postcode or '' }}</td>
+    <td class="hint">{{ (e.feest_soorten or []) | join(', ') or '—' }}</td>
+    <td>{{ '⭐ ja' if e.partner_until else '—' }}</td>
   </tr>
   {% endfor %}
 </table>
-{% if not rijen %}<p class="hint">Nog geen feestprospecten — die verschijnen na
-een Overture-run met de nieuwe categorie-splitsing.</p>{% endif %}
+{% else %}
+<div class="card">
+  <p>Nog geen feestpartners. Deze lijst groeit vanzelf zodra uitbaters hun zaak
+  claimen en aangeven dat ze feestjes organiseren. Je kunt zaken daar ook toe
+  uitnodigen via je horeca-mailactie (zie <a href="{{ url_for('admin.horeca_import') }}">Horeca-import
+  → partnerlijst exporteren</a>).</p>
+</div>
+{% endif %}
 {% endblock %}

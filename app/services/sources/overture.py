@@ -49,6 +49,8 @@ _CAT_UITSLUIT = {
     "liquor", "wine_shop", "brewery_equipment", "tobacco", "newsstand",
     "chocolatier", "confectionery", "patisserie_shop", "cheese_shop",
     "fishmonger", "food_bank", "meal_delivery", "meal_takeaway_only",
+    "restaurant_equipment_and_supply", "restaurant_supply",
+    "equipment_and_supply", "food_wholesaler",
 }
 _CAT_LANG = ("restaurant", "coffee", "beer_garden", "brasserie", "ice_cream",
              "creperie", "pancake", "tea_house", "eat_and_drink", "fast_food")
@@ -74,6 +76,9 @@ def _is_horeca(cat_primair, cat_alt=None):
     if c in _CAT_UITSLUIT:
         return False
     if any(w in c for w in _CAT_UITSLUIT):
+        return False
+    # Groothandel/toelevering is nooit een uitstap.
+    if any(w in c for w in ("equipment", "supply", "wholesale")):
         return False
     if any(w in c for w in _CAT_LANG):
         return True
@@ -102,9 +107,10 @@ def laad_horeca(bbox=BELGIE_BBOX, log=print):
             cats = rec.get("categories") or {}
             primair = cats.get("primary")
             c = (primair or "").lower()
-            is_gezin = _is_horeca(primair, cats.get("alternate"))
-            is_feest = (c in _CAT_FEEST or any(w in c for w in _CAT_FEEST))
-            if not is_gezin and not is_feest:
+            # Feest-leveranciers (traiteurs, zalen) zitten in Overture in een
+            # andere categorie-tak dan horeca en komen hier dus niet binnen.
+            # De feestpartner-lijst vult zich via de uitbaters zelf.
+            if not _is_horeca(primair, cats.get("alternate")):
                 continue
             namen = rec.get("names") or {}
             naam = namen.get("primary")
@@ -152,8 +158,8 @@ def laad_horeca(bbox=BELGIE_BBOX, log=print):
             k.telefoon = (tel[0][:40] if tel else None)
             mails = rec.get("emails") or []
             k.email = (mails[0][:255] if mails else None)
-            k.is_feest = is_feest
-            k.doel = "gezin" if is_gezin else "feest"
+            k.is_feest = False
+            k.doel = "gezin"
             k.zomerbar_hint = (not lijkt_winterbar(naam)
                                and lijkt_zomerbar(naam, primair))
             k.winterbar_hint = lijkt_winterbar(naam)
