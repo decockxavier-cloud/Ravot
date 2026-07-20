@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ meta_title or title or "Ravot — waar gaan we vandaag ravotten?" }}</title>
-  <meta name="description" content="{{ meta_desc or "Elke dag de leukste kinderactiviteiten in jouw buurt, op maat van jouw gezin. Gratis, zonder reclame en zonder account te proberen." }}">
+  <meta name="description" content="{{ meta_desc or "Elke dag de leukste kinderactiviteiten in jouw buurt, op maat van jouw gezin. Gratis, zonder pop-ups of bannerreclame en zonder account te proberen." }}">
   {% if noindex %}<meta name="robots" content="noindex,follow">{% endif %}
   <link rel="canonical" href="{{ request.base_url }}">
   <meta property="og:title" content="{{ meta_title or title or "Ravot" }}">
@@ -31,6 +31,7 @@
       <a href="{{ url_for('public.ontdek') }}" class="{{ 'on' if active=='ontdek' }}">Ontdek</a>
       <a href="{{ url_for('public.verkennen') }}" class="{{ 'on' if active=='verkennen' }}">Kaart</a>
       {% if feestjes_aan %}<a href="{{ url_for('public.feestjes_info') }}" class="{{ 'on' if active=='feestjes' }}">Feestjes</a>{% endif %}
+      {% if kampen_aan %}<a href="{{ url_for('public.kampen') }}" class="{{ 'on' if active=='kampen' }}">Kampen</a>{% endif %}
       {% if family %}
         <a href="{{ url_for('account.profiel') }}" class="nav-cta {{ 'on' if active=='profiel' }}">🏠 {{ family.display_name or "Mijn Ravot" }}</a>
       {% else %}
@@ -85,11 +86,11 @@
         ze verschijnt dan ook op UiTinVlaanderen.be en tal van andere agenda's.</p>
     </div>
     {% endif %}
-    <p class="foot-intro">{% if bron_vermeldingen %}Met open data van {% for b in bron_vermeldingen %}<a href="{{ b.url }}" rel="noopener">{{ b.naam }}</a>{% if not loop.last %}, {% endif %}{% endfor %}. {% endif %}Gratis en zonder reclame.</p>
+    <p class="foot-intro">Gratis, geen pop-ups of bannerreclame. · <a href="{{ url_for('public.bronnen') }}">Bronnen &amp; data</a></p>
     <nav class="foot-links" aria-label="Footer">
       <a href="{{ url_for('public.help_gezinnen') }}">Handleiding gezinnen</a>
       <a href="{{ url_for('public.help_partners') }}">Handleiding partners</a>
-      <a href="{{ url_for('public.hoe_werkt_het') }}">Zo werkt het</a>
+      <a href="{{ url_for('public.help_gezinnen') }}">Zo werkt het</a>
       <a href="{{ url_for('public.over') }}">Over Ravot</a>
       <a href="{{ url_for('public.contact') }}">Contact</a>
       <a href="{{ url_for('public.score_uitleg') }}">Ravotscore &amp; punten</a>

@@ -64,6 +64,8 @@
            {% if e.start %} · 🕐 {{ event_datum(e) }}{% endif %}</p>
         <div class="badges">
           <span class="badge">{{ e.age_min }}–{{ e.age_max }} jaar</span>
+          {% set lbl = label_info(e) %}
+          {% if lbl %}<span class="badge ravot-label label-{{ lbl.klasse }}" title="Ravot-label {{ lbl.klasse }}">{{ lbl.emoji }} Ravot{% if lbl.niveau > 1 %} {{ lbl.klasse|capitalize }}{% endif %}</span>{% endif %}
           {% if e.is_free %}<span class="badge badge-free">Gratis</span>
           {% elif r.family_total is not none %}<span class="badge">Voor jullie gezin: €{{ "%.0f"|format(r.family_total) }}</span>{% endif %}
           {% if r.agg %}<span class="badge badge-score">😄 {{ r.agg.avg }} ({{ r.agg.count }})</span>{% endif %}

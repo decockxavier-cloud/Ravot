@@ -128,8 +128,11 @@ def geldige_events(query, now=None):
     onder, boven = geldig_venster(now)
     # Permanente POI's (speeltuinen, attracties) hebben geen datum en zijn
     # altijd geldig; gedateerde events moeten binnen het venster vallen.
+    # Kampen horen NIET in de gewone lijsten/kaart — die hebben hun eigen
+    # onderdeel (/kampen), net als feestjes.
     return query.filter(
         Event.hidden.is_(False), Event.pending.is_(False),      # verborgen dubbels nooit tonen
+        db.or_(Event.is_kamp.is_(False), Event.is_kamp.is_(None)),
         db.or_(
             Event.is_permanent.is_(True),
             db.and_((Event.end >= onder) | (Event.start >= onder),
@@ -467,27 +470,35 @@ def event_ics(slug):
                     headers={"Content-Disposition": f"attachment; filename=ravot-{ev.slug}.ics"})
 
 
+
+def _landing_stats():
+    """Cijfers voor de landingstegels. Horeca/bars = 'plekken om te smullen',
+    de rest van de vaste plekken = 'plekken om te ravotten', gedateerde events
+    = 'activiteiten' (enkel getoond met echte UiT-productiedata)."""
+    from ..models import Event, Review
+    SMUL = ("horeca", "zomerbar", "winterbar")
+    perm = Event.query.filter(Event.is_permanent.is_(True), Event.hidden.is_(False))
+    smullen = perm.filter(Event.subtype.in_(SMUL)).count()
+    ravotten = perm.filter(db.or_(Event.subtype.is_(None),
+                                  Event.subtype.notin_(SMUL))).count()
+    uit_url = current_app.config.get("UIT_SEARCH_URL") or ""
+    return {
+        "events": Event.query.filter(Event.is_permanent.is_(False),
+                                     Event.hidden.is_(False)).count(),
+        "ravotten": ravotten,
+        "smullen": smullen,
+        "gemeenten": db.session.query(Event.gemeente).filter(
+            Event.gemeente.isnot(None)).distinct().count(),
+        "reviews": Review.query.count(),
+        "echte_events": "search.uitdatabank" in uit_url and "test" not in uit_url,
+    }
+
+
 @bp.route("/welkom")
 def welkom():
     """Landingspagina, ook zichtbaar mét actieve zoekopdracht/profiel."""
     from ..models import Event, Review
-    stats = {
-        # Eerlijke cijfers: activiteiten = échte gedateerde events;
-        # plekken = vaste locaties (speeltuinen, musea, horeca, ...).
-        "events": Event.query.filter(Event.is_permanent.is_(False),
-                                     Event.hidden.is_(False)).count(),
-        "plekken": Event.query.filter(Event.is_permanent.is_(True),
-                                      Event.hidden.is_(False)).count(),
-        "gemeenten": db.session.query(Event.gemeente).filter(
-            Event.gemeente.isnot(None)).distinct().count(),
-        "reviews": Review.query.count(),
-        # Activiteiten-tegel enkel tonen met échte events: UiT op productie.
-        # Op de demo-testkey is het aanbod verzonnen, dus dan verbergen we het.
-        "echte_events": "search.uitdatabank" in
-                        (current_app.config.get("UIT_SEARCH_URL") or "")
-                        and "test" not in
-                        (current_app.config.get("UIT_SEARCH_URL") or ""),
-    }
+    stats = _landing_stats()
     return render_template("public/landing.html", stats=stats,
                            family=current_family(), active=None,
                            title="Ravot — waar gaan we vandaag ravotten?")
@@ -529,23 +540,7 @@ def home():
     if fam:
         return redirect(url_for("public.vandaag"))
     from ..models import Event, Review
-    stats = {
-        # Eerlijke cijfers: activiteiten = échte gedateerde events;
-        # plekken = vaste locaties (speeltuinen, musea, horeca, ...).
-        "events": Event.query.filter(Event.is_permanent.is_(False),
-                                     Event.hidden.is_(False)).count(),
-        "plekken": Event.query.filter(Event.is_permanent.is_(True),
-                                      Event.hidden.is_(False)).count(),
-        "gemeenten": db.session.query(Event.gemeente).filter(
-            Event.gemeente.isnot(None)).distinct().count(),
-        "reviews": Review.query.count(),
-        # Activiteiten-tegel enkel tonen met échte events: UiT op productie.
-        # Op de demo-testkey is het aanbod verzonnen, dus dan verbergen we het.
-        "echte_events": "search.uitdatabank" in
-                        (current_app.config.get("UIT_SEARCH_URL") or "")
-                        and "test" not in
-                        (current_app.config.get("UIT_SEARCH_URL") or ""),
-    }
+    stats = _landing_stats()
     return render_template("public/landing.html", stats=stats,
                            family=None, active=None,
                            title="Ravot — waar gaan we vandaag ravotten?")
@@ -968,6 +963,9 @@ def score_uitleg():
 def feestjes_info():
     """Publieke uitlegpagina: het feestje als tweede toegangspoort tot Ravot,
     ook zonder login. De CTA stuurt na het inloggen rechtstreeks de wizard in."""
+    from ..models import get_bool
+    if not get_bool("feestjes_aan"):
+        abort(404)
     _, fam = build_profile()
     return render_template("public/feestjes.html", family=fam,
                            title="Verjaardagsfeestje plannen", active=None)
@@ -1150,7 +1148,9 @@ def over():
 
 @bp.route("/hoe-werkt-het")
 def hoe_werkt_het():
-    return _content_of_template("hoe", "public/hoe.html", "Zo werkt Ravot")
+    # Samengevoegd met de uitgebreide handleiding voor gezinnen — één plek,
+    # geen dubbele uitleg. De oude URL blijft werken via een redirect.
+    return redirect(url_for("public.help_gezinnen"), code=301)
 
 
 @bp.route("/privacy")
@@ -1239,3 +1239,88 @@ def help_gezinnen():
 def help_partners():
     return _content_of_template("help-partners", "public/help_partners.html",
                                 "Handleiding voor partners")
+
+
+@bp.route("/bronnen")
+def bronnen():
+    """Volledige bronvermelding en licenties — de plek waar gebruikers de
+    data-attributie kunnen vinden (ODbL-vereiste), los van de kaart-hoek."""
+    return _content_of_template("bronnen", "public/bronnen.html",
+                                "Bronnen & data")
+
+
+@bp.route("/kampen")
+def kampen():
+    """Apart onderdeel (los van de activiteiten): ouders zoeken kampen en
+    filteren op datum, leeftijd, buurt, thema en praktische factoren. Niveau 1
+    — Ravot is de vindplaats, inschrijven gebeurt bij de organisator via diens
+    eigen link."""
+    from datetime import date as _date, timedelta
+    from ..models import get_bool, get_int, KAMP_THEMAS
+    if not get_bool("kampen_aan"):
+        abort(404)
+    _, fam = build_profile()
+    q = Event.query.filter(Event.is_kamp.is_(True), Event.hidden.is_(False),
+                           Event.pending.is_(False))
+    # Datumfilter met speling: een kamp dat een paar dagen buiten de gezochte
+    # periode valt, is meestal nog relevant ("de week van..."). Standaardmarge
+    # via de admin; de zoeker mag ze zelf aanpassen (?marge=).
+    van = (request.args.get("van") or "").strip()
+    tot = (request.args.get("tot") or "").strip()
+    std_marge = get_int("kamp_marge_dagen", 3) or 3
+    try:
+        marge = max(0, min(30, int(request.args.get("marge"))))
+    except (TypeError, ValueError):
+        marge = std_marge
+    def _pdate(s):
+        try:
+            return _date.fromisoformat(s)
+        except (ValueError, TypeError):
+            return None
+    d_van, d_tot = _pdate(van), _pdate(tot)
+    speling = timedelta(days=marge)
+    if d_van:
+        ondergrens = d_van - speling
+        q = q.filter(db.or_(Event.kamp_eind >= ondergrens,
+                            Event.kamp_start >= ondergrens))
+    if d_tot:
+        q = q.filter(Event.kamp_start <= d_tot + speling)
+    # Leeftijd
+    lft = request.args.get("lft") or ""
+    band = next((b for b in LEEFTIJDEN if b[0] == lft), None)
+    if band:
+        q = q.filter(Event.age_min <= band[3], Event.age_max >= band[2])
+    else:
+        lft = ""
+    # Buurt (postcode -> gemeente-tekstmatch, licht)
+    plaats = (request.args.get("plaats") or "").strip()
+    if plaats:
+        like = f"%{plaats.lower()}%"
+        q = q.filter(db.or_(db.func.lower(Event.gemeente).like(like),
+                            Event.postcode.like(f"{plaats}%")))
+    # Thema
+    thema = request.args.get("thema") or ""
+    if thema in KAMP_THEMAS:
+        q = q.filter(Event.kamp_thema == thema)
+    else:
+        thema = ""
+    # Praktische factoren (aanvinkbaar) — enkel filteren op wat aangevinkt is
+    prakt = {
+        "opvang": Event.kamp_voZorg, "maaltijd": Event.kamp_maaltijd,
+        "fiscaal": Event.kamp_fiscaal, "mutualiteit": Event.kamp_mutualiteit,
+        "overnachting": Event.kamp_overnachting,
+    }
+    actief_prakt = []
+    for naam, kolom in prakt.items():
+        if request.args.get(naam):
+            q = q.filter(kolom.is_(True))
+            actief_prakt.append(naam)
+    kampen = q.order_by(Event.kamp_start.asc().nullslast()).limit(200).all()
+    # alleen toekomstige/lopende kampen
+    vandaag = _date.today()
+    kampen = [k for k in kampen if not k.kamp_eind or k.kamp_eind >= vandaag]
+    return render_template("public/kampen.html", family=fam, kampen=kampen,
+                           van=van, tot=tot, lft=lft, plaats=plaats,
+                           thema=thema, themas=KAMP_THEMAS, marge=marge,
+                           std_marge=std_marge, actief_prakt=actief_prakt,
+                           leeftijden=LEEFTIJDEN, active="kampen")

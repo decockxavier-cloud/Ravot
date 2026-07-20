@@ -5,6 +5,8 @@
    onclick="if (history.length > 1) { history.back(); return false; }">← Terug</a>
 <div class="event-kop">
   <h1>{{ ev.title }}</h1>
+  {% set lbl = label_info(ev) %}
+  {% if lbl %}<span class="ravot-label label-{{ lbl.klasse }}" title="Ravot-label {{ lbl.klasse }} — een onkoopbaar kwaliteitslabel op basis van kindvriendelijke voorzieningen en scores van gezinnen.">{{ lbl.emoji }} {{ lbl.naam }}{% if lbl.jaar %} {{ lbl.jaar }}{% endif %}</span>{% endif %}
   <button type="button" class="deel-knop" id="deel"
           data-titel="{{ ev.title }}" data-url="{{ request.url }}"
           aria-label="Deel deze activiteit">📤 Deel</button>
@@ -45,6 +47,38 @@
 {% if ev.image_url and not ev.image_url.startswith('/foto/') %}
 <img src="{{ ev.image_url }}" alt="" class="fiche-beeld" loading="lazy"
      onerror="this.remove()">
+{% endif %}
+{% if ev.is_kamp %}
+<div class="kamp-info card">
+  <div class="kamp-info-rij">
+    {% if ev.kamp_start %}<div><b>📅 Periode</b><br>{{ ev.kamp_start.strftime('%d/%m/%Y') }}{% if ev.kamp_eind and ev.kamp_eind != ev.kamp_start %} – {{ ev.kamp_eind.strftime('%d/%m/%Y') }}{% endif %}</div>{% endif %}
+    <div><b>👦 Leeftijd</b><br>{{ ev.age_min }}–{{ ev.age_max }} jaar</div>
+    {% if ev.kamp_prijs %}<div><b>💶 Prijs</b><br>{{ ev.kamp_prijs }}</div>{% endif %}
+    {% if ev.kamp_organisator %}<div><b>🏫 Organisator</b><br>{{ ev.kamp_organisator }}</div>{% endif %}
+    {% if ev.kamp_thema and kamp_themas.get(ev.kamp_thema) %}<div><b>🎯 Thema</b><br>{{ kamp_themas[ev.kamp_thema] }}</div>{% endif %}
+    {% if ev.kamp_taal and kamp_talen.get(ev.kamp_taal) %}<div><b>💬 Taal</b><br>{{ kamp_talen[ev.kamp_taal] }}</div>{% endif %}
+  </div>
+  <div class="kamp-inbegrepen">
+    {% if ev.kamp_voZorg %}<span class="badge">🌅 Voor- &amp; naopvang</span>{% endif %}
+    {% if ev.kamp_maaltijd %}<span class="badge">🍽️ Warme maaltijd</span>{% endif %}
+    {% if ev.kamp_fiscaal %}<span class="badge">🧾 Fiscaal attest</span>{% endif %}
+    {% if ev.kamp_mutualiteit %}<span class="badge">💊 Attest ziekenfonds</span>{% endif %}
+    {% if ev.kamp_overnachting %}<span class="badge">🌙 Met overnachting</span>{% endif %}
+  </div>
+  {% if ev.kamp_inschrijf_url %}
+  <a class="btn btn-zon btn-groot" href="{{ ev.kamp_inschrijf_url }}" target="_blank" rel="noopener nofollow">Inschrijven bij de organisator →</a>
+  {% endif %}
+</div>
+{% set fotos = kamp_fotos(ev.id) %}
+{% if fotos %}
+<div class="kamp-galerij">
+  {% for f in fotos %}
+  <a href="{{ url_for('public.foto', pid=f.id) }}" target="_blank" rel="noopener">
+    <img src="{{ url_for('public.foto', pid=f.id) }}" alt="Foto van {{ ev.title }}" loading="lazy">
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
 {% endif %}
 {% if ev.description %}<p>{{ ev.description }}</p>{% endif %}
 
@@ -87,7 +121,7 @@
 <div class="card feest-cta">
   <strong>🎂 Hier kan je een verjaardagsfeestje vieren!</strong>
   <p class="hint">Plan het feestje via Ravot en vraag in één klik offertes aan bij deze en andere partners in de buurt.</p>
-  <a class="btn btn-zon btn-klein" href="{{ url_for('account.feestje_nieuw') }}">Feestje plannen →</a>
+  {% if feestjes_aan %}<a class="btn btn-zon btn-klein" href="{{ url_for('account.feestje_nieuw') }}">Feestje plannen →</a>{% endif %}
 </div>
 {% endif %}
 <details class="melden">

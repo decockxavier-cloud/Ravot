@@ -1876,12 +1876,20 @@ def test_feestjes_nav_respecteert_schakelaar(client, seed):
     h = client.get("/").get_data(as_text=True)
     assert ">Feestjes</a>" not in h            # nav-item weg
     assert "Feestje plannen" not in h          # landing-knop weg
+    assert "Verjaardagsfeestje? Geregeld" not in h   # uitleg-tegel weg
+    assert client.get("/feestjes").status_code == 404  # infopagina dicht
     db.session.merge(Setting(key="feestjes_aan", value="1")); db.session.commit()
     h = client.get("/").get_data(as_text=True)
     assert "Feestjes" in h
 
 
 def test_activiteiten_tegel_enkel_bij_echte_events(client, seed, app):
+    from app.models import Event
+    db.session.add(Event(slug="tegel-plek", title="Plek", source="osm",
+                         subtype="playground", is_permanent=True, hidden=False,
+                         gemeente="Gent", postcode="9000", lat=51, lng=3.7,
+                         age_min=0, age_max=12, categories=[]))
+    db.session.commit()
     app.config["UIT_SEARCH_URL"] = "https://search-test.uitdatabank.be"
     h = client.get("/welkom").get_data(as_text=True)
     assert "plekken om te ravotten" in h
@@ -1891,3 +1899,246 @@ def test_activiteiten_tegel_enkel_bij_echte_events(client, seed, app):
     app.config["UIT_SEARCH_URL"] = "https://search.uitdatabank.be"
     h = client.get("/welkom").get_data(as_text=True)
     assert re.search(r'activiteiten', h)
+
+
+def test_landing_smullen_apart(client, seed):
+    from app.models import Event
+    db.session.add_all([
+        Event(slug="sm-1", title="Kindercafe", source="overture", subtype="horeca",
+              is_permanent=True, hidden=False, gemeente="Gent", postcode="9000",
+              lat=51, lng=3.7, age_min=0, age_max=12, categories=[]),
+        Event(slug="rv-1", title="Speeltuin", source="osm", subtype="playground",
+              is_permanent=True, hidden=False, gemeente="Gent", postcode="9000",
+              lat=51, lng=3.7, age_min=0, age_max=12, categories=[]),
+    ])
+    db.session.commit()
+    h = client.get("/welkom").get_data(as_text=True)
+    assert "plekken om te ravotten" in h and "plekken om te smullen" in h
+
+
+# ------------------------------------------------- Ravot-label + kampen ------
+
+def test_ravot_label_niveaus(app, seed):
+    from datetime import date
+    from app.models import Event, Review, Family, Setting
+    from app.services.label import bereken_niveau, herbereken_labels
+    db.session.merge(Setting(key="label_aan", value="1"))
+    # zaak met alle voorzieningen + goede reviews -> goud
+    top = Event(slug="lbl-top", title="Top Café", source="user", curated=True,
+                is_permanent=True, hidden=False, quality=90,
+                omheind=True, verzorgingstafel=True, buggy_ok=True,
+                kinderstoel=True, speelhoek=True, kindermenu=True,
+                gemeente="Gent", postcode="9000", lat=51, lng=3.7,
+                age_min=0, age_max=12, categories=[])
+    # zaak met net genoeg voorzieningen, geen reviews -> brons
+    brons = Event(slug="lbl-brons", title="Basis Café", source="user", curated=True,
+                  is_permanent=True, hidden=False, quality=60,
+                  omheind=True, kinderstoel=True, speelhoek=True,
+                  gemeente="Gent", postcode="9000", lat=51, lng=3.7,
+                  age_min=0, age_max=12, categories=[])
+    # zaak zonder voorzieningen -> geen label
+    geen = Event(slug="lbl-geen", title="Kaal Café", source="user", curated=True,
+                 is_permanent=True, hidden=False, quality=80,
+                 gemeente="Gent", postcode="9000", lat=51, lng=3.7,
+                 age_min=0, age_max=12, categories=[])
+    db.session.add_all([top, brons, geen]); db.session.commit()
+    # 3 gezinnen geven top een hoge score
+    for i in range(3):
+        fam = Family(email=f"lbl{i}@t.be", postcode="9000")
+        db.session.add(fam); db.session.flush()
+        db.session.add(Review(family_id=fam.id, event_id=top.id,
+                              kid_score=5, parent_score=3))
+    db.session.commit()
+    assert bereken_niveau(top) == 3       # goud
+    assert bereken_niveau(brons) == 1     # brons
+    assert bereken_niveau(geen) == 0      # geen
+    # herbereken schrijft de niveaus weg + jaartal
+    herbereken_labels(log=lambda *a: None, jaar=2026)
+    assert Event.query.filter_by(slug="lbl-top").first().label_niveau == 3
+    assert Event.query.filter_by(slug="lbl-top").first().label_jaar == 2026
+
+
+def test_label_is_onkoopbaar(app, seed):
+    """Partnerstatus mag het label NIET beïnvloeden."""
+    from datetime import datetime, timedelta
+    from app.models import Event
+    from app.services.label import bereken_niveau
+    # betalende partner zonder voorzieningen -> nog steeds geen label
+    partner = Event(slug="lbl-partner", title="Partner zonder voorzieningen",
+                    source="user", curated=True, is_permanent=True, hidden=False,
+                    quality=90, partner_until=datetime.utcnow() + timedelta(days=30),
+                    gemeente="Gent", postcode="9000", lat=51, lng=3.7,
+                    age_min=0, age_max=12, categories=[])
+    db.session.add(partner); db.session.commit()
+    assert bereken_niveau(partner) == 0
+
+
+def test_kampen_apart_van_activiteiten(client, seed, app):
+    """Kampen mogen NIET in de gewone lijsten/kaart opduiken, wel in /kampen."""
+    from datetime import date, timedelta
+    from app.models import Event, Setting
+    db.session.merge(Setting(key="kampen_aan", value="1"))
+    volgende_week = date.today() + timedelta(days=7)
+    kamp = Event(slug="k-1", title="Zomer Sportkamp", source="user",
+                 is_kamp=True, is_permanent=False, curated=True, hidden=False,
+                 pending=False, kamp_start=volgende_week,
+                 kamp_eind=volgende_week + timedelta(days=4),
+                 gemeente="Roeselare", postcode="8800", lat=50.9, lng=3.1,
+                 age_min=6, age_max=12, categories=[])
+    db.session.add(kamp); db.session.commit()
+    # niet in de gewone ontdek-lijst
+    h = client.get("/ontdek?wanneer=alle").get_data(as_text=True)
+    assert "Zomer Sportkamp" not in h
+    # wél in de kampenzoeker
+    k = client.get("/kampen").get_data(as_text=True)
+    assert "Zomer Sportkamp" in k
+
+
+def test_kampen_datumfilter(client, seed, app):
+    from datetime import date, timedelta
+    from app.models import Event, Setting
+    db.session.merge(Setting(key="kampen_aan", value="1"))
+    juli = date(date.today().year + 1, 7, 7)
+    aug = date(date.today().year + 1, 8, 4)
+    db.session.add_all([
+        Event(slug="k-juli", title="Julikamp", source="user", is_kamp=True,
+              is_permanent=False, curated=True, hidden=False, pending=False,
+              kamp_start=juli, kamp_eind=juli + timedelta(days=4),
+              gemeente="Gent", postcode="9000", lat=51, lng=3.7,
+              age_min=0, age_max=12, categories=[]),
+        Event(slug="k-aug", title="Augustuskamp", source="user", is_kamp=True,
+              is_permanent=False, curated=True, hidden=False, pending=False,
+              kamp_start=aug, kamp_eind=aug + timedelta(days=4),
+              gemeente="Gent", postcode="9000", lat=51, lng=3.7,
+              age_min=0, age_max=12, categories=[]),
+    ])
+    db.session.commit()
+    # filter op de juliweek -> enkel julikamp
+    h = client.get(f"/kampen?van={juli.isoformat()}&tot={(juli + timedelta(days=6)).isoformat()}").get_data(as_text=True)
+    assert "Julikamp" in h and "Augustuskamp" not in h
+
+
+def test_kampen_uit_geeft_404(client, seed):
+    from app.models import Setting
+    db.session.merge(Setting(key="kampen_aan", value="0")); db.session.commit()
+    assert client.get("/kampen").status_code == 404
+
+
+# ----------------------------------------- kampen: marge, velden, foto's -----
+
+def test_kamp_datummarge_toont_net_buiten_periode(client, seed, app):
+    from datetime import date, timedelta
+    from app.models import Event, Setting
+    db.session.merge(Setting(key="kampen_aan", value="1"))
+    db.session.merge(Setting(key="kamp_marge_dagen", value="3"))
+    # kamp begint 2 dagen ná de gezochte 'tot' -> moet mét marge 3 tóch tonen
+    jaar = date.today().year + 1
+    kamp = Event(slug="k-marge", title="Randkamp", source="user", is_kamp=True,
+                 is_permanent=False, curated=True, hidden=False, pending=False,
+                 kamp_start=date(jaar, 7, 10), kamp_eind=date(jaar, 7, 14),
+                 gemeente="Gent", postcode="9000", lat=51, lng=3.7,
+                 age_min=0, age_max=12, categories=[])
+    db.session.add(kamp); db.session.commit()
+    # zoek t/m 8 juli — kamp start 10 juli, 2 dagen erna -> met marge 3 zichtbaar
+    h = client.get(f"/kampen?van={jaar}-07-01&tot={jaar}-07-08").get_data(as_text=True)
+    assert "Randkamp" in h
+    # met marge 0 valt het buiten
+    h0 = client.get(f"/kampen?van={jaar}-07-01&tot={jaar}-07-08&marge=0").get_data(as_text=True)
+    assert "Randkamp" not in h0
+
+
+def test_kamp_praktische_filters(client, seed, app):
+    from datetime import date, timedelta
+    from app.models import Event, Setting
+    db.session.merge(Setting(key="kampen_aan", value="1"))
+    volgend = date.today() + timedelta(days=30)
+    db.session.add_all([
+        Event(slug="k-fisc", title="FiscaalKamp", source="user", is_kamp=True,
+              is_permanent=False, curated=True, hidden=False, pending=False,
+              kamp_start=volgend, kamp_fiscaal=True, kamp_maaltijd=True,
+              gemeente="Gent", postcode="9000", lat=51, lng=3.7,
+              age_min=0, age_max=12, categories=[]),
+        Event(slug="k-basic", title="BasisKamp", source="user", is_kamp=True,
+              is_permanent=False, curated=True, hidden=False, pending=False,
+              kamp_start=volgend, kamp_fiscaal=False,
+              gemeente="Gent", postcode="9000", lat=51, lng=3.7,
+              age_min=0, age_max=12, categories=[]),
+    ])
+    db.session.commit()
+    h = client.get("/kampen?fiscaal=1").get_data(as_text=True)
+    assert "FiscaalKamp" in h and "BasisKamp" not in h
+
+
+def test_kamp_toevoegen_met_velden(client, seed, app):
+    from datetime import date, timedelta
+    from app.models import Operator, Event, Setting
+    db.session.merge(Setting(key="kampen_aan", value="1"))
+    op = Operator(email="kampbaas@t.be")
+    db.session.add(op); db.session.commit()
+    with client.session_transaction() as s:
+        s["operator_id"] = op.id
+    volgend = (date.today() + timedelta(days=40)).isoformat()
+    r = client.post("/uitbater/kamp/nieuw", data={
+        "titel": "Techniekkamp", "start": volgend, "age_min": "8", "age_max": "12",
+        "gemeente": "Roeselare", "postcode": "8800", "organisator": "TechVZW",
+        "thema": "wetenschap", "prijs": "€150", "fiscaal": "1", "maaltijd": "1",
+        "inschrijf_url": "https://techvzw.be/kamp"}, follow_redirects=False)
+    assert r.status_code == 302
+    k = Event.query.filter_by(title="Techniekkamp").first()
+    assert k is not None and k.is_kamp is True and k.pending is True
+    assert k.kamp_fiscaal is True and k.kamp_maaltijd is True
+    assert k.kamp_thema == "wetenschap" and k.kamp_organisator == "TechVZW"
+
+
+def test_kamp_niet_in_gewone_kaart_query(app, seed):
+    """Dubbelcheck: is_kamp wordt geweerd uit geldige_events."""
+    from datetime import date, timedelta
+    from app.models import Event
+    from app.routes.public import geldige_events
+    volgend = date.today() + timedelta(days=10)
+    db.session.add(Event(slug="k-weer", title="WeerKamp", source="user",
+                         is_kamp=True, is_permanent=False, curated=True,
+                         hidden=False, pending=False, start=volgend,
+                         kamp_start=volgend, gemeente="Gent", postcode="9000",
+                         lat=51, lng=3.7, age_min=0, age_max=12, categories=[]))
+    db.session.commit()
+    slugs = [e.slug for e in geldige_events(Event.query).all()]
+    assert "k-weer" not in slugs
+
+
+# ------------------------------------------------ dashboard to-do-lijst ------
+
+def test_dashboard_todo_toont_openstaand_werk(client, seed):
+    from app.models import Admin, Event, Report, OperatorClaim
+    # openstaande taken van verschillende soorten
+    db.session.add(Event(slug="pend-1", title="In wachtrij", source="user",
+                         pending=True, is_permanent=True, gemeente="Gent",
+                         postcode="9000", lat=51, lng=3.7, age_min=0, age_max=12,
+                         categories=[]))
+    ev = Event(slug="werk-1", title="Werkvoorraad", source="overture",
+               subtype="horeca", curated=True, nagekeken=False, hidden=False,
+               is_permanent=True, gemeente="Gent", postcode="9000", lat=51,
+               lng=3.7, age_min=0, age_max=12, categories=[])
+    db.session.add(ev); db.session.flush()
+    db.session.add(Report(event_id=ev.id, reason="test", handled=False))
+    admin = Admin(email="todo@t.be", pw_hash="x", totp_secret="s",
+                  totp_confirmed=True, role="admin")
+    db.session.add(admin); db.session.commit()
+    with client.session_transaction() as s:
+        s["admin_id"] = admin.id; s["admin_2fa_ok"] = True
+    h = client.get("/beheer/", follow_redirects=True).get_data(as_text=True)
+    assert "Te doen" in h
+    assert "Nieuwe inzendingen na te kijken" in h    # pending event
+    assert "Meldingen van gezinnen" in h             # report
+    assert "werkvoorraad" in h.lower()               # curated niet-nagekeken
+
+
+def test_dashboard_todo_leeg_als_niets_openstaat(client, seed):
+    from app.models import Admin
+    admin = Admin(email="leeg@t.be", pw_hash="x", totp_secret="s",
+                  totp_confirmed=True, role="admin")
+    db.session.add(admin); db.session.commit()
+    with client.session_transaction() as s:
+        s["admin_id"] = admin.id; s["admin_2fa_ok"] = True
+    h = client.get("/beheer/", follow_redirects=True).get_data(as_text=True)
+    assert "Alles bijgewerkt" in h

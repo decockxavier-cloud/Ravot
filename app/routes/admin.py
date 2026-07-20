@@ -199,9 +199,46 @@ def dashboard():
     nieuwste_gezinnen = Family.query.order_by(Family.created_at.desc()).limit(5).all()
     recent_reviews = Review.query.order_by(Review.created_at.desc()).limit(10).all()
 
+    # --- To-do: alles wat de aandacht van de beheerder vraagt, op één plek ---
+    from ..models import (Report, EnrichProposal, Photo, OperatorClaim,
+                          EditProposal, get_bool)
+    n_wachtrij = Event.query.filter_by(pending=True).count()
+    n_meldingen = Report.query.filter_by(handled=False).count()
+    n_fotos = Photo.query.filter_by(status="pending").count()
+    n_claims = OperatorClaim.query.filter_by(status="pending").count()
+    n_edits = EditProposal.query.filter_by(status="pending").count()
+    n_ai = EnrichProposal.query.filter_by(status="pending").count()
+    n_werkvoorraad = Event.query.filter(
+        Event.curated.is_(True), Event.nagekeken.is_(False),
+        Event.hidden.is_(False)).count()
+    taken = []
+    if n_wachtrij:
+        taken.append(("Nieuwe inzendingen na te kijken", n_wachtrij,
+                      url_for("admin.nazicht"), "📥"))
+    if n_meldingen:
+        taken.append(("Meldingen van gezinnen", n_meldingen,
+                      url_for("admin.nazicht"), "🚩"))
+    if n_claims:
+        taken.append(("Uitbaters die hun zaak claimen", n_claims,
+                      url_for("admin.nazicht"), "🤝"))
+    if n_edits:
+        taken.append(("Fichewijzigingen van uitbaters", n_edits,
+                      url_for("admin.nazicht"), "✏️"))
+    if n_fotos:
+        taken.append(("Foto's na te kijken", n_fotos,
+                      url_for("admin.nazicht"), "📷"))
+    if n_ai:
+        taken.append(("AI-verrijkingsvoorstellen", n_ai,
+                      url_for("admin.nazicht"), "🤖"))
+    if n_werkvoorraad:
+        taken.append(("Gecureerde fiches in de werkvoorraad", n_werkvoorraad,
+                      url_for("admin.activiteiten", status="nakijken"), "📋"))
+    taken_totaal = sum(t[1] for t in taken)
+
     return render_template("admin/dashboard.html", kwaliteit=kwaliteit, stats=stats,
                            top_gemeenten=top_gemeenten, nieuwste_gezinnen=nieuwste_gezinnen,
-                           reviews=recent_reviews, title="Dashboard",
+                           reviews=recent_reviews, taken=taken,
+                           taken_totaal=taken_totaal, title="Dashboard",
                            family=None, active="dashboard")
 
 
@@ -246,7 +283,10 @@ INSTELLING_PAGINAS = {
     ],
     "feestjes": [
         ("Feestjesmodule", ["feestjes_aan", "feest_straal_km",
-                            "feest_max_aanvragen"]),
+                            "feest_max_aanvragen", "feest_enkel_partners"]),
+        ("Kampenmodule", ["kampen_aan", "kamp_marge_dagen"]),
+        ("Ravot-label (kwaliteit)", ["label_aan", "label_min_voorzieningen",
+                                     "label_min_reviews"]),
     ],
     "beloningen": [
         ("Beloningen & punten", ["beloningen_aan", "punt_waarde_eur",

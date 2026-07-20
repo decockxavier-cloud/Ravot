@@ -119,3 +119,21 @@
 }
 .admin-body .admin-menu-kop:first-of-type { border-top: none; margin-top: 0; }
 .admin-body .admin-menu a { display: block; }
+
+/* ---- Dashboard to-do-lijst ---- */
+.todo-blok { background: #fff; border: 1px solid #e3e6ea; border-radius: 12px;
+  padding: 16px 18px; margin: 4px 0 20px; }
+.todo-blok.todo-leeg { background: #f2f9f4; border-color: #cfe8d6; }
+.todo-blok h2 { margin: 0 0 10px; font-size: 1.05rem; display: flex;
+  align-items: center; gap: 10px; }
+.todo-totaal { background: #EE8035; color: #fff; border-radius: 999px;
+  padding: 1px 11px; font-size: .85rem; font-weight: 700; }
+.todo-lijst { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.todo-lijst a { display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+  border-radius: 8px; text-decoration: none; color: inherit; background: #f7f9fb;
+  transition: background .12s; }
+.todo-lijst a:hover { background: #eef1f5; }
+.todo-icoon { font-size: 1.2rem; flex: 0 0 auto; }
+.todo-label { flex: 1 1 auto; font-weight: 600; }
+.todo-aantal { flex: 0 0 auto; background: #1a2332; color: #fff;
+  border-radius: 999px; padding: 2px 12px; font-weight: 700; font-size: .9rem; }

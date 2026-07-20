@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Kampen zoeken ⛺</h1>
+<p class="hint">Zoek een kamp voor de dagen dat jij er een nodig hebt — filter
+op periode, leeftijd, buurt, thema en wat er inbegrepen is. Inschrijven doe je
+rechtstreeks bij de organisator.</p>
+
+<form method="get" class="kamp-filter card">
+  <div class="kamp-filter-rij">
+    <label>Van <input type="date" name="van" value="{{ van }}"></label>
+    <label>Tot <input type="date" name="tot" value="{{ tot }}"></label>
+    <label>Speling
+      <select name="marge">
+        {% for d in [0, 1, 2, 3, 5, 7, 14] %}
+        <option value="{{ d }}" {{ 'selected' if marge == d }}>± {{ d }} dag{{ 'en' if d != 1 }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </div>
+  <div class="kamp-filter-rij">
+    <label>Leeftijd
+      <select name="lft">
+        <option value="">alle leeftijden</option>
+        {% for b in leeftijden %}
+        <option value="{{ b[0] }}" {{ 'selected' if lft == b[0] }}>{{ b[1] }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Thema
+      <select name="thema">
+        <option value="">alle thema's</option>
+        {% for code, naam in themas.items() %}
+        <option value="{{ code }}" {{ 'selected' if thema == code }}>{{ naam }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Buurt
+      <input type="text" name="plaats" value="{{ plaats }}" placeholder="postcode of gemeente">
+    </label>
+  </div>
+  <div class="kamp-prakt-filter">
+    <span class="hint">Inbegrepen:</span>
+    <label class="chip"><input type="checkbox" name="opvang" {{ 'checked' if 'opvang' in actief_prakt }}> 🌅 Voor- &amp; naopvang</label>
+    <label class="chip"><input type="checkbox" name="maaltijd" {{ 'checked' if 'maaltijd' in actief_prakt }}> 🍽️ Warme maaltijd</label>
+    <label class="chip"><input type="checkbox" name="fiscaal" {{ 'checked' if 'fiscaal' in actief_prakt }}> 🧾 Fiscaal attest</label>
+    <label class="chip"><input type="checkbox" name="mutualiteit" {{ 'checked' if 'mutualiteit' in actief_prakt }}> 💊 Attest ziekenfonds</label>
+    <label class="chip"><input type="checkbox" name="overnachting" {{ 'checked' if 'overnachting' in actief_prakt }}> 🌙 Met overnachting</label>
+  </div>
+  <button class="btn btn-groen" type="submit">Zoek kampen →</button>
+</form>
+
+{% if kampen %}
+<p class="hint">{{ kampen|length }} kamp{{ 'en' if kampen|length != 1 }} gevonden.</p>
+<div class="kamp-lijst">
+  {% for k in kampen %}
+  <article class="card kamp-kaart">
+    {% if kamp_thumb(k) %}
+    <a href="{{ url_for('public.event', slug=k.slug) }}" class="kamp-thumb-link">
+      <img class="kamp-thumb" src="{{ kamp_thumb(k) }}" alt="" loading="lazy" onerror="this.remove()">
+    </a>
+    {% endif %}
+    <div class="kamp-kaart-body">
+      <h3><a href="{{ url_for('public.event', slug=k.slug) }}">{{ k.title }}</a></h3>
+      <p class="meta">
+        {% if k.kamp_start %}📅 {{ k.kamp_start.strftime('%d/%m') }}{% if k.kamp_eind and k.kamp_eind != k.kamp_start %}–{{ k.kamp_eind.strftime('%d/%m/%Y') }}{% else %}/{{ k.kamp_start.strftime('%Y') }}{% endif %}{% endif %}
+      </p>
+      <p class="meta">📍 {% if k.adres %}{{ k.adres }}, {% endif %}{{ k.gemeente or '' }} {{ k.postcode or '' }}</p>
+      {% if k.kamp_organisator %}<p class="meta">🏫 {{ k.kamp_organisator }}</p>{% endif %}
+      <div class="badges">
+        <span class="badge">{{ k.age_min }}–{{ k.age_max }} jaar</span>
+        {% if k.kamp_prijs %}<span class="badge badge-prijs">{{ k.kamp_prijs }}</span>{% endif %}
+        {% if k.kamp_thema and themas.get(k.kamp_thema) %}<span class="badge">{{ themas[k.kamp_thema] }}</span>{% endif %}
+        {% set lbl = label_info(k) %}
+        {% if lbl %}<span class="badge ravot-label label-{{ lbl.klasse }}">{{ lbl.emoji }} Ravot</span>{% endif %}
+      </div>
+      <div class="kamp-iconen">
+        {% if k.kamp_voZorg %}<span title="Voor- en naopvang">🌅</span>{% endif %}
+        {% if k.kamp_maaltijd %}<span title="Warme maaltijd 's middags">🍽️</span>{% endif %}
+        {% if k.kamp_fiscaal %}<span title="Fiscaal attest">🧾</span>{% endif %}
+        {% if k.kamp_mutualiteit %}<span title="Attest ziekenfonds">💊</span>{% endif %}
+        {% if k.kamp_overnachting %}<span title="Met overnachting">🌙</span>{% endif %}
+      </div>
+      <div class="acties">
+        {% if k.kamp_inschrijf_url %}
+        <a class="btn btn-zon btn-klein" href="{{ k.kamp_inschrijf_url }}" target="_blank" rel="noopener nofollow">Inschrijven →</a>
+        {% endif %}
+        <a class="btn btn-stil btn-klein" href="{{ url_for('public.event', slug=k.slug) }}">Meer info</a>
+      </div>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">
+  <p>Geen kampen gevonden voor deze zoekopdracht. Probeer een ruimere periode,
+  meer speling of een andere buurt.</p>
+</div>
+{% endif %}
+{% endblock %}

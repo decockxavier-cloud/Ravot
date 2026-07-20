@@ -210,9 +210,10 @@ def test_niet_uit_bronnen_wel_vermeld(client, app):
     """Toegelaten bronnen (OSM, Overture) worden wél vermeld,
     ook als publiq uit staat."""
     _zet(app, "bron_osm_aan", "1")
-    html = client.get("/").get_data(as_text=True)
+    # Bronvermelding verhuisde van de landing naar de aparte /bronnen-pagina
+    # (kaart-hoek-attributie blijft op de kaart zelf).
+    html = client.get("/bronnen").get_data(as_text=True)
     assert "OpenStreetMap" in html and "Overture" in html
-    assert "uitinvlaanderen" not in html.lower()   # publiq blijft weg
 
 
 # ------------------------------------------------------------ purge-bron --

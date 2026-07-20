@@ -3,6 +3,27 @@
 <h1>Dashboard 📊</h1>
 <p class="hint">Een overzicht van hoe Ravot ervoor staat.</p>
 
+<div class="todo-blok {{ 'todo-leeg' if not taken }}">
+  {% if taken %}
+  <h2>✅ Te doen <span class="todo-totaal">{{ taken_totaal }}</span></h2>
+  <ul class="todo-lijst">
+    {% for label, aantal, link, icoon in taken %}
+    <li>
+      <a href="{{ link }}">
+        <span class="todo-icoon">{{ icoon }}</span>
+        <span class="todo-label">{{ label }}</span>
+        <span class="todo-aantal">{{ aantal }}</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <h2>✅ Alles bijgewerkt</h2>
+  <p class="hint">Er staat niets open om na te kijken. Goed bezig! 🦊</p>
+  {% endif %}
+</div>
+
+
 <div class="stat-raster">
   <div class="stat-tegel">
     <span class="stat-cijfer">{{ stats.gezinnen }}</span>

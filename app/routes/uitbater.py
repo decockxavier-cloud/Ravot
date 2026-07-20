@@ -423,3 +423,77 @@ def founding(op, event_id):
     db.session.commit()
     flash("Welkom als founding partner — je zaak is een jaar lang ⭐ Partner, gratis! 🎉", "ok")
     return redirect(url_for("uitbater.dashboard"))
+
+
+@bp.route("/kamp/nieuw", methods=["GET", "POST"])
+@operator_required
+def kamp_nieuw(op):
+    """Een uitbater voegt een kamp toe (niveau 1: vermelding met datums +
+    eigen inschrijflink). Kampen zijn een apart onderdeel, los van de gewone
+    activiteiten. Gaat via het nazicht: pending tot de redactie goedkeurt."""
+    from datetime import date as _date
+    from ..models import get_bool
+    from .account import _slugify
+    import secrets
+    if not get_bool("kampen_aan"):
+        abort(404)
+    if request.method == "POST":
+        from ..models import KAMP_THEMAS, KAMP_TALEN, Photo
+        from ..fotos import verwerk_upload
+        titel = (request.form.get("titel") or "").strip()[:200]
+        gemeente = (request.form.get("gemeente") or "").strip()[:80]
+        postcode = (request.form.get("postcode") or "").strip()[:8]
+        adres = (request.form.get("adres") or "").strip()[:200]
+        organisator = (request.form.get("organisator") or "").strip()[:200]
+        url = (request.form.get("inschrijf_url") or "").strip()[:500]
+        prijs = (request.form.get("prijs") or "").strip()[:40]
+        samenvatting = (request.form.get("samenvatting") or "").strip()[:2000]
+        thema = request.form.get("thema") if request.form.get("thema") in KAMP_THEMAS else None
+        taal = request.form.get("taal") if request.form.get("taal") in KAMP_TALEN else None
+
+        def _pdate(v):
+            try:
+                return _date.fromisoformat(v)
+            except (ValueError, TypeError):
+                return None
+        start = _pdate(request.form.get("start"))
+        eind = _pdate(request.form.get("eind")) or start
+        try:
+            leeft_min = max(0, min(18, int(request.form.get("age_min") or 0)))
+            leeft_max = max(leeft_min, min(18, int(request.form.get("age_max") or 12)))
+        except ValueError:
+            leeft_min, leeft_max = 0, 12
+        if not titel or not start:
+            flash("Vul minstens een titel en een startdatum in.", "error")
+            return redirect(url_for("uitbater.kamp_nieuw"))
+        ev = Event(
+            slug=f"kamp-{_slugify(titel)}-{secrets.token_hex(3)}",
+            title=titel, source="user", is_kamp=True, is_permanent=False,
+            pending=True, curated=False, hidden=False,
+            gemeente=gemeente or None, postcode=postcode or None,
+            adres=adres or None, kamp_organisator=organisator or None,
+            kamp_start=start, kamp_eind=eind, kamp_inschrijf_url=url or None,
+            kamp_prijs=prijs or None, description=samenvatting or None,
+            kamp_thema=thema, kamp_taal=taal,
+            kamp_voZorg=bool(request.form.get("opvang")),
+            kamp_maaltijd=bool(request.form.get("maaltijd")),
+            kamp_fiscaal=bool(request.form.get("fiscaal")),
+            kamp_mutualiteit=bool(request.form.get("mutualiteit")),
+            kamp_overnachting=bool(request.form.get("overnachting")),
+            age_min=leeft_min, age_max=leeft_max, categories=[])
+        db.session.add(ev)
+        db.session.flush()
+        # Max 4 foto's, elk automatisch verkleind + heringcodeerd (app/fotos.py).
+        bestanden = request.files.getlist("fotos")[:4]
+        for f in bestanden:
+            naam = verwerk_upload(f)
+            if naam:
+                db.session.add(Photo(event_id=ev.id, filename=naam,
+                                     soort="kamp", status="pending"))
+        db.session.commit()
+        flash("Kamp ingediend! Het verschijnt zodra onze redactie het nakeek.", "ok")
+        return redirect(url_for("uitbater.dashboard"))
+    from ..models import KAMP_THEMAS, KAMP_TALEN
+    return render_template("uitbater/kamp_nieuw.html", title="Kamp toevoegen",
+                           themas=KAMP_THEMAS, talen=KAMP_TALEN,
+                           family=None, active=None)

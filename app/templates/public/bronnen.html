@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Bronnen &amp; data</h1>
+<div class="card">
+<p>Ravot bundelt informatie over gezinsvriendelijke plekken en activiteiten in
+Vlaanderen uit verschillende open bronnen, aangevuld met bijdragen van gezinnen
+en uitbaters. We vermelden onze bronnen graag transparant.</p>
+
+<h2>Kaart- en plekgegevens</h2>
+<p>Onze kaart en een groot deel van de plekgegevens (speeltuinen, parken, musea,
+horeca en meer) zijn gebaseerd op data van:</p>
+<ul>
+  <li><strong>OpenStreetMap</strong> — © OpenStreetMap-bijdragers, beschikbaar
+  onder de <a href="https://opendatacommons.org/licenses/odbl/" rel="noopener">Open
+  Database License (ODbL)</a>. Meer info:
+  <a href="https://www.openstreetmap.org/copyright" rel="noopener">openstreetmap.org/copyright</a>.</li>
+  <li><strong>Overture Maps</strong> — © Overture Maps Foundation, zie
+  <a href="https://overturemaps.org/" rel="noopener">overturemaps.org</a>.</li>
+</ul>
+
+<h2>Activiteiten &amp; evenementen</h2>
+<p>Gedateerde activiteiten komen uit <strong>UiTdatabank</strong> van publiq vzw,
+zie <a href="https://www.uitdatabank.be" rel="noopener">uitdatabank.be</a>.</p>
+
+<h2>Bijdragen van de community</h2>
+<p>Gezinnen en uitbaters voegen zelf plekken, foto's, scores en beschrijvingen
+toe. Die bijdragen worden nagekeken door onze redactie voor ze verschijnen.</p>
+
+<p class="hint">Merk je een fout in de gegevens, of ontbreekt er attributie?
+Laat het ons weten via de <a href="{{ url_for('public.contact') }}">contactpagina</a>,
+dan passen we het aan.</p>
+</div>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block content %}
+<a href="{{ url_for('uitbater.dashboard') }}" class="terug-link">← Mijn zaken</a>
+<h1>Kamp toevoegen ⛺</h1>
+<p class="hint">Voeg een kamp toe aan Ravot. Ouders vinden het via de
+kampenzoeker en schrijven in via jouw eigen link. Je kamp verschijnt zodra onze
+redactie het nakeek.</p>
+
+<form method="post" class="card kamp-form" enctype="multipart/form-data">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <h2>Het kamp</h2>
+  <label>Naam van het kamp *
+    <input type="text" name="titel" required maxlength="200" placeholder="bv. Sportkamp zomer">
+  </label>
+  <label>Organisator
+    <input type="text" name="organisator" maxlength="200" placeholder="bv. Sportdienst Roeselare">
+  </label>
+  <div class="kamp-filter-rij">
+    <label>Startdatum * <input type="date" name="start" required></label>
+    <label>Einddatum <input type="date" name="eind"></label>
+  </div>
+  <div class="kamp-filter-rij">
+    <label>Leeftijd van <input type="number" name="age_min" min="0" max="18" value="0" style="width:5em"></label>
+    <label>tot <input type="number" name="age_max" min="0" max="18" value="12" style="width:5em"></label>
+  </div>
+  <div class="kamp-filter-rij">
+    <label>Thema
+      <select name="thema">
+        <option value="">—</option>
+        {% for code, naam in themas.items() %}<option value="{{ code }}">{{ naam }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Taal
+      <select name="taal">
+        <option value="">—</option>
+        {% for code, naam in talen.items() %}<option value="{{ code }}">{{ naam }}</option>{% endfor %}
+      </select>
+    </label>
+  </div>
+
+  <h2>Waar &amp; hoeveel</h2>
+  <div class="kamp-filter-rij">
+    <label>Adres <input type="text" name="adres" maxlength="200"></label>
+  </div>
+  <div class="kamp-filter-rij">
+    <label>Gemeente <input type="text" name="gemeente" maxlength="80"></label>
+    <label>Postcode <input type="text" name="postcode" inputmode="numeric" maxlength="8" style="width:7em"></label>
+  </div>
+  <label>Prijs <input type="text" name="prijs" maxlength="40" placeholder="bv. €120 / week"></label>
+  <label>Inschrijflink (jouw eigen inschrijfsysteem)
+    <input type="url" name="inschrijf_url" maxlength="500" placeholder="https://...">
+  </label>
+
+  <h2>Wat is inbegrepen?</h2>
+  <div class="kamp-prakt-filter">
+    <label class="chip"><input type="checkbox" name="opvang"> 🌅 Voor- &amp; naopvang</label>
+    <label class="chip"><input type="checkbox" name="maaltijd"> 🍽️ Warme maaltijd 's middags</label>
+    <label class="chip"><input type="checkbox" name="fiscaal"> 🧾 Fiscaal attest</label>
+    <label class="chip"><input type="checkbox" name="mutualiteit"> 💊 Attest ziekenfonds</label>
+    <label class="chip"><input type="checkbox" name="overnachting"> 🌙 Met overnachting</label>
+  </div>
+
+  <h2>Beschrijving &amp; foto's</h2>
+  <label>Korte beschrijving
+    <textarea name="samenvatting" rows="4" maxlength="2000" placeholder="Wat mogen de kinderen verwachten? Dagindeling, wat meebrengen, ..."></textarea>
+  </label>
+  <label>Foto's (max. 4)
+    <input type="file" name="fotos" accept="image/jpeg,image/png,image/webp" multiple>
+    <span class="hint">Tot 4 foto's. We verkleinen ze automatisch — je hoeft je
+    geen zorgen te maken over bestandsgrootte.</span>
+  </label>
+
+  <button class="btn btn-groen btn-groot" type="submit">Kamp indienen →</button>
+</form>
+{% endblock %}

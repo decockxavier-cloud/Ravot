@@ -143,6 +143,28 @@ class Event(db.Model):
     kinderstoel = db.Column(db.Boolean)        # kinderstoelen aanwezig
     speelhoek = db.Column(db.Boolean)          # speelhoek of speeltuin bij de zaak
     kindermenu = db.Column(db.Boolean)         # kindermenu beschikbaar
+    # Ravot-label (kwaliteit, ONKOOPBAAR): niveau 0-3 (geen/brons/zilver/goud),
+    # berekend uit criteria + reviews. Jaartal zodat het per jaar "vers" is.
+    label_niveau = db.Column(db.Integer, default=0, index=True)
+    label_jaar = db.Column(db.Integer)
+    # Kampenmodule (apart onderdeel, NIET in de gewone activiteiten/kaart).
+    # is_kamp markeert een kamp; kamp_start/eind bepalen de week(en); de
+    # inschrijflink wijst naar het eigen systeem van de organisator (niveau 1:
+    # Ravot is vindplaats, geen boekingssysteem).
+    is_kamp = db.Column(db.Boolean, default=False, index=True)
+    kamp_start = db.Column(db.Date, index=True)
+    kamp_eind = db.Column(db.Date)
+    kamp_inschrijf_url = db.Column(db.String(500))
+    kamp_prijs = db.Column(db.String(40))
+    kamp_organisator = db.Column(db.String(200))
+    # Praktische kampfactoren — aanvinkbaar, filterbaar, als icoontjes zichtbaar.
+    kamp_voZorg = db.Column(db.Boolean, default=False)      # voor- en naopvang
+    kamp_maaltijd = db.Column(db.Boolean, default=False)    # warme maaltijd 's middags
+    kamp_fiscaal = db.Column(db.Boolean, default=False)     # fiscaal attest kinderopvang
+    kamp_mutualiteit = db.Column(db.Boolean, default=False) # attest ziekenfonds
+    kamp_overnachting = db.Column(db.Boolean, default=False)# met slapen (vs. dagkamp)
+    kamp_thema = db.Column(db.String(40))                   # sport/creatief/natuur/...
+    kamp_taal = db.Column(db.String(40))                    # Nederlands/tweetalig/...
     # Verjaardagsfeestjes: biedt deze plek feestjes aan, en wat precies?
     feest = db.Column(db.Boolean, default=False, nullable=False, index=True)
     feest_soorten = db.Column(db.JSON, default=list)   # subset van FEEST_SOORTEN
@@ -202,6 +224,19 @@ TAG_NAAR_VELD = {"verzorgingstafel": "verzorgingstafel",
                  "vlot met de wandelwagen": "buggy_ok",
                  "afgesloten speelterrein": "omheind"}
 COST_RANGES = ["0", "<20", "20-50", "50-100", ">100"]
+
+
+KAMP_THEMAS = {
+    "sport": "🏃 Sport", "creatief": "🎨 Creatief", "natuur": "🌳 Natuur",
+    "wetenschap": "🔬 Wetenschap & techniek", "muziek": "🎵 Muziek",
+    "avontuur": "🏕️ Avontuur", "dans": "💃 Dans", "taal": "💬 Taal",
+    "koken": "🍳 Koken", "circus": "🎪 Circus", "dieren": "🐴 Dieren",
+    "gemengd": "🌈 Gemengd / allerlei",
+}
+KAMP_TALEN = {
+    "nl": "Nederlands", "tweetalig": "Tweetalig", "fr": "Frans (immersie)",
+    "en": "Engels (immersie)",
+}
 
 
 class Review(db.Model):
@@ -366,6 +401,11 @@ SETTING_DEFS = {
     "feestjes_aan": ("0", "Feestjesmodule: gezinnen kunnen offertes aanvragen (pas aanzetten met genoeg partners)", "bool"),
     "feest_straal_km": ("20", "Feestjes: standaard zoekstraal (km)", "int"),
     "feest_enkel_partners": ("0", "Feestjes: enkel betalende partners tonen (uit = ook gratis claims, partners bovenaan)", "bool"),
+    "label_aan": ("0", "Ravot-label tonen op fiches (kwaliteitslabel, onkoopbaar)", "bool"),
+    "label_min_voorzieningen": ("3", "Ravot-label: minimum aantal kindvriendelijke voorzieningen voor brons", "int"),
+    "label_min_reviews": ("3", "Ravot-label: minimum reviews voor zilver/goud", "int"),
+    "kampen_aan": ("0", "Kampenmodule tonen (apart onderdeel, los van activiteiten)", "bool"),
+    "kamp_marge_dagen": ("3", "Kampen: speling rond de gezochte periode (dagen)", "int"),
     "feest_max_aanvragen": ("6", "Feestjes: max. partners per offerteronde", "int"),
     # Ravotscore × Partner (commerciële plekken): score is en blijft van de
     # community; een actieve Partner mag ze tonen + laten meetellen in de

@@ -41,6 +41,13 @@ def create_app(config_object=Config):
     app.jinja_env.globals["event_datum"] = event_datum
     from .plaatsen import land_label
     app.jinja_env.globals["land_label"] = land_label
+    from .services.label import label_info, kamp_thumb, kamp_fotos
+    app.jinja_env.globals["label_info"] = label_info
+    app.jinja_env.globals["kamp_thumb"] = kamp_thumb
+    app.jinja_env.globals["kamp_fotos"] = kamp_fotos
+    from .models import KAMP_THEMAS, KAMP_TALEN
+    app.jinja_env.globals["kamp_themas"] = KAMP_THEMAS
+    app.jinja_env.globals["kamp_talen"] = KAMP_TALEN
     from .types import activiteit_type
     app.jinja_env.globals["activiteit_type"] = activiteit_type
     from .types import is_commercieel
@@ -95,7 +102,9 @@ def create_app(config_object=Config):
         ctx = {"guest": g, "has_guest": bool(g.get("postcode")),
                "vakantie": vakantiecontext(), "bewaard_ids": set(),
                "geliked_ids": set(),
-               "feestjes_aan": get_bool("feestjes_aan")}
+               "feestjes_aan": get_bool("feestjes_aan"),
+               "kampen_aan": get_bool("kampen_aan"),
+               "label_aan": get_bool("label_aan")}
         # Welke events heeft dit gezin bewaard? (voor de hartjes op de kaarten)
         fid = session.get("family_id")
         if fid:
@@ -319,6 +328,27 @@ def register_cli(app):
             added.append("horeca_kandidaten.winterbar_hint")
         ev_cols = {c["name"] for c in insp.get_columns("events")} \
             if insp.has_table("events") else set()
+        if ev_cols and "is_kamp" not in ev_cols:
+            for coldef in ("is_kamp BOOLEAN DEFAULT FALSE",
+                           "kamp_start DATE", "kamp_eind DATE",
+                           "kamp_inschrijf_url VARCHAR(500)",
+                           "kamp_prijs VARCHAR(40)"):
+                db.session.execute(text(f"ALTER TABLE events ADD COLUMN {coldef}"))
+            added.append("events.kamp-velden")
+        if ev_cols and "kamp_organisator" not in ev_cols:
+            for coldef in ("kamp_organisator VARCHAR(200)",
+                           "kamp_voZorg BOOLEAN DEFAULT FALSE",
+                           "kamp_maaltijd BOOLEAN DEFAULT FALSE",
+                           "kamp_fiscaal BOOLEAN DEFAULT FALSE",
+                           "kamp_mutualiteit BOOLEAN DEFAULT FALSE",
+                           "kamp_overnachting BOOLEAN DEFAULT FALSE",
+                           "kamp_thema VARCHAR(40)", "kamp_taal VARCHAR(40)"):
+                db.session.execute(text(f"ALTER TABLE events ADD COLUMN {coldef}"))
+            added.append("events.kamp-praktisch")
+        if ev_cols and "label_niveau" not in ev_cols:
+            db.session.execute(text("ALTER TABLE events ADD COLUMN label_niveau INTEGER DEFAULT 0"))
+            db.session.execute(text("ALTER TABLE events ADD COLUMN label_jaar INTEGER"))
+            added.append("events.label_niveau + label_jaar")
         if ev_cols and "in_feestlijst" not in ev_cols:
             db.session.execute(text(
                 "ALTER TABLE events ADD COLUMN in_feestlijst BOOLEAN DEFAULT FALSE"))
@@ -536,6 +566,14 @@ def register_cli(app):
         from .services.sources import overture as ov
         n = ov.vul_contact_aan(log=print)
         click.echo(f"Klaar: {n} kandidaten aangevuld.")
+
+    @app.cli.command("herbereken-labels")
+    def herbereken_labels_cmd():
+        """Herbereken het Ravot-label (brons/zilver/goud) voor alle fiches op
+        basis van voorzieningen + reviews. Draai jaarlijks en na veel nieuwe
+        reviews."""
+        from .services.label import herbereken_labels
+        herbereken_labels(log=print)
 
     @app.cli.command("herindeel-voorraad")
     def herindeel_voorraad_cmd():

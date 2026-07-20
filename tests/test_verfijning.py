@@ -106,9 +106,11 @@ def test_leuk_is_toggle(client, app):
 
 
 def test_hoe_werkt_het_pagina(client, app):
+    # Samengevoegd met /help: oude URL redirect nu (301) naar de handleiding.
     r = client.get("/hoe-werkt-het")
-    assert r.status_code == 200
-    assert b"Zo werkt Ravot" in r.data
+    assert r.status_code == 301
+    r2 = client.get("/hoe-werkt-het", follow_redirects=True)
+    assert r2.status_code == 200 and b"gezinnen" in r2.data.lower()
 
 
 def test_kaart_markers_bevatten_ficheinfo(client, app):
