@@ -11,33 +11,47 @@
         <a href="{{ url_for('admin.types_beheer') }}" class="{{ 'on' if active=='types' }}">Types</a>
         <a href="{{ url_for('admin.nazicht') }}" class="{{ 'on' if active=='nazicht' }}">Nazicht</a>
       {% else %}
+        {% set sectie = {
+          'content': ['activiteiten', 'nazicht', 'types'],
+          'bronnen': ['horeca-import', 'verbindingen', 'feeds', 'verrijk'],
+          'gezinnen': ['families', 'partners', 'feestjes', 'feestprospecten', 'beloningen'],
+          'beheer': ['facturatie', 'paginas', 'mails', 'instellingen', 'status', 'team'],
+        } %}
         <a href="{{ url_for('admin.dashboard') }}" class="{{ 'on' if active=='dashboard' }}">Dashboard</a>
 
-        <span class="admin-menu-kop">Content</span>
-        <a href="{{ url_for('admin.activiteiten') }}" class="{{ 'on' if active=='activiteiten' }}">Zaken &amp; fiches</a>
-        <a href="{{ url_for('admin.nazicht') }}" class="{{ 'on' if active=='nazicht' }}">Nazicht</a>
-        <a href="{{ url_for('admin.types_beheer') }}" class="{{ 'on' if active=='types' }}">Types</a>
+        <details class="admin-groep" {{ 'open' if active in sectie.content }}>
+          <summary>Content</summary>
+          <a href="{{ url_for('admin.activiteiten') }}" class="{{ 'on' if active=='activiteiten' }}">Zaken &amp; fiches</a>
+          <a href="{{ url_for('admin.nazicht') }}" class="{{ 'on' if active=='nazicht' }}">Nazicht</a>
+          <a href="{{ url_for('admin.types_beheer') }}" class="{{ 'on' if active=='types' }}">Types</a>
+        </details>
 
-        <span class="admin-menu-kop">Databronnen</span>
-        <a href="{{ url_for('admin.horeca_import') }}" class="{{ 'on' if active=='horeca-import' }}">Horeca-import</a>
-        <a href="{{ url_for('admin.verbindingen') }}" class="{{ 'on' if active=='verbindingen' }}">Verbindingen</a>
-        <a href="{{ url_for('admin.feeds') }}" class="{{ 'on' if active=='feeds' }}">Agenda-feeds</a>
-        <a href="{{ url_for('admin.verrijk') }}" class="{{ 'on' if active=='verrijk' }}">AI-verrijking</a>
+        <details class="admin-groep" {{ 'open' if active in sectie.bronnen }}>
+          <summary>Databronnen</summary>
+          <a href="{{ url_for('admin.horeca_import') }}" class="{{ 'on' if active=='horeca-import' }}">Horeca-import</a>
+          <a href="{{ url_for('admin.verbindingen') }}" class="{{ 'on' if active=='verbindingen' }}">Verbindingen</a>
+          <a href="{{ url_for('admin.feeds') }}" class="{{ 'on' if active=='feeds' }}">Agenda-feeds</a>
+          <a href="{{ url_for('admin.verrijk') }}" class="{{ 'on' if active=='verrijk' }}">AI-verrijking</a>
+        </details>
 
-        <span class="admin-menu-kop">Gezinnen &amp; partners</span>
-        <a href="{{ url_for('admin.families') }}" class="{{ 'on' if active=='families' }}">Gezinnen</a>
-        <a href="{{ url_for('admin.partners') }}" class="{{ 'on' if active=='partners' }}">Partners</a>
-        <a href="{{ url_for('admin.feestjes') }}" class="{{ 'on' if active=='feestjes' }}">Feestjes</a>
-        <a href="{{ url_for('admin.feestprospecten') }}" class="{{ 'on' if active=='feestprospecten' }}">Feestpartners</a>
-        <a href="{{ url_for('admin.beloningen') }}" class="{{ 'on' if active=='beloningen' }}">Beloningen</a>
+        <details class="admin-groep" {{ 'open' if active in sectie.gezinnen }}>
+          <summary>Gezinnen &amp; partners</summary>
+          <a href="{{ url_for('admin.families') }}" class="{{ 'on' if active=='families' }}">Gezinnen</a>
+          <a href="{{ url_for('admin.partners') }}" class="{{ 'on' if active=='partners' }}">Partners</a>
+          <a href="{{ url_for('admin.feestjes') }}" class="{{ 'on' if active=='feestjes' }}">Feestjes &amp; kampen</a>
+          <a href="{{ url_for('admin.feestprospecten') }}" class="{{ 'on' if active=='feestprospecten' }}">Feestpartners</a>
+          <a href="{{ url_for('admin.beloningen') }}" class="{{ 'on' if active=='beloningen' }}">Beloningen</a>
+        </details>
 
-        <span class="admin-menu-kop">Beheer</span>
-        <a href="{{ url_for('admin.facturatie') }}" class="{{ 'on' if active=='facturatie' }}">Facturatie</a>
-        <a href="{{ url_for('admin.paginas') }}" class="{{ 'on' if active=='paginas' }}">Pagina's</a>
-        <a href="{{ url_for('admin.mails') }}" class="{{ 'on' if active=='mails' }}">Mailteksten</a>
-        <a href="{{ url_for('admin.instellingen') }}" class="{{ 'on' if active=='instellingen' }}">Instellingen</a>
-        <a href="{{ url_for('admin.status') }}" class="{{ 'on' if active=='status' }}">Status</a>
-        <a href="{{ url_for('admin.team') }}" class="{{ 'on' if active=='team' }}">Team</a>
+        <details class="admin-groep" {{ 'open' if active in sectie.beheer }}>
+          <summary>Beheer</summary>
+          <a href="{{ url_for('admin.facturatie') }}" class="{{ 'on' if active=='facturatie' }}">Facturatie</a>
+          <a href="{{ url_for('admin.paginas') }}" class="{{ 'on' if active=='paginas' }}">Pagina's</a>
+          <a href="{{ url_for('admin.mails') }}" class="{{ 'on' if active=='mails' }}">Mailteksten</a>
+          <a href="{{ url_for('admin.instellingen') }}" class="{{ 'on' if active=='instellingen' }}">Instellingen</a>
+          <a href="{{ url_for('admin.status') }}" class="{{ 'on' if active=='status' }}">Status</a>
+          <a href="{{ url_for('admin.team') }}" class="{{ 'on' if active=='team' }}">Team</a>
+        </details>
       {% endif %}
       <a href="{{ url_for('admin.logout') }}" class="admin-uit">Afmelden</a>
     </nav>

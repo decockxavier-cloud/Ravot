@@ -137,3 +137,19 @@
 .todo-label { flex: 1 1 auto; font-weight: 600; }
 .todo-aantal { flex: 0 0 auto; background: #1a2332; color: #fff;
   border-radius: 999px; padding: 2px 12px; font-weight: 700; font-size: .9rem; }
+
+/* ---- Inklapbare menu-secties ---- */
+.admin-body .admin-groep { margin: 2px 0; }
+.admin-body .admin-groep > summary {
+  list-style: none; cursor: pointer; user-select: none;
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; color: #9aa3b2;
+  padding: 10px 12px 6px; display: flex; align-items: center;
+  justify-content: space-between; border-top: 1px solid #eef1f5;
+}
+.admin-body .admin-groep > summary::-webkit-details-marker { display: none; }
+.admin-body .admin-groep > summary::after {
+  content: "▸"; font-size: 0.7rem; transition: transform .15s; color: #b6bdc8;
+}
+.admin-body .admin-groep[open] > summary::after { transform: rotate(90deg); }
+.admin-body .admin-groep > a { display: block; padding-left: 12px; }

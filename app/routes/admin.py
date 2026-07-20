@@ -265,6 +265,8 @@ INSTELLING_PAGINAS = {
                                  "score_prior_n", "score_prior_waarde",
                                  "partner_score_bonus", "geen_partner_malus",
                                  "foto_malus", "tag_drempel", "report_drempel"]),
+        ("Ravot-label (kwaliteitslabel)", ["label_aan", "label_min_voorzieningen",
+                                           "label_min_reviews"]),
         ("Weer", ["weer_aan", "regen_drempel", "zon_drempel"]),
         ("Mails", ["weekendmail_aan", "maandagmail_aan"]),
         ("Beveiliging & limieten", ["codes_per_uur", "punten_dag_max",
@@ -285,8 +287,6 @@ INSTELLING_PAGINAS = {
         ("Feestjesmodule", ["feestjes_aan", "feest_straal_km",
                             "feest_max_aanvragen", "feest_enkel_partners"]),
         ("Kampenmodule", ["kampen_aan", "kamp_marge_dagen"]),
-        ("Ravot-label (kwaliteit)", ["label_aan", "label_min_voorzieningen",
-                                     "label_min_reviews"]),
     ],
     "beloningen": [
         ("Beloningen & punten", ["beloningen_aan", "punt_waarde_eur",
