@@ -513,6 +513,16 @@ def register_cli(app):
         click.echo("3/3 Contactgegevens verrijken…")
         ov.verrijk_contact(log=print)
 
+    @app.cli.command("kuis-kandidaten")
+    def kuis_kandidaten_cmd():
+        """Ruim ingeladen horeca-kandidaten op die niet door de strengere
+        regels raken (bakker/slager/geen adres/lage confidence). Fiches die al
+        gecureerd zijn blijven staan. Draai dit eenmalig na een update van de
+        filterregels; nieuwe Overture-runs passen de regels al bij het laden toe."""
+        from .services.sources import overture as ov
+        n = ov.kuis_kandidaten(log=print)
+        click.echo(f"Klaar: {n} kandidaten opgekuist.")
+
     @app.cli.command("verrijk-contact")
     def verrijk_contact_cmd():
         """Vul lege website/telefoon op bestaande fiches aan met Overture-data

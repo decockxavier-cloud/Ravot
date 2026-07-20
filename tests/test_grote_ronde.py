@@ -1712,3 +1712,38 @@ def test_handleidingen_publiek(client):
         assert r.status_code == 200
     assert "gezinnen" in client.get("/help").get_data(as_text=True).lower()
     assert "partner" in client.get("/help/partners").get_data(as_text=True).lower()
+
+
+def test_overture_filtert_winkels_en_adresloos(app):
+    from app.services.sources.overture import _is_horeca, kuis_kandidaten
+    from app.models import HorecaKandidaat, Event
+    # categorie-filter
+    assert _is_horeca("restaurant") and _is_horeca("cafe")
+    assert not _is_horeca("bakery") and not _is_horeca("butcher")
+    assert not _is_horeca("food_processing") and not _is_horeca("supermarket")
+    # opkuis verwijdert rommel maar spaart gecureerde fiches
+    db.session.add_all([
+        HorecaKandidaat(ext_id="goed", naam="Resto", categorie="restaurant",
+                        adres="Straat 1", lat=50.9, lng=3.1, confidence=0.9),
+        HorecaKandidaat(ext_id="bakker", naam="Bakkerij Jan",
+                        categorie="bakery", adres="Straat 2", lat=50.9, lng=3.1,
+                        confidence=0.9),
+        HorecaKandidaat(ext_id="geenadres", naam="Vaag Café", categorie="cafe",
+                        adres=None, postcode=None, lat=50.9, lng=3.1, confidence=0.9),
+        HorecaKandidaat(ext_id="onzeker", naam="Twijfel", categorie="bar",
+                        adres="Straat 3", lat=50.9, lng=3.1, confidence=0.3),
+        HorecaKandidaat(ext_id="gecureerd_bakker", naam="Ooit Geimporteerd",
+                        categorie="bakery", adres="Straat 4", lat=50.9, lng=3.1,
+                        confidence=0.9),
+    ])
+    # de laatste is al een fiche -> moet blijven ondanks slechte categorie
+    db.session.add(Event(slug="gc-bakker", title="Ooit Geimporteerd",
+                         source="overture", ext_id="gecureerd_bakker",
+                         is_permanent=True, curated=True, gemeente="Gent",
+                         postcode="9000", lat=50.9, lng=3.1, age_min=0,
+                         age_max=12, categories=[]))
+    db.session.commit()
+    n = kuis_kandidaten(log=lambda *a: None)
+    assert n == 3                                          # bakker, geenadres, onzeker
+    over = {k.ext_id for k in HorecaKandidaat.query.all()}
+    assert over == {"goed", "gecureerd_bakker"}            # fiche-bakker gespaard

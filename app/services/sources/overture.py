@@ -29,6 +29,19 @@ BELGIE_BBOX = (2.50, 49.45, 6.45, 51.55)
 # Overture-categoriecodes die eten/drinken betekenen. Korte woorden matchen
 # we op héél woord (anders is een 'barber' plots een bar), langere op deelstring.
 _CAT_KORT = {"bar", "pub", "cafe", "snack", "bistro"}
+
+# Harde NEE: verkooppunten en productie die als "food" binnensluipen maar geen
+# plek zijn waar een gezin op uitstap gaat. Slagers, bakkers, traiteurs,
+# groothandel, fabrieken... — precies de bijvangst die Xavier signaleerde.
+_CAT_UITSLUIT = {
+    "bakery", "butcher", "butcher_shop", "deli", "delicatessen",
+    "grocery", "supermarket", "convenience", "greengrocer", "farm_shop",
+    "wholesale", "distributor", "food_processing", "manufacturing",
+    "factory", "caterer", "catering", "food_court_stall", "market_stall",
+    "liquor", "wine_shop", "brewery_equipment", "tobacco", "newsstand",
+    "chocolatier", "confectionery", "patisserie_shop", "cheese_shop",
+    "fishmonger", "food_bank", "meal_delivery", "meal_takeaway_only",
+}
 _CAT_LANG = ("restaurant", "coffee", "beer_garden", "brasserie", "ice_cream",
              "creperie", "pancake", "tea_house", "eat_and_drink", "fast_food")
 
@@ -48,6 +61,12 @@ def _is_horeca(cat_primair, cat_alt=None):
     te veel bijvangst binnen (tabakswinkels en supermarkten die ook 'cafe'
     als bijcategorie dragen)."""
     c = (cat_primair or "").lower()
+    # Harde uitsluiting eerst: een bakkerij met bijcategorie 'cafe' blijft een
+    # bakkerij. Exacte match op de categoriecode, niet op deelstring.
+    if c in _CAT_UITSLUIT:
+        return False
+    if any(w in c for w in _CAT_UITSLUIT):
+        return False
     if any(w in c for w in _CAT_LANG):
         return True
     return bool(set(c.replace("_", " ").split()) & _CAT_KORT)
@@ -91,9 +110,15 @@ def laad_horeca(bbox=BELGIE_BBOX, log=print):
             land = (adres.get("country") or "").upper()
             if land and land != "BE":
                 continue          # de bbox raakt Noord-Frankrijk en Nederland
+            # Geen adres én geen postcode? Overslaan — objectief rommelsignaal
+            # en sowieso onvindbaar op de kaart voor een gezin.
+            if not (adres.get("freeform") or adres.get("postcode")):
+                continue
             conf = rec.get("confidence")
-            if conf is not None and conf < 0.5:
-                continue          # te onzeker = vaak gesloten of verkeerd
+            # Strengere drempel (0.6): onder deze grens is de zaak vaak gesloten
+            # of fout. De ✖-knop en gezinsmeldingen vangen de rest.
+            if conf is not None and conf < 0.6:
+                continue
             webs = rec.get("websites") or []
             socials = rec.get("socials") or []
             k = bestaande.get(rec["id"])
@@ -438,3 +463,28 @@ def verrijk_contact(log=print, max_afstand_km=0.15):
     db.session.commit()
     log(f"{verrijkt} fiches verrijkt met contactgegevens uit Overture.")
     return verrijkt
+
+
+def kuis_kandidaten(log=print):
+    """Ruim reeds ingeladen kandidaten op die niet (meer) door de strengere
+    regels raken: verkeerde categorie (bakker/slager/...), geen adres, of te
+    lage confidence. Verwijdert enkel kandidaten die NOG GEEN fiche zijn — wat
+    al geimporteerd en gecureerd is, blijft staan (daar beslist je ✖-knop)."""
+    from ...models import Event
+    fiche_ids = {r[0] for r in db.session.query(Event.ext_id).filter(
+        Event.source == "overture", Event.ext_id.isnot(None)).all()}
+    weg = 0
+    for k in HorecaKandidaat.query.all():
+        if k.ext_id in fiche_ids:
+            continue                      # al een (mogelijk gecureerde) fiche
+        slecht = (
+            not _is_horeca(k.categorie)
+            or not (k.adres or k.postcode)
+            or (k.confidence is not None and k.confidence < 0.6)
+        )
+        if slecht:
+            db.session.delete(k)
+            weg += 1
+    db.session.commit()
+    log(f"Opgekuist: {weg} kandidaten verwijderd (categorie/adres/confidence).")
+    return weg
