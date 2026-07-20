@@ -18,7 +18,7 @@ from ..content import render_markdown
 from ..extensions import db
 from ..geo import postcode_coord
 from ..models import (Event, FEEST_SOORTEN, MailTemplate, OperatorClaim,
-                      get_int)
+                      get_bool, get_int)
 from ..scoring import haversine_km
 from .magic import send_mail
 
@@ -44,8 +44,13 @@ def zoek_partners(postcode, straal_km=None, soorten=None):
     centrum = postcode_coord(postcode) if postcode else None
     q = Event.query.filter(Event.feest.is_(True), Event.hidden.is_(False),
                            Event.pending.is_(False))
+    enkel_partners = get_bool("feest_enkel_partners")
     rows = []
     for ev in q.limit(500).all():
+        # Model 1 (schakelaar aan): enkel betalende partners.
+        # Model 2 (uit, standaard): iedereen mag, partners sorteren bovenaan.
+        if enkel_partners and not partner_actief(ev):
+            continue
         mail = contact_email(ev)
         if not mail:
             continue          # zonder contactadres kan er geen offerte vertrekken

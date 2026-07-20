@@ -365,6 +365,7 @@ SETTING_DEFS = {
     # Verjaardagsfeestjes
     "feestjes_aan": ("0", "Feestjesmodule: gezinnen kunnen offertes aanvragen (pas aanzetten met genoeg partners)", "bool"),
     "feest_straal_km": ("20", "Feestjes: standaard zoekstraal (km)", "int"),
+    "feest_enkel_partners": ("0", "Feestjes: enkel betalende partners tonen (uit = ook gratis claims, partners bovenaan)", "bool"),
     "feest_max_aanvragen": ("6", "Feestjes: max. partners per offerteronde", "int"),
     # Ravotscore × Partner (commerciële plekken): score is en blijft van de
     # community; een actieve Partner mag ze tonen + laten meetellen in de

@@ -129,9 +129,15 @@ def _open_meteo():
 
 def _uit():
     key = current_app.config.get("UIT_API_KEY") or ""
+    url = current_app.config.get("UIT_SEARCH_URL") or ""
+    is_test = "test" in url
     if not key:
         return None, "geen UIT_API_KEY (bron kan uit staan tot go-live)"
-    return True, "key aanwezig — laatste run: zie bronnen hieronder"
+    if is_test:
+        return None, ("TEST-omgeving (demodata!) — vraag een productiekey aan "
+                      "bij publiq en zet UIT_SEARCH_URL op "
+                      "https://search.uitdatabank.be")
+    return True, "PRODUCTIE — echte events, key aanwezig"
 
 
 def _overture():

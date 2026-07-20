@@ -7,7 +7,7 @@
   <a class="filterchip {{ 'aan' if status == 'pending' }}" href="{{ url_for('admin.activiteiten', status='pending') }}">⏳ Wachtrij ({{ tellers.pending }})</a>
   <a class="filterchip {{ 'aan' if status == 'aanvullen' }}" href="{{ url_for('admin.activiteiten', status='aanvullen') }}">✍️ Aan te vullen</a>
   <a class="filterchip {{ 'aan' if status == '' or status == 'alles' }}" href="{{ url_for('admin.activiteiten', status='alles') }}">Alles</a>
-  {% if status == 'nakijken' and tellers.nakijken > 20 %}
+  {% if status == 'nakijken' and tellers.nakijken > 0 %}
   <form method="post" action="{{ url_for('admin.activiteiten_alles_nagekeken') }}" style="display:inline"
         onsubmit="return confirm('Alle {{ tellers.nakijken }} fiches in één keer afvinken? Meldingen van gezinnen blijven je vangnet.')">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

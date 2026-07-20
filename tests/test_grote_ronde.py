@@ -1804,3 +1804,45 @@ def test_feestpartners_lijst_en_export(client, seed):
     assert "Feestzaal De Ster" in h and "Gewoon Restaurant" not in h
     csv = client.get("/beheer/feestprospecten/export.csv").get_data(as_text=True)
     assert "Feestzaal De Ster" in csv and "ster@t.be" in csv
+
+
+# ------------------------------------------------ feest model 2 + uit-switch --
+
+def test_feest_model2_en_betaalmuur(client, seed):
+    from datetime import datetime, timedelta
+    from app.models import Event, Setting
+    from app.services.feestjes import zoek_partners
+    # een gratis claim + een betalende partner, beide bieden feest
+    gratis = Event(slug="f-gratis", title="Gratis Feestcafe", source="user",
+                   feest=True, feest_contact="gratis@t.be", feest_soorten=["horeca"],
+                   gemeente="Roeselare", postcode="8800", lat=50.946, lng=3.123,
+                   is_permanent=True, age_min=0, age_max=12, categories=[])
+    partner = Event(slug="f-partner", title="Partner Feestzaal", source="user",
+                    feest=True, feest_contact="partner@t.be", feest_soorten=["zaal"],
+                    partner_until=datetime.utcnow() + timedelta(days=30),
+                    gemeente="Roeselare", postcode="8800", lat=50.95, lng=3.12,
+                    is_permanent=True, age_min=0, age_max=12, categories=[])
+    db.session.add_all([gratis, partner]); db.session.commit()
+    # Model 2 (standaard): allebei zichtbaar, partner bovenaan
+    rows = zoek_partners("8800")
+    titels = [r["event"].title for r in rows]
+    assert "Gratis Feestcafe" in titels and "Partner Feestzaal" in titels
+    assert titels.index("Partner Feestzaal") < titels.index("Gratis Feestcafe")
+    # Model 1 (schakelaar aan): enkel de betalende partner
+    db.session.merge(Setting(key="feest_enkel_partners", value="1"))
+    db.session.commit()
+    rows = zoek_partners("8800")
+    titels = [r["event"].title for r in rows]
+    assert titels == ["Partner Feestzaal"]
+
+
+def test_uit_health_test_vs_productie(app):
+    import app.services.health as health
+    with app.app_context():
+        app.config["UIT_API_KEY"] = "abc"
+        app.config["UIT_SEARCH_URL"] = "https://search-test.uitdatabank.be"
+        ok, detail = health._uit()
+        assert ok is None and "TEST" in detail
+        app.config["UIT_SEARCH_URL"] = "https://search.uitdatabank.be"
+        ok, detail = health._uit()
+        assert ok is True and "PRODUCTIE" in detail
