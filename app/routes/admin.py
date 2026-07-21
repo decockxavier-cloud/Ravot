@@ -276,10 +276,28 @@ def dashboard():
                       url_for("admin.activiteiten", status="nakijken"), "📋"))
     taken_totaal = sum(t[1] for t in taken)
 
+    # Systeemstatus in één oogopslag (lichte, lokale checks + sync-versheid).
+    from ..services.health import dashboard_samenvatting
+    from ..models import MailLog
+    try:
+        systeem = dashboard_samenvatting()
+    except Exception:
+        current_app.logger.exception("dashboard_samenvatting mislukt")
+        systeem = {"problemen": 0, "waarschuwingen": 0, "items": [], "gezond": True}
+    # Laatste automatische mails (weekend/maandag) — recentste per soort.
+    laatste_mails = []
+    for soort in ("weekendmail", "maandagmail"):
+        m = MailLog.query.filter_by(soort=soort).order_by(
+            MailLog.created_at.desc()).first()
+        if m:
+            laatste_mails.append({"soort": soort, "ok": m.ok,
+                                  "detail": m.detail, "wanneer": m.created_at})
+
     return render_template("admin/dashboard.html", kwaliteit=kwaliteit, stats=stats,
                            top_gemeenten=top_gemeenten, nieuwste_gezinnen=nieuwste_gezinnen,
                            reviews=recent_reviews, taken=taken,
-                           taken_totaal=taken_totaal, title="Dashboard",
+                           taken_totaal=taken_totaal, systeem=systeem,
+                           laatste_mails=laatste_mails, title="Dashboard",
                            family=None, active="dashboard")
 
 
@@ -1773,6 +1791,57 @@ def status():
     return render_template("admin/status.html", checks=checks, bronnen=bronnen,
                            problemen=problemen, title="Status",
                            family=None, active="status")
+
+
+@bp.route("/partner-log")
+@medewerker_required
+def partner_log():
+    """Chronologisch logboek van partner-activiteit: claims, fichewijzigingen,
+    nieuwe partnerzaken en betalingen. Bewust GEEN gezinsdata."""
+    from ..models import OperatorClaim, EditProposal, PartnerPayment, Operator, Event
+    gebeurtenissen = []
+    # Claims (ingediend/goedgekeurd/ingetrokken)
+    for c, op, ev in db.session.query(OperatorClaim, Operator, Event).join(
+            Operator, OperatorClaim.operator_id == Operator.id).join(
+            Event, OperatorClaim.event_id == Event.id).order_by(
+            OperatorClaim.created_at.desc()).limit(80).all():
+        status_tekst = {"pending": "ingediend", "approved": "goedgekeurd",
+                        "rejected": "afgewezen/ingetrokken"}.get(c.status, c.status)
+        gebeurtenissen.append({
+            "wanneer": c.created_at, "type": "claim", "icoon": "🤝",
+            "wie": op.email, "zaak": ev.title,
+            "detail": f"claim {status_tekst}" + (" · domein-match" if c.domein_match else "")})
+    # Fichewijzigingen
+    for e, op, ev in db.session.query(EditProposal, Operator, Event).join(
+            Operator, EditProposal.operator_id == Operator.id).join(
+            Event, EditProposal.event_id == Event.id).order_by(
+            EditProposal.created_at.desc()).limit(80).all():
+        velden = ", ".join((e.changes or {}).keys()) if e.changes else "—"
+        gebeurtenissen.append({
+            "wanneer": e.created_at, "type": "wijziging", "icoon": "✏️",
+            "wie": op.email, "zaak": ev.title,
+            "detail": f"fichewijziging ({e.status}): {velden[:80]}"})
+    # Nieuwe zaken door uitbaters (pending, source=user)
+    for ev in Event.query.filter_by(source="user", is_kamp=False).order_by(
+            Event.id.desc()).limit(40).all():
+        if ev.updated_at:
+            gebeurtenissen.append({
+                "wanneer": ev.updated_at, "type": "nieuwe_zaak", "icoon": "🏠",
+                "wie": "—", "zaak": ev.title,
+                "detail": "zaak toegevoegd" + (" (in wachtrij)" if ev.pending else "")})
+    # Betalingen
+    for p, op, ev in db.session.query(PartnerPayment, Operator, Event).join(
+            Operator, PartnerPayment.operator_id == Operator.id).join(
+            Event, PartnerPayment.event_id == Event.id).order_by(
+            PartnerPayment.created_at.desc()).limit(60).all():
+        gebeurtenissen.append({
+            "wanneer": p.created_at, "type": "betaling", "icoon": "💶",
+            "wie": op.email, "zaak": ev.title,
+            "detail": f"partner-betaling {p.plan} ({p.status})"})
+    gebeurtenissen.sort(key=lambda g: g["wanneer"] or datetime.min, reverse=True)
+    return render_template("admin/partner_log.html",
+                           gebeurtenissen=gebeurtenissen[:150],
+                           title="Partnerlog", family=None, active="partner-log")
 
 
 @bp.route("/verbindingen/wis-bron", methods=["POST"])

@@ -168,3 +168,26 @@
 .uren-invoer td { padding: 3px 8px 3px 0; vertical-align: middle; }
 .uren-invoer .uren-dag { font-weight: 600; min-width: 90px; }
 .uren-invoer input[type=time] { padding: 4px 6px; }
+
+/* ---- Systeemstatus-blok op dashboard ---- */
+.status-blok { border-radius: 12px; padding: 16px 18px; margin: 0 0 20px;
+  border: 1px solid #e3e6ea; background: #fff; }
+.status-blok.status-ok { background: #f2f9f4; border-color: #cfe8d6; }
+.status-blok.status-let-op { background: #fbf7ea; border-color: #ecdca8; }
+.status-blok.status-fout { background: #fbecec; border-color: #edc4c4; }
+.status-blok h2 { margin: 0 0 8px; font-size: 1.05rem; }
+.status-items { list-style: none; margin: 6px 0; padding: 0; }
+.status-items li { padding: 6px 10px; border-radius: 6px; margin: 4px 0;
+  font-size: .9rem; }
+.status-items li.status-fout { background: #f7dede; }
+.status-items li.status-let-op { background: #f6eecc; }
+.mail-status { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+.mail-pil { font-size: .8rem; padding: 3px 10px; border-radius: 999px;
+  background: #eef1f5; }
+.mail-pil.mail-ok { background: #e6f5ea; color: #1f7a34; }
+.mail-pil.mail-fout { background: #f7dede; color: #a53434; }
+
+/* ---- Partnerlog ---- */
+.partner-log-tabel .log-tijd { white-space: nowrap; color: #77836f; font-size: .85rem; }
+.partner-log-tabel .log-wie { font-size: .85rem; color: #4a5568; }
+.partner-log-tabel td { padding: 6px 10px; border-bottom: 1px solid #f0f0ec; }

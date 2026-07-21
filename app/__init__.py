@@ -356,6 +356,29 @@ def register_cli(app):
                 _kamp_nieuw = True
         if _kamp_nieuw:
             added.append("events.kamp-velden")
+        # Uitgebreide voorzieningen + openingsuren (idempotent per kolom).
+        _extra_ev = [
+            "terras BOOLEAN", "overdekt_terras BOOLEAN", "parking BOOLEAN",
+            "toegankelijk BOOLEAN", "allergievriendelijk BOOLEAN",
+            "babyvoeding BOOLEAN", "huisdieren BOOLEAN", "openingsuren JSON",
+        ]
+        _extra_nieuw = False
+        for coldef in _extra_ev:
+            kol = coldef.split()[0]
+            if kol not in (ev_cols or []):
+                db.session.execute(text(
+                    f"ALTER TABLE events ADD COLUMN IF NOT EXISTS {coldef}"))
+                _extra_nieuw = True
+        if _extra_nieuw:
+            added.append("events.voorzieningen + openingsuren")
+        # Claim-verificatie: domein-match-vlag.
+        if insp.has_table("operator_claims"):
+            oc_cols = {c["name"] for c in insp.get_columns("operator_claims")}
+            if "domein_match" not in oc_cols:
+                db.session.execute(text(
+                    "ALTER TABLE operator_claims ADD COLUMN IF NOT EXISTS "
+                    "domein_match BOOLEAN DEFAULT FALSE"))
+                added.append("operator_claims.domein_match")
         if ev_cols and "label_niveau" not in ev_cols:
             db.session.execute(text("ALTER TABLE events ADD COLUMN label_niveau INTEGER DEFAULT 0"))
             db.session.execute(text("ALTER TABLE events ADD COLUMN label_jaar INTEGER"))
@@ -391,6 +414,9 @@ def register_cli(app):
             added.append("photos.soort")
         # Gezinsplekken die vóór deze fix werden goedgekeurd: alsnog cureren
         # en een kwaliteitsscore geven, anders blijven ze van de kaart vallen.
+        # Eerst alle schema-wijzigingen vastleggen, zodat de ORM-query hieronder
+        # zeker met een bijgewerkte tabel werkt (voorkomt UndefinedColumn).
+        db.session.commit()
         from .kwaliteit import bereken_kwaliteit
         from .models import Event as _Ev
         for _e in _Ev.query.filter(_Ev.source == "user",
@@ -795,26 +821,44 @@ def register_cli(app):
     @app.cli.command("send-weekendmail")
     def send_weekendmail():
         """Donderdagmail (cron: donderdag 17:00)."""
-        from .models import get_bool
+        from .models import get_bool, db, MailLog
         if not get_bool("weekendmail_aan"):
             click.echo("Weekendmail staat uit in de instellingen.")
             return
         from .services.magic import send_mail
         from .services.weekendmail import send_all
-        n = send_all(send_mail)
-        click.echo(f"Weekendmail verstuurd naar {n} gezinnen.")
+        try:
+            n = send_all(send_mail)
+            db.session.add(MailLog(soort="weekendmail", aantal=n, ok=True,
+                                   detail=f"verstuurd naar {n} gezinnen"))
+            db.session.commit()
+            click.echo(f"Weekendmail verstuurd naar {n} gezinnen.")
+        except Exception as e:
+            db.session.add(MailLog(soort="weekendmail", aantal=0, ok=False,
+                                   detail=str(e)[:280]))
+            db.session.commit()
+            raise
 
     @app.cli.command("send-maandagmail")
     def send_maandagmail():
         """Maandagvraag: scores binnenhalen (cron: maandag 10:00)."""
-        from .models import get_bool
+        from .models import get_bool, db, MailLog
         if not get_bool("maandagmail_aan"):
             click.echo("Maandagmail staat uit in de instellingen.")
             return
         from .services.magic import send_mail
         from .services.maandagmail import send_all
-        n = send_all(send_mail)
-        click.echo(f"Maandagmail verstuurd naar {n} gezinnen.")
+        try:
+            n = send_all(send_mail)
+            db.session.add(MailLog(soort="maandagmail", aantal=n, ok=True,
+                                   detail=f"verstuurd naar {n} gezinnen"))
+            db.session.commit()
+            click.echo(f"Maandagmail verstuurd naar {n} gezinnen.")
+        except Exception as e:
+            db.session.add(MailLog(soort="maandagmail", aantal=0, ok=False,
+                                   detail=str(e)[:280]))
+            db.session.commit()
+            raise
 
     @app.cli.command("verrijk-batch")
     @click.option("--n", default=20, help="Aantal plekken om te verrijken.")

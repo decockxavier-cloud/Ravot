@@ -2470,3 +2470,82 @@ def test_gezinsdata_toggle(client, seed, app):
     db.session.merge(Setting(key="medewerker_ziet_gezinnen", value="0"))
     db.session.commit()
     assert client.get("/beheer/families").status_code == 200
+
+
+# ---------------------------------- status-dashboard, mail-log, partner-log --
+
+def test_dashboard_samenvatting_structuur(app, seed):
+    from app.services.health import dashboard_samenvatting
+    with app.app_context():
+        s = dashboard_samenvatting()
+    assert "problemen" in s and "waarschuwingen" in s
+    assert "meldingen" in s and "gezond" in s
+
+
+def test_backup_check_faalt_zonder_backups(app, seed):
+    from app.services.health import _backup
+    with app.app_context():
+        ok, detail = _backup()
+    # geen backupmap in de testomgeving -> False met duidelijke boodschap
+    assert ok is False and "backup" in detail.lower()
+
+
+def test_werkvoorraad_check(app, seed):
+    from app.models import Event
+    from app.services.health import _werkvoorraad
+    db.session.add(Event(slug="wv-1", title="Pending", source="user",
+                         pending=True, is_permanent=True, gemeente="Gent",
+                         postcode="9000", lat=51, lng=3.7, age_min=0, age_max=12,
+                         categories=[]))
+    db.session.commit()
+    ok, detail = _werkvoorraad()
+    assert ok is True and "open" in detail
+
+
+def test_maillog_en_dashboard(client, seed, app):
+    from app.models import Admin, MailLog
+    db.session.add(MailLog(soort="weekendmail", aantal=42, ok=True,
+                           detail="verstuurd naar 42 gezinnen"))
+    admin = Admin(email="ml@t.be", pw_hash="x", totp_secret="s",
+                  totp_confirmed=True, role="admin")
+    db.session.add(admin); db.session.commit()
+    with client.session_transaction() as s:
+        s["admin_id"] = admin.id; s["admin_2fa_ok"] = True
+    h = client.get("/beheer/", follow_redirects=True).get_data(as_text=True)
+    assert "weekendmail" in h
+
+
+def test_partner_log_toont_claim_niet_gezin(client, seed, app):
+    from app.models import Admin, Event, Operator, OperatorClaim, Family, Review
+    ev = Event(slug="pl-1", title="Log Café", source="user", is_permanent=True,
+               hidden=False, gemeente="Gent", postcode="9000", lat=51, lng=3.7,
+               age_min=0, age_max=12, categories=[])
+    op = Operator(email="uitbater@log.be")
+    fam = Family(email="geheimgezin@t.be", postcode="9000")
+    admin = Admin(email="pl@t.be", pw_hash="x", totp_secret="s",
+                  totp_confirmed=True, role="admin")
+    db.session.add_all([ev, op, fam, admin]); db.session.flush()
+    db.session.add(OperatorClaim(operator_id=op.id, event_id=ev.id,
+                                 status="approved"))
+    db.session.add(Review(family_id=fam.id, event_id=ev.id, kid_score=5,
+                          parent_score=3))
+    db.session.commit()
+    with client.session_transaction() as s:
+        s["admin_id"] = admin.id; s["admin_2fa_ok"] = True
+    h = client.get("/beheer/partner-log").get_data(as_text=True)
+    assert "uitbater@log.be" in h        # partner-activiteit zichtbaar
+    assert "geheimgezin@t.be" not in h   # gezinsdata NIET in de partnerlog
+
+
+def test_sync_te_laat_detectie(app, seed):
+    from datetime import datetime, timedelta
+    from app.models import SyncStatus
+    from app.services.health import alle_checks
+    # UiT-sync van 3 dagen geleden -> te laat (verwacht < 26u)
+    db.session.merge(SyncStatus(source="uit", state="done",
+                                last_run=datetime.utcnow() - timedelta(days=3)))
+    db.session.commit()
+    with app.app_context():
+        _, bronnen = alle_checks()
+    uit = next((b for b in bronnen if b["source"] == "uit"), None)
+    assert uit is not None and uit["te_laat"] is True

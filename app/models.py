@@ -543,6 +543,18 @@ class SyncStatus(db.Model):
     updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
 
 
+class MailLog(db.Model):
+    """Log van (automatisch) verstuurde mails, zodat de beheerder op het
+    statusdashboard ziet dat bv. de weekendmail effectief buiten ging."""
+    __tablename__ = "mail_log"
+    id = db.Column(db.Integer, primary_key=True)
+    soort = db.Column(db.String(40), index=True)   # weekendmail|maandagmail|claim|...
+    aantal = db.Column(db.Integer, default=0)      # aantal ontvangers
+    ok = db.Column(db.Boolean, default=True)
+    detail = db.Column(db.String(300))
+    created_at = db.Column(db.DateTime, default=utcnow, index=True)
+
+
 class Report(db.Model):
     """Gebruikersmelding over een plek: gesloten, foute info, ... -> naar admin."""
     __tablename__ = "reports"

@@ -1,0 +1,24 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<h1>Partnerlog 📋</h1>
+<p class="hint">Chronologisch overzicht van partner-activiteit: claims,
+fichewijzigingen, nieuwe zaken en betalingen. Gezinsactiviteit staat hier
+bewust niet in.</p>
+
+{% if gebeurtenissen %}
+<table class="tabel partner-log-tabel">
+  <tr><th>Wanneer</th><th></th><th>Wie</th><th>Zaak</th><th>Wat</th></tr>
+  {% for g in gebeurtenissen %}
+  <tr>
+    <td class="log-tijd">{{ g.wanneer.strftime('%d/%m %H:%M') if g.wanneer else '—' }}</td>
+    <td>{{ g.icoon }}</td>
+    <td class="log-wie">{{ g.wie }}</td>
+    <td>{{ g.zaak }}</td>
+    <td>{{ g.detail }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<div class="card"><p>Nog geen partner-activiteit.</p></div>
+{% endif %}
+{% endblock %}

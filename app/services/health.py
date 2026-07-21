@@ -150,6 +150,60 @@ def _overture():
     return True, f"{n} kandidaten in voorraad (geladen {wanneer})"
 
 
+def _backup():
+    """Backup-versheid: er moet een recente (< 26u) en niet-lege backup zijn.
+    Een stil gefaalde backup is een van de gevaarlijkste dingen die er zijn."""
+    import os
+    import glob
+    from datetime import datetime
+    mappen = (current_app.config.get("BACKUP_DIR")
+              or "/srv/ravot-backups", "/var/backups/ravot")
+    bestanden = []
+    for m in mappen:
+        bestanden += glob.glob(os.path.join(m, "*"))
+    bestanden = [f for f in bestanden if os.path.isfile(f)]
+    if not bestanden:
+        return False, "geen backupbestanden gevonden — controleer scripts/backup-db.sh + crontab"
+    nieuwste = max(bestanden, key=os.path.getmtime)
+    leeftijd_u = (datetime.now().timestamp() - os.path.getmtime(nieuwste)) / 3600
+    grootte_mb = os.path.getsize(nieuwste) / (1024 * 1024)
+    if grootte_mb < 0.5:
+        return False, f"nieuwste backup is te klein ({grootte_mb:.1f} MB) — mogelijk mislukt"
+    if leeftijd_u > 26:
+        return False, f"nieuwste backup is {leeftijd_u:.0f}u oud — draaide de nachtelijke backup?"
+    return True, f"vers ({leeftijd_u:.0f}u oud, {grootte_mb:.1f} MB)"
+
+
+def _werkvoorraad():
+    """Opstopping in de menselijke wachtrijen: als er te veel blijft liggen,
+    is dat een signaal (niet kritiek, wel aandacht)."""
+    from ..models import Event, OperatorClaim, Photo, EditProposal
+    wacht = Event.query.filter_by(pending=True).count()
+    claims = OperatorClaim.query.filter_by(status="pending").count()
+    fotos = Photo.query.filter_by(status="pending").count()
+    edits = EditProposal.query.filter_by(status="pending").count()
+    totaal = wacht + claims + fotos + edits
+    detail = f"{totaal} open ({wacht} wachtrij, {claims} claims, {fotos} foto's, {edits} edits)"
+    if totaal > 75:
+        return False, detail + " — loopt op, werk de wachtrij bij"
+    return True, detail
+
+
+def _schijf():
+    """Schijfruimte: een vollopende schijf legt stilletjes alles plat
+    (uploads, backups, logs stapelen op)."""
+    import shutil
+    total, used, free = shutil.disk_usage("/")
+    pct = used / total * 100
+    vrij_gb = free / (1024 ** 3)
+    detail = f"{pct:.0f}% gebruikt, {vrij_gb:.1f} GB vrij"
+    if pct > 90:
+        return False, detail + " — kritiek, ruim op"
+    if pct > 85:
+        return None, detail + " — hou in het oog"
+    return True, detail
+
+
 def alle_checks():
     """Live checks + de laatste runs van alle databronnen."""
     checks = []
@@ -164,14 +218,18 @@ def alle_checks():
         ("Open-Meteo (weer)", _open_meteo),
         ("UiTdatabank", _uit),
         ("Overture-voorraad", _overture),
+        ("Database-backup", _backup),
+        ("Werkvoorraad", _werkvoorraad),
+        ("Schijfruimte", _schijf),
     ):
         ok, detail, ms = _ping(fn)
         checks.append({"naam": naam, "ok": ok, "detail": detail, "ms": ms})
     from ..models import SyncStatus
     from .sources import REGISTRY
-    # Enkel de bronnen die nog bestaan — oude statusrijen (tv/tm/wd/feed) zijn
-    # spookvermeldingen van geschrapte koppelingen.
     from datetime import datetime, timedelta
+    # Verwachte maximale ouderdom per bron (uren). Wordt de laatste run ouder
+    # dan dit, dan is de sync "te laat" volgens schema.
+    SCHEMA_UREN = {"uit": 26, "osm": 24 * 8, "tm": 26, "tv": 26}
     ruw = [b for b in SyncStatus.query.order_by(SyncStatus.source).all()
            if b.source in REGISTRY or b.source == "overture"]
     grens = datetime.utcnow() - timedelta(hours=2)
@@ -179,8 +237,52 @@ def alle_checks():
     for b in ruw:
         vastgelopen = (b.state == "running"
                        and (b.updated_at or b.last_run or grens) < grens)
+        # Te laat volgens schema?
+        te_laat = False
+        max_u = SCHEMA_UREN.get(b.source)
+        if max_u and b.last_run:
+            leeftijd_u = (datetime.utcnow() - b.last_run).total_seconds() / 3600
+            te_laat = leeftijd_u > max_u
         bronnen.append({"source": b.source, "state": b.state,
                         "last_run": b.last_run, "last_result": b.last_result,
                         "last_error": b.last_error,
-                        "vastgelopen": vastgelopen})
+                        "vastgelopen": vastgelopen, "te_laat": te_laat,
+                        "schema_uren": max_u})
     return checks, bronnen
+
+
+def dashboard_samenvatting():
+    """Compacte samenvatting voor het dashboard-statusblok: telt problemen en
+    waarschuwingen over de kritieke checks + sync-versheid, zonder de trage
+    externe pings (die blijven op de volledige /status-pagina)."""
+    from ..models import SyncStatus
+    from datetime import datetime
+    problemen, waarschuwingen, items = 0, 0, []
+    # Snelle, lokale checks (geen trage externe API-pings op het dashboard).
+    for naam, fn in (("Database-backup", _backup), ("Werkvoorraad", _werkvoorraad),
+                     ("Schijfruimte", _schijf), ("Mail (SMTP)", _smtp)):
+        ok, detail, _ = _ping(fn)
+        if ok is False:
+            problemen += 1
+            items.append({"naam": naam, "niveau": "fout", "detail": detail})
+        elif ok is None:
+            waarschuwingen += 1
+            items.append({"naam": naam, "niveau": "let op", "detail": detail})
+    # Sync-versheid volgens schema (dagelijkse/wekelijkse bronnen).
+    SCHEMA_UREN = {"uit": 26, "osm": 24 * 8}
+    for b in SyncStatus.query.all():
+        max_u = SCHEMA_UREN.get(b.source)
+        if not max_u:
+            continue
+        if b.last_error and b.state == "error":
+            problemen += 1
+            items.append({"naam": f"Sync {b.source}", "niveau": "fout",
+                          "detail": f"laatste run faalde: {b.last_error[:80]}"})
+        elif b.last_run:
+            leeftijd_u = (datetime.utcnow() - b.last_run).total_seconds() / 3600
+            if leeftijd_u > max_u:
+                waarschuwingen += 1
+                items.append({"naam": f"Sync {b.source}", "niveau": "let op",
+                              "detail": f"{leeftijd_u:.0f}u geleden (verwacht < {max_u}u)"})
+    return {"problemen": problemen, "waarschuwingen": waarschuwingen,
+            "meldingen": items, "gezond": problemen == 0 and waarschuwingen == 0}

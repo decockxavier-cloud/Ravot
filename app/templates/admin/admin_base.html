@@ -15,7 +15,7 @@
           'content': ['activiteiten', 'nazicht', 'types'],
           'bronnen': ['horeca-import', 'verbindingen', 'feeds', 'verrijk'],
           'gezinnen': ['families', 'partners', 'feestjes', 'feestprospecten', 'beloningen'],
-          'beheer': ['facturatie', 'paginas', 'mails', 'instellingen', 'status', 'team'],
+          'beheer': ['facturatie', 'paginas', 'mails', 'instellingen', 'status', 'partner-log', 'team'],
         } %}
         <a href="{{ url_for('admin.dashboard') }}" class="{{ 'on' if active=='dashboard' }}">Dashboard</a>
 
@@ -50,6 +50,7 @@
           <a href="{{ url_for('admin.mails') }}" class="{{ 'on' if active=='mails' }}">Mailteksten</a>
           <a href="{{ url_for('admin.instellingen') }}" class="{{ 'on' if active=='instellingen' }}">Instellingen</a>
           <a href="{{ url_for('admin.status') }}" class="{{ 'on' if active=='status' }}">Status</a>
+          <a href="{{ url_for('admin.partner_log') }}" class="{{ 'on' if active=='partner-log' }}">Partnerlog</a>
           {% if admin_rol == 'admin' %}<a href="{{ url_for('admin.team') }}" class="{{ 'on' if active=='team' }}">Team</a>{% endif %}
         </details>
       {% endif %}

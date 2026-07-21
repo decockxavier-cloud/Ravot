@@ -23,6 +23,36 @@
   {% endif %}
 </div>
 
+<div class="status-blok status-{{ 'fout' if systeem.problemen else ('let-op' if systeem.waarschuwingen else 'ok') }}">
+  {% if systeem.gezond %}
+  <h2>🟢 Systeem gezond</h2>
+  <p class="hint">Alle checks in orde: backups vers, wachtrij onder controle,
+  schijf oké, syncs op schema. <a href="{{ url_for('admin.status') }}">Volledige status →</a></p>
+  {% else %}
+  <h2>
+    {% if systeem.problemen %}🔴 {{ systeem.problemen }} probleem{{ 'en' if systeem.problemen != 1 }}{% endif %}
+    {% if systeem.waarschuwingen %}{% if systeem.problemen %} · {% endif %}🟠 {{ systeem.waarschuwingen }} aandachtspunt{{ 'en' if systeem.waarschuwingen != 1 }}{% endif %}
+  </h2>
+  <ul class="status-items">
+    {% for it in systeem.meldingen %}
+    <li class="status-{{ 'fout' if it.niveau == 'fout' else 'let-op' }}">
+      <strong>{{ it.naam }}:</strong> {{ it.detail }}
+    </li>
+    {% endfor %}
+  </ul>
+  <p class="hint"><a href="{{ url_for('admin.status') }}">Volledige status bekijken →</a></p>
+  {% endif %}
+  {% if laatste_mails %}
+  <div class="mail-status">
+    {% for m in laatste_mails %}
+    <span class="mail-pil {{ 'mail-ok' if m.ok else 'mail-fout' }}" title="{{ m.detail }}">
+      {{ '✉️' if m.ok else '⚠️' }} {{ m.soort }}: {{ m.wanneer.strftime('%d/%m %H:%M') }}
+    </span>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
 
 <div class="stat-raster">
   <div class="stat-tegel">
