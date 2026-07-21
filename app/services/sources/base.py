@@ -118,6 +118,11 @@ def upsert_event(data):
             if f == "image_url" and not data[f] and ev.image_url:
                 continue   # een bestaande (bv. gezins)foto nooit wissen bij hersync
             setattr(ev, f, data[f])
+    # Openingsuren als "eerste gok" uit de bron: alleen invullen als de fiche
+    # er nog geen heeft. Zo overschrijven we nooit de uren die een uitbater of
+    # de beheerder zelf ingaf — die zijn altijd leidend.
+    if data.get("openingsuren") and not ev.openingsuren:
+        ev.openingsuren = data["openingsuren"]
     # Ouder-filters uit de bron: enkel AANzetten als de bron het bevestigt.
     # Nooit terug naar onbekend/uit — de community (reviews) en de beheerder
     # kunnen deze velden ook zetten en dat mag een sync niet ongedaan maken.

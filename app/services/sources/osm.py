@@ -16,6 +16,7 @@ import requests
 from flask import current_app
 
 from .base import clean_postcode, NIET_KINDVRIENDELIJK
+from ..openingsuren import parse_osm_uren
 
 # tag -> (Ravot-categorie, (leeftijd_min, leeftijd_max), binnen?, blacklist-check?)
 TAG_CATEGORIE = {
@@ -228,6 +229,7 @@ def normalise(el):
         "price_info": [{"name": "basis", "price": 0}] if kind == "playground" else [],
         "image_url": beeld,
         "source_url": website,
+        "openingsuren": parse_osm_uren(oh) or None,
         "attribution": "© OpenStreetMap-bijdragers (ODbL)",
         "venue_ext_id": ext_id,
         "venue_name": title,
@@ -286,6 +288,7 @@ def _normalise_horeca(el, tags):
         "price_info": [],
         "image_url": None,
         "source_url": website,
+        "openingsuren": parse_osm_uren(oh) or None,
         "attribution": "© OpenStreetMap-bijdragers (ODbL)",
         "venue_ext_id": ext_id,
         "venue_name": naam,

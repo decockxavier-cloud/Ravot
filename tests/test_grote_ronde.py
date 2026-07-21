@@ -2788,3 +2788,23 @@ def test_foto_weiger_reden(client, seed, app):
     db.session.refresh(p)
     assert p.status == "rejected"
     assert p.weiger_reden == "Niet gezinsgericht"
+
+
+def test_handmatig_partner_via_event_id(client, seed, app):
+    """Partner maken via de knop op de fiche (event_id i.p.v. slug)."""
+    from app.models import Event, PartnerPayment
+    from app.routes.public import partner_actief
+    ev = Event(slug="hpe-1", title="Fiche Partner Cafe", source="user",
+               is_permanent=True, curated=True, hidden=False, pending=False,
+               gemeente="Gent", postcode="9000", lat=51, lng=3.7,
+               age_min=0, age_max=12, categories=[])
+    db.session.add(ev); db.session.commit()
+    _admin_login(client)
+    r = client.post("/beheer/partners/handmatig",
+                    data={"event_id": str(ev.id), "maanden": "6"},
+                    follow_redirects=True)
+    assert r.status_code == 200
+    db.session.refresh(ev)
+    assert partner_actief(ev)
+    bet = PartnerPayment.query.filter_by(event_id=ev.id, plan="handmatig").first()
+    assert bet and bet.amount == "0.00"
