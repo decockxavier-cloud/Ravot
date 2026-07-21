@@ -334,7 +334,7 @@ INSTELLING_PAGINAS = {
         ("AI-verrijking", ["verrijk_backend", "ollama_model", "cloud_model"]),
     ],
     "facturatie": [
-        ("Partner-abonnement", ["partner_prijs_maand", "partner_prijs_jaar",
+        ("Partner-abonnement", ["partner_prijs_jaar",
                                 "partner_btw_pct", "founding_aan", "founding_max"]),
         ("Facturatie (Odoo)", ["odoo_product_id", "odoo_factuur_auto"]),
     ],

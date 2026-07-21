@@ -889,3 +889,9 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 .uren-tabel td { padding: 4px 8px; border-bottom: 1px solid #f0f0ec; }
 .uren-dag { font-weight: 600; color: #4CA362; }
 .uren-dicht { color: #a53434; }
+
+/* ---- Partner-prijsblok (enkel jaarabonnement) ---- */
+.partner-prijsblok { text-align: center; padding: 14px; background: #f2f9f4;
+  border-radius: 10px; margin: 10px 0; }
+.prijs-groot { font-size: 2rem; font-weight: 800; color: #4CA362; }
+.prijs-per { font-size: 1rem; font-weight: 600; color: #77836f; }

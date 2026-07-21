@@ -612,6 +612,22 @@ def register_cli(app):
         from .services.label import herbereken_labels
         herbereken_labels(log=print)
 
+    @app.cli.command("backup-gelukt")
+    @click.argument("grootte_mb", default="0")
+    def backup_gelukt_cmd(grootte_mb):
+        """Registreer een geslaagde database-backup (aangeroepen door
+        scripts/backup-db.sh), zodat de status-check op het dashboard de
+        backup-versheid kent zonder de host-backupmap te hoeven zien."""
+        from .models import db, MailLog
+        try:
+            mb = int(grootte_mb)
+        except (TypeError, ValueError):
+            mb = 0
+        db.session.add(MailLog(soort="backup", aantal=mb, ok=True,
+                               detail=f"database-backup gelukt ({mb} MB)"))
+        db.session.commit()
+        click.echo(f"Backup geregistreerd ({mb} MB).")
+
     @app.cli.command("detecteer-conflicten")
     def detecteer_conflicten_cmd():
         """Vind zaken waar meerdere gezinnen een aangevinkte voorziening

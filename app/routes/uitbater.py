@@ -81,8 +81,7 @@ def _prijzen():
             return float((get_setting(key) or "").replace(",", ".") or standaard)
         except ValueError:
             return standaard
-    return {"maand": _f("partner_prijs_maand", 15),
-            "jaar": _f("partner_prijs_jaar", 150)}
+    return {"jaar": _f("partner_prijs_jaar", 100)}
 
 
 @bp.route("/login", methods=["GET", "POST"])
@@ -370,9 +369,8 @@ def partner(op, event_id):
             flash("Online betalen is nog niet geconfigureerd. Mail info@ravot.be "
                   "om Partner te worden.", "error")
             return redirect(url_for("uitbater.partner", event_id=ev.id))
-        plan = request.form.get("plan")
-        if plan not in ("maand", "jaar"):
-            plan = "maand"
+        # Enkel jaarabonnement — het plan staat vast.
+        plan = "jaar"
         betaling = PartnerPayment(operator_id=op.id, event_id=ev.id, plan=plan,
                                   amount=mollie.prijs_incl(plan))   # incl. btw innen
         db.session.add(betaling)
@@ -390,9 +388,7 @@ def partner(op, event_id):
     return render_template("uitbater/partner.html", ev=ev,
                            founding_aan=f_aan, founding_over=max(0, f_max - f_bezet),
                            al_founding=al_founding,
-                           prijs_maand=mollie.prijs("maand"),
                            prijs_jaar=mollie.prijs("jaar"),
-                           prijs_maand_incl=mollie.prijs_incl("maand"),
                            prijs_jaar_incl=mollie.prijs_incl("jaar"),
                            heeft_facturatie=bool(op.bedrijfsnaam and op.btw_nummer),
                            betalen_actief=mollie.actief(),

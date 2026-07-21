@@ -22,4 +22,10 @@ docker compose exec -T db pg_dump -U ravot ravot | gzip > "$BACKUP_DIR/ravot-$DA
 # Bewaar 14 dagen, ruim ouder op
 find "$BACKUP_DIR" -name "ravot-*.sql.gz" -mtime +14 -delete
 
-echo "$(date -Is) backup ok: $BACKUP_DIR/ravot-$DATUM.sql.gz ($(du -h "$BACKUP_DIR/ravot-$DATUM.sql.gz" | cut -f1))"
+GROOTTE_MB=$(du -m "$BACKUP_DIR/ravot-$DATUM.sql.gz" | cut -f1)
+
+# Registreer de geslaagde backup in de database, zodat de status-check op het
+# dashboard 'm ziet (de web-container ziet de host-backupmap niet).
+docker compose exec -T web flask backup-gelukt "$GROOTTE_MB" || true
+
+echo "$(date -Is) backup ok: $BACKUP_DIR/ravot-$DATUM.sql.gz (${GROOTTE_MB}M)"

@@ -38,11 +38,10 @@
   <p class="hint">⚠️ Vul eerst je <a href="{{ url_for('uitbater.facturatie', volgende=ev.id) }}">facturatiegegevens</a>
     in (bedrijfsnaam + btw-nummer) — verplicht voor je elektronische factuur.</p>
   {% endif %}
-  <div class="checkrij">
-    <label class="check"><input type="radio" name="plan" value="maand" checked>
-      €{{ prijs_maand }} / maand excl. btw (€{{ prijs_maand_incl }} incl.)</label>
-    <label class="check"><input type="radio" name="plan" value="jaar">
-      €{{ prijs_jaar }} / jaar excl. btw (€{{ prijs_jaar_incl }} incl.) — 2 maanden gratis</label>
+  <div class="checkrij partner-prijsblok">
+    <input type="hidden" name="plan" value="jaar">
+    <div class="prijs-groot">€{{ prijs_jaar }} <span class="prijs-per">per jaar</span></div>
+    <p class="hint" style="margin:2px 0 0">excl. btw (€{{ prijs_jaar_incl }} incl.) — één jaar volledig Partner</p>
   </div>
   {% if betalen_actief %}
   <div class="acties"><button class="btn btn-zon" type="submit">Veilig betalen via Mollie</button></div>

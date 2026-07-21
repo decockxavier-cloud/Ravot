@@ -2484,10 +2484,25 @@ def test_dashboard_samenvatting_structuur(app, seed):
 
 def test_backup_check_faalt_zonder_backups(app, seed):
     from app.services.health import _backup
+    from app.models import MailLog, db
+    from datetime import datetime, timedelta
     with app.app_context():
+        # Geen registratie én geen backupmap -> None (n.v.t., nog niets gezien)
         ok, detail = _backup()
-    # geen backupmap in de testomgeving -> False met duidelijke boodschap
-    assert ok is False and "backup" in detail.lower()
+        assert ok is None and "backup" in detail.lower()
+        # Verse registratie -> ok
+        db.session.add(MailLog(soort="backup", aantal=15, ok=True,
+                               detail="test"))
+        db.session.commit()
+        ok, detail = _backup()
+        assert ok is True and "vers" in detail.lower()
+        # Oude registratie (30u) -> fout
+        db.session.query(MailLog).delete()
+        db.session.add(MailLog(soort="backup", aantal=15, ok=True, detail="oud",
+                               created_at=datetime.utcnow() - timedelta(hours=30)))
+        db.session.commit()
+        ok, detail = _backup()
+        assert ok is False
 
 
 def test_werkvoorraad_check(app, seed):

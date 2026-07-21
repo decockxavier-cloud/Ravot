@@ -26,9 +26,9 @@ def actief():
 
 def prijs(plan):
     from .models import get_setting
-    if plan == "jaar":
-        return (get_setting("partner_prijs_jaar") or "190.00").strip()
-    return (get_setting("partner_prijs_maand") or "19.00").strip()
+    # Enkel jaarabonnement. 'maand' bestaat historisch nog in oude records maar
+    # wordt niet meer aangeboden; alles valt terug op de jaarprijs.
+    return (get_setting("partner_prijs_jaar") or "100.00").strip()
 
 
 def btw_pct():

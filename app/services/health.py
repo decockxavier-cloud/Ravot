@@ -151,11 +151,25 @@ def _overture():
 
 
 def _backup():
-    """Backup-versheid: er moet een recente (< 26u) en niet-lege backup zijn.
-    Een stil gefaalde backup is een van de gevaarlijkste dingen die er zijn."""
+    """Backup-versheid via de database-registratie die scripts/backup-db.sh
+    achterlaat na een geslaagde run. Zo werkt de check ook als de web-container
+    de host-backupmap niet ziet (bv. onder Coolify). Valt terug op het
+    filesystem als er (nog) geen registratie is."""
+    from datetime import datetime
+    from ..models import MailLog
+    laatste = MailLog.query.filter_by(soort="backup", ok=True).order_by(
+        MailLog.created_at.desc()).first()
+    if laatste:
+        leeftijd_u = (datetime.utcnow() - laatste.created_at).total_seconds() / 3600
+        mb = laatste.aantal or 0
+        if leeftijd_u > 26:
+            return False, f"laatste backup is {leeftijd_u:.0f}u oud — draaide de nachtelijke backup?"
+        if mb and mb < 1:
+            return False, f"laatste backup is klein ({mb} MB) — mogelijk mislukt"
+        return True, f"vers ({leeftijd_u:.0f}u oud, {mb} MB)"
+    # Fallback: filesystem (werkt enkel als de map in de container zichtbaar is).
     import os
     import glob
-    from datetime import datetime
     mappen = (current_app.config.get("BACKUP_DIR")
               or "/backups", "/srv/ravot-backups", "/var/backups/ravot")
     bestanden = []
@@ -163,7 +177,8 @@ def _backup():
         bestanden += glob.glob(os.path.join(m, "*"))
     bestanden = [f for f in bestanden if os.path.isfile(f)]
     if not bestanden:
-        return False, "geen backupbestanden gevonden — controleer scripts/backup-db.sh + crontab"
+        return None, ("nog geen backup geregistreerd — na de eerstvolgende "
+                      "nachtelijke backup verschijnt de status hier")
     nieuwste = max(bestanden, key=os.path.getmtime)
     leeftijd_u = (datetime.now().timestamp() - os.path.getmtime(nieuwste)) / 3600
     grootte_mb = os.path.getsize(nieuwste) / (1024 * 1024)
