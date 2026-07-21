@@ -22,23 +22,40 @@
   {% for s in gewenst %}<input type="hidden" name="soort" value="{{ s }}">{% endfor %}
   {% for p in partners %}
   {% set e = p.event %}
-  <label class="card mini-card feest-partner{{ ' kaart-gedempt' if not p.partner }}">
+  {% if p.partner %}
+  <label class="card mini-card feest-partner">
     <input type="checkbox" name="partner" value="{{ e.id }}"
            {{ 'checked disabled' if e.id in al_gevraagd }}>
     <div style="flex:1">
       <a href="{{ url_for('public.event', slug=e.slug) }}" target="_blank"><strong>{{ e.title }}</strong></a>
-      {% if p.partner %}<span class="badge badge-partner">⭐ Partner</span>{% endif %}
+      <span class="badge badge-partner">⭐ Partner</span>
       {% if e.id in al_gevraagd %}<span class="badge">📨 al gevraagd</span>{% endif %}<br>
       <span class="meta">📍 {{ e.gemeente }}{% if p.km is not none %} · {{ p.km }} km{% endif %}
         {% for s in p.soorten %} · {{ soorten[s] }}{% endfor %}</span>
     </div>
   </label>
+  {% else %}
+  <div class="card mini-card feest-partner kaart-gedempt">
+    <div style="flex:1">
+      <a href="{{ url_for('public.event', slug=e.slug) }}" target="_blank"><strong>{{ e.title }}</strong></a><br>
+      <span class="meta">📍 {{ e.gemeente }}{% if p.km is not none %} · {{ p.km }} km{% endif %}
+        {% for s in p.soorten %} · {{ soorten[s] }}{% endfor %}</span>
+      <p class="hint" style="margin:6px 0 0">
+        Deze zaak neem je zelf even contact op:
+        {% if e.telefoon %}<a href="tel:{{ e.telefoon }}">📞 {{ e.telefoon }}</a>{% endif %}
+        {% if e.source_url %} · <a href="{{ e.source_url }}" target="_blank">🌐 website</a>{% endif %}
+        {% if not e.telefoon and not e.source_url %}bekijk de <a href="{{ url_for('public.event', slug=e.slug) }}" target="_blank">fiche</a> voor contact{% endif %}
+      </p>
+    </div>
+  </div>
+  {% endif %}
   {% endfor %}
   <div class="acties">
     <button class="btn btn-zon" type="submit">📨 Verstuur offerteaanvragen</button>
   </div>
-  <p class="hint">Per aangevinkte partner vertrekt één nette mail met jullie
-  feestgegevens. De partner antwoordt rechtstreeks naar jullie e-mailadres.</p>
+  <p class="hint">Bij ⭐ Partners vertrekt één nette mail met jullie feestgegevens;
+  zij antwoorden rechtstreeks naar jullie e-mailadres. Andere zaken contacteer je
+  zelf via het getoonde nummer of hun website.</p>
 </form>
 {% else %}
 <div class="card leeg"><span class="groot-emoji">🔍</span>

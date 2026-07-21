@@ -131,6 +131,40 @@ def is_commercieel(event):
     return type_code(event) in COMMERCIEEL
 
 
+# Drie gezinsvriendelijke hoofdgroepen voor de filterbalk bovenaan.
+#   Smullen  = eten & drinken (horeca, bars)
+#   Beleven  = cultuur, musea, attracties, voorstellingen, uitstappen
+#   Ravotten = buiten spelen, natuur, speeltuinen, sport (de rest)
+GROEP_SMULLEN = {"horeca", "zomerbar", "winterbar"}
+GROEP_BELEVEN = {
+    "museum", "castle", "viewpoint", "attraction", "theme_park", "water_park",
+    "zoo", "aquarium", "miniature_golf", "uit_indoorspeeltuin",
+    "ev_cultuur", "ev_creatief", "ev_leren", "ev_buiten",
+    "uit_theater", "uit_concert", "uit_film", "uit_tentoonstelling",
+    "uit_workshop", "uit_festival", "uit_rondleiding", "uit_markt",
+    "rommelmarkt", "avondmarkt",
+}
+# Ravotten = alles wat niet smullen of beleven is (speeltuin, park, natuur,
+# sport, wandelingen, kinderboerderij, ...). We definiëren het als "de rest"
+# zodat nieuwe buiten-types automatisch onder Ravotten vallen.
+
+GROEP_LABELS = {
+    "beleven": ("🎭", "Beleven"),
+    "ravotten": ("🛝", "Ravotten"),
+    "smullen": ("🍦", "Smullen"),
+}
+
+
+def groep_van(event):
+    """Geef de hoofdgroep (beleven|ravotten|smullen) van een fiche."""
+    code = type_code(event)
+    if code in GROEP_SMULLEN:
+        return "smullen"
+    if code in GROEP_BELEVEN:
+        return "beleven"
+    return "ravotten"
+
+
 # Seizoensgebonden types: buiten hun seizoen tonen we ze niet in lijsten en
 # op de kaart (een zomerbar in januari is dicht; een winterbar in juli ook).
 _SEIZOEN = {"zomerbar": (4, 5, 6, 7, 8, 9), "winterbar": (10, 11, 12, 1, 2, 3)}

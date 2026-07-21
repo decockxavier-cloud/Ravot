@@ -246,8 +246,11 @@ def test_commercieel_factor(app, seed):
     from app.routes.public import commercieel_factor
     met = _horeca(partner=True)
     zonder = _horeca(partner=False)
-    assert commercieel_factor(met) > 1.0
-    assert commercieel_factor(zonder) < 1.0
+    # Partners worden nu uitgelicht bovenaan i.p.v. verstopt hoger in de lijst;
+    # de ranking-factor is bewust neutraal (1.0) zodat de gewone volgorde puur
+    # van gezinsscores komt — dat is de belofte aan gezinnen.
+    assert commercieel_factor(met) == 1.0
+    assert commercieel_factor(zonder) == 1.0
     assert commercieel_factor(seed["events"][0]) == 1.0
 
 
@@ -2564,3 +2567,140 @@ def test_sync_te_laat_detectie(app, seed):
         _, bronnen = alle_checks()
     uit = next((b for b in bronnen if b["source"] == "uit"), None)
     assert uit is not None and uit["te_laat"] is True
+
+
+def test_dashboard_stats_ook_voor_niet_partner(client, seed, app):
+    """Een niet-betalende uitbater ziet zijn bezoekersstatistieken (waarde vóór
+    de betaalvraag)."""
+    from app.models import Operator, Event, OperatorClaim, Interaction
+    op = Operator(email="stats@t.be")
+    ev = Event(slug="st-1", title="Stat Café", source="user", is_permanent=True,
+               hidden=False, pending=False, gemeente="Gent", postcode="9000",
+               lat=51, lng=3.7, age_min=0, age_max=12, categories=[])
+    db.session.add_all([op, ev]); db.session.flush()
+    db.session.add(OperatorClaim(operator_id=op.id, event_id=ev.id,
+                                 status="approved"))
+    # enkele weergaven registreren
+    for _ in range(3):
+        db.session.add(Interaction(event_id=ev.id, type="view", meta={}))
+    db.session.commit()
+    with client.session_transaction() as s:
+        s["operator_id"] = op.id
+    h = client.get("/uitbater/", follow_redirects=True).get_data(as_text=True)
+    assert "weergaven" in h          # statistieken zichtbaar
+    assert "Word Partner" in h       # upsell zichtbaar voor niet-partner
+
+
+# ------------------------------- partner-waarde: feestjes B + reservatie ------
+
+def test_feestje_offerte_enkel_naar_partner(client, seed, app):
+    """Optie B: een offerteaanvraag vertrekt enkel naar een Partner-zaak,
+    niet naar een niet-partner (die belt het gezin zelf)."""
+    from datetime import datetime, timedelta
+    from app.models import Event, Family, Child, Feestje, FeestjeAanvraag
+    # partner-zaak + niet-partner-zaak, beide feest-aanbieder in dezelfde buurt
+    part = Event(slug="fp-1", title="Partner Feestzaal", source="user",
+                 is_permanent=True, hidden=False, pending=False, feest=True,
+                 feest_soorten=["zaal"], feest_contact="partner@zaal.be",
+                 partner_until=datetime.utcnow() + timedelta(days=100),
+                 gemeente="Gent", postcode="9000", lat=51.05, lng=3.72,
+                 age_min=0, age_max=12, categories=[])
+    niet = Event(slug="fp-2", title="Gewone Feestzaal", source="user",
+                 is_permanent=True, hidden=False, pending=False, feest=True,
+                 feest_soorten=["zaal"], feest_contact="gewoon@zaal.be",
+                 telefoon="09 123 45 67",
+                 gemeente="Gent", postcode="9000", lat=51.05, lng=3.72,
+                 age_min=0, age_max=12, categories=[])
+    fam = Family(email="feestgezin@t.be", postcode="9000", active=True)
+    db.session.add_all([part, niet, fam]); db.session.flush()
+    f = Feestje(family_id=fam.id, aanleiding="verjaardag", leeftijd=6,
+                datum=(datetime.utcnow() + timedelta(days=30)).date(),
+                aantal_kinderen=10, postcode="9000", straal_km=20)
+    db.session.add(f); db.session.commit()
+    with client.session_transaction() as s:
+        s["family_id"] = fam.id
+    # probeer offerte naar BEIDE te sturen
+    client.post(f"/mijn/feestje/{f.id}/partners",
+                data={"partner": [str(part.id), str(niet.id)]},
+                follow_redirects=True)
+    aanvragen = {a.event_id for a in FeestjeAanvraag.query.filter_by(feestje_id=f.id).all()}
+    assert part.id in aanvragen        # partner kreeg de aanvraag
+    assert niet.id not in aanvragen    # niet-partner NIET (gezin belt zelf)
+
+
+def test_reservatie_link_enkel_bij_partner(client, seed, app):
+    """De menu/reserveerknop verschijnt enkel op de fiche van een Partner."""
+    from datetime import datetime, timedelta
+    from app.models import Event
+    part = Event(slug="rl-1", title="Partner Resto", source="user",
+                 is_permanent=True, curated=True, hidden=False, pending=False,
+                 reservatie_url="https://resto.be/reserveer",
+                 partner_until=datetime.utcnow() + timedelta(days=100),
+                 gemeente="Gent", postcode="9000", lat=51, lng=3.7,
+                 age_min=0, age_max=12, categories=[])
+    niet = Event(slug="rl-2", title="Gewone Resto", source="user",
+                 is_permanent=True, curated=True, hidden=False, pending=False,
+                 reservatie_url="https://resto2.be/reserveer",
+                 gemeente="Gent", postcode="9000", lat=51, lng=3.7,
+                 age_min=0, age_max=12, categories=[])
+    db.session.add_all([part, niet]); db.session.commit()
+    h_part = client.get(f"/e/{part.slug}").get_data(as_text=True)
+    h_niet = client.get(f"/e/{niet.slug}").get_data(as_text=True)
+    assert "Menu &amp; reserveren" in h_part or "Menu & reserveren" in h_part
+    assert "reserveren" not in h_niet.lower() or "resto2.be/reserveer" not in h_niet
+
+
+# --------------------------------- groepfilter + partner-uitlichting lijst ----
+
+def test_groep_van_classificatie(app):
+    from app.types import groep_van
+    class E:
+        def __init__(self, subtype): self.subtype = subtype; self.categories = []
+    with app.app_context():
+        assert groep_van(E("horeca")) == "smullen"
+        assert groep_van(E("zomerbar")) == "smullen"
+        assert groep_van(E("museum")) == "beleven"
+        assert groep_van(E("uit_theater")) == "beleven"
+        assert groep_van(E("playground")) == "ravotten"
+        assert groep_van(E("park")) == "ravotten"
+        assert groep_van(E("nature_reserve")) == "ravotten"  # natuur = ravotten
+
+
+def test_groep_filter_smullen(client, seed, app):
+    from app.models import Event
+    db.session.add_all([
+        Event(slug="g-hor", title="Kindercafe", source="user", subtype="horeca",
+              is_permanent=True, curated=True, hidden=False, pending=False,
+              gemeente="Gent", postcode="9000", lat=51, lng=3.7,
+              age_min=0, age_max=12, categories=[]),
+        Event(slug="g-play", title="Speeltuintje", source="user", subtype="playground",
+              is_permanent=True, curated=True, hidden=False, pending=False,
+              gemeente="Gent", postcode="9000", lat=51, lng=3.7,
+              age_min=0, age_max=12, categories=[]),
+    ])
+    db.session.commit()
+    h = client.get("/ontdek?groep=smullen&wanneer=alle").get_data(as_text=True)
+    assert "Kindercafe" in h and "Speeltuintje" not in h
+    h2 = client.get("/ontdek?groep=ravotten&wanneer=alle").get_data(as_text=True)
+    assert "Speeltuintje" in h2 and "Kindercafe" not in h2
+
+
+def test_partner_uitgelicht_bovenaan_lijst(client, seed, app):
+    from datetime import datetime, timedelta
+    from app.models import Event
+    db.session.add_all([
+        Event(slug="pu-1", title="Partner Pretpark", source="user",
+              subtype="theme_park", is_permanent=True, curated=True, hidden=False,
+              pending=False, partner_until=datetime.utcnow() + timedelta(days=90),
+              gemeente="Gent", postcode="9000", lat=51, lng=3.7,
+              age_min=0, age_max=12, categories=[]),
+        Event(slug="pu-2", title="Gewoon Park", source="user", subtype="park",
+              is_permanent=True, curated=True, hidden=False, pending=False,
+              gemeente="Gent", postcode="9000", lat=51, lng=3.7,
+              age_min=0, age_max=12, categories=[]),
+    ])
+    db.session.commit()
+    h = client.get("/ontdek?wanneer=alle").get_data(as_text=True)
+    assert "partner-uitgelicht" in h            # uitgelicht blok aanwezig
+    assert "Betalende partner" in h             # nieuwe formulering
+    assert "Partner Pretpark" in h and "Gewoon Park" in h

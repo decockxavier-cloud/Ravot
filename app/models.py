@@ -154,6 +154,9 @@ class Event(db.Model):
     # Openingsuren (eenvoudig): per dag [open, sluit] in "HH:MM", of None =
     # gesloten. Sleutels: ma di wo do vr za zo. Leeg dict = onbekend.
     openingsuren = db.Column(db.JSON)
+    # Partner-extra: link naar menu of reservatiesysteem (enkel getoond bij
+    # actieve Partners — commerciële promotie, geen gezinsinfo).
+    reservatie_url = db.Column(db.String(500))
     # Ravot-label (kwaliteit, ONKOOPBAAR): niveau 0-3 (geen/brons/zilver/goud),
     # berekend uit criteria + reviews. Jaartal zodat het per jaar "vers" is.
     label_niveau = db.Column(db.Integer, default=0, index=True)
@@ -440,8 +443,8 @@ SETTING_DEFS = {
     # Ravotscore × Partner (commerciële plekken): score is en blijft van de
     # community; een actieve Partner mag ze tonen + laten meetellen in de
     # volgorde. Commercieel zonder Partner krijgt een lichte demping.
-    "partner_score_bonus": ("1.10", "Commercieel mét Partner: rankingfactor (bv. 1.10)", "text"),
-    "geen_partner_malus": ("0.90", "Commercieel zonder Partner: rankingfactor (bv. 0.90)", "text"),
+    "partner_score_bonus": ("1.00", "Commercieel mét Partner: rankingfactor (1.00 = geen invloed; partners staan uitgelicht bovenaan i.p.v. verstopt in de lijst)", "text"),
+    "geen_partner_malus": ("1.00", "Commercieel zonder Partner: rankingfactor (1.00 = geen invloed)", "text"),
     "foto_malus": ("0.92", "Fiches zonder foto: rankingfactor (bv. 0.92)", "text"),
     # Beloningen (Ravotpas): promomateriaal en partner-goodies
     "beloningen_aan": ("1", "Beloningenwinkel: punten inwisselen voor goodies", "bool"),
@@ -643,7 +646,7 @@ class OperatorClaim(db.Model):
 EDIT_VELDEN = ("description", "adres", "postcode", "gemeente", "source_url",
                "indoor", "is_free", "feest", "feest_soorten", "feest_contact",
                "terras", "overdekt_terras", "parking", "toegankelijk",
-               "allergievriendelijk", "babyvoeding", "huisdieren")
+               "allergievriendelijk", "babyvoeding", "huisdieren", "reservatie_url")
 
 
 class EditProposal(db.Model):

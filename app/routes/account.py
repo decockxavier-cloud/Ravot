@@ -907,7 +907,13 @@ def feestje_partners(fid):
         for eid in gekozen:
             if eid in al_gevraagd or eid not in toegestaan or verzonden >= maxi:
                 continue
-            ev = toegestaan[eid]["event"]
+            p = toegestaan[eid]
+            # Optie B: enkel bij Partners kan het gezin rechtstreeks via Ravot
+            # een offerte sturen. Niet-partners worden getoond (met telefoon),
+            # maar het gezin belt/mailt die zelf.
+            if not p["partner"]:
+                continue
+            ev = p["event"]
             try:
                 ok = fs.stuur_offerte(f, ev, fam)
             except Exception:

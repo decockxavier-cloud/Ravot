@@ -64,6 +64,7 @@ def zoek_partners(postcode, straal_km=None, soorten=None):
                 continue
         rows.append({"event": ev, "km": round(km, 1) if km is not None else None,
                      "soorten": ev_soorten, "contact": mail,
+                     "telefoon": ev.telefoon,
                      "partner": partner_actief(ev)})
     rows.sort(key=lambda r: (not r["partner"], r["km"] if r["km"] is not None else 999))
     return rows

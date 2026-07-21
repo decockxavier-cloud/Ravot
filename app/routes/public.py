@@ -653,7 +653,19 @@ def ontdek():
     for veld in ouder_filters:
         q = q.filter(getattr(Event, veld).is_(True))
     # Soort plek (speeltuin, museum, horeca, ...): filter op subtype.
-    from ..types import TYPES, in_seizoen
+    from ..types import TYPES, in_seizoen, GROEP_SMULLEN, GROEP_BELEVEN
+    # Hoofdgroep-filter (Beleven / Ravotten / Smullen) uit de filterbalk.
+    groep = request.args.get("groep") or ""
+    if groep == "smullen":
+        q = q.filter(Event.subtype.in_(list(GROEP_SMULLEN)))
+    elif groep == "beleven":
+        q = q.filter(Event.subtype.in_(list(GROEP_BELEVEN)))
+    elif groep == "ravotten":
+        # Ravotten = de rest (niet smullen, niet beleven).
+        niet = list(GROEP_SMULLEN | GROEP_BELEVEN)
+        q = q.filter(db.or_(Event.subtype.is_(None), Event.subtype.notin_(niet)))
+    else:
+        groep = ""
     soort = request.args.get("soort") or ""
     if soort in TYPES:
         q = q.filter(Event.subtype == soort)
@@ -722,7 +734,7 @@ def ontdek():
         paginering bij elke filterwissel. Met _endpoint wisselt dezelfde
         selectie naadloos tussen lijst (ontdek) en kaart (verkennen)."""
         params = {"wanneer": wanneer, "sort": sort, "filter": filter_type,
-                  "cat": cat, "q": zoek, "soort": soort, "lft": lft,
+                  "cat": cat, "q": zoek, "soort": soort, "groep": groep, "lft": lft,
                   "ouder": sorted(ouder_filters)}
         params.update(wijzig)
         params = {k: v for k, v in params.items() if v}
@@ -735,7 +747,7 @@ def ontdek():
     aantal_actief = ((1 if filter_type else 0) + (1 if cat else 0)
                      + (1 if soort else 0) + len(ouder_filters)
                      + (1 if lft else 0) + (1 if sort == "score" else 0))
-    return render_template("public/ontdek.html", lft=lft, leeftijden=LEEFTIJDEN, rows=pagina_rows, sort=sort, zoek=zoek, wanneer=wanneer, cat=cat, verberg_sp=verberg_sp, toon_alles=toon_alles, curatie_aan=_gb("enkel_gecureerd"), ouder_filters=ouder_filters, weer=weer, soort=soort, soorten=TYPES, flink=_ontdek_url, aantal_actief=aantal_actief,
+    return render_template("public/ontdek.html", lft=lft, leeftijden=LEEFTIJDEN, rows=pagina_rows, sort=sort, zoek=zoek, wanneer=wanneer, cat=cat, verberg_sp=verberg_sp, toon_alles=toon_alles, curatie_aan=_gb("enkel_gecureerd"), ouder_filters=ouder_filters, weer=weer, soort=soort, groep=groep, soorten=TYPES, flink=_ontdek_url, aantal_actief=aantal_actief,
                            wissel_lijst=_ontdek_url(), wissel_kaart=_ontdek_url("public.verkennen"),
                            wis_url=url_for("public.ontdek", wanneer=wanneer, q=zoek),
                            zoek_endpoint="public.ontdek", weergave="lijst", toon_sorteer=True, kaart=False,
@@ -893,6 +905,7 @@ def _kaart_marker(e):
         "leeftijd": f"{e.age_min}\u2013{e.age_max} jaar" if e.age_min is not None else None,
         "indoor": bool(e.indoor), "img": poi_image(e),
         "emoji": activiteit_type(e)["emoji"], "type": activiteit_type(e)["label"],
+        "partner": partner_actief(e),
         "score": None, "count": None,
     }
 

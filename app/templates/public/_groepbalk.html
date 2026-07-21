@@ -1,0 +1,16 @@
+{# Hoofdgroep-filterbalk: Beleven · Ravotten · Smullen.
+   Verwacht: `groep` (huidige selectie) en `flink` (URL-helper). #}
+<div class="groepbalk" role="group" aria-label="Kies wat je zoekt">
+  <a class="groep-knop {{ 'on' if not groep }}" href="{{ flink(groep='') }}">
+    <span class="groep-emoji">🔭</span> Alles
+  </a>
+  <a class="groep-knop groep-beleven {{ 'on' if groep == 'beleven' }}" href="{{ flink(groep='beleven') }}">
+    <span class="groep-emoji">🎭</span> Beleven
+  </a>
+  <a class="groep-knop groep-ravotten {{ 'on' if groep == 'ravotten' }}" href="{{ flink(groep='ravotten') }}">
+    <span class="groep-emoji">🛝</span> Ravotten
+  </a>
+  <a class="groep-knop groep-smullen {{ 'on' if groep == 'smullen' }}" href="{{ flink(groep='smullen') }}">
+    <span class="groep-emoji">🍦</span> Smullen
+  </a>
+</div>

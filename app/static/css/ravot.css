@@ -504,6 +504,16 @@ section h2 { font-size: 1.25rem; margin: 22px 0 8px; }
 .rv-pin-ico { position: absolute; left: 50%; top: 15px; transform: translate(-50%, -50%);
   font-size: 15px; line-height: 1; z-index: 1; }
 
+/* Partner-pin: groter, oranje met gele rand + sterretje — eerlijk uitgelicht */
+.rv-pin-partner { position: relative; width: 48px; height: 60px;
+  filter: drop-shadow(0 4px 6px rgba(238,128,53,.45)); }
+.rv-pin-partner::before { content: ""; position: absolute; left: 50%; top: 0;
+  width: 48px; height: 48px; background: #EE8035; border-radius: 50% 50% 50% 0;
+  transform: translateX(-50%) rotate(-45deg); border: 3px solid #F4B233; }
+.rv-pin-partner .rv-pin-ico { top: 21px; font-size: 20px; }
+.rv-pin-ster { position: absolute; left: 50%; top: -6px; transform: translateX(-50%);
+  font-size: 15px; z-index: 2; }
+
 /* Legende onder de kaart */
 .kaart-legende { display: flex; flex-wrap: wrap; gap: 10px 16px; margin: 10px 0 4px;
   font-size: .82rem; color: #5f6d63; }
@@ -895,3 +905,42 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
   border-radius: 10px; margin: 10px 0; }
 .prijs-groot { font-size: 2rem; font-weight: 800; color: #4CA362; }
 .prijs-per { font-size: 1rem; font-weight: 600; color: #77836f; }
+
+/* ---- Uitbater-dashboard: statistieken + partner-upsell ---- */
+.fiche-stats { display: flex; gap: 16px; flex-wrap: wrap; align-items: baseline;
+  padding: 10px 0 4px; font-size: .9rem; color: #4a5568; }
+.fiche-stats .stat-item strong { font-size: 1.15rem; color: #4CA362; }
+.fiche-stats .stat-periode { font-size: .78rem; color: #99a; margin-left: auto; }
+.partner-upsell { background: #f2f9f4; border-radius: 10px; padding: 12px 14px;
+  margin-top: 8px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.partner-upsell .upsell-tekst { margin: 0; flex: 1; min-width: 220px; font-size: .9rem; }
+
+/* ---- Partner-voordelen lijst ---- */
+.partner-voordelen { list-style: none; padding: 0; margin: 8px 0; }
+.partner-voordelen li { padding: 8px 0; border-bottom: 1px solid #f0f0ec;
+  line-height: 1.5; }
+.partner-voordelen li:last-child { border-bottom: none; }
+
+/* ---- Beleven · Ravotten · Smullen filterbalk ---- */
+.groepbalk { display: flex; gap: 8px; margin: 4px 0 16px; flex-wrap: wrap; }
+.groep-knop { display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 16px; border-radius: 999px; border: 2px solid #e3e6ea;
+  background: #fff; color: #4a5568; font-weight: 600; font-size: .95rem;
+  text-decoration: none; transition: all .12s; }
+.groep-knop:hover { border-color: #c8cdd3; }
+.groep-emoji { font-size: 1.1rem; }
+.groep-knop.on { color: #fff; border-color: transparent; }
+.groep-knop.on { background: #4CA362; }                 /* Alles = groen */
+.groep-beleven.on { background: #8B5C9E; }              /* Beleven = paars */
+.groep-ravotten.on { background: #4CA362; }             /* Ravotten = groen */
+.groep-smullen.on { background: #EE8035; }              /* Smullen = oranje */
+@media (max-width: 560px) {
+  .groep-knop { padding: 8px 13px; font-size: .88rem; flex: 1; justify-content: center; }
+}
+
+/* ---- Uitgelicht partnerblok bovenaan de lijst ---- */
+.partner-uitgelicht { background: #fff8f2; border: 2px solid #F4B233;
+  border-radius: 14px; padding: 12px 14px 14px; margin-bottom: 18px; }
+.partner-uitgelicht-kop { display: flex; align-items: center; gap: 10px;
+  margin-bottom: 10px; flex-wrap: wrap; }
+.partner-uitgelicht-sub { font-size: .82rem; color: #99857a; }

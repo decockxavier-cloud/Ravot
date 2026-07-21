@@ -371,6 +371,10 @@ def register_cli(app):
                 _extra_nieuw = True
         if _extra_nieuw:
             added.append("events.voorzieningen + openingsuren")
+        if ev_cols and "reservatie_url" not in ev_cols:
+            db.session.execute(text(
+                "ALTER TABLE events ADD COLUMN IF NOT EXISTS reservatie_url VARCHAR(500)"))
+            added.append("events.reservatie_url")
         # Claim-verificatie: domein-match-vlag.
         if insp.has_table("operator_claims"):
             oc_cols = {c["name"] for c in insp.get_columns("operator_claims")}

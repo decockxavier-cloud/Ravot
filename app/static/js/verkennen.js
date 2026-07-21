@@ -30,16 +30,25 @@
       else { kleur = "#EE8035"; }                                // overig
       var ico = m.emoji || "📍";
 
-      // Custom pin: een druppel met een wit rondje en het type-icoon erin
-      var html = '<div class="rv-pin" style="--pin:' + kleur + '">' +
-                 '<span class="rv-pin-ico">' + ico + '</span></div>';
-      var icon = L.divIcon({
-        className: "rv-pin-wrap",
-        html: html,
-        iconSize: [34, 44],
-        iconAnchor: [17, 44],
-        popupAnchor: [0, -40],
-      });
+      var icon;
+      if (m.partner) {
+        // Partner: grotere oranje pin met gele rand + ster-markering, duidelijk
+        // herkenbaar als betalende partner (eerlijke, zichtbare uitlichting).
+        var phtml = '<div class="rv-pin rv-pin-partner"><span class="rv-pin-ico">' +
+                    ico + '</span><span class="rv-pin-ster">⭐</span></div>';
+        icon = L.divIcon({
+          className: "rv-pin-wrap rv-pin-wrap-partner",
+          html: phtml,
+          iconSize: [48, 60], iconAnchor: [24, 60], popupAnchor: [0, -54],
+        });
+      } else {
+        var html = '<div class="rv-pin" style="--pin:' + kleur + '">' +
+                   '<span class="rv-pin-ico">' + ico + '</span></div>';
+        icon = L.divIcon({
+          className: "rv-pin-wrap", html: html,
+          iconSize: [34, 44], iconAnchor: [17, 44], popupAnchor: [0, -40],
+        });
+      }
 
       var fiche = '<div class="kaart-fiche">';
       if (m.img) {

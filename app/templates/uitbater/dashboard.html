@@ -23,15 +23,36 @@
         <a class="btn btn-klein" href="{{ url_for('uitbater.fiche', event_id=c.event_id) }}">Fiche bewerken</a>
         {% if is_partner(c.event) %}
           <span class="badge badge-partner">⭐ Partner tot {{ c.event.partner_until.strftime("%d/%m/%Y") }}</span>
-        {% else %}
-          <a class="btn btn-klein btn-zon" href="{{ url_for('uitbater.partner', event_id=c.event_id) }}">⭐ Word Partner</a>
         {% endif %}
       </div>
       {% endif %}
     </div>
-    {% if stats.get(c.event_id) %}
-    <p class="meta">📊 {{ stats[c.event_id].views }} weergaven ·
-      {{ stats[c.event_id].saves }}× bewaard · {{ stats[c.event_id].clicks }}× doorgeklikt</p>
+    {% if c.status == 'approved' and c.event %}
+      {% set s = stats.get(c.event_id) %}
+      {% if s %}
+      <div class="fiche-stats">
+        <span class="stat-item"><strong>{{ s.views }}</strong> weergaven</span>
+        <span class="stat-item"><strong>{{ s.saves }}</strong>× bewaard</span>
+        <span class="stat-item"><strong>{{ s.clicks }}</strong>× doorgeklikt</span>
+        <span class="stat-periode">laatste 30 dagen</span>
+      </div>
+      {% endif %}
+      {% if not is_partner(c.event) %}
+      <div class="partner-upsell">
+        <p class="upsell-tekst">
+          {% if s and s.views > 0 %}
+          Je fiche wordt al gevonden — <strong>{{ s.views }} weergaven</strong> de voorbije maand.
+          Als ⭐ Partner ontvang je feestjesaanvragen, krijg je een menu- en reserveerknop
+          op je fiche, en een uitgelichte plek op je gemeentepagina.
+          {% else %}
+          Je fiche staat live. Als ⭐ Partner ontvang je feestjesaanvragen rechtstreeks
+          in je mailbox, krijg je een menu- en reserveerknop op je fiche, en kan je
+          goodies aanbieden aan gezinnen.
+          {% endif %}
+        </p>
+        <a class="btn btn-klein btn-zon" href="{{ url_for('uitbater.partner', event_id=c.event_id) }}">⭐ Word Partner</a>
+      </div>
+      {% endif %}
     {% endif %}
     {% endfor %}
   {% else %}<p class="leeg">Nog geen claims. Begin met je zaak te claimen!</p>{% endif %}

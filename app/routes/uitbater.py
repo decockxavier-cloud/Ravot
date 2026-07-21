@@ -147,20 +147,25 @@ def logout():
 def dashboard(op):
     from .. import mollie
     from ..models import Interaction
+    from datetime import datetime, timedelta
     claims = OperatorClaim.query.filter_by(operator_id=op.id) \
         .order_by(OperatorClaim.created_at.desc()).all()
     voorstellen = EditProposal.query.filter_by(operator_id=op.id) \
         .order_by(EditProposal.created_at.desc()).limit(20).all()
-    # Statistieken per Partner-zaak (weergaven / bewaard / doorgeklikt).
+    # Bezoekersstatistieken per goedgekeurde zaak (laatste 30 dagen) — voor
+    # ÁLLE uitbaters, ook wie (nog) geen Partner is. Zo ziet een uitbater dat
+    # zijn fiche al bezoekers krijgt: het bewijs van waarde vóór de betaalvraag.
+    sinds = datetime.utcnow() - timedelta(days=30)
     stats = {}
     for c in claims:
-        if c.status == "approved" and c.event and mollie.is_partner(c.event):
+        if c.status == "approved" and c.event:
             rijen = db.session.query(Interaction.type, db.func.count(Interaction.id)) \
-                .filter(Interaction.event_id == c.event_id) \
+                .filter(Interaction.event_id == c.event_id,
+                        Interaction.created_at >= sinds) \
                 .group_by(Interaction.type).all()
             per = dict(rijen)
             stats[c.event_id] = {"views": per.get("view", 0),
-                                 "saves": per.get("save", 0),
+                                 "saves": per.get("save", 0) + per.get("like", 0),
                                  "clicks": per.get("click", 0)}
     return render_template("uitbater/dashboard.html", op=op, claims=claims,
                            voorstellen=voorstellen, stats=stats,
@@ -271,11 +276,13 @@ def fiche(op, event_id):
         abort(403)   # enkel je eigen, goedgekeurde zaken
     if request.method == "POST":
         wijzigingen = {}
-        for veld in ("description", "adres", "gemeente", "source_url"):
+        for veld in ("description", "adres", "gemeente", "source_url",
+                     "reservatie_url"):
             waarde = (request.form.get(veld) or "").strip()
             if waarde and waarde != (getattr(ev, veld) or ""):
                 maxlen = {"description": 2000, "adres": 255,
-                          "gemeente": 80, "source_url": 500}[veld]
+                          "gemeente": 80, "source_url": 500,
+                          "reservatie_url": 500}[veld]
                 wijzigingen[veld] = waarde[:maxlen]
         postcode = re.sub(r"\D", "", request.form.get("postcode") or "")[:4]
         if postcode and postcode != (ev.postcode or ""):
@@ -316,7 +323,9 @@ def fiche(op, event_id):
         db.session.commit()
         flash("Wijziging ingediend! Ze verschijnt op de fiche zodra ze is nagekeken.", "ok")
         return redirect(url_for("uitbater.dashboard"))
+    from .. import mollie
     return render_template("uitbater/fiche.html", ev=ev, title=f"Fiche: {ev.title}",
+                           is_partner=mollie.is_partner(ev),
                            family=None, active=None)
 
 

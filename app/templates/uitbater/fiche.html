@@ -23,6 +23,16 @@
   <label>Website
     <input type="url" name="source_url" maxlength="500" value="{{ ev.source_url or '' }}">
   </label>
+  <label>Menu- of reservatielink
+    <input type="url" name="reservatie_url" maxlength="500" value="{{ ev.reservatie_url or '' }}"
+           placeholder="https://...">
+    {% if is_partner %}
+    <span class="upload-hint">⭐ Als Partner verschijnt deze knop "Menu &amp; reserveren" op je fiche.</span>
+    {% else %}
+    <span class="upload-hint">💡 Dit is een Partner-voordeel: de knop "Menu &amp; reserveren"
+      verschijnt op je fiche zodra je Partner wordt. Je mag de link nu al invullen.</span>
+    {% endif %}
+  </label>
   <div class="checkrij">
     <label class="check"><input type="checkbox" name="indoor" {{ 'checked' if ev.indoor }}> 🏠 Binnen</label>
     <label class="check"><input type="checkbox" name="is_free" {{ 'checked' if ev.is_free }}> 🆓 Gratis toegang</label>
