@@ -1289,8 +1289,8 @@ def partner_handmatig():
     except Exception:
         db.session.rollback()
         current_app.logger.exception("handmatig partner maken faalde")
-        flash("Partner maken mislukte. Draai eerst `flask migrate-db` op de "
-              "server (de partner-registratie is aangepast).", "error")
+        flash("Partner maken mislukte door een technische fout. Controleer de "
+              "serverlogs (docker compose logs web) voor details.", "error")
         return redirect(request.referrer or url_for("admin.partners"))
     audit(f"handmatig partner gemaakt: {ev.title} (+{maanden} mnd, gratis)")
     flash(f"✅ {ev.title} is nu Partner tot {ev.partner_until.strftime('%d/%m/%Y')} "

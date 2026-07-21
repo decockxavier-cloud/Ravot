@@ -395,6 +395,13 @@ def register_cli(app):
                 added.append("partner_payments.operator_id nullable")
             except Exception:
                 db.session.rollback()   # SQLite/al gebeurd: negeren
+            # plan-kolom verbreden: 'handmatig' (9) past niet in de oude VARCHAR(8).
+            try:
+                db.session.execute(text(
+                    "ALTER TABLE partner_payments ALTER COLUMN plan TYPE VARCHAR(16)"))
+                added.append("partner_payments.plan -> VARCHAR(16)")
+            except Exception:
+                db.session.rollback()   # SQLite/al gebeurd: negeren
         # Claim-verificatie: domein-match-vlag.
         if insp.has_table("operator_claims"):
             oc_cols = {c["name"] for c in insp.get_columns("operator_claims")}

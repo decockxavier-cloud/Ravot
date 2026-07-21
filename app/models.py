@@ -675,7 +675,7 @@ class PartnerPayment(db.Model):
     operator_id = db.Column(db.Integer, db.ForeignKey("operators.id"), nullable=True, index=True)
     event_id = db.Column(db.Integer, db.ForeignKey("events.id"), nullable=False, index=True)
     mollie_id = db.Column(db.String(64), unique=True, index=True)   # tr_...
-    plan = db.Column(db.String(8), nullable=False)                  # maand | jaar
+    plan = db.Column(db.String(16), nullable=False)                 # jaar | founding | handmatig
     amount = db.Column(db.String(12), nullable=False)               # "19.00"
     status = db.Column(db.String(16), default="open", nullable=False, index=True)
     created_at = db.Column(db.DateTime, default=utcnow, index=True)
