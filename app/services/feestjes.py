@@ -37,9 +37,13 @@ def partner_actief(event, now=None):
     return bool(event.partner_until and event.partner_until > now)
 
 
-def zoek_partners(postcode, straal_km=None, soorten=None):
+def zoek_partners(postcode, straal_km=None, soorten=None, aantal=None):
     """Feestpartners binnen de straal, gesorteerd: actieve Partners eerst,
-    dan op afstand. Retourneert [{event, km, soorten, contact}]."""
+    dan op afstand. Retourneert [{event, km, soorten, contact}].
+
+    `aantal` = gewenste groepsgrootte: zalen die expliciet een min/max hebben
+    opgegeven waar dit buiten valt, worden weggelaten (past-niet-filter). Zalen
+    zonder opgegeven grenzen blijven altijd staan."""
     straal = straal_km or get_int("feest_straal_km", 20) or 20
     centrum = postcode_coord(postcode) if postcode else None
     q = Event.query.filter(Event.feest.is_(True), Event.hidden.is_(False),
@@ -51,6 +55,13 @@ def zoek_partners(postcode, straal_km=None, soorten=None):
         # Model 2 (uit, standaard): iedereen mag, partners sorteren bovenaan.
         if enkel_partners and not partner_actief(ev):
             continue
+        # Groepsgrootte: enkel wegfilteren als de zaal een grens gaf én het
+        # aantal er buiten valt. Geen grens = altijd tonen (tolerant).
+        if aantal:
+            if ev.feest_min_pers and aantal < ev.feest_min_pers:
+                continue
+            if ev.feest_max_pers and aantal > ev.feest_max_pers:
+                continue
         mail = contact_email(ev)
         if not mail:
             continue          # zonder contactadres kan er geen offerte vertrekken
@@ -65,6 +76,7 @@ def zoek_partners(postcode, straal_km=None, soorten=None):
         rows.append({"event": ev, "km": round(km, 1) if km is not None else None,
                      "soorten": ev_soorten, "contact": mail,
                      "telefoon": ev.telefoon,
+                     "min_pers": ev.feest_min_pers, "max_pers": ev.feest_max_pers,
                      "partner": partner_actief(ev)})
     rows.sort(key=lambda r: (not r["partner"], r["km"] if r["km"] is not None else 999))
     return rows

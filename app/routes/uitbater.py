@@ -315,6 +315,11 @@ def fiche(op, event_id):
         feest_mail = (request.form.get("feest_contact") or "").strip()[:255]
         if feest_mail and feest_mail != (ev.feest_contact or ""):
             wijzigingen["feest_contact"] = feest_mail
+        for veld in ("feest_min_pers", "feest_max_pers"):
+            ruw = (request.form.get(veld) or "").strip()
+            nieuw = int(ruw) if ruw.isdigit() and 1 <= int(ruw) <= 200 else None
+            if nieuw != getattr(ev, veld):
+                wijzigingen[veld] = nieuw
         if not wijzigingen:
             flash("Geen wijzigingen gevonden.", "error")
             return redirect(url_for("uitbater.fiche", event_id=ev.id))

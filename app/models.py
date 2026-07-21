@@ -187,6 +187,8 @@ class Event(db.Model):
     # zinvol met een actieve partner_until.
     in_feestlijst = db.Column(db.Boolean, default=False)
     feest_contact = db.Column(db.String(255))          # e-mail voor offertes
+    feest_min_pers = db.Column(db.Integer)             # min. groepsgrootte (optioneel)
+    feest_max_pers = db.Column(db.Integer)             # max. groepsgrootte (optioneel)
     organizer_id = db.Column(db.Integer, db.ForeignKey("organizers.id"))
     venue_id = db.Column(db.Integer, db.ForeignKey("venues.id"))
     series_id = db.Column(db.Integer, db.ForeignKey("edition_series.id"), index=True)
@@ -590,6 +592,7 @@ class Photo(db.Model):
     # uitbater-uploads en krijgen een eigen blok op de fiche.
     soort = db.Column(db.String(12), default="gezin", nullable=False)
     status = db.Column(db.String(12), default="pending", nullable=False, index=True)  # pending|approved|rejected
+    weiger_reden = db.Column(db.String(60))   # korte, neutrale reden bij afkeuring
     created_at = db.Column(db.DateTime, default=utcnow, index=True)
     event = db.relationship("Event")
 
@@ -645,6 +648,7 @@ class OperatorClaim(db.Model):
 # Velden die een uitbater mag voorstellen te wijzigen (whitelist).
 EDIT_VELDEN = ("description", "adres", "postcode", "gemeente", "source_url",
                "indoor", "is_free", "feest", "feest_soorten", "feest_contact",
+               "feest_min_pers", "feest_max_pers",
                "terras", "overdekt_terras", "parking", "toegankelijk",
                "allergievriendelijk", "babyvoeding", "huisdieren", "reservatie_url")
 
@@ -668,7 +672,7 @@ class PartnerPayment(db.Model):
     basis van de webhook-body) — dat is Mollies beveiligingsmodel."""
     __tablename__ = "partner_payments"
     id = db.Column(db.Integer, primary_key=True)
-    operator_id = db.Column(db.Integer, db.ForeignKey("operators.id"), nullable=False, index=True)
+    operator_id = db.Column(db.Integer, db.ForeignKey("operators.id"), nullable=True, index=True)
     event_id = db.Column(db.Integer, db.ForeignKey("events.id"), nullable=False, index=True)
     mollie_id = db.Column(db.String(64), unique=True, index=True)   # tr_...
     plan = db.Column(db.String(8), nullable=False)                  # maand | jaar

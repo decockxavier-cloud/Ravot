@@ -69,6 +69,14 @@
     </div>
     <label>E-mail voor offertes <small class="hint">(leeg = je logingegevens)</small>
       <input type="email" name="feest_contact" value="{{ ev.feest_contact or '' }}" placeholder="feest@jouwzaak.be"></label>
+    <div class="veld-rij">
+      <label>Min. aantal kinderen <small class="hint">(leeg = geen minimum)</small>
+        <input type="number" name="feest_min_pers" min="1" max="200" value="{{ ev.feest_min_pers or '' }}" placeholder="bv. 6"></label>
+      <label>Max. aantal kinderen <small class="hint">(leeg = geen maximum)</small>
+        <input type="number" name="feest_max_pers" min="1" max="200" value="{{ ev.feest_max_pers or '' }}" placeholder="bv. 25"></label>
+    </div>
+    <p class="hint">Gezinnen zien enkel jouw zaak als de groepsgrootte past — zo
+    krijg je geen aanvragen voor feestjes die te groot of te klein zijn.</p>
     {% if ev.partner_until %}
     <label class="check" style="margin-top:6px">
       <input type="checkbox" name="in_feestlijst" {{ 'checked' if ev.in_feestlijst }}>

@@ -2727,3 +2727,64 @@ def test_groep_filter_op_kaart(client, seed, app):
     # filter smullen: enkel horeca in de markers-data
     hs = client.get("/verkennen?groep=smullen&wanneer=alle").get_data(as_text=True)
     assert "Kaartcafe" in hs and "Kaartspeeltuin" not in hs
+
+
+# --------------------------- foto-policy + capaciteit + handmatig partner -----
+
+def test_feest_capaciteit_filtert(client, seed, app):
+    """Een zaal met max. 12 kinderen valt weg voor een feestje van 20."""
+    from app.services import feestjes as fs
+    from app.models import Event
+    klein = Event(slug="cap-1", title="Klein Zaaltje", source="user",
+                  is_permanent=True, hidden=False, pending=False, feest=True,
+                  feest_soorten=["zaal"], feest_contact="klein@z.be",
+                  feest_max_pers=12, gemeente="Gent", postcode="9000",
+                  lat=51, lng=3.7, age_min=0, age_max=12, categories=[])
+    groot = Event(slug="cap-2", title="Grote Zaal", source="user",
+                  is_permanent=True, hidden=False, pending=False, feest=True,
+                  feest_soorten=["zaal"], feest_contact="groot@z.be",
+                  feest_min_pers=10, feest_max_pers=50, gemeente="Gent",
+                  postcode="9000", lat=51, lng=3.7, age_min=0, age_max=12,
+                  categories=[])
+    db.session.add_all([klein, groot]); db.session.commit()
+    with app.app_context():
+        namen = {r["event"].title for r in fs.zoek_partners("9000", 30, None, aantal=20)}
+    assert "Grote Zaal" in namen and "Klein Zaaltje" not in namen
+
+
+def test_handmatig_partner_maken(client, seed, app):
+    """Admin kan een zaak gratis Partner maken; er komt een 0-euro-registratie."""
+    from app.models import Event, PartnerPayment
+    from app.routes.public import partner_actief
+    ev = Event(slug="hp-1", title="Gratis Partner Cafe", source="user",
+               is_permanent=True, curated=True, hidden=False, pending=False,
+               gemeente="Gent", postcode="9000", lat=51, lng=3.7,
+               age_min=0, age_max=12, categories=[])
+    db.session.add(ev); db.session.commit()
+    _admin_login(client)
+    r = client.post("/beheer/partners/handmatig",
+                    data={"event": ev.slug, "maanden": "12"},
+                    follow_redirects=True)
+    assert r.status_code == 200
+    db.session.refresh(ev)
+    assert partner_actief(ev)                       # nu partner
+    bet = PartnerPayment.query.filter_by(event_id=ev.id, plan="handmatig").first()
+    assert bet and bet.amount == "0.00" and bet.status == "paid"
+
+
+def test_foto_weiger_reden(client, seed, app):
+    """Een afgewezen foto bewaart de opgegeven weiger-reden."""
+    from app.models import Event, Photo
+    ev = Event(slug="fw-1", title="Foto Cafe", source="user", is_permanent=True,
+               curated=True, hidden=False, pending=False, gemeente="Gent",
+               postcode="9000", lat=51, lng=3.7, age_min=0, age_max=12, categories=[])
+    db.session.add(ev); db.session.flush()
+    p = Photo(event_id=ev.id, filename="test.jpg", soort="gezin", status="pending")
+    db.session.add(p); db.session.commit()
+    pid = p.id
+    _admin_login(client)
+    client.post(f"/beheer/foto/{pid}/afwijzen",
+                data={"weiger_reden": "Niet gezinsgericht"}, follow_redirects=True)
+    db.session.refresh(p)
+    assert p.status == "rejected"
+    assert p.weiger_reden == "Niet gezinsgericht"

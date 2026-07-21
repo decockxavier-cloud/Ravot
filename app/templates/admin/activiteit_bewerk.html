@@ -90,9 +90,11 @@
   </div>
 
   <h2 class="sectie-kop">Voorzieningen</h2>
-  <div class="veldrij">
+  <p class="hint">Kies per voorziening: onbekend, ja of nee. Wat je op "ja" zet,
+  verschijnt als kindvriendelijk kenmerk op de fiche.</p>
+  <div class="voorz-grid">
     {% macro tri(naam, label) -%}
-    <label>{{ label }}
+    <label class="voorz-item">{{ label }}
       <select name="{{ naam }}">
         <option value="" {{ 'selected' if ev[naam] is none }}>onbekend</option>
         <option value="1" {{ 'selected' if ev[naam] == true }}>ja</option>

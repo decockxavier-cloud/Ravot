@@ -120,6 +120,14 @@
         </form>
         <form method="post" action="{{ url_for('admin.nazicht_foto', pid=f.id, actie='afwijzen') }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <select name="weiger_reden" class="mini-select" aria-label="Reden van afwijzing">
+            <option value="">reden (optioneel)</option>
+            <option value="Niet gezinsgericht">niet gezinsgericht</option>
+            <option value="Te wazig of donker">te wazig of donker</option>
+            <option value="Ongepaste inhoud">ongepaste inhoud</option>
+            <option value="Herkenbare personen">herkenbare personen</option>
+            <option value="Mogelijk auteursrecht">mogelijk auteursrecht</option>
+          </select>
           <button class="btn btn-klein btn-stil" type="submit">✕ Afwijzen</button>
         </form>
       </div>

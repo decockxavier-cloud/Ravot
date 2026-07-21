@@ -944,3 +944,10 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 .partner-uitgelicht-kop { display: flex; align-items: center; gap: 10px;
   margin-bottom: 10px; flex-wrap: wrap; }
 .partner-uitgelicht-sub { font-size: .82rem; color: #99857a; }
+
+/* ---- Voorzieningen-grid (admin bewerk): netjes leesbaar i.p.v. geknepen ---- */
+.voorz-grid { display: grid; gap: 12px 16px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); margin: 8px 0; }
+.voorz-item { display: flex; flex-direction: column; gap: 4px;
+  font-size: .9rem; font-weight: 500; }
+.voorz-item select { width: 100%; }

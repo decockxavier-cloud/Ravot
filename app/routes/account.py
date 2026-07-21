@@ -897,7 +897,8 @@ def feestje_partners(fid):
     fam = me()
     f = _mijn_feestje(fid, fam)
     gewenst = request.args.getlist("soort") or request.form.getlist("soort") or None
-    partners = fs.zoek_partners(f.postcode, f.straal_km, gewenst)
+    partners = fs.zoek_partners(f.postcode, f.straal_km, gewenst,
+                                aantal=f.aantal_kinderen)
     al_gevraagd = {a.event_id for a in f.aanvragen}
     if request.method == "POST":
         maxi = get_int("feest_max_aanvragen", 6) or 6

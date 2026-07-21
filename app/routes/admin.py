@@ -1043,7 +1043,9 @@ def nazicht_foto(pid, actie):
     elif actie == "afwijzen":
         verwijder(p.filename)          # bestand van schijf verwijderen
         p.status = "rejected"
-        audit(f"foto afgewezen: #{p.id}")
+        p.weiger_reden = (request.form.get("weiger_reden") or "").strip()[:60] or None
+        audit(f"foto afgewezen: #{p.id}"
+              + (f" ({p.weiger_reden})" if p.weiger_reden else ""))
         flash("Foto afgewezen en verwijderd.", "ok")
     db.session.commit()
     return redirect(url_for("admin.nazicht"))
@@ -1244,6 +1246,41 @@ def partner_factuur_alsnog(pid):
         current_app.logger.exception("odoo-nafacturatie faalde")
         flash("Factuur aanmaken mislukte — check de Odoo-koppeling op de "
               "Status-pagina.", "error")
+    return redirect(url_for("admin.partners"))
+
+
+@bp.route("/partners/handmatig", methods=["POST"])
+@admin_required
+def partner_handmatig():
+    """Maak een zaak handmatig (gratis) Partner voor een aantal maanden — bv.
+    voor een pilootpartner, een bevriende zaak of een persoonlijk overtuigde
+    uitbater. Legt een PartnerPayment met plan='handmatig', bedrag 0 vast, zodat
+    het lidmaatschap traceerbaar is en netjes verloopt."""
+    from datetime import datetime, timedelta
+    from ..models import PartnerPayment
+    slug_of_id = (request.form.get("event") or "").strip()
+    try:
+        maanden = max(1, min(60, int(request.form.get("maanden") or 12)))
+    except ValueError:
+        maanden = 12
+    ev = None
+    if slug_of_id.isdigit():
+        ev = db.session.get(Event, int(slug_of_id))
+    if not ev:
+        ev = Event.query.filter_by(slug=slug_of_id).first()
+    if not ev:
+        flash("Geen zaak gevonden met dat id of die slug.", "error")
+        return redirect(url_for("admin.partners"))
+    basis = ev.partner_until if (ev.partner_until and ev.partner_until > datetime.utcnow()) \
+        else datetime.utcnow()
+    ev.partner_until = basis + timedelta(days=round(maanden * 30.4))
+    db.session.add(PartnerPayment(operator_id=None, event_id=ev.id,
+                                  plan="handmatig", amount="0.00", status="paid",
+                                  paid_at=datetime.utcnow()))
+    db.session.commit()
+    audit(f"handmatig partner gemaakt: {ev.title} (+{maanden} mnd, gratis)")
+    flash(f"✅ {ev.title} is nu Partner tot {ev.partner_until.strftime('%d/%m/%Y')} "
+          "(handmatig, gratis).", "ok")
     return redirect(url_for("admin.partners"))
 
 

@@ -12,6 +12,21 @@
 zien de mail-terugval. Zie <a href="{{ url_for('admin.status') }}">Status</a>.</p>
 {% endif %}
 
+<div class="card" style="margin-bottom:20px">
+  <h2 style="margin-top:0">Handmatig Partner maken (gratis)</h2>
+  <p class="hint">Voor een pilootpartner, een bevriende zaak of een uitbater die
+  je persoonlijk overtuigt. De zaak wordt Partner zonder betaling. Het label
+  (brons/zilver/goud) blijft onafhankelijk — dit geeft enkel de Partner-status.</p>
+  <form method="post" action="{{ url_for('admin.partner_handmatig') }}" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Zaak (id of slug)
+      <input type="text" name="event" required placeholder="bv. 1234 of cafe-de-vos"></label>
+    <label>Duur (maanden)
+      <input type="number" name="maanden" min="1" max="60" value="12" style="width:90px"></label>
+    <button class="btn btn-zon" type="submit">Partner maken</button>
+  </form>
+</div>
+
 <h2>Actieve lidmaatschappen</h2>
 <table class="tabel" style="margin-bottom:20px">
   <tr><th>Zaak</th><th>Uitbater</th><th>Plan</th><th>Partner tot</th><th>Laatste factuur</th></tr>

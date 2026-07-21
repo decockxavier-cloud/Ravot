@@ -228,7 +228,7 @@
   <form method="post" action="{{ url_for('account.upload_foto', event_id=ev.id) }}"
         enctype="multipart/form-data" class="meld-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <p class="upload-hint">📷 Enkel je eigen foto's, zonder herkenbare andere personen of kinderen buiten je gezin. Geen affiches of beelden van internet.</p>
+    <p class="upload-hint">📷 Enkel je eigen foto's, zonder herkenbare andere personen of kinderen buiten je gezin. Geen affiches of beelden van internet. Geen wansmakelijke, kwetsende of afbrekende beelden — die worden geweigerd.</p>
     <input type="file" name="foto" accept="image/jpeg,image/png,image/webp" required>
     <label class="check"><input type="checkbox" name="akkoord" required>
       Ik heb deze foto zelf gemaakt en geef Ravot toestemming om ze te tonen.</label>

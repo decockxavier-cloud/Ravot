@@ -375,6 +375,26 @@ def register_cli(app):
             db.session.execute(text(
                 "ALTER TABLE events ADD COLUMN IF NOT EXISTS reservatie_url VARCHAR(500)"))
             added.append("events.reservatie_url")
+        if ev_cols and "feest_min_pers" not in ev_cols:
+            db.session.execute(text(
+                "ALTER TABLE events ADD COLUMN IF NOT EXISTS feest_min_pers INTEGER"))
+            db.session.execute(text(
+                "ALTER TABLE events ADD COLUMN IF NOT EXISTS feest_max_pers INTEGER"))
+            added.append("events.feest_min_pers + feest_max_pers")
+        _photo_cols = {c["name"] for c in insp.get_columns("photos")} \
+            if insp.has_table("photos") else set()
+        if _photo_cols and "weiger_reden" not in _photo_cols:
+            db.session.execute(text(
+                "ALTER TABLE photos ADD COLUMN IF NOT EXISTS weiger_reden VARCHAR(60)"))
+            added.append("photos.weiger_reden")
+        # Handmatige (gratis) partner heeft geen betalende operator: constraint lossen.
+        if insp.has_table("partner_payments"):
+            try:
+                db.session.execute(text(
+                    "ALTER TABLE partner_payments ALTER COLUMN operator_id DROP NOT NULL"))
+                added.append("partner_payments.operator_id nullable")
+            except Exception:
+                db.session.rollback()   # SQLite/al gebeurd: negeren
         # Claim-verificatie: domein-match-vlag.
         if insp.has_table("operator_claims"):
             oc_cols = {c["name"] for c in insp.get_columns("operator_claims")}
