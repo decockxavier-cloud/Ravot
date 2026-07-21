@@ -6,6 +6,20 @@
 {% if kampen_aan %} <a class="btn btn-stil" href="{{ url_for('uitbater.kamp_nieuw') }}">⛺ Kamp toevoegen</a>{% endif %}
    <a class="btn btn-stil" href="{{ url_for('uitbater.logout') }}">Afmelden</a></p>
 
+<div class="card" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between">
+  <div>
+    <strong>🧾 Facturatiegegevens</strong>
+    {% if op.bedrijfsnaam and op.btw_nummer %}
+    <p class="meta" style="margin:2px 0 0">{{ op.bedrijfsnaam }} · {{ op.btw_nummer }} — geldt voor al je zaken</p>
+    {% else %}
+    <p class="meta" style="margin:2px 0 0">Nog niet ingevuld — nodig om Partner te worden.</p>
+    {% endif %}
+  </div>
+  <a class="btn btn-klein {{ 'btn-stil' if op.bedrijfsnaam and op.btw_nummer else 'btn-zon' }}"
+     href="{{ url_for('uitbater.facturatie') }}">
+    {{ 'Bewerken' if op.bedrijfsnaam and op.btw_nummer else 'Invullen' }}</a>
+</div>
+
 <div class="card">
   <h2 style="margin-top:0">Mijn claims</h2>
   {% if claims %}

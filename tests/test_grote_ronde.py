@@ -2905,3 +2905,49 @@ def test_partnerschap_intrekken(client, seed, app):
     db.session.refresh(ev)
     assert not partner_actief(ev)
     assert ev.partner_until is None
+
+
+def test_facturatie_contactvelden(client, seed, app):
+    """Uitbater kan contactpersoon, factuur-e-mail en telefoon opslaan; die
+    gelden voor al zijn zaken (op het account, niet per zaak)."""
+    from app.models import Operator
+    op = Operator(email="multi@zaak.be")
+    db.session.add(op); db.session.commit()
+    with client.session_transaction() as s:
+        s["operator_id"] = op.id
+    client.post("/uitbater/facturatie", data={
+        "bedrijfsnaam": "Multi BV", "btw_nummer": "BE0123456789",
+        "straat": "Kerkstraat 1", "postcode": "9000", "gemeente": "Gent",
+        "contactpersoon": "Jan Jansen", "factuur_email": "facturen@multi.be",
+        "telefoon": "09 123 45 67",
+    }, follow_redirects=True)
+    db.session.refresh(op)
+    assert op.contactpersoon == "Jan Jansen"
+    assert op.factuur_email == "facturen@multi.be"
+    assert op.telefoon == "09 123 45 67"
+    assert op.btw_nummer == "BE0123456789"
+
+
+def test_een_operator_meerdere_zaken(client, seed, app):
+    """Eén uitbater-account kan meerdere zaken claimen en beheren."""
+    from app.models import Operator, Event, OperatorClaim
+    op = Operator(email="baas@twee.be", bedrijfsnaam="Twee BV",
+                  btw_nummer="BE0987654321")
+    z1 = Event(slug="tw-1", title="Zaak Een", source="user", is_permanent=True,
+               curated=True, hidden=False, pending=False, gemeente="Gent",
+               postcode="9000", lat=51, lng=3.7, age_min=0, age_max=12, categories=[])
+    z2 = Event(slug="tw-2", title="Zaak Twee", source="user", is_permanent=True,
+               curated=True, hidden=False, pending=False, gemeente="Gent",
+               postcode="9000", lat=51, lng=3.7, age_min=0, age_max=12, categories=[])
+    db.session.add_all([op, z1, z2]); db.session.flush()
+    db.session.add_all([
+        OperatorClaim(operator_id=op.id, event_id=z1.id, status="approved"),
+        OperatorClaim(operator_id=op.id, event_id=z2.id, status="approved"),
+    ])
+    db.session.commit()
+    with client.session_transaction() as s:
+        s["operator_id"] = op.id
+    h = client.get("/uitbater/", follow_redirects=True).get_data(as_text=True)
+    # beide zaken zichtbaar in het portaal + het facturatieblok toont het ene btw
+    assert "Zaak Een" in h and "Zaak Twee" in h
+    assert "BE0987654321" in h

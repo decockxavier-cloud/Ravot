@@ -2,9 +2,13 @@
 {% block content %}
 <h1>Facturatiegegevens 🧾</h1>
 <p class="hint">Verplicht om Partner te worden: zo ontvang je een correcte
-  elektronische factuur via Peppol (de Belgische B2B-standaard).</p>
+  elektronische factuur via Peppol (de Belgische B2B-standaard). Deze gegevens
+  gelden voor <strong>al je zaken</strong> — je vult ze één keer in en op één
+  btw-nummer wordt gefactureerd.</p>
 <form method="post" class="kaart-form">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <h2 class="sectie-kop">Onderneming (maatschappelijke zetel)</h2>
   <label>Bedrijfsnaam *
     <input type="text" name="bedrijfsnaam" required maxlength="160"
            value="{{ op.bedrijfsnaam or '' }}">
@@ -25,6 +29,20 @@
       <input type="text" name="gemeente" maxlength="80" value="{{ op.gemeente or '' }}">
     </label>
   </div>
+
+  <h2 class="sectie-kop">Contact</h2>
+  <label>Contactpersoon
+    <input type="text" name="contactpersoon" maxlength="120"
+           value="{{ op.contactpersoon or '' }}" placeholder="Voor- en achternaam">
+  </label>
+  <label>Factuur-e-mail <small class="hint">(leeg = je login-e-mail)</small>
+    <input type="email" name="factuur_email" maxlength="255"
+           value="{{ op.factuur_email or '' }}" placeholder="facturen@jouwzaak.be">
+  </label>
+  <label>Telefoon <small class="hint">(zodat Ravot je kan bereiken)</small>
+    <input type="tel" name="telefoon" maxlength="40" value="{{ op.telefoon or '' }}">
+  </label>
+
   <div class="acties"><button class="btn btn-zon" type="submit">Bewaren</button></div>
 </form>
 {% endblock %}

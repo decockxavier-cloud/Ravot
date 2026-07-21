@@ -69,7 +69,8 @@ def _vind_of_maak_klant(uid, operator, http_post=None):
     return _execute(uid, "res.partner", "create", [{
         "name": operator.bedrijfsnaam or operator.email,
         "vat": vat,
-        "email": operator.email,
+        "email": (operator.factuur_email or operator.email),
+        "phone": operator.telefoon or "",
         "street": operator.straat or "",
         "zip": operator.postcode or "",
         "city": operator.gemeente or "",

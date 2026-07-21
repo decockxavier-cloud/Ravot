@@ -381,6 +381,15 @@ def register_cli(app):
             db.session.execute(text(
                 "ALTER TABLE events ADD COLUMN IF NOT EXISTS feest_max_pers INTEGER"))
             added.append("events.feest_min_pers + feest_max_pers")
+        _op_cols = {c["name"] for c in insp.get_columns("operators")} \
+            if insp.has_table("operators") else set()
+        for _kol, _def in [("contactpersoon", "VARCHAR(120)"),
+                           ("factuur_email", "VARCHAR(255)"),
+                           ("telefoon", "VARCHAR(40)")]:
+            if _op_cols and _kol not in _op_cols:
+                db.session.execute(text(
+                    f"ALTER TABLE operators ADD COLUMN IF NOT EXISTS {_kol} {_def}"))
+                added.append(f"operators.{_kol}")
         _photo_cols = {c["name"] for c in insp.get_columns("photos")} \
             if insp.has_table("photos") else set()
         if _photo_cols and "weiger_reden" not in _photo_cols:

@@ -621,11 +621,15 @@ class Operator(db.Model):
     email = db.Column(db.String(255), unique=True, nullable=False, index=True)
     display_name = db.Column(db.String(120))
     # Facturatiegegevens (verplicht vóór Partner-aankoop; B2B/Peppol via Odoo).
+    # Deze gelden voor ÁL je zaken: één btw-nummer, één gefactureerde partij.
     bedrijfsnaam = db.Column(db.String(160))
     btw_nummer = db.Column(db.String(20))     # BE0123456789
     straat = db.Column(db.String(160))
     postcode = db.Column(db.String(8))
     gemeente = db.Column(db.String(80))
+    contactpersoon = db.Column(db.String(120))   # naam voor op de factuur/Peppol
+    factuur_email = db.Column(db.String(255))    # waar facturen naartoe gaan
+    telefoon = db.Column(db.String(40))          # contact voor Ravot
     active = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=utcnow)
 

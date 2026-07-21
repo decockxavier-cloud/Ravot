@@ -465,6 +465,9 @@ def facturatie(op):
         op.straat = (request.form.get("straat") or "").strip()[:160]
         op.postcode = re.sub(r"\D", "", request.form.get("postcode") or "")[:4]
         op.gemeente = (request.form.get("gemeente") or "").strip()[:80]
+        op.contactpersoon = (request.form.get("contactpersoon") or "").strip()[:120]
+        op.factuur_email = (request.form.get("factuur_email") or "").strip()[:255]
+        op.telefoon = (request.form.get("telefoon") or "").strip()[:40]
         if not op.bedrijfsnaam:
             flash("Bedrijfsnaam is verplicht.", "error")
             return redirect(url_for("uitbater.facturatie"))
