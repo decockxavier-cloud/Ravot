@@ -143,6 +143,17 @@ class Event(db.Model):
     kinderstoel = db.Column(db.Boolean)        # kinderstoelen aanwezig
     speelhoek = db.Column(db.Boolean)          # speelhoek of speeltuin bij de zaak
     kindermenu = db.Column(db.Boolean)         # kindermenu beschikbaar
+    # Uitgebreide voorzieningen (partner vinkt aan, gezinnen kunnen betwisten):
+    terras = db.Column(db.Boolean)             # terras
+    overdekt_terras = db.Column(db.Boolean)    # overdekt terras
+    parking = db.Column(db.Boolean)            # eigen of vlakbije parking
+    toegankelijk = db.Column(db.Boolean)       # rolstoel-/buggytoegankelijk
+    allergievriendelijk = db.Column(db.Boolean)# allergenen/glutenvrij mogelijk
+    babyvoeding = db.Column(db.Boolean)        # babyvoeding opwarmen mogelijk
+    huisdieren = db.Column(db.Boolean)         # huisdieren toegelaten
+    # Openingsuren (eenvoudig): per dag [open, sluit] in "HH:MM", of None =
+    # gesloten. Sleutels: ma di wo do vr za zo. Leeg dict = onbekend.
+    openingsuren = db.Column(db.JSON)
     # Ravot-label (kwaliteit, ONKOOPBAAR): niveau 0-3 (geen/brons/zilver/goud),
     # berekend uit criteria + reviews. Jaartal zodat het per jaar "vers" is.
     label_niveau = db.Column(db.Integer, default=0, index=True)
@@ -223,6 +234,25 @@ OUDE_TAGS = {"vlot met buggy": "vlot met de wandelwagen",
 TAG_NAAR_VELD = {"verzorgingstafel": "verzorgingstafel",
                  "vlot met de wandelwagen": "buggy_ok",
                  "afgesloten speelterrein": "omheind"}
+
+# Betwisting: gezinnen kunnen aangeven dat een aangevinkte voorziening er (voor
+# hen) NIET was. Bij genoeg signalen krijgt de uitbater een hulpmelding. De
+# sleutel is het fiche-veld, de waarde het leesbare label.
+VOORZIENING_LABELS = {
+    "verzorgingstafel": "een verschoontafel",
+    "buggy_ok": "vlotte toegang met de wandelwagen",
+    "omheind": "een afgesloten speelterrein",
+    "kinderstoel": "kinderstoelen",
+    "speelhoek": "een speelhoek",
+    "kindermenu": "een kindermenu",
+    "terras": "een terras",
+    "overdekt_terras": "een overdekt terras",
+    "parking": "parking",
+    "toegankelijk": "rolstoel-/buggytoegankelijkheid",
+    "allergievriendelijk": "allergievriendelijke opties",
+    "babyvoeding": "babyvoeding opwarmen",
+    "huisdieren": "huisdieren toelaten",
+}
 COST_RANGES = ["0", "<20", "20-50", "50-100", ">100"]
 
 
@@ -405,6 +435,7 @@ SETTING_DEFS = {
     "label_min_voorzieningen": ("3", "Ravot-label: minimum aantal kindvriendelijke voorzieningen voor brons", "int"),
     "label_min_reviews": ("3", "Ravot-label: minimum reviews voor zilver/goud", "int"),
     "kampen_aan": ("0", "Kampenmodule tonen (apart onderdeel, los van activiteiten)", "bool"),
+    "medewerker_ziet_gezinnen": ("0", "Medewerkers toegang geven tot gezinsdata (persoonsgegevens; standaard enkel admin)", "bool"),
     "kamp_marge_dagen": ("3", "Kampen: speling rond de gezochte periode (dagen)", "int"),
     "feest_max_aanvragen": ("6", "Feestjes: max. partners per offerteronde", "int"),
     # Ravotscore × Partner (commerciële plekken): score is en blijft van de
@@ -591,6 +622,7 @@ class OperatorClaim(db.Model):
     event_id = db.Column(db.Integer, db.ForeignKey("events.id"), nullable=False, index=True)
     note = db.Column(db.String(500))   # hoe toont de uitbater dat de zaak van hem is
     status = db.Column(db.String(12), default="pending", nullable=False, index=True)  # pending|approved|rejected
+    domein_match = db.Column(db.Boolean, default=False)  # e-mail matcht website-domein zaak
     created_at = db.Column(db.DateTime, default=utcnow)
     operator = db.relationship("Operator")
     event = db.relationship("Event")
@@ -598,7 +630,9 @@ class OperatorClaim(db.Model):
 
 # Velden die een uitbater mag voorstellen te wijzigen (whitelist).
 EDIT_VELDEN = ("description", "adres", "postcode", "gemeente", "source_url",
-               "indoor", "is_free", "feest", "feest_soorten", "feest_contact")
+               "indoor", "is_free", "feest", "feest_soorten", "feest_contact",
+               "terras", "overdekt_terras", "parking", "toegankelijk",
+               "allergievriendelijk", "babyvoeding", "huisdieren")
 
 
 class EditProposal(db.Model):

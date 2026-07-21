@@ -45,6 +45,10 @@ def create_app(config_object=Config):
     app.jinja_env.globals["label_info"] = label_info
     app.jinja_env.globals["kamp_thumb"] = kamp_thumb
     app.jinja_env.globals["kamp_fotos"] = kamp_fotos
+    from .services.openingsuren import status_badge, uren_overzicht, heeft_uren
+    app.jinja_env.globals["open_badge"] = status_badge
+    app.jinja_env.globals["uren_overzicht"] = uren_overzicht
+    app.jinja_env.globals["heeft_uren"] = heeft_uren
     from .models import KAMP_THEMAS, KAMP_TALEN
     app.jinja_env.globals["kamp_themas"] = KAMP_THEMAS
     app.jinja_env.globals["kamp_talen"] = KAMP_TALEN
@@ -581,6 +585,14 @@ def register_cli(app):
         reviews."""
         from .services.label import herbereken_labels
         herbereken_labels(log=print)
+
+    @app.cli.command("detecteer-conflicten")
+    def detecteer_conflicten_cmd():
+        """Vind zaken waar meerdere gezinnen een aangevinkte voorziening
+        betwisten -> melding in admin-to-do + hulpmail naar de uitbater.
+        Draai bv. wekelijks."""
+        from .services.label import detecteer_voorziening_conflicten
+        detecteer_voorziening_conflicten(log=print)
 
     @app.cli.command("herindeel-voorraad")
     def herindeel_voorraad_cmd():

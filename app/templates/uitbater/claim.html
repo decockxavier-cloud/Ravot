@@ -26,7 +26,12 @@
     {% endfor %}
   {% else %}
     <div class="card leeg"><p>Niets gevonden voor "{{ zoek }}". Staat je zaak nog
-      niet op Ravot? Mail ons via info@ravot.be — we voegen ze graag toe.</p></div>
+      niet op Ravot?</p>
+      <a class="btn btn-groen" href="{{ url_for('uitbater.zaak_nieuw') }}">+ Voeg je zaak toe</a>
+    </div>
   {% endif %}
 {% endif %}
+
+<p class="hint" style="margin-top:16px">Staat je zaak nog niet op Ravot?
+  <a href="{{ url_for('uitbater.zaak_nieuw') }}">Voeg ze zelf toe →</a></p>
 {% endblock %}

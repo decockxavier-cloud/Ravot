@@ -2,6 +2,7 @@
 {% block content %}
 <h1>Mijn zaken 🏪</h1>
 <p><a class="btn" href="{{ url_for('uitbater.claim') }}">+ Claim een zaak</a>
+<a class="btn btn-stil" href="{{ url_for('uitbater.zaak_nieuw') }}">🏠 Zaak toevoegen</a>
 {% if kampen_aan %} <a class="btn btn-stil" href="{{ url_for('uitbater.kamp_nieuw') }}">⛺ Kamp toevoegen</a>{% endif %}
    <a class="btn btn-stil" href="{{ url_for('uitbater.logout') }}">Afmelden</a></p>
 

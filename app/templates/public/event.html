@@ -7,6 +7,8 @@
   <h1>{{ ev.title }}</h1>
   {% set lbl = label_info(ev) %}
   {% if lbl %}<span class="ravot-label label-{{ lbl.klasse }}" title="Ravot-label {{ lbl.klasse }} — een onkoopbaar kwaliteitslabel op basis van kindvriendelijke voorzieningen en scores van gezinnen.">{{ lbl.emoji }} {{ lbl.naam }}{% if lbl.jaar %} {{ lbl.jaar }}{% endif %}</span>{% endif %}
+  {% set ob = open_badge(ev) %}
+  {% if ob %}<span class="open-badge open-{{ ob.klasse }}">● {{ ob.tekst }}</span>{% endif %}
   <button type="button" class="deel-knop" id="deel"
           data-titel="{{ ev.title }}" data-url="{{ request.url }}"
           aria-label="Deel deze activiteit">📤 Deel</button>
@@ -37,6 +39,13 @@
   {% if ev.kinderstoel %}<span class="badge">🪑 kinderstoelen</span>{% endif %}
   {% if ev.speelhoek %}<span class="badge">🧸 speelhoek</span>{% endif %}
   {% if ev.kindermenu %}<span class="badge">🍟 kindermenu</span>{% endif %}
+  {% if ev.terras %}<span class="badge">☀️ terras</span>{% endif %}
+  {% if ev.overdekt_terras %}<span class="badge">⛱️ overdekt terras</span>{% endif %}
+  {% if ev.parking %}<span class="badge">🅿️ parking</span>{% endif %}
+  {% if ev.toegankelijk %}<span class="badge">♿ toegankelijk</span>{% endif %}
+  {% if ev.allergievriendelijk %}<span class="badge">🌾 allergievriendelijk</span>{% endif %}
+  {% if ev.babyvoeding %}<span class="badge">🍼 babyvoeding opwarmen</span>{% endif %}
+  {% if ev.huisdieren %}<span class="badge">🐕 huisdieren welkom</span>{% endif %}
   {% if agg %}<span class="badge badge-score">😄 Ravotscore {{ agg.avg }} ({{ agg.count }} gezinnen)
     <a class="score-info" href="{{ url_for('public.score_uitleg') }}" title="Hoe werkt de Ravotscore?">ⓘ</a></span>
   {% elif toon_score is defined and not toon_score %}<span class="badge badge-leeg" title="Deze zaak toont (nog) geen Ravotscore op Ravot">zonder Ravotscore-badge</span>{% endif %}
@@ -81,13 +90,24 @@
 {% endif %}
 {% endif %}
 {% if ev.description %}<p>{{ ev.description }}</p>{% endif %}
+{% if heeft_uren(ev) %}
+<div class="card openingsuren-blok">
+  <h2 style="margin-top:0">🕒 Openingsuren</h2>
+  <table class="uren-tabel">
+    {% for dag, uren in uren_overzicht(ev) %}
+    <tr><td class="uren-dag">{{ dag }}</td><td class="{{ 'uren-dicht' if uren == 'gesloten' }}">{{ uren }}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
 
 <div class="acties">
   <a class="btn btn-stil" href="{{ url_for('public.event_ics', slug=ev.slug) }}">📅 Zet in agenda</a>
-  {% if ev.uit_id %}<a class="btn btn-stil" href="https://www.uitinvlaanderen.be/agenda/e/x/{{ ev.uit_id }}?utm_source=ravot" rel="noopener" target="_blank">ℹ️ Meer info & tickets</a>
+  {% if ev.uit_id %}<a class="btn btn-stil" href="https://www.uitinvlaanderen.be/agenda/e/x/{{ ev.uit_id }}?utm_source=ravot&utm_medium=partnerlink&utm_campaign=backlinks" rel="noopener" target="_blank">ℹ️ Meer info & tickets</a>
   {% elif ev.source_url %}<a class="btn btn-stil" href="{{ ev.source_url }}" rel="noopener nofollow" target="_blank">🔗 Naar de website</a>{% endif %}
 </div>
 {% if ev.attribution %}<p class="hint">Bron: {{ ev.attribution }}</p>{% endif %}
+{% if ev.uit_id %}<p class="hint uit-bron">Activiteitgegevens via <a href="https://www.uitinvlaanderen.be/?utm_source=ravot&utm_medium=partnerlink&utm_campaign=backlinks" rel="noopener" target="_blank">UiTinVlaanderen</a>.</p>{% endif %}
 
 {% if agg and agg.bands %}
 <div class="card">
@@ -178,6 +198,19 @@
   </div>
 </div>
 {% endif %}
+{% set zaakfotos = (fotos or []) | selectattr("soort", "equalto", "zaak") | list %}
+{% if zaakfotos %}
+<div class="card">
+  <h2 style="margin-top:0">🏠 De zaak</h2>
+  <div class="foto-galerij">
+    {% for f in zaakfotos %}
+    <figure>
+      <img src="{{ url_for('public.foto', pid=f.id) }}" alt="" loading="lazy">
+    </figure>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
 {% set fotos = (fotos or []) | selectattr("soort", "equalto", "gezin") | list %}
 {% if fotos %}
 <div class="card">
@@ -194,6 +227,7 @@
   <form method="post" action="{{ url_for('account.upload_foto', event_id=ev.id) }}"
         enctype="multipart/form-data" class="meld-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <p class="upload-hint">📷 Enkel je eigen foto's, zonder herkenbare andere personen of kinderen buiten je gezin. Geen affiches of beelden van internet.</p>
     <input type="file" name="foto" accept="image/jpeg,image/png,image/webp" required>
     <label class="check"><input type="checkbox" name="akkoord" required>
       Ik heb deze foto zelf gemaakt en geef Ravot toestemming om ze te tonen.</label>

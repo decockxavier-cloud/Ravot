@@ -94,8 +94,12 @@
       </article>
     {% endfor %}
     </div>
-    {% if rows | selectattr('event.has_vlieg') | list %}
+    {% if rows | map(attribute='event') | selectattr('has_vlieg') | list %}
     <p class="vlieg-legende">🐛 <strong>UiT met Vlieg</strong> markeert activiteiten die op maat van kinderen zijn — een label van publiq.</p>
+    {% endif %}
+    {% if rows | map(attribute='event') | selectattr('uit_id') | list %}
+    <p class="uit-bron-overzicht">Activiteiten mede mogelijk gemaakt met gegevens van
+    <a href="https://www.uitinvlaanderen.be/?utm_source=ravot&utm_medium=partnerlink&utm_campaign=backlinks" rel="noopener" target="_blank">UiTinVlaanderen</a>.</p>
     {% endif %}
     <div class="card leeg" id="geen-resultaat" style="display:none">
       <span class="groot-emoji">🔍</span>

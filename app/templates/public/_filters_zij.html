@@ -43,7 +43,7 @@
 
   <details class="zij-groep" {{ "open" if ouder_filters }}>
     <summary class="zij-titel">Praktisch{% if ouder_filters %} <b>·</b>{% endif %}</summary>
-    {% set ouder_opts = [('omheind','🚧 Afgesloten speelterrein'),('verzorgingstafel','🍼 Verschoontafel'),('buggy_ok','👶 Vlot met de wandelwagen'),('kinderstoel','🪑 Kinderstoelen'),('speelhoek','🧸 Speelhoek/speeltuin'),('kindermenu','🍟 Kindermenu')] %}
+    {% set ouder_opts = [('omheind','🚧 Afgesloten speelterrein'),('verzorgingstafel','🍼 Verschoontafel'),('buggy_ok','👶 Vlot met de wandelwagen'),('kinderstoel','🪑 Kinderstoelen'),('speelhoek','🧸 Speelhoek/speeltuin'),('kindermenu','🍟 Kindermenu'),('terras','☀️ Terras'),('overdekt_terras','⛱️ Overdekt terras'),('parking','🅿️ Parking'),('toegankelijk','♿ Toegankelijk'),('allergievriendelijk','🌾 Allergievriendelijk'),('babyvoeding','🍼 Babyvoeding opwarmen'),('huisdieren','🐕 Huisdieren welkom')] %}
     {% for code, label in ouder_opts %}
       {% set nieuw = ouder_filters | reject('equalto', code) | list if code in ouder_filters else (ouder_filters | list) + [code] %}
       <a class="filterchip {{ 'aan' if code in ouder_filters }}" href="{{ flink(ouder=nieuw) }}">{{ label }}</a>

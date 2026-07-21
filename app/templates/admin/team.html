@@ -1,22 +1,34 @@
 {% extends "admin/admin_base.html" %}
 {% block admin_content %}
 <h1>Team 👥</h1>
-<p class="hint">Reviewers kunnen enkel <strong>Nazicht</strong> gebruiken: ingediende
-  plekken, meldingen, foto's en AI-voorstellen beoordelen. Ze zien geen
-  instellingen, bronnen of gezinsgegevens. Ook reviewers loggen in met
-  wachtwoord + verplichte 2FA.</p>
+<p class="hint">Je kunt twee soorten teamleden toevoegen. Beide loggen in op
+  /beheer met wachtwoord + verplichte 2FA.</p>
+<ul class="hint" style="margin-top:0">
+  <li><strong>🔍 Reviewer</strong> — enkel <strong>Nazicht</strong>: ingediende
+  plekken, meldingen, foto's en AI-voorstellen beoordelen. Ziet verder niets.</li>
+  <li><strong>🧑‍💻 Medewerker</strong> — bijna de <strong>volledige backend</strong>:
+  content, databronnen, gezinnen, partners, instellingen en nazicht. Kan <strong>niet</strong>
+  aan teambeheer of financiën (Mollie/facturatie). Ideaal om te testen, feedback te
+  geven en later mee te cureren.</li>
+</ul>
 
 <section class="card">
-  <h2 style="margin-top:0">Reviewer toevoegen</h2>
+  <h2 style="margin-top:0">Teamlid toevoegen</h2>
   <form method="post" action="{{ url_for('admin.team') }}" class="kaart-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label>E-mailadres
-      <input type="email" name="email" required placeholder="reviewer@voorbeeld.be">
+      <input type="email" name="email" required placeholder="collega@voorbeeld.be">
+    </label>
+    <label>Rol
+      <select name="rol">
+        <option value="medewerker">🧑‍💻 Medewerker — bijna volledige backend (geen team/financiën)</option>
+        <option value="reviewer">🔍 Reviewer — enkel Nazicht</option>
+      </select>
     </label>
     <label>Tijdelijk wachtwoord (min. 12 tekens — geef dit veilig door)
       <input type="password" name="wachtwoord" required minlength="12">
     </label>
-    <div class="acties"><button class="btn btn-zon" type="submit">Reviewer aanmaken</button></div>
+    <div class="acties"><button class="btn btn-zon" type="submit">Teamlid aanmaken</button></div>
   </form>
 </section>
 
@@ -27,12 +39,12 @@
     {% for a in leden %}
     <tr>
       <td>{{ a.email }}</td>
-      <td>{{ '🛡️ beheerder' if a.role == 'admin' else '🔍 reviewer' }}</td>
+      <td>{{ '🛡️ beheerder' if a.role == 'admin' else ('🧑‍💻 medewerker' if a.role == 'medewerker' else '🔍 reviewer') }}</td>
       <td>{{ '✓' if a.totp_confirmed else 'nog in te stellen' }}</td>
       <td>
         {% if a.id != session.get('admin_id') %}
         <form method="post" action="{{ url_for('admin.team_verwijder', aid=a.id) }}"
-              onsubmit="return confirm('{{ 'Beheerder' if a.role == 'admin' else 'Reviewer' }} {{ a.email }} verwijderen?');">
+              onsubmit="return confirm('{{ a.email }} verwijderen?');">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn btn-klein btn-stil" type="submit">Verwijder</button>
         </form>

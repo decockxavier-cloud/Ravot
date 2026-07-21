@@ -18,7 +18,7 @@ class Config:
     PERMANENT_SESSION_LIFETIME = timedelta(days=365)  # "onthoud mij" standaard
 
     # -- Mail ----------------------------------------------------------------
-    MAIL_FROM = os.environ.get("MAIL_FROM", "Ravot <hallo@ravot.be>")
+    MAIL_FROM = os.environ.get("MAIL_FROM", "Ravot <info@ravot.be>")
     SMTP_HOST = os.environ.get("SMTP_HOST", "")  # leeg = console-mailer (dev)
     SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
     SMTP_USER = os.environ.get("SMTP_USER", "")

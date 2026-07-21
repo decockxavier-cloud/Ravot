@@ -31,15 +31,50 @@ def _huidige_admin():
 
 
 def admin_required(f):
-    """Enkel volle beheerders (role='admin')."""
+    """Enkel volle beheerders (role='admin'). Voor gevoelige zaken: team-beheer
+    en financiën (Mollie/facturatie)."""
     @wraps(f)
     def wrapper(*args, **kwargs):
         a = _huidige_admin()
         if not a or not session.get("admin_2fa_ok"):
             return redirect(url_for("admin.login"))
         if getattr(a, "role", "admin") != "admin":
-            abort(403)   # reviewer probeert een admin-pagina
+            abort(403)   # medewerker/reviewer probeert een admin-only pagina
         return f(*args, **kwargs)
+    return wrapper
+
+
+def medewerker_required(f):
+    """Beheerders én medewerkers: bijna de volledige backend (content,
+    databronnen, gezinnen, partners, instellingen, nazicht). NIET team-beheer
+    of financiën — die blijven admin_required. Reviewers hebben hier géén
+    toegang (enkel nazicht)."""
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        a = _huidige_admin()
+        if not a or not session.get("admin_2fa_ok"):
+            return redirect(url_for("admin.login"))
+        if getattr(a, "role", "admin") not in ("admin", "medewerker"):
+            abort(403)   # reviewer heeft hier geen toegang
+        return f(*args, **kwargs)
+    return wrapper
+
+
+def gezinnen_toegang(f):
+    """Gezinsdata (persoonsgegevens): admins altijd; medewerkers enkel als de
+    instelling 'medewerker_ziet_gezinnen' aan staat. Reviewers nooit."""
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        a = _huidige_admin()
+        if not a or not session.get("admin_2fa_ok"):
+            return redirect(url_for("admin.login"))
+        rol = getattr(a, "role", "admin")
+        if rol == "admin":
+            return f(*args, **kwargs)
+        from ..models import get_bool
+        if rol == "medewerker" and get_bool("medewerker_ziet_gezinnen"):
+            return f(*args, **kwargs)
+        abort(403)
     return wrapper
 
 
@@ -157,7 +192,7 @@ def otp():
 
 
 @bp.route("/")
-@admin_required
+@medewerker_required
 def dashboard():
     from ..routes.public import window
     from ..models import SavedEvent
@@ -203,7 +238,10 @@ def dashboard():
     from ..models import (Report, EnrichProposal, Photo, OperatorClaim,
                           EditProposal, get_bool)
     n_wachtrij = Event.query.filter_by(pending=True).count()
-    n_meldingen = Report.query.filter_by(handled=False).count()
+    n_meldingen = Report.query.filter_by(handled=False).filter(
+        db.not_(Report.reason.like("voorziening:%"))).count()
+    n_conflict = Report.query.filter_by(handled=False).filter(
+        Report.reason.like("voorziening:%")).count()
     n_fotos = Photo.query.filter_by(status="pending").count()
     n_claims = OperatorClaim.query.filter_by(status="pending").count()
     n_edits = EditProposal.query.filter_by(status="pending").count()
@@ -218,6 +256,9 @@ def dashboard():
     if n_meldingen:
         taken.append(("Meldingen van gezinnen", n_meldingen,
                       url_for("admin.nazicht"), "🚩"))
+    if n_conflict:
+        taken.append(("Betwiste voorzieningen na te kijken", n_conflict,
+                      url_for("admin.nazicht"), "⚖️"))
     if n_claims:
         taken.append(("Uitbaters die hun zaak claimen", n_claims,
                       url_for("admin.nazicht"), "🤝"))
@@ -243,7 +284,7 @@ def dashboard():
 
 
 @bp.route("/review/<int:review_id>/verwijder", methods=["POST"])
-@admin_required
+@medewerker_required
 def delete_review(review_id):
     rv = db.session.get(Review, review_id) or abort(404)
     audit(f"review {review_id} verwijderd (event {rv.event_id})")
@@ -260,6 +301,7 @@ INSTELLING_PAGINAS = {
     "kern": [
         ("Weergave & gedrag", ["default_radius", "toon_maanden_vooruit",
                                "ontdek_per_pagina", "onderhoud_aan"]),
+        ("Team & toegang", ["medewerker_ziet_gezinnen"]),
         ("Ranking & kwaliteit", ["kwaliteit_min_lijst", "kwaliteit_hoog",
                                  "enkel_gecureerd", "verborgen_types",
                                  "score_prior_n", "score_prior_waarde",
@@ -311,7 +353,7 @@ def _instellingen_context(pagina):
 
 
 @bp.route("/instellingen/opslaan", methods=["POST"])
-@admin_required
+@medewerker_required
 def instellingen_opslaan():
     """Gedeelde opslag voor álle instellingenpagina's. Verwerkt ENKEL de keys
     die het formulier zelf beheert (veld _keys) — zo kan een uitgevinkte
@@ -346,7 +388,7 @@ def instellingen_opslaan():
 
 
 @bp.route("/instellingen")
-@admin_required
+@medewerker_required
 def instellingen():
     """Kerninstellingen. Domeinspecifieke instellingen staan bij hun domein:
     bronnen bij Verbindingen, prijzen bij Facturatie, enzovoort."""
@@ -368,7 +410,7 @@ def facturatie():
 
 
 @bp.route("/verbindingen")
-@admin_required
+@medewerker_required
 def verbindingen():
     """Statusoverzicht van externe diensten. Toont GEEN secrets, enkel of ze
     geconfigureerd zijn en werken."""
@@ -431,7 +473,7 @@ def verbindingen():
 
 
 @bp.route("/test-ollama", methods=["POST"])
-@admin_required
+@medewerker_required
 @limiter.limit("10/hour")
 def test_ollama():
     """Test of de Ollama-container bereikbaar is en het model geladen kan worden."""
@@ -467,7 +509,7 @@ def test_ollama():
 
 
 @bp.route("/test-uit", methods=["POST"])
-@admin_required
+@medewerker_required
 @limiter.limit("10/hour")
 def test_uit():
     """Test de UiT-verbinding met één kale call. Toont GEEN key."""
@@ -490,7 +532,7 @@ def test_uit():
 
 
 @bp.route("/sync/<naam>", methods=["POST"])
-@admin_required
+@medewerker_required
 @limiter.limit("30/hour")
 def sync_bron(naam):
     """Start een sync in de achtergrond (bron of 'all'). De webrequest keert
@@ -523,7 +565,7 @@ def sync_bron(naam):
 
 
 @bp.route("/purge/<naam>", methods=["POST"])
-@admin_required
+@medewerker_required
 @limiter.limit("10/hour")
 def purge_bron(naam):
     """Verwijder alle data van één bron. Vereist een expliciete bevestiging."""
@@ -544,7 +586,7 @@ def purge_bron(naam):
 
 
 @bp.route("/test-tm", methods=["POST"])
-@admin_required
+@medewerker_required
 @limiter.limit("10/hour")
 def test_tm():
     """Test de Ticketmaster-verbinding met één kale call (Family, BE)."""
@@ -573,7 +615,7 @@ def test_tm():
 
 
 @bp.route("/test-smtp", methods=["POST"])
-@admin_required
+@medewerker_required
 @limiter.limit("5/hour")
 def test_smtp():
     """Stuur een testmail naar het adres van de ingelogde admin."""
@@ -592,7 +634,7 @@ def test_smtp():
 
 
 @bp.route("/families")
-@admin_required
+@gezinnen_toegang
 def families():
     """Overzicht van gezinnen met zoeken."""
     from ..models import Family
@@ -606,7 +648,7 @@ def families():
 
 
 @bp.route("/families/<int:fid>", methods=["GET", "POST"])
-@admin_required
+@gezinnen_toegang
 def family_detail(fid):
     from ..models import Family, Review, SavedEvent, Interaction
     fam = db.session.get(Family, fid) or abort(404)
@@ -697,7 +739,7 @@ def family_detail(fid):
 
 
 @bp.route("/paginas", methods=["GET"])
-@admin_required
+@medewerker_required
 def paginas():
     from ..models import ContentPage, CONTENT_PAGES
     pages = []
@@ -709,7 +751,7 @@ def paginas():
 
 
 @bp.route("/paginas/<slug>", methods=["GET", "POST"])
-@admin_required
+@medewerker_required
 def pagina_bewerk(slug):
     from ..models import ContentPage, CONTENT_PAGES
     if slug not in CONTENT_PAGES:
@@ -733,7 +775,7 @@ def pagina_bewerk(slug):
 
 
 @bp.route("/mails", methods=["GET"])
-@admin_required
+@medewerker_required
 def mails():
     from ..models import MailTemplate, MAIL_TEMPLATES
     templates = []
@@ -746,7 +788,7 @@ def mails():
 
 
 @bp.route("/mails/<slug>", methods=["GET", "POST"])
-@admin_required
+@medewerker_required
 def mail_bewerk(slug):
     from ..models import MailTemplate, MAIL_TEMPLATES
     if slug not in MAIL_TEMPLATES:
@@ -850,7 +892,7 @@ def nazicht_melding(report_id, actie):
 
 
 @bp.route("/verrijk", methods=["GET", "POST"])
-@admin_required
+@medewerker_required
 def verrijk():
     """Testknop voor AI-verrijking: genereer een voorstel voor één plek en
     toon het (nog niet opgeslagen — dat is de latere wachtrij-stap)."""
@@ -899,7 +941,7 @@ _verrijk_bezig = {"aan": False}
 
 
 @bp.route("/verrijk/batch", methods=["POST"])
-@admin_required
+@medewerker_required
 @limiter.limit("6/hour")
 def verrijk_batch_start():
     """Start in de achtergrond een AI-verrijkingsbatch (voorstellen -> Nazicht)."""
@@ -994,9 +1036,13 @@ def _inject_admin_rol():
     """Rol van de ingelogde beheerder/reviewer beschikbaar in templates."""
     try:
         a = _huidige_admin()
-        return {"admin_rol": getattr(a, "role", "admin") if a else None}
+        rol = getattr(a, "role", "admin") if a else None
+        from ..models import get_bool
+        mag_gezinnen = rol == "admin" or (
+            rol == "medewerker" and get_bool("medewerker_ziet_gezinnen"))
+        return {"admin_rol": rol, "mag_gezinnen": mag_gezinnen}
     except Exception:
-        return {"admin_rol": None}
+        return {"admin_rol": None, "mag_gezinnen": False}
 
 
 @bp.route("/team", methods=["GET", "POST"])
@@ -1018,12 +1064,16 @@ def team():
         if Admin.query.filter_by(email=email).first():
             flash("Er bestaat al een account met dat e-mailadres.", "error")
             return redirect(url_for("admin.team"))
+        rol = request.form.get("rol")
+        if rol not in ("reviewer", "medewerker"):
+            rol = "reviewer"
         db.session.add(Admin(email=email, pw_hash=_ph.hash(ww),
                              totp_secret=pyotp.random_base32(),
-                             totp_confirmed=False, role="reviewer"))
+                             totp_confirmed=False, role=rol))
         db.session.commit()
-        audit(f"reviewer aangemaakt: {email}")
-        flash(f"Reviewer '{email}' aangemaakt. Die logt in op /beheer en stelt "
+        audit(f"{rol} aangemaakt: {email}")
+        rol_naam = "Medewerker" if rol == "medewerker" else "Reviewer"
+        flash(f"{rol_naam} '{email}' aangemaakt. Die logt in op /beheer en stelt "
               "bij de eerste login 2FA in via de QR-code.", "ok")
         return redirect(url_for("admin.team"))
     leden = Admin.query.order_by(Admin.role, Admin.email).all()
@@ -1060,7 +1110,18 @@ def nazicht_claim(cid, actie):
     if actie == "goedkeuren":
         c.status = "approved"
         audit(f"claim goedgekeurd: operator {c.operator_id} -> event {c.event_id}")
-        flash("Claim goedgekeurd — de uitbater kan nu wijzigingen voorstellen.", "ok")
+        # Bevestigingsmail naar de uitbater (warm, met link naar de fiche).
+        from ..models import Operator
+        from ..services import uitbater_mail
+        op = db.session.get(Operator, c.operator_id)
+        if op and c.event:
+            try:
+                uitbater_mail.claim_goedgekeurd(
+                    op.email, c.event.title,
+                    url_for("uitbater.fiche", event_id=c.event_id, _external=True))
+            except Exception:
+                current_app.logger.exception("claim-bevestigingsmail mislukt")
+        flash("Claim goedgekeurd — de uitbater is verwittigd en kan nu wijzigingen voorstellen.", "ok")
     elif actie == "afwijzen":
         c.status = "rejected"
         audit(f"claim afgewezen: #{c.id}")
@@ -1098,7 +1159,8 @@ def nazicht_wijziging(pid, actie):
 @bp.route("/partners")
 @admin_required
 def partners():
-    """Overzicht van Partner-betalingen mét Odoo-factuurreferentie."""
+    """Overzicht van Partner-betalingen mét Odoo-factuurreferentie.
+    Admin-only: bevat omzet- en factuurgegevens."""
     from datetime import datetime, timedelta
     from ..models import PartnerPayment
     from .. import mollie, odoo
@@ -1168,7 +1230,7 @@ def partner_factuur_alsnog(pid):
 
 
 @bp.route("/feeds", methods=["GET", "POST"])
-@admin_required
+@medewerker_required
 @limiter.limit("30/hour", methods=["POST"])
 def feeds():
     """Beheer van vertrouwde agenda-feeds (iCal/RSS) van cultuurcentra e.d."""
@@ -1198,7 +1260,7 @@ def feeds():
 
 
 @bp.route("/feeds/<int:fid>/verwijder", methods=["POST"])
-@admin_required
+@medewerker_required
 def feed_verwijder(fid):
     from ..models import Feed
     f = db.session.get(Feed, fid) or abort(404)
@@ -1217,7 +1279,7 @@ ADMIN_EVENT_VELDEN = ("title", "description", "adres", "postcode", "gemeente",
 
 
 @bp.route("/activiteiten")
-@admin_required
+@medewerker_required
 def activiteiten():
     """Zoek- en beheeroverzicht van ALLE fiches (ook permanente plekken en
     pending), met sortering en een focus op wat aangevuld moet worden."""
@@ -1293,8 +1355,25 @@ def activiteiten():
                            title="Activiteiten", family=None, active="activiteiten")
 
 
+def _parse_openingsuren(f):
+    """Bouw de openingsuren-JSON uit formuliervelden open_<dag>/sluit_<dag> en
+    dicht_<dag> (checkbox 'gesloten'). Lege dagen worden 'onbekend' (weggelaten)."""
+    import re as _re
+    from ..services.openingsuren import DAGEN
+    uren = {}
+    for d in DAGEN:
+        if f.get(f"dicht_{d}"):
+            uren[d] = None            # expliciet gesloten
+            continue
+        o = (f.get(f"open_{d}") or "").strip()
+        s = (f.get(f"sluit_{d}") or "").strip()
+        if _re.match(r"^\d{1,2}:\d{2}$", o) and _re.match(r"^\d{1,2}:\d{2}$", s):
+            uren[d] = [o, s]
+    return uren or None
+
+
 @bp.route("/activiteiten/<int:event_id>", methods=["GET", "POST"])
-@admin_required
+@medewerker_required
 def activiteit_bewerk(event_id):
     from ..models import Event, CATEGORIES
     ev = db.session.get(Event, event_id) or abort(404)
@@ -1342,6 +1421,8 @@ def activiteit_bewerk(event_id):
         cat = (f.get("categorie") or "").strip()
         if cat:
             ev.categories = [cat]
+        # Openingsuren: per dag open/sluit uit het formulier -> JSON.
+        ev.openingsuren = _parse_openingsuren(f)
         if "pending" in f:
             ev.pending = f.get("pending") == "1"
         if f.get("herbereken_geo") and ev.postcode:
@@ -1355,16 +1436,37 @@ def activiteit_bewerk(event_id):
         audit(f"activiteit bewerkt door admin: #{ev.id} '{ev.title}'")
         flash("Fiche opgeslagen.", "ok")
         return redirect(url_for("admin.activiteit_bewerk", event_id=ev.id))
-    from ..models import FEEST_SOORTEN as _FS2
+    from ..models import FEEST_SOORTEN as _FS2, OperatorClaim, Operator
+    actieve_claims = db.session.query(OperatorClaim, Operator).join(
+        Operator, OperatorClaim.operator_id == Operator.id).filter(
+        OperatorClaim.event_id == ev.id,
+        OperatorClaim.status.in_(("pending", "approved"))).all()
     return render_template("admin/activiteit_bewerk.html", ev=ev,
                            categories=CATEGORIES, voorstel=voorstel,
-                           feest_soorten=_FS2,
+                           feest_soorten=_FS2, actieve_claims=actieve_claims,
                            title=f"Bewerk: {ev.title}", family=None,
                            active="activiteiten")
 
 
+@bp.route("/activiteiten/<int:event_id>/ontclaim", methods=["POST"])
+@medewerker_required
+def activiteit_ontclaim(event_id):
+    """Trek alle goedgekeurde/openstaande claims op een zaak in, zodat de
+    uitbater de toegang verliest. Handig als een claim onterecht bleek."""
+    from ..models import OperatorClaim
+    ev = db.session.get(Event, event_id) or abort(404)
+    claims = OperatorClaim.query.filter_by(event_id=event_id).filter(
+        OperatorClaim.status.in_(("pending", "approved"))).all()
+    for c in claims:
+        c.status = "rejected"
+    db.session.commit()
+    audit(f"claims ingetrokken op event #{event_id} '{ev.title}' ({len(claims)})")
+    flash(f"{len(claims)} claim(s) ingetrokken — de uitbater heeft geen toegang meer.", "ok")
+    return redirect(url_for("admin.activiteit_bewerk", event_id=event_id))
+
+
 @bp.route("/activiteiten/<int:event_id>/verwijder", methods=["POST"])
-@admin_required
+@medewerker_required
 def activiteit_verwijder(event_id):
     from ..models import Event
     ev = db.session.get(Event, event_id) or abort(404)
@@ -1377,7 +1479,7 @@ def activiteit_verwijder(event_id):
 
 
 @bp.route("/types", methods=["GET", "POST"])
-@admin_required
+@medewerker_required
 def types_beheer():
     """Per activiteittype kiezen of het publiek zichtbaar is + aantallen tonen."""
     from ..models import Event, get_setting, Setting
@@ -1418,7 +1520,7 @@ def types_beheer():
 
 
 @bp.route("/activiteiten/<int:event_id>/waardig", methods=["POST"])
-@admin_required
+@medewerker_required
 def activiteit_waardig(event_id):
     """Toggle 'Ravot-waardig' — de menselijke goedkeuring die de kern vormt."""
     from ..models import Event
@@ -1439,7 +1541,7 @@ def activiteit_waardig(event_id):
 
 
 @bp.route("/feestjes")
-@admin_required
+@medewerker_required
 def feestjes():
     """Overzicht van de feestjesmodule: aanvraagvolume per partner (hét
     verkoopargument voor het Partner-abonnement) + recente feestjes."""
@@ -1464,7 +1566,7 @@ def feestjes():
 
 
 @bp.route("/horeca-import", methods=["GET", "POST"])
-@admin_required
+@medewerker_required
 def horeca_import():
     """Horeca-verkenner: live alle horeca/bars rond een gemeente uit OSM,
     waarna de beheerder aanvinkt wat Ravot-waardig is (horeca of zomerbar).
@@ -1553,7 +1655,7 @@ def horeca_import():
 
 
 @bp.route("/beloningen", methods=["GET", "POST"])
-@admin_required
+@medewerker_required
 def beloningen():
     """Catalogus van beloningen + opvolging van inwisselingen. De richtprijs
     (punten = euro x punt_waarde) wordt live meegerekend als hulp."""
@@ -1661,7 +1763,7 @@ def beloningen():
 
 
 @bp.route("/status")
-@admin_required
+@medewerker_required
 def status():
     """Health-dashboard: live status van alle API's en koppelingen, plus de
     laatste run van elke databron. Herladen = opnieuw controleren."""
@@ -1674,7 +1776,7 @@ def status():
 
 
 @bp.route("/verbindingen/wis-bron", methods=["POST"])
-@admin_required
+@medewerker_required
 def bron_data_wissen():
     """Wis alle data van één bron (testdata-opkuis). Veiligheidskleppen:
     fiches met een partner, claim of betaling blijven ALTIJD staan, net als
@@ -1713,7 +1815,7 @@ def bron_data_wissen():
 
 
 @bp.route("/horeca-import/ai-voortgang")
-@admin_required
+@medewerker_required
 def horeca_ai_voortgang():
     """Klein JSON-endpoint voor de live voortgangsbalk van de AI-triage."""
     from ..geo import zoek_centrum
@@ -1735,7 +1837,7 @@ def horeca_ai_voortgang():
 
 
 @bp.route("/activiteiten/alles-nagekeken", methods=["POST"])
-@admin_required
+@medewerker_required
 def activiteiten_alles_nagekeken():
     """Bulk: de hele huidige werkvoorraad afvinken. Voor wie de initiële
     machine-import vertrouwt en de curatie aan meldingen/reviews overlaat."""
@@ -1749,7 +1851,7 @@ def activiteiten_alles_nagekeken():
 
 
 @bp.route("/activiteiten/<int:event_id>/nagekeken", methods=["POST"])
-@admin_required
+@medewerker_required
 def activiteit_nagekeken(event_id):
     """Vinkje in de werkvoorraad: deze fiche is met eigen ogen bekeken."""
     ev = db.session.get(Event, event_id) or abort(404)
@@ -1760,7 +1862,7 @@ def activiteit_nagekeken(event_id):
 
 
 @bp.route("/activiteiten/bulk-nagekeken", methods=["POST"])
-@admin_required
+@medewerker_required
 def activiteiten_bulk_nagekeken():
     """Bulk-curatie: markeer een hele selectie (bron/type/status) in één keer
     als nagekeken. Voor de initiële vulling: publieke infrastructuur en
@@ -1791,7 +1893,7 @@ def activiteiten_bulk_nagekeken():
 
 
 @bp.route("/horeca-import/export.csv")
-@admin_required
+@medewerker_required
 def horeca_export_csv():
     """Exporteer geïmporteerde horeca-zaken met hun contactgegevens als CSV —
     voor een gerichte mailactie om het partnermodel voor te stellen. Enkel
@@ -1832,7 +1934,7 @@ def horeca_export_csv():
 
 
 @bp.route("/feestprospecten")
-@admin_required
+@medewerker_required
 def feestprospecten():
     """Feestpartners: zaken die zelf aangaven feestjes te organiseren
     (uitbater vinkte 'wij doen feestjes' aan). Dit vult zich organisch — niet
@@ -1852,7 +1954,7 @@ def feestprospecten():
 
 
 @bp.route("/feestprospecten/export.csv")
-@admin_required
+@medewerker_required
 def feestprospecten_export():
     import csv
     import io

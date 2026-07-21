@@ -116,3 +116,61 @@ def kamp_thumb(ev):
     if fotos:
         return url_for("public.foto", pid=fotos[0].id)
     return None
+
+
+def detecteer_voorziening_conflicten(log=print, drempel=3):
+    """Vind zaken waar meerdere gezinnen een aangevinkte voorziening betwisten.
+
+    Een betwisting = een review met een tag "geen <label>" (bv. "geen
+    verzorgingstafel"). Bij >= drempel betwistingen terwijl de partner het veld
+    aan heeft: maak één Report (voor de admin-to-do) en mail de uitbater met
+    vriendelijke, helpende feedback. We markeren de zaak zodat we niet blijven
+    herhalen (via een reeds-gemelde-Report per veld).
+    """
+    from ..models import (db, Event, Review, Report, Operator, OperatorClaim,
+                          VOORZIENING_LABELS)
+    from . import uitbater_mail
+    from flask import url_for
+
+    gemeld = 0
+    # Enkel zaken met minstens één aangevinkte voorziening zijn kandidaat.
+    velden = list(VOORZIENING_LABELS.keys())
+    kandidaten = Event.query.filter(
+        db.or_(*[getattr(Event, v).is_(True) for v in velden])).all()
+    for ev in kandidaten:
+        reviews = Review.query.filter_by(event_id=ev.id).all()
+        for veld, label in VOORZIENING_LABELS.items():
+            if not getattr(ev, veld, None):
+                continue
+            betw_tag = f"geen {label}"
+            n = sum(1 for r in reviews
+                    if r.tags and betw_tag in r.tags)
+            if n < drempel:
+                continue
+            # Al eens gemeld voor dit veld? Dan niet opnieuw.
+            reason = f"voorziening:{veld}"
+            bestaat = Report.query.filter_by(
+                event_id=ev.id, reason=reason).first()
+            if bestaat:
+                continue
+            db.session.add(Report(
+                event_id=ev.id, reason=reason, handled=False,
+                note=f"{n} gezinnen geven aan dat {label} ontbreekt, "
+                     f"terwijl de fiche het wel vermeldt."))
+            gemeld += 1
+            # Mail de uitbater (indien geclaimd) — als hulp, niet als kritiek.
+            claim = OperatorClaim.query.filter_by(
+                event_id=ev.id, status="approved").first()
+            if claim:
+                op = db.session.get(Operator, claim.operator_id)
+                if op:
+                    try:
+                        uitbater_mail.voorziening_feedback(
+                            op.email, ev.title, label,
+                            url_for("uitbater.fiche", event_id=ev.id,
+                                    _external=True), n)
+                    except Exception:
+                        pass
+    db.session.commit()
+    log(f"Voorziening-conflicten: {gemeld} nieuwe melding(en) aangemaakt.")
+    return gemeld

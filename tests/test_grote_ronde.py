@@ -2142,3 +2142,331 @@ def test_dashboard_todo_leeg_als_niets_openstaat(client, seed):
         s["admin_id"] = admin.id; s["admin_2fa_ok"] = True
     h = client.get("/beheer/", follow_redirects=True).get_data(as_text=True)
     assert "Alles bijgewerkt" in h
+
+
+# ------------------------------------------- publiq UiT-bronvermelding --------
+
+def test_uit_bronvermelding_op_fiche_en_lijst(client, seed, app):
+    from datetime import datetime, timedelta
+    from app.models import Event
+    straks = datetime.utcnow() + timedelta(days=3)
+    ev = Event(slug="uit-ev", title="UiT Concert", source="uit", uit_id="abc123",
+               start=straks, end=straks + timedelta(hours=2), is_permanent=False,
+               curated=True, hidden=False, gemeente="Gent", postcode="9000",
+               lat=51, lng=3.7, age_min=0, age_max=12, categories=[])
+    db.session.add(ev); db.session.commit()
+    # fiche: UiT-bron + correcte utm-link
+    f = client.get("/e/uit-ev").get_data(as_text=True)
+    assert "uitinvlaanderen.be" in f
+    assert "utm_source=ravot" in f and "utm_medium=partnerlink" in f
+    assert "UiTinVlaanderen" in f
+    # lijst/agendaoverzicht: bronverwijzing zodra er een UiT-event in staat
+    lijst = client.get("/ontdek?wanneer=alle").get_data(as_text=True)
+    assert "uitinvlaanderen.be" in lijst
+
+
+def test_uit_sync_slaat_geen_contactvelden_op():
+    """Privacy (publiq art. 8.2): de sync neemt geen contact-/persoonsvelden over."""
+    from app.services.uit_sync import normalise
+    item = {
+        "@id": "https://.../event/xyz", "name": {"nl": "Test"},
+        "organizer": {"@id": ".../org/1", "name": {"nl": "vzw Cultuur"},
+                      "contactPoint": {"email": ["prive@persoon.be"],
+                                       "phone": ["0470123456"]}},
+        "bookingInfo": {"email": "boeking@x.be", "phone": "0123"},
+        "contactPoint": {"email": ["geheim@x.be"]},
+    }
+    d = normalise(item)
+    # geen enkele contactwaarde mag in de genormaliseerde dict zitten
+    plat = str(d)
+    assert "prive@persoon.be" not in plat
+    assert "0470123456" not in plat
+    assert "boeking@x.be" not in plat
+    assert "geheim@x.be" not in plat
+    # organisatornaam (publiek) mag wél
+    assert d["organizer"]["name"] == "vzw Cultuur"
+
+
+# ------------------------------ claim-verificatie, voorzieningen, conflict ----
+
+def test_claim_domein_match_logica():
+    from app.routes.uitbater import _claim_domein_match
+    assert _claim_domein_match("jan@heaven24.be", "https://www.heaven24.be/") is True
+    assert _claim_domein_match("info@heaven24.be", "http://heaven24.be") is True
+    assert _claim_domein_match("oplichter@gmail.com", "https://heaven24.be") is False
+    assert _claim_domein_match("jan@ander.be", "https://heaven24.be") is False
+    assert _claim_domein_match("jan@heaven24.be", None) is False
+
+
+def test_claim_zet_domein_match(client, seed, app):
+    from app.models import Operator, Event, OperatorClaim
+    op = Operator(email="baas@speelhoek.be")
+    ev = Event(slug="dh-1", title="Speelhoek", source="user", is_permanent=True,
+               hidden=False, pending=False, source_url="https://speelhoek.be",
+               gemeente="Gent", postcode="9000", lat=51, lng=3.7,
+               age_min=0, age_max=12, categories=[])
+    db.session.add_all([op, ev]); db.session.commit()
+    with client.session_transaction() as s:
+        s["operator_id"] = op.id
+    client.post("/uitbater/claim", data={"event_id": ev.id})
+    claim = OperatorClaim.query.filter_by(event_id=ev.id).first()
+    assert claim is not None and claim.domein_match is True
+
+
+def test_uitbater_maakt_nieuwe_zaak(client, seed, app):
+    from app.models import Operator, Event, OperatorClaim
+    op = Operator(email="nieuw@zaak.be")
+    db.session.add(op); db.session.commit()
+    with client.session_transaction() as s:
+        s["operator_id"] = op.id
+    r = client.post("/uitbater/zaak/nieuw", data={
+        "titel": "Nieuwe Speeltuin", "gemeente": "Brugge", "postcode": "8000",
+        "website": "https://zaak.be"}, follow_redirects=False)
+    assert r.status_code == 302
+    ev = Event.query.filter_by(title="Nieuwe Speeltuin").first()
+    assert ev is not None and ev.pending is True and ev.is_permanent is True
+    # auto-claim aangemaakt met domein-match
+    claim = OperatorClaim.query.filter_by(event_id=ev.id, operator_id=op.id).first()
+    assert claim is not None and claim.domein_match is True
+
+
+def test_uitgebreide_voorzieningen_filter(client, seed, app):
+    from app.models import Event
+    db.session.add_all([
+        Event(slug="terras-1", title="Terras Café", source="user",
+              is_permanent=True, curated=True, hidden=False, pending=False,
+              terras=True, gemeente="Gent", postcode="9000", lat=51, lng=3.7,
+              age_min=0, age_max=12, categories=[]),
+        Event(slug="geen-terras", title="Binnen Café", source="user",
+              is_permanent=True, curated=True, hidden=False, pending=False,
+              terras=False, gemeente="Gent", postcode="9000", lat=51, lng=3.7,
+              age_min=0, age_max=12, categories=[]),
+    ])
+    db.session.commit()
+    h = client.get("/ontdek?ouder=terras&wanneer=alle").get_data(as_text=True)
+    assert "Terras Café" in h and "Binnen Café" not in h
+
+
+def test_voorziening_conflict_detectie(app, seed):
+    from app.models import Event, Review, Family, Report, Operator, OperatorClaim
+    from app.services.label import detecteer_voorziening_conflicten
+    # zaak met verzorgingstafel aangevinkt
+    ev = Event(slug="conf-1", title="Café Conflict", source="user",
+               is_permanent=True, curated=True, hidden=False, pending=False,
+               verzorgingstafel=True, gemeente="Gent", postcode="9000",
+               lat=51, lng=3.7, age_min=0, age_max=12, categories=[])
+    op = Operator(email="baas@cafeconflict.be")
+    db.session.add_all([ev, op]); db.session.flush()
+    db.session.add(OperatorClaim(operator_id=op.id, event_id=ev.id,
+                                 status="approved"))
+    # 3 gezinnen betwisten: "geen een verschoontafel"
+    for i in range(3):
+        fam = Family(email=f"c{i}@t.be", postcode="9000")
+        db.session.add(fam); db.session.flush()
+        db.session.add(Review(family_id=fam.id, event_id=ev.id, kid_score=4,
+                              parent_score=2, tags=["geen een verschoontafel"]))
+    db.session.commit()
+    gemeld = detecteer_voorziening_conflicten(log=lambda *a: None, drempel=3)
+    assert gemeld == 1
+    rep = Report.query.filter_by(event_id=ev.id).first()
+    assert rep is not None and rep.reason == "voorziening:verzorgingstafel"
+    # tweede run maakt geen dubbele melding
+    assert detecteer_voorziening_conflicten(log=lambda *a: None, drempel=3) == 0
+
+
+def test_conflict_onder_drempel_geen_melding(app, seed):
+    from app.models import Event, Review, Family, Report
+    from app.services.label import detecteer_voorziening_conflicten
+    ev = Event(slug="conf-2", title="Café Twee", source="user",
+               is_permanent=True, curated=True, hidden=False, pending=False,
+               kindermenu=True, gemeente="Gent", postcode="9000",
+               lat=51, lng=3.7, age_min=0, age_max=12, categories=[])
+    db.session.add(ev); db.session.flush()
+    for i in range(2):   # maar 2 -> onder drempel
+        fam = Family(email=f"d{i}@t.be", postcode="9000")
+        db.session.add(fam); db.session.flush()
+        db.session.add(Review(family_id=fam.id, event_id=ev.id, kid_score=4,
+                              parent_score=2, tags=["geen een kindermenu"]))
+    db.session.commit()
+    assert detecteer_voorziening_conflicten(log=lambda *a: None, drempel=3) == 0
+    assert Report.query.filter_by(event_id=ev.id).count() == 0
+
+
+def test_gezin_kan_voorziening_betwisten_via_review(client, seed, app):
+    """End-to-end: gezin dient review in met betwisting -> tag opgeslagen."""
+    from app.models import Event, Family, Review
+    ev = Event(slug="btw-1", title="Betwist Café", source="user",
+               is_permanent=True, curated=True, hidden=False, pending=False,
+               verzorgingstafel=True, gemeente="Gent", postcode="9000",
+               lat=51, lng=3.7, age_min=0, age_max=12, categories=[])
+    fam = Family(email="ouder@t.be", postcode="9000", active=True)
+    db.session.add_all([ev, fam]); db.session.flush()
+    from app.models import SavedEvent
+    db.session.add(SavedEvent(family_id=fam.id, event_id=ev.id, geweest=True))
+    db.session.commit()
+    with client.session_transaction() as s:
+        s["family_id"] = fam.id
+    client.post(f"/mijn/review/{ev.id}", data={
+        "kid_score": "4", "parent_score": "2",
+        "tag": "geen een verschoontafel"}, follow_redirects=True)
+    rv = Review.query.filter_by(event_id=ev.id, family_id=fam.id).first()
+    assert rv is not None and "geen een verschoontafel" in (rv.tags or [])
+
+
+def test_betwisting_alleen_voor_geclaimde_voorziening(client, seed, app):
+    """Een gezin kan geen voorziening betwisten die de zaak niet claimt."""
+    from app.models import Event, Family, Review
+    ev = Event(slug="btw-2", title="Geen Terras Café", source="user",
+               is_permanent=True, curated=True, hidden=False, pending=False,
+               terras=False, gemeente="Gent", postcode="9000",
+               lat=51, lng=3.7, age_min=0, age_max=12, categories=[])
+    fam = Family(email="ouder2@t.be", postcode="9000", active=True)
+    db.session.add_all([ev, fam]); db.session.flush()
+    from app.models import SavedEvent
+    db.session.add(SavedEvent(family_id=fam.id, event_id=ev.id, geweest=True))
+    db.session.commit()
+    with client.session_transaction() as s:
+        s["family_id"] = fam.id
+    client.post(f"/mijn/review/{ev.id}", data={
+        "kid_score": "4", "parent_score": "2",
+        "tag": "geen een terras"}, follow_redirects=True)   # zaak claimt geen terras
+    rv = Review.query.filter_by(event_id=ev.id, family_id=fam.id).first()
+    assert rv is not None and "geen een terras" not in (rv.tags or [])
+
+
+# --------------------------------------------------- medewerker-rol ----------
+
+def _maak_admin(rol, email):
+    from app.models import Admin
+    a = Admin(email=email, pw_hash="x", totp_secret="s", totp_confirmed=True,
+              role=rol)
+    db.session.add(a); db.session.commit()
+    return a.id
+
+
+def test_medewerker_mag_backend_niet_financien(client, seed):
+    aid = _maak_admin("medewerker", "mede@t.be")
+    with client.session_transaction() as s:
+        s["admin_id"] = aid; s["admin_2fa_ok"] = True
+    # mag: dashboard, activiteiten, instellingen, nazicht, gezinnen
+    assert client.get("/beheer/", follow_redirects=True).status_code == 200
+    assert client.get("/beheer/activiteiten").status_code == 200
+    assert client.get("/beheer/instellingen").status_code == 200
+    assert client.get("/beheer/nazicht").status_code == 200
+    # mag NIET: facturatie, partners (financiën) en team (teambeheer)
+    assert client.get("/beheer/facturatie").status_code == 403
+    assert client.get("/beheer/partners").status_code == 403
+    assert client.get("/beheer/team").status_code == 403
+
+
+def test_reviewer_mag_enkel_nazicht(client, seed):
+    aid = _maak_admin("reviewer", "rev@t.be")
+    with client.session_transaction() as s:
+        s["admin_id"] = aid; s["admin_2fa_ok"] = True
+    assert client.get("/beheer/nazicht").status_code == 200
+    # reviewer mag NIET aan instellingen of het medewerker-niveau
+    assert client.get("/beheer/instellingen").status_code == 403
+    assert client.get("/beheer/facturatie").status_code == 403
+    assert client.get("/beheer/team").status_code == 403
+
+
+def test_admin_mag_alles(client, seed):
+    aid = _maak_admin("admin", "baas@t.be")
+    with client.session_transaction() as s:
+        s["admin_id"] = aid; s["admin_2fa_ok"] = True
+    assert client.get("/beheer/facturatie").status_code == 200
+    assert client.get("/beheer/team").status_code == 200
+    assert client.get("/beheer/instellingen").status_code == 200
+
+
+def test_medewerker_aanmaken_via_team(client, seed):
+    from app.models import Admin
+    aid = _maak_admin("admin", "hoofd@t.be")
+    with client.session_transaction() as s:
+        s["admin_id"] = aid; s["admin_2fa_ok"] = True
+    client.post("/beheer/team", data={
+        "email": "nieuwe@mede.be", "wachtwoord": "eenlangwachtwoord123",
+        "rol": "medewerker"}, follow_redirects=True)
+    nieuw = Admin.query.filter_by(email="nieuwe@mede.be").first()
+    assert nieuw is not None and nieuw.role == "medewerker"
+
+
+# --------------------------- openingsuren, ontclaim, gezinsdata-toggle -------
+
+def test_openingsuren_status_3_kleuren():
+    from datetime import datetime
+    from app.services.openingsuren import status
+    class E:
+        openingsuren = {"ma": ["09:00", "17:00"], "zo": None}
+    e = E()
+    # maandag 12:00 -> open
+    st, _ = status(e, nu=datetime(2026, 1, 5, 12, 0))   # 5 jan 2026 = maandag
+    assert st == "open"
+    # maandag 16:30 -> bijna (sluit binnen 60 min)
+    st, _ = status(e, nu=datetime(2026, 1, 5, 16, 30))
+    assert st == "bijna"
+    # maandag 20:00 -> dicht
+    st, _ = status(e, nu=datetime(2026, 1, 5, 20, 0))
+    assert st == "dicht"
+    # zondag -> dicht (None)
+    st, _ = status(e, nu=datetime(2026, 1, 4, 12, 0))   # 4 jan = zondag
+    assert st == "dicht"
+
+
+def test_openingsuren_opslaan_via_admin(client, seed, app):
+    from app.models import Admin, Event
+    ev = Event(slug="ou-1", title="Uren Café", source="user", is_permanent=True,
+               hidden=False, gemeente="Gent", postcode="9000", lat=51, lng=3.7,
+               age_min=0, age_max=12, categories=[])
+    admin = Admin(email="ou@t.be", pw_hash="x", totp_secret="s",
+                  totp_confirmed=True, role="admin")
+    db.session.add_all([ev, admin]); db.session.commit()
+    with client.session_transaction() as s:
+        s["admin_id"] = admin.id; s["admin_2fa_ok"] = True
+    client.post(f"/beheer/activiteiten/{ev.id}", data={
+        "actie": "opslaan", "title": "Uren Café",
+        "open_ma": "09:00", "sluit_ma": "17:00", "dicht_zo": "1"})
+    ev2 = db.session.get(Event, ev.id)
+    assert ev2.openingsuren["ma"] == ["09:00", "17:00"]
+    assert ev2.openingsuren["zo"] is None
+
+
+def test_admin_kan_ontclaimen(client, seed, app):
+    from app.models import Admin, Event, Operator, OperatorClaim
+    ev = Event(slug="oc-1", title="Geclaimd Café", source="user",
+               is_permanent=True, hidden=False, gemeente="Gent", postcode="9000",
+               lat=51, lng=3.7, age_min=0, age_max=12, categories=[])
+    op = Operator(email="baas@x.be")
+    admin = Admin(email="ontclaim@t.be", pw_hash="x", totp_secret="s",
+                  totp_confirmed=True, role="admin")
+    db.session.add_all([ev, op, admin]); db.session.flush()
+    db.session.add(OperatorClaim(operator_id=op.id, event_id=ev.id,
+                                 status="approved"))
+    db.session.commit()
+    with client.session_transaction() as s:
+        s["admin_id"] = admin.id; s["admin_2fa_ok"] = True
+    client.post(f"/beheer/activiteiten/{ev.id}/ontclaim")
+    claim = OperatorClaim.query.filter_by(event_id=ev.id).first()
+    assert claim.status == "rejected"
+
+
+def test_gezinsdata_toggle(client, seed, app):
+    from app.models import Admin, Setting
+    aid = _maak_admin("medewerker", "gez@t.be")
+    with client.session_transaction() as s:
+        s["admin_id"] = aid; s["admin_2fa_ok"] = True
+    # toggle uit -> medewerker mag niet aan gezinnen
+    db.session.merge(Setting(key="medewerker_ziet_gezinnen", value="0"))
+    db.session.commit()
+    assert client.get("/beheer/families").status_code == 403
+    # toggle aan -> mag wel
+    db.session.merge(Setting(key="medewerker_ziet_gezinnen", value="1"))
+    db.session.commit()
+    assert client.get("/beheer/families").status_code == 200
+    # admin mag altijd
+    aid2 = _maak_admin("admin", "gezadmin@t.be")
+    with client.session_transaction() as s:
+        s["admin_id"] = aid2; s["admin_2fa_ok"] = True
+    db.session.merge(Setting(key="medewerker_ziet_gezinnen", value="0"))
+    db.session.commit()
+    assert client.get("/beheer/families").status_code == 200

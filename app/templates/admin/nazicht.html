@@ -38,6 +38,11 @@
       <div>
         <strong>{{ c.event.title if c.event else '—' }}</strong>
         <p class="meta">geclaimd door {{ c.operator.email if c.operator else '—' }}</p>
+        {% if c.domein_match %}
+        <p class="verif-ok">✅ E-mail matcht het website-domein van de zaak — sterk verificatiesignaal.</p>
+        {% else %}
+        <p class="verif-let">⚠️ Geen domein-match — controleer of deze uitbater écht bij de zaak hoort (bv. via de opmerking of een tegencheck).</p>
+        {% endif %}
         {% if c.note %}<p>“{{ c.note }}”</p>{% endif %}
         {% if c.event and c.event.source_url %}<p class="hint">website op fiche:
           <a href="{{ c.event.source_url }}" target="_blank" rel="noopener">{{ c.event.source_url }}</a>
@@ -92,6 +97,17 @@
 <section class="card">
   <h2>Foto's <span class="pil">{{ fotos|length }}</span></h2>
   {% if fotos %}
+    <details class="foto-checklist">
+      <summary>📋 Waaraan moet een foto voldoen? (klik om te tonen)</summary>
+      <ul>
+        <li><strong>Eigen beeld:</strong> zelf gemaakt of eigen rechten — géén affiches, promotiebeelden, screenshots of van internet geplukte foto's (auteursrecht).</li>
+        <li><strong>Geen herkenbare personen</strong> zonder toestemming, en <strong>zeker geen kinderen</strong> buiten het eigen gezin (portretrecht).</li>
+        <li><strong>Relevant:</strong> toont echt de plek of activiteit, niet iets willekeurigs.</li>
+        <li><strong>Gepast:</strong> geen aanstootgevend, misleidend of onwettig beeld.</li>
+        <li><strong>Bij UiT-activiteiten:</strong> gebruikersfoto's mogen, maar mogen niet de indruk wekken officieel UiT-beeld te zijn.</li>
+      </ul>
+      <p class="hint">Bij twijfel: afwijzen. Beter een foto te weinig dan een rechtenprobleem.</p>
+    </details>
     <div class="foto-raster">
     {% for f in fotos %}
     <div class="foto-item">

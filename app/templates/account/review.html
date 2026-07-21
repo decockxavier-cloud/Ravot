@@ -63,6 +63,22 @@ Jullie score is volledig anoniem — privacy gegarandeerd, andere gezinnen zien 
     </div>
   </div>
 
+  {% if betwistbaar %}
+  <div class="veld-groep betwist-groep">
+    <label class="veld-label">Klopte er iets niet?</label>
+    <p class="hint">Deze zaak vermeldt onderstaande voorzieningen. Vond je er iets
+    niet terug? Laat het weten — zo helpen we de uitbater bijsturen.</p>
+    <div class="tag-rij">
+      {% for waarde, label in betwistbaar %}
+      <label class="tag-keuze tag-betwist">
+        <input type="checkbox" name="tag" value="{{ waarde }}">
+        <span>🚫 {{ label }}</span>
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
   <div class="acties"><button class="btn btn-groot" type="submit">Bewaar Ravotscore 🌟</button></div>
   <p class="hint" style="text-align:center;margin-top:8px">Eén score per gezin · anoniem · helpt andere gezinnen kiezen</p>
 </form>

@@ -36,8 +36,8 @@
 
         <details class="admin-groep" {{ 'open' if active in sectie.gezinnen }}>
           <summary>Gezinnen &amp; partners</summary>
-          <a href="{{ url_for('admin.families') }}" class="{{ 'on' if active=='families' }}">Gezinnen</a>
-          <a href="{{ url_for('admin.partners') }}" class="{{ 'on' if active=='partners' }}">Partners</a>
+          {% if mag_gezinnen %}<a href="{{ url_for('admin.families') }}" class="{{ 'on' if active=='families' }}">Gezinnen</a>{% endif %}
+          {% if admin_rol == 'admin' %}<a href="{{ url_for('admin.partners') }}" class="{{ 'on' if active=='partners' }}">Partners</a>{% endif %}
           <a href="{{ url_for('admin.feestjes') }}" class="{{ 'on' if active=='feestjes' }}">Feestjes &amp; kampen</a>
           <a href="{{ url_for('admin.feestprospecten') }}" class="{{ 'on' if active=='feestprospecten' }}">Feestpartners</a>
           <a href="{{ url_for('admin.beloningen') }}" class="{{ 'on' if active=='beloningen' }}">Beloningen</a>
@@ -45,12 +45,12 @@
 
         <details class="admin-groep" {{ 'open' if active in sectie.beheer }}>
           <summary>Beheer</summary>
-          <a href="{{ url_for('admin.facturatie') }}" class="{{ 'on' if active=='facturatie' }}">Facturatie</a>
+          {% if admin_rol == 'admin' %}<a href="{{ url_for('admin.facturatie') }}" class="{{ 'on' if active=='facturatie' }}">Facturatie</a>{% endif %}
           <a href="{{ url_for('admin.paginas') }}" class="{{ 'on' if active=='paginas' }}">Pagina's</a>
           <a href="{{ url_for('admin.mails') }}" class="{{ 'on' if active=='mails' }}">Mailteksten</a>
           <a href="{{ url_for('admin.instellingen') }}" class="{{ 'on' if active=='instellingen' }}">Instellingen</a>
           <a href="{{ url_for('admin.status') }}" class="{{ 'on' if active=='status' }}">Status</a>
-          <a href="{{ url_for('admin.team') }}" class="{{ 'on' if active=='team' }}">Team</a>
+          {% if admin_rol == 'admin' %}<a href="{{ url_for('admin.team') }}" class="{{ 'on' if active=='team' }}">Team</a>{% endif %}
         </details>
       {% endif %}
       <a href="{{ url_for('admin.logout') }}" class="admin-uit">Afmelden</a>

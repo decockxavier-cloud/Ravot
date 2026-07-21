@@ -295,7 +295,13 @@ def review(event_id):
                 return int(v)
             return None
 
-        tags = [t for t in request.form.getlist("tag") if t in REVIEW_TAGS][:5]
+        from ..models import VOORZIENING_LABELS
+        # Geldige betwistingen: enkel "geen <label>" voor voorzieningen die de
+        # zaak effectief claimt. Zo kan een gezin melden dat iets ontbrak.
+        betwistbaar = {f"geen {lbl}" for veld, lbl in VOORZIENING_LABELS.items()
+                       if getattr(ev, veld, None)}
+        tags = [t for t in request.form.getlist("tag")
+                if t in REVIEW_TAGS or t in betwistbaar][:8]
         db.session.add(Review(
             family_id=fam.id, event_id=event_id, kid_score=kid, parent_score=parent,
             sfeer_rustig_actief=_schuif("sfeer_rustig_actief"),
@@ -312,8 +318,11 @@ def review(event_id):
             boodschap += f" (+{extra} ravotpunten 🦊)"
         flash(boodschap, "ok")
         return redirect(url_for("public.event", slug=ev.slug))
+    from ..models import VOORZIENING_LABELS
+    betwistbaar = [(f"geen {lbl}", lbl) for veld, lbl in VOORZIENING_LABELS.items()
+                   if getattr(ev, veld, None)]
     return render_template("account/review.html", ev=ev, existing=existing,
-                           tags=REVIEW_TAGS,
+                           tags=REVIEW_TAGS, betwistbaar=betwistbaar,
                            family=fam, title=f"Ravotscore voor {ev.title}", active=None)
 
 

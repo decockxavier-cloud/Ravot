@@ -43,6 +43,30 @@ def _mijn_goedgekeurde_claim(op, event_id):
 
 # ---------------------------------------------------------------- auth --
 
+def _claim_domein_match(email, website):
+    """True als het e-maildomein van de uitbater overeenkomt met het
+    website-domein van de zaak (bv. jan@heaven24.be claimt heaven24.be).
+    Sterk verificatiesignaal: alleen de echte eigenaar heeft zo'n adres."""
+    import re
+    if not email or not website:
+        return False
+    mail_domein = email.rsplit("@", 1)[-1].lower().strip()
+    if not mail_domein:
+        return False
+    # website -> kaal domein (zonder scheme, www, pad)
+    w = re.sub(r"^https?://", "", website.lower().strip())
+    w = re.sub(r"^www\.", "", w).split("/")[0].split(":")[0]
+    if not w:
+        return False
+    # gangbare gratis mailproviders tellen niet als bewijs
+    gratis = {"gmail.com", "hotmail.com", "hotmail.be", "outlook.com",
+              "outlook.be", "telenet.be", "skynet.be", "yahoo.com",
+              "live.be", "live.com", "proximus.be", "icloud.com"}
+    if mail_domein in gratis:
+        return False
+    return mail_domein == w or mail_domein.endswith("." + w) or w.endswith("." + mail_domein)
+
+
 @bp.route("/", methods=["GET"])
 def start():
     if _huidige():
@@ -164,11 +188,19 @@ def claim(op):
         if bestaand:
             flash("Je hebt deze plek al geclaimd.", "error")
             return redirect(url_for("uitbater.dashboard"))
+        # Domein-verificatie: matcht het e-maildomein van de uitbater met het
+        # website-domein van de zaak? Zo ja, sterk signaal dat de claim echt is.
+        domein_match = _claim_domein_match(op.email, ev.source_url)
         db.session.add(OperatorClaim(
-            operator_id=op.id, event_id=ev.id,
+            operator_id=op.id, event_id=ev.id, domein_match=domein_match,
             note=(request.form.get("note") or "").strip()[:500]))
         db.session.commit()
-        flash("Claim ingediend! We kijken ze na — je krijgt toegang zodra ze is goedgekeurd.", "ok")
+        if domein_match:
+            flash("Claim ingediend! Je e-mailadres matcht de website van de zaak — "
+                  "we ronden dit snel af.", "ok")
+        else:
+            flash("Claim ingediend! We kijken ze na — je krijgt toegang zodra ze "
+                  "is goedgekeurd.", "ok")
         return redirect(url_for("uitbater.dashboard"))
     zoek = (request.args.get("q") or "").strip()
     resultaten = []
@@ -180,6 +212,54 @@ def claim(op):
             db.func.lower(Event.title).like(like)).limit(20).all()
     return render_template("uitbater/claim.html", zoek=zoek, resultaten=resultaten,
                            title="Claim je zaak", family=None, active=None)
+
+
+@bp.route("/zaak/nieuw", methods=["GET", "POST"])
+@operator_required
+@limiter.limit("10/hour", methods=["POST"])
+def zaak_nieuw(op):
+    """Staat de zaak nog niet op Ravot? Dan kan de uitbater ze zelf aanmaken.
+    Ze gaat via het nazicht (pending) en wordt meteen aan de uitbater
+    toegewezen (auto-claim, goedgekeurd zodra de redactie de zaak goedkeurt)."""
+    from .account import _slugify
+    import secrets
+    if request.method == "POST":
+        titel = (request.form.get("titel") or "").strip()[:200]
+        adres = (request.form.get("adres") or "").strip()[:200]
+        gemeente = (request.form.get("gemeente") or "").strip()[:80]
+        postcode = (request.form.get("postcode") or "").strip()[:8]
+        website = (request.form.get("website") or "").strip()[:500]
+        beschrijving = (request.form.get("beschrijving") or "").strip()[:2000]
+        if not titel:
+            flash("Vul minstens de naam van je zaak in.", "error")
+            return redirect(url_for("uitbater.zaak_nieuw"))
+        ev = Event(
+            slug=f"{_slugify(titel)}-{secrets.token_hex(3)}",
+            title=titel, source="user", is_permanent=True,
+            pending=True, curated=False, hidden=False,
+            adres=adres or None, gemeente=gemeente or None,
+            postcode=postcode or None, source_url=website or None,
+            description=beschrijving or None,
+            age_min=0, age_max=12, categories=[])
+        db.session.add(ev)
+        db.session.flush()
+        # Auto-claim: de indiener is de uitbater. Domein-match indien mogelijk.
+        db.session.add(OperatorClaim(
+            operator_id=op.id, event_id=ev.id,
+            domein_match=_claim_domein_match(op.email, website),
+            note="Zaak zelf toegevoegd door de uitbater."))
+        db.session.commit()
+        # Bevestigingsmail
+        from ..services import uitbater_mail
+        try:
+            uitbater_mail.zaak_toegevoegd(op.email, titel)
+        except Exception:
+            current_app.logger.exception("zaak-toegevoegd-mail mislukt")
+        flash("Je zaak is ingediend! Onze redactie kijkt ze na — je krijgt een "
+              "mail zodra ze online staat.", "ok")
+        return redirect(url_for("uitbater.dashboard"))
+    return render_template("uitbater/zaak_nieuw.html", title="Zaak toevoegen",
+                           family=None, active=None)
 
 
 @bp.route("/fiche/<int:event_id>", methods=["GET", "POST"])
@@ -211,7 +291,9 @@ def fiche(op, event_id):
         # Kindvriendelijke voorzieningen — dit zijn dé parameters die van een
         # gewoon café een kindvriendelijke zaak maken.
         for veld in ("kinderstoel", "speelhoek", "kindermenu",
-                     "verzorgingstafel", "buggy_ok", "omheind"):
+                     "verzorgingstafel", "buggy_ok", "omheind",
+                     "terras", "overdekt_terras", "parking", "toegankelijk",
+                     "allergievriendelijk", "babyvoeding", "huisdieren"):
             nieuw = bool(request.form.get(veld))
             if nieuw != bool(getattr(ev, veld)):
                 wijzigingen[veld] = nieuw
@@ -249,7 +331,7 @@ def fiche_foto(op, event_id):
     if not ev or not _mijn_goedgekeurde_claim(op, event_id):
         abort(403)
     soort = request.form.get("soort")
-    if soort not in ("kindermenu", "kinderhoek"):
+    if soort not in ("kindermenu", "kinderhoek", "zaak"):
         abort(400)
     from .. import fotos
     from ..models import Photo

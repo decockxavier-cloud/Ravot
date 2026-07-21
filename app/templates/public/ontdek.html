@@ -42,6 +42,11 @@
       {% endfor %}
       </div>
 
+      {% if rows | map(attribute='event') | selectattr('uit_id') | list %}
+      <p class="uit-bron-overzicht">Activiteiten mede mogelijk gemaakt met gegevens van
+      <a href="https://www.uitinvlaanderen.be/?utm_source=ravot&utm_medium=partnerlink&utm_campaign=backlinks" rel="noopener" target="_blank">UiTinVlaanderen</a>.</p>
+      {% endif %}
+
       {% if max_pagina > 1 %}
       <nav class="paginering" aria-label="Pagina's">
         {% if pagina > 1 %}

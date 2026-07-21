@@ -33,6 +33,21 @@
   <a class="badge" href="{{ url_for('public.event', slug=ev.slug) }}" target="_blank">↗ bekijk publieke fiche</a>
 </div>
 
+{% if actieve_claims %}
+<div class="card" style="border-color:#e0b34d;background:#fbf7ea;margin-bottom:12px">
+  <strong>🤝 Geclaimd door:</strong>
+  {% for claim, op in actieve_claims %}
+    {{ op.email }} <span class="hint">({{ claim.status }}{{ ', domein-match' if claim.domein_match }})</span>{% if not loop.last %}, {% endif %}
+  {% endfor %}
+  <form method="post" action="{{ url_for('admin.activiteit_ontclaim', event_id=ev.id) }}"
+        onsubmit="return confirm('Alle claims op deze zaak intrekken? De uitbater verliest de toegang.');"
+        style="display:inline;margin-left:8px">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-klein btn-stil" type="submit">Claim intrekken</button>
+  </form>
+</div>
+{% endif %}
+
 {% if voorstel %}
 <div class="card" style="border-color:var(--gras);background:#eef6ee;margin-bottom:12px">
   🤖 <strong>AI-voorstel ingevuld.</strong> De velden hieronder bevatten de suggestie.
@@ -41,20 +56,13 @@
 </div>
 {% endif %}
 
-<form method="post" class="kaart-form">
+<form method="post" class="kaart-form fiche-bewerk">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  <label>Titel <input type="text" name="title" value="{{ ev.title or '' }}" maxlength="200"></label>
 
+  <h2 class="sectie-kop">Basis</h2>
+  <label>Titel <input type="text" name="title" value="{{ ev.title or '' }}" maxlength="200"></label>
   <label for="descveld">Beschrijving</label>
   <textarea id="descveld" name="description" rows="5" maxlength="2000">{{ v_desc or '' }}</textarea>
-
-  <div class="veldrij">
-    <label>Gemeente <input type="text" name="gemeente" value="{{ ev.gemeente or '' }}"></label>
-    <label>Postcode <input type="text" name="postcode" value="{{ ev.postcode or '' }}" maxlength="8"></label>
-  </div>
-  <label>Adres <input type="text" name="adres" value="{{ ev.adres or '' }}"></label>
-  <label>Website <input type="url" name="source_url" value="{{ ev.source_url or '' }}"></label>
-  <label>Foto-URL <input type="url" name="image_url" value="{{ ev.image_url or '' }}"></label>
   <div class="veldrij">
     <label>Categorie
       <select name="categorie">
@@ -65,12 +73,23 @@
     <label>Leeftijd van <input type="number" name="age_min" value="{{ v_min if v_min is not none else '' }}" min="0" max="18" style="width:80px"></label>
     <label>tot <input type="number" name="age_max" value="{{ v_max if v_max is not none else '' }}" min="0" max="18" style="width:80px"></label>
   </div>
+
+  <h2 class="sectie-kop">Locatie &amp; contact</h2>
+  <div class="veldrij">
+    <label>Gemeente <input type="text" name="gemeente" value="{{ ev.gemeente or '' }}"></label>
+    <label>Postcode <input type="text" name="postcode" value="{{ ev.postcode or '' }}" maxlength="8"></label>
+  </div>
+  <label>Adres <input type="text" name="adres" value="{{ ev.adres or '' }}"></label>
+  <label>Website <input type="url" name="source_url" value="{{ ev.source_url or '' }}"></label>
+  <label>Foto-URL <input type="url" name="image_url" value="{{ ev.image_url or '' }}"></label>
   <div class="veldrij">
     <label class="check"><input type="checkbox" name="indoor" value="1" {{ 'checked' if v_indoor }}> Binnen</label>
     <label class="check"><input type="checkbox" name="is_free" value="1" {{ 'checked' if v_gratis }}> Gratis</label>
     <label class="check"><input type="checkbox" name="pending" value="1" {{ 'checked' if ev.pending }}> In wachtrij (niet publiek)</label>
     <label class="check"><input type="checkbox" name="herbereken_geo" value="1"> Coördinaten opnieuw uit postcode</label>
   </div>
+
+  <h2 class="sectie-kop">Voorzieningen</h2>
   <div class="veldrij">
     {% macro tri(naam, label) -%}
     <label>{{ label }}
@@ -83,7 +102,35 @@
     {{ tri('omheind', '🚧 Omheind terrein') }}
     {{ tri('verzorgingstafel', '🍼 Verschoontafel') }}
     {{ tri('buggy_ok', '👶 Vlot met buggy') }}
+    {{ tri('kinderstoel', '🪑 Kinderstoelen') }}
+    {{ tri('speelhoek', '🧸 Speelhoek') }}
+    {{ tri('kindermenu', '🍟 Kindermenu') }}
+    {{ tri('terras', '☀️ Terras') }}
+    {{ tri('overdekt_terras', '⛱️ Overdekt terras') }}
+    {{ tri('parking', '🅿️ Parking') }}
+    {{ tri('toegankelijk', '♿ Toegankelijk') }}
+    {{ tri('allergievriendelijk', '🌾 Allergievriendelijk') }}
+    {{ tri('babyvoeding', '🍼 Babyvoeding opwarmen') }}
+    {{ tri('huisdieren', '🐕 Huisdieren welkom') }}
   </div>
+
+  <h2 class="sectie-kop">Openingsuren</h2>
+  <p class="hint">Laat een dag leeg als je het niet weet, of vink "gesloten" aan.</p>
+  <table class="uren-invoer">
+    {% set ou = ev.openingsuren or {} %}
+    {% for d, dlabel in [('ma','Maandag'),('di','Dinsdag'),('wo','Woensdag'),('do','Donderdag'),('vr','Vrijdag'),('za','Zaterdag'),('zo','Zondag')] %}
+    {% set dag = ou.get(d) %}
+    <tr>
+      <td class="uren-dag">{{ dlabel }}</td>
+      <td><input type="time" name="open_{{ d }}" value="{{ dag[0] if dag and dag|length == 2 else '' }}"></td>
+      <td>tot</td>
+      <td><input type="time" name="sluit_{{ d }}" value="{{ dag[1] if dag and dag|length == 2 else '' }}"></td>
+      <td><label class="check"><input type="checkbox" name="dicht_{{ d }}" value="1" {{ 'checked' if d in ou and ou.get(d) is none }}> gesloten</label></td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <h2 class="sectie-kop">Feestjes</h2>
   <div class="veldrij" style="align-items:end">
     <label>🎂 Verjaardagsfeestjes
       <select name="feest">
@@ -100,6 +147,8 @@
            {{ 'checked' if code in fs }}> {{ label }}</label>
     {% endfor %}
   </div>
+
+  <h2 class="sectie-kop">AI-verrijking</h2>
   <div class="veldrij" style="align-items:end">
     <label>Verrijk op basis van deze URL <small class="hint">(leeg = de website hierboven)</small>
       <input type="url" name="verrijk_url" placeholder="https://…"></label>

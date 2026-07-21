@@ -153,3 +153,18 @@
 }
 .admin-body .admin-groep[open] > summary::after { transform: rotate(90deg); }
 .admin-body .admin-groep > a { display: block; padding-left: 12px; }
+
+/* ---- Claim-verificatie in nazicht ---- */
+.verif-ok { color: #2f7d3a; background: #eef7f0; border-radius: 6px;
+  padding: 5px 10px; font-size: .85rem; margin: 4px 0; }
+.verif-let { color: #9a6a00; background: #fbf3e0; border-radius: 6px;
+  padding: 5px 10px; font-size: .85rem; margin: 4px 0; }
+
+/* ---- Opgeschoonde fiche-bewerk ---- */
+.fiche-bewerk .sectie-kop { font-size: 1rem; color: #4CA362; margin: 22px 0 8px;
+  padding-bottom: 4px; border-bottom: 2px solid #eef1f5; }
+.fiche-bewerk .sectie-kop:first-of-type { margin-top: 8px; }
+.uren-invoer { border-collapse: collapse; margin: 6px 0 4px; }
+.uren-invoer td { padding: 3px 8px 3px 0; vertical-align: middle; }
+.uren-invoer .uren-dag { font-weight: 600; min-width: 90px; }
+.uren-invoer input[type=time] { padding: 4px 6px; }

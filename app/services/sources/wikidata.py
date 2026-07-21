@@ -14,7 +14,7 @@ from flask import current_app
 
 from .base import NIET_KINDVRIENDELIJK
 
-UA = "Ravot/1.0 (https://ravot.be; gezinsuitstappen; contact hallo@ravot.be)"
+UA = "Ravot/1.0 (https://ravot.be; gezinsuitstappen; contact info@ravot.be)"
 
 # osm_tags-soort -> (Wikidata-klasse QID, categorie, (leeftijd), binnen?, blacklist?)
 KLASSEN = {

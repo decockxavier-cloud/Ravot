@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<a href="{{ url_for('uitbater.claim') }}" class="terug-link">← Terug</a>
+<h1>Je zaak toevoegen 🏠</h1>
+<p class="hint">Staat je zaak nog niet op Ravot? Voeg ze hier toe. Onze redactie
+kijkt ze na en zet ze online — je krijgt een mail zodra het zover is, en dan kun
+je je fiche verder aanvullen met voorzieningen en foto's.</p>
+
+<form method="post" class="card zaak-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label>Naam van je zaak *
+    <input type="text" name="titel" required maxlength="200" placeholder="bv. Café De Speeltuin">
+  </label>
+  <label>Adres
+    <input type="text" name="adres" maxlength="200" placeholder="Straat en nummer">
+  </label>
+  <div class="kamp-filter-rij">
+    <label>Gemeente <input type="text" name="gemeente" maxlength="80"></label>
+    <label>Postcode <input type="text" name="postcode" inputmode="numeric" maxlength="8" style="width:7em"></label>
+  </div>
+  <label>Website
+    <input type="url" name="website" maxlength="500" placeholder="https://...">
+    <span class="upload-hint">💡 Tip: als je e-mailadres hetzelfde domein heeft als je website
+    (bv. jij@jouwzaak.be), kunnen we je zaak sneller aan je toewijzen.</span>
+  </label>
+  <label>Korte beschrijving
+    <textarea name="beschrijving" rows="4" maxlength="2000" placeholder="Wat maakt jouw zaak fijn voor gezinnen met kinderen?"></textarea>
+  </label>
+  <button class="btn btn-groen btn-groot" type="submit">Zaak indienen →</button>
+</form>
+{% endblock %}

@@ -858,3 +858,34 @@ h1 + .ravot-label { margin: 6px 0 0; font-size: .9rem; }
   .kamp-kaart { flex-direction: column; }
   .kamp-thumb { width: 100%; height: 160px; }
 }
+
+/* ---- UiT-bronvermelding (publiq art. 5.4) ---- */
+.uit-bron-overzicht, .uit-bron { font-size: .82rem; color: #77836f;
+  text-align: center; margin: 10px 16px; }
+.uit-bron-overzicht a, .uit-bron a { color: #4CA362; }
+
+/* ---- Upload-hint (rechten) ---- */
+.upload-hint { font-size: .82rem; color: #77836f; background: #f6f2e8;
+  border-radius: 8px; padding: 7px 11px; margin: 0 0 8px; }
+.foto-checklist { margin: 4px 0 14px; font-size: .9rem; }
+.foto-checklist summary { cursor: pointer; font-weight: 600; color: #4CA362; }
+.foto-checklist ul { margin: 8px 0; padding-left: 20px; }
+.foto-checklist li { margin: 4px 0; }
+
+/* ---- Betwisting van voorzieningen in review ---- */
+.betwist-groep { margin-top: 14px; }
+.tag-betwist span { color: #a03434; }
+.tag-betwist input:checked + span { font-weight: 700; }
+
+/* ---- Openingsuren: open/dicht-badge (3 kleuren) ---- */
+.open-badge { font-weight: 700; border-radius: 999px; padding: 2px 10px;
+  font-size: .8rem; display: inline-flex; align-items: center; gap: 4px; }
+.open-badge.open-open  { color: #1f7a34; background: #e6f5ea; }
+.open-badge.open-bijna { color: #9a6300; background: #fbf1dc; }
+.open-badge.open-dicht { color: #a53434; background: #f9e7e7; }
+h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; }
+.openingsuren-blok { margin: 14px 0; }
+.uren-tabel { width: 100%; max-width: 320px; border-collapse: collapse; }
+.uren-tabel td { padding: 4px 8px; border-bottom: 1px solid #f0f0ec; }
+.uren-dag { font-weight: 600; color: #4CA362; }
+.uren-dicht { color: #a53434; }

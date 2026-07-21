@@ -37,6 +37,13 @@
     <label class="check"><input type="checkbox" name="verzorgingstafel" {{ 'checked' if ev.verzorgingstafel }}> 🍼 Verschoontafel</label>
     <label class="check"><input type="checkbox" name="buggy_ok" {{ 'checked' if ev.buggy_ok }}> 👶 Vlot met de wandelwagen</label>
     <label class="check"><input type="checkbox" name="omheind" {{ 'checked' if ev.omheind }}> 🚧 Afgesloten speelterrein</label>
+    <label class="check"><input type="checkbox" name="terras" {{ 'checked' if ev.terras }}> ☀️ Terras</label>
+    <label class="check"><input type="checkbox" name="overdekt_terras" {{ 'checked' if ev.overdekt_terras }}> ⛱️ Overdekt terras</label>
+    <label class="check"><input type="checkbox" name="parking" {{ 'checked' if ev.parking }}> 🅿️ Parking</label>
+    <label class="check"><input type="checkbox" name="toegankelijk" {{ 'checked' if ev.toegankelijk }}> ♿ Rolstoel- &amp; buggytoegankelijk</label>
+    <label class="check"><input type="checkbox" name="allergievriendelijk" {{ 'checked' if ev.allergievriendelijk }}> 🌾 Allergievriendelijk / glutenvrij</label>
+    <label class="check"><input type="checkbox" name="babyvoeding" {{ 'checked' if ev.babyvoeding }}> 🍼 Babyvoeding opwarmen mogelijk</label>
+    <label class="check"><input type="checkbox" name="huisdieren" {{ 'checked' if ev.huisdieren }}> 🐕 Huisdieren toegelaten</label>
   </div>
   <div class="card" style="margin:10px 0">
     <strong>🎂 Verjaardagsfeestjes</strong>
@@ -76,8 +83,10 @@
       <select name="soort">
         <option value="kindermenu">🍟 Kindermenukaart</option>
         <option value="kinderhoek">🧸 Speelhoek / speelterrein</option>
+        <option value="zaak">🏠 De zaak zelf (sfeerbeeld)</option>
       </select></label>
     <label>Foto <input type="file" name="foto" accept="image/*" required></label>
+    <p class="upload-hint">📷 Enkel eigen beeld waarvan je de rechten hebt, zonder herkenbare personen zonder toestemming.</p>
     <button class="btn" type="submit">Upload</button>
   </form>
 </div>
