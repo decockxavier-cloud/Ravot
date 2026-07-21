@@ -157,7 +157,7 @@ def _backup():
     import glob
     from datetime import datetime
     mappen = (current_app.config.get("BACKUP_DIR")
-              or "/srv/ravot-backups", "/var/backups/ravot")
+              or "/backups", "/srv/ravot-backups", "/var/backups/ravot")
     bestanden = []
     for m in mappen:
         bestanden += glob.glob(os.path.join(m, "*"))

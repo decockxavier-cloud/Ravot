@@ -11,6 +11,7 @@ services:
     restart: unless-stopped
     volumes:
       - ravot_uploads:/data/uploads   # gebruikersfoto's, persistent over rebuilds
+      - /srv/ravot-backups:/backups:ro  # read-only, zodat de status-check backups ziet
     networks:
       - internal
       - proxy
