@@ -59,7 +59,14 @@
 <div class="card" style="margin-bottom:12px">
   {% if ev.partner_until and ev.partner_until > nu_utc %}
   <strong>⭐ Partner</strong> tot {{ ev.partner_until.strftime("%d/%m/%Y") }}.
-  <p class="hint" style="margin:4px 0 8px">Je kunt hieronder gratis verlengen.</p>
+  <p class="hint" style="margin:4px 0 8px">Je kunt hieronder gratis verlengen, of het partnerschap intrekken.</p>
+  <form method="post" action="{{ url_for('admin.partner_intrekken') }}" class="inline-form"
+        onsubmit="return confirm('Partnerschap van deze zaak intrekken? De zaak verliest meteen de partner-status.');"
+        style="margin-bottom:8px">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="event_id" value="{{ ev.id }}">
+    <button class="btn btn-klein btn-stil" type="submit">⊘ Partnerschap intrekken</button>
+  </form>
   {% else %}
   <strong>Deze zaak is geen Partner.</strong>
   <p class="hint" style="margin:4px 0 8px">Maak de zaak hier gratis Partner — bv.

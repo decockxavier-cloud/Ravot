@@ -691,6 +691,36 @@ def ontdek():
     # de 1000-cap niet volloopt met permanente plekken.
     candidates = q.order_by(Event.start.is_(None).asc(),
                             Event.start.asc()).limit(1000).all()
+    # Partners APART ophalen — zonder de 1000-cap ÉN zonder de kwaliteits-/
+    # curatiedrempel. Een betaalde partner hoort altijd zichtbaar te zijn, ook
+    # als zijn fiche (nog) een lage quality heeft. We passen wél de datum-/
+    # type-/zoekfilters toe die de gebruiker koos, zodat een partner niet
+    # opduikt bij een niet-passende filter.
+    partner_q = geldige_events(Event.query, now)
+    partner_q = partner_q.filter(Event.partner_until.isnot(None),
+                                 Event.partner_until > now)
+    if wanneer in ("vandaag", "deze-week", "weekend"):
+        _ws, _we = window(wanneer)
+        partner_q = partner_q.filter(db.or_(
+            Event.is_permanent.is_(True),
+            db.and_(Event.start <= _we, (Event.end >= _ws) | (Event.start >= _ws))))
+    if soort in TYPES:
+        partner_q = partner_q.filter(Event.subtype == soort)
+    if groep == "smullen":
+        partner_q = partner_q.filter(Event.subtype.in_(list(GROEP_SMULLEN)))
+    elif groep == "beleven":
+        partner_q = partner_q.filter(Event.subtype.in_(list(GROEP_BELEVEN)))
+    elif groep == "ravotten":
+        partner_q = partner_q.filter(db.or_(
+            Event.subtype.is_(None),
+            Event.subtype.notin_(list(GROEP_SMULLEN | GROEP_BELEVEN))))
+    partner_kandidaten = partner_q.all()
+    # samenvoegen zonder dubbels (partners kunnen ook al in candidates zitten)
+    _in_cand = {e.id for e in candidates}
+    for pe in partner_kandidaten:
+        if pe.id not in _in_cand:
+            candidates.append(pe)
+            _in_cand.add(pe.id)
     # Bekende plaats gezocht? Filter op afstand (buurgemeenten mee).
     if centrum:
         candidates = _filter_buurt([{"event": e} for e in candidates], centrum, 20)
@@ -823,10 +853,12 @@ def verkennen():
         .order_by(Event.quality.desc().nullslast(), Event.title).limit(500).all()
     evs = list({e.id: e for e in gedateerd + permanent + horeca + eigen}.values())
 
-    # Partners horen ALTIJD op de kaart, los van de contingent-limieten hierboven
-    # (anders kan een partner-horecazaak buiten de top-300 vallen en ontbreken).
-    partner_evs = perm_basis.filter(Event.partner_until.isnot(None),
-                                    Event.partner_until > now).all()
+    # Partners horen ALTIJD op de kaart, los van de contingent-limieten én de
+    # kwaliteitsdrempel hierboven (anders kan een partner buiten de top-300 of
+    # onder een drempel vallen en ontbreken — bron van 'soms wel, soms niet').
+    partner_evs = geldige_events(Event.query, now).filter(
+        Event.lat.isnot(None),
+        Event.partner_until.isnot(None), Event.partner_until > now).all()
     _bekend = {e.id for e in evs}
     for pe in partner_evs:
         if pe.id not in _bekend:

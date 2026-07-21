@@ -14,6 +14,7 @@
     {% if cat %}<input type="hidden" name="cat" value="{{ cat }}">{% endif %}
     {% for o in ouder_filters %}<input type="hidden" name="ouder" value="{{ o }}">{% endfor %}
     {% if soort %}<input type="hidden" name="soort" value="{{ soort }}">{% endif %}
+    {% if groep is defined and groep %}<input type="hidden" name="groep" value="{{ groep }}">{% endif %}
     {% if lft %}<input type="hidden" name="lft" value="{{ lft }}">{% endif %}
     <button class="btn btn-klein" type="submit">Zoek</button>
   </form>

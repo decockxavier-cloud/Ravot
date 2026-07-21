@@ -2839,3 +2839,69 @@ def test_partner_altijd_zichtbaar_ondanks_paginering(client, seed, app):
     # kaart: de partner moet in de markers zitten
     hk = client.get("/verkennen?wanneer=alle").get_data(as_text=True)
     assert "Bar Julien Test" in hk
+
+
+def test_partner_zichtbaar_ondanks_1000_cap(client, seed, app):
+    """Regressietest voor het 'soms wel, soms niet'-gedrag: met >1000 permanente
+    plekken (allemaal zelfde sorteerwaarde, geen datum) kapt de DB willekeurig af
+    op 1000. Een partner-zaak moet tóch altijd verschijnen via de aparte query."""
+    from datetime import datetime, timedelta
+    from app.models import Event
+    # 1050 permanente speeltuinen zonder datum -> vullen de 1000-cap ruim
+    bulk = []
+    for i in range(1050):
+        bulk.append(Event(slug=f"cap-sp-{i}", title=f"Speeltuin {i}", source="user",
+                          subtype="playground", is_permanent=True, curated=True,
+                          hidden=False, pending=False, quality=40,
+                          gemeente="Gent", postcode="9000", lat=51, lng=3.7,
+                          age_min=0, age_max=12, categories=[]))
+    db.session.bulk_save_objects(bulk)
+    # partner-horecazaak, lage quality zodat hij "achteraan" zou vallen
+    par = Event(slug="cap-partner", title="Cap Partner Bar", source="overture",
+                subtype="horeca", is_permanent=True, curated=True, hidden=False,
+                pending=False, quality=20,
+                partner_until=datetime.utcnow() + timedelta(days=30),
+                gemeente="Gent", postcode="9000", lat=50.94, lng=3.12,
+                age_min=0, age_max=12, categories=[])
+    db.session.add(par); db.session.commit()
+    # meerdere refreshes: de partner moet ELKE keer bovenaan uitgelicht staan
+    for _ in range(3):
+        h = client.get("/ontdek?wanneer=alle").get_data(as_text=True)
+        assert "Cap Partner Bar" in h, "partner mag nooit uit de lijst vallen"
+        assert "partner-uitgelicht" in h
+
+
+def test_groep_filter_blijft_na_zoeken(client, seed, app):
+    """De groep-filter (Smullen) mag niet terugvallen op 'Alles' wanneer je
+    daarna een gemeente intikt en zoekt: het formulier moet 'groep' meesturen."""
+    from app.models import Event
+    db.session.add(Event(slug="zf-cafe", title="Zoek Cafe", source="user",
+                         subtype="horeca", is_permanent=True, curated=True,
+                         hidden=False, pending=False, gemeente="Gent",
+                         postcode="9000", lat=51.05, lng=3.72,
+                         age_min=0, age_max=12, categories=[]))
+    db.session.commit()
+    # de ontdek-pagina met groep=smullen moet het verborgen groep-veld bevatten,
+    # zodat een daaropvolgende zoekopdracht de filter behoudt
+    h = client.get("/ontdek?groep=smullen&wanneer=alle").get_data(as_text=True)
+    assert 'name="groep"' in h and 'value="smullen"' in h
+
+
+def test_partnerschap_intrekken(client, seed, app):
+    """Admin kan een (gratis) partnerschap weer intrekken."""
+    from datetime import datetime, timedelta
+    from app.models import Event
+    from app.routes.public import partner_actief
+    ev = Event(slug="intr-1", title="Intrek Cafe", source="user",
+               is_permanent=True, curated=True, hidden=False, pending=False,
+               partner_until=datetime.utcnow() + timedelta(days=90),
+               gemeente="Gent", postcode="9000", lat=51, lng=3.7,
+               age_min=0, age_max=12, categories=[])
+    db.session.add(ev); db.session.commit()
+    assert partner_actief(ev)
+    _admin_login(client)
+    client.post("/beheer/partners/intrekken",
+                data={"event_id": str(ev.id)}, follow_redirects=True)
+    db.session.refresh(ev)
+    assert not partner_actief(ev)
+    assert ev.partner_until is None

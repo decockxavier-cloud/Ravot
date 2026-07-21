@@ -1298,6 +1298,33 @@ def partner_handmatig():
     return redirect(request.referrer or url_for("admin.partners"))
 
 
+@bp.route("/partners/intrekken", methods=["POST"])
+@admin_required
+def partner_intrekken():
+    """Trek het partnerschap van een zaak in — bv. een gratis toekenning
+    terugnemen, of intrekken wanneer een zaak niet aan de Ravot-voorwaarden
+    voldoet. Zet partner_until op verleden zodat de zaak meteen geen partner
+    meer is; de betaalgeschiedenis blijft bewaard voor de boekhouding."""
+    from datetime import datetime
+    sleutel = (request.form.get("event") or request.form.get("event_id") or "").strip()
+    ev = None
+    if sleutel.isdigit():
+        ev = db.session.get(Event, int(sleutel))
+    if not ev and sleutel:
+        ev = Event.query.filter_by(slug=sleutel).first()
+    if not ev:
+        flash("Geen zaak gevonden met dat id of die slug.", "error")
+        return redirect(request.referrer or url_for("admin.partners"))
+    if not ev.partner_until:
+        flash("Deze zaak is geen Partner.", "error")
+        return redirect(request.referrer or url_for("admin.partners"))
+    ev.partner_until = None
+    db.session.commit()
+    audit(f"partnerschap ingetrokken: {ev.title}")
+    flash(f"Partnerschap van {ev.title} is ingetrokken.", "ok")
+    return redirect(request.referrer or url_for("admin.partners"))
+
+
 @bp.route("/feeds", methods=["GET", "POST"])
 @medewerker_required
 @limiter.limit("30/hour", methods=["POST"])
