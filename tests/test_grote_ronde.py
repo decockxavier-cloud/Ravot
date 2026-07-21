@@ -2704,3 +2704,26 @@ def test_partner_uitgelicht_bovenaan_lijst(client, seed, app):
     assert "partner-uitgelicht" in h            # uitgelicht blok aanwezig
     assert "Betalende partner" in h             # nieuwe formulering
     assert "Partner Pretpark" in h and "Gewoon Park" in h
+
+
+def test_groep_filter_op_kaart(client, seed, app):
+    """De Beleven/Ravotten/Smullen-filter werkt ook op de kaart (verkennen):
+    de groepbalk staat er en de markers worden gefilterd."""
+    from app.models import Event
+    db.session.add_all([
+        Event(slug="k-hor", title="Kaartcafe", source="user", subtype="horeca",
+              is_permanent=True, curated=True, hidden=False, pending=False,
+              gemeente="Gent", postcode="9000", lat=51.05, lng=3.72,
+              age_min=0, age_max=12, categories=[]),
+        Event(slug="k-play", title="Kaartspeeltuin", source="user", subtype="playground",
+              is_permanent=True, curated=True, hidden=False, pending=False,
+              gemeente="Gent", postcode="9000", lat=51.05, lng=3.72,
+              age_min=0, age_max=12, categories=[]),
+    ])
+    db.session.commit()
+    # groepbalk aanwezig op de kaart
+    h = client.get("/verkennen?wanneer=alle").get_data(as_text=True)
+    assert "groepbalk" in h and "Smullen" in h
+    # filter smullen: enkel horeca in de markers-data
+    hs = client.get("/verkennen?groep=smullen&wanneer=alle").get_data(as_text=True)
+    assert "Kaartcafe" in hs and "Kaartspeeltuin" not in hs

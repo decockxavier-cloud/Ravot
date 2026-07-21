@@ -831,11 +831,23 @@ def verkennen():
     if not band:
         lft = ""
     from ..models import get_bool
+    from ..types import GROEP_SMULLEN, GROEP_BELEVEN
     _verborgen = verborgen_type_codes()
     _enkel_gecureerd = get_bool("enkel_gecureerd") and request.args.get("alles_tonen") != "1"
+    groep = request.args.get("groep") or ""
+    if groep not in ("beleven", "ravotten", "smullen"):
+        groep = ""
     def _past(e):
         if _enkel_gecureerd and not e.curated:
             return False
+        if groep:
+            code = type_code(e)
+            if groep == "smullen" and code not in GROEP_SMULLEN:
+                return False
+            if groep == "beleven" and code not in GROEP_BELEVEN:
+                return False
+            if groep == "ravotten" and (code in GROEP_SMULLEN or code in GROEP_BELEVEN):
+                return False
         if filter_type == "gratis" and not e.is_free:
             return False
         if filter_type == "binnen" and not e.indoor:
@@ -869,7 +881,7 @@ def verkennen():
 
     def _kaart_url(_endpoint="public.verkennen", **wijzig):
         params = {"wanneer": wanneer, "filter": filter_type, "cat": cat,
-                  "q": zoek, "soort": soort, "lft": lft,
+                  "q": zoek, "soort": soort, "groep": groep, "lft": lft,
                   "ouder": sorted(ouder_filters),
                   "sp": "0" if verberg_sp else None}
         params.update(wijzig)
@@ -880,12 +892,13 @@ def verkennen():
 
     aantal_actief = ((1 if filter_type else 0) + (1 if cat else 0)
                      + (1 if soort else 0) + len(ouder_filters)
-                     + (1 if lft else 0) + (1 if verberg_sp else 0))
+                     + (1 if lft else 0) + (1 if verberg_sp else 0)
+                     + (1 if groep else 0))
     return render_template("public/verkennen.html", lft=lft, leeftijden=LEEFTIJDEN, markers=markers, center=center,
                            zoom=zoom, zoek=zoek, gezocht=bool(centrum),
                            filter_type=filter_type, cat=cat, verberg_sp=verberg_sp,
                            wanneer=wanneer, aantal=len(markers), totaal=len(markers),
-                           soort=soort, soorten=TYPES, ouder_filters=ouder_filters,
+                           soort=soort, groep=groep, soorten=TYPES, ouder_filters=ouder_filters,
                            flink=_kaart_url, aantal_actief=aantal_actief,
                            wissel_lijst=_kaart_url("public.ontdek"),
                            wissel_kaart=_kaart_url(),
