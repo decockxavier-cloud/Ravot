@@ -37,21 +37,15 @@
     </p>
     {% endif %}
 
-    {% if rows %}
-      {% set partner_ids = [] %}
-      {% for r in rows %}
-        {% if r.event.partner_until and r.event.partner_until > nu_utc %}
-          {% set _ = partner_ids.append(r.event.id) %}
-        {% endif %}
-      {% endfor %}
-      {% if partner_ids %}
+    {% if rows or uitgelichte_partners %}
+      {% if uitgelichte_partners %}
       <div class="partner-uitgelicht">
         <div class="partner-uitgelicht-kop">
           <span class="badge badge-partner">⭐ Partner</span>
           <span class="partner-uitgelicht-sub">Betalende partner · Authentieke gezinsscore</span>
         </div>
         <div class="kaarten-raster">
-        {% for r in rows if r.event.id in partner_ids %}{% set e = r.event %}
+        {% for r in uitgelichte_partners %}{% set e = r.event %}
           {% include "public/_kaart.html" %}
         {% endfor %}
         </div>
@@ -59,7 +53,7 @@
       {% endif %}
 
       <div class="kaarten-raster">
-      {% for r in rows if r.event.id not in partner_ids %}{% set e = r.event %}
+      {% for r in rows %}{% set e = r.event %}
         {% include "public/_kaart.html" %}
       {% endfor %}
       </div>

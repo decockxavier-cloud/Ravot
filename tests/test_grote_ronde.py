@@ -2808,3 +2808,34 @@ def test_handmatig_partner_via_event_id(client, seed, app):
     assert partner_actief(ev)
     bet = PartnerPayment.query.filter_by(event_id=ev.id, plan="handmatig").first()
     assert bet and bet.amount == "0.00"
+
+
+def test_partner_altijd_zichtbaar_ondanks_paginering(client, seed, app):
+    """Regressietest: een permanente partner-horecazaak (geen datum, zakt bij
+    datumsortering naar achteren) moet tóch bovenaan pagina 1 uitgelicht staan
+    en op de kaart verschijnen — niet 'verdwijnen' door de paginering."""
+    from datetime import datetime, timedelta
+    from app.models import Event
+    # veel gewone gedateerde events zodat de partner ver naar achteren zou zakken
+    for i in range(30):
+        db.session.add(Event(slug=f"vul-{i}", title=f"Vul Event {i}", source="user",
+                             is_permanent=False,
+                             start=datetime.utcnow() + timedelta(days=i + 1),
+                             end=datetime.utcnow() + timedelta(days=i + 1, hours=2),
+                             curated=True, hidden=False, pending=False,
+                             gemeente="Gent", postcode="9000", lat=51, lng=3.7,
+                             age_min=0, age_max=12, categories=[]))
+    par = Event(slug="bar-julien-test", title="Bar Julien Test", source="overture",
+                subtype="horeca", is_permanent=True, curated=True, hidden=False,
+                pending=False, quality=58,
+                partner_until=datetime.utcnow() + timedelta(days=30),
+                gemeente="Gent", postcode="9000", lat=50.94, lng=3.12,
+                age_min=0, age_max=12, categories=[])
+    db.session.add(par); db.session.commit()
+    # pagina 1 van de lijst: de partner moet uitgelicht bovenaan staan
+    h = client.get("/ontdek?wanneer=alle").get_data(as_text=True)
+    assert "partner-uitgelicht" in h
+    assert "Bar Julien Test" in h
+    # kaart: de partner moet in de markers zitten
+    hk = client.get("/verkennen?wanneer=alle").get_data(as_text=True)
+    assert "Bar Julien Test" in hk

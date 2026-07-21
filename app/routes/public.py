@@ -717,10 +717,22 @@ def ontdek():
                                  -(r["event"].quality or 0)))
 
     totaal = len(rows)
-    max_pagina = max(1, (totaal + per_pagina - 1) // per_pagina)
+    # Partners worden ALTIJD bovenaan uitgelicht (los van sortering/paginering).
+    # Zonder dit belandt een permanente partner-zaak (horeca heeft geen datum en
+    # zakt bij datumsortering naar achteren) op een late pagina en lijkt hij
+    # "verdwenen". We trekken ze uit de volledige lijst en tonen ze enkel op
+    # pagina 1; in de gewone (gepagineerde) stroom laten we ze weg.
+    partner_rows = [r for r in rows
+                    if r["event"].partner_until and r["event"].partner_until > now]
+    partner_ids = {r["event"].id for r in partner_rows}
+    gewone_rows = [r for r in rows if r["event"].id not in partner_ids]
+
+    max_pagina = max(1, (len(gewone_rows) + per_pagina - 1) // per_pagina)
     pagina = min(pagina, max_pagina)
     begin = (pagina - 1) * per_pagina
-    pagina_rows = rows[begin:begin + per_pagina]
+    pagina_rows = gewone_rows[begin:begin + per_pagina]
+    # Uitgelichte partners enkel op de eerste pagina meesturen.
+    uitgelichte_partners = partner_rows if pagina == 1 else []
 
     from ..models import get_bool as _gb
     # Weerbericht: op de gezóchte plaats als die bekend is, anders woonplaats.
@@ -747,7 +759,7 @@ def ontdek():
     aantal_actief = ((1 if filter_type else 0) + (1 if cat else 0)
                      + (1 if soort else 0) + len(ouder_filters)
                      + (1 if lft else 0) + (1 if sort == "score" else 0))
-    return render_template("public/ontdek.html", lft=lft, leeftijden=LEEFTIJDEN, rows=pagina_rows, sort=sort, zoek=zoek, wanneer=wanneer, cat=cat, verberg_sp=verberg_sp, toon_alles=toon_alles, curatie_aan=_gb("enkel_gecureerd"), ouder_filters=ouder_filters, weer=weer, soort=soort, groep=groep, soorten=TYPES, flink=_ontdek_url, aantal_actief=aantal_actief,
+    return render_template("public/ontdek.html", lft=lft, leeftijden=LEEFTIJDEN, rows=pagina_rows, uitgelichte_partners=uitgelichte_partners, sort=sort, zoek=zoek, wanneer=wanneer, cat=cat, verberg_sp=verberg_sp, toon_alles=toon_alles, curatie_aan=_gb("enkel_gecureerd"), ouder_filters=ouder_filters, weer=weer, soort=soort, groep=groep, soorten=TYPES, flink=_ontdek_url, aantal_actief=aantal_actief,
                            wissel_lijst=_ontdek_url(), wissel_kaart=_ontdek_url("public.verkennen"),
                            wis_url=url_for("public.ontdek", wanneer=wanneer, q=zoek),
                            zoek_endpoint="public.ontdek", weergave="lijst", toon_sorteer=True, kaart=False,
@@ -810,6 +822,16 @@ def verkennen():
                                          Event.subtype.is_(None))) \
         .order_by(Event.quality.desc().nullslast(), Event.title).limit(500).all()
     evs = list({e.id: e for e in gedateerd + permanent + horeca + eigen}.values())
+
+    # Partners horen ALTIJD op de kaart, los van de contingent-limieten hierboven
+    # (anders kan een partner-horecazaak buiten de top-300 vallen en ontbreken).
+    partner_evs = perm_basis.filter(Event.partner_until.isnot(None),
+                                    Event.partner_until > now).all()
+    _bekend = {e.id for e in evs}
+    for pe in partner_evs:
+        if pe.id not in _bekend:
+            evs.append(pe)
+            _bekend.add(pe.id)
 
     # Filter op type, categorie, speeltuinen en (indien gezocht) op buurt —
     # zelfde filterset als Ontdek: lijst en kaart zijn twee weergaven van
