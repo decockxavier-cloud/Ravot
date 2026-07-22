@@ -50,6 +50,40 @@
   <p><a href="{{ url_for('account.friends') }}">Gezinnen koppelen en samen op stap →</a></p>
 </div>
 
+<section class="card" id="gezinsleden" style="margin-top:14px">
+    <h2 style="margin-top:0">Wie zit er mee in jullie account? 👨‍👩‍👧</h2>
+    <p class="hint">Koppel het adres van je partner of plusouder: zij loggen in met hun
+    eigen e-mailadres en komen in ditzelfde gezinsprofiel terecht.</p>
+    <div class="lid-rij"><strong>{{ family.email }}</strong>
+      <span class="hint">hoofdadres</span></div>
+    {% for lid in family.members %}
+    <div class="lid-rij">
+      <span>{{ lid.email }}</span>
+      {% if lid.bevestigd %}
+        <span class="hint">✅ bevestigd · mails {{ 'aan' if lid.mail_aan else 'uit' }}</span>
+        <form method="post" action="{{ url_for('account.gezinslid_mail_toggle', lid_id=lid.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-stil btn-klein" type="submit">{{ 'Mails uit' if lid.mail_aan else 'Mails aan' }}</button>
+        </form>
+      {% else %}
+        <span class="hint">⏳ wacht op bevestiging</span>
+      {% endif %}
+      <form method="post" action="{{ url_for('account.gezinslid_verwijder', lid_id=lid.id) }}"
+            onsubmit="return confirm('Dit adres loskoppelen van jullie gezin?')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-stil btn-klein" type="submit">Loskoppelen</button>
+      </form>
+    </div>
+    {% endfor %}
+    {% if family.members|length < 4 %}
+    <form method="post" action="{{ url_for('account.gezinslid_toevoegen') }}" class="lid-toevoegen">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="email" name="email" placeholder="e-mailadres van je gezinslid" required>
+      <button class="btn btn-klein" type="submit">Uitnodigen</button>
+    </form>
+    {% endif %}
+  </section>
+
 <div class="card">
   <h2 style="margin-top:0">Jouw gegevens, jouw keuze</h2>
   <div class="acties">

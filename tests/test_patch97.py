@@ -137,3 +137,13 @@ def test_gdpr_verwijdering_neemt_leden_mee(gezin, app):
         db.session.delete(fam)
         db.session.commit()
         assert FamilyMember.query.filter_by(email="cascade@t.be").count() == 0
+
+
+def test_sectie_zichtbaar_op_instellingen(gezin):
+    client, _ = gezin
+    html = client.get("/mijn/instellingen").data.decode()
+    assert 'id="gezinsleden"' in html
+    assert "Uitnodigen" in html
+    # En niet op het dashboard (dode template-check)
+    dash = client.get("/mijn/profiel", follow_redirects=True).data.decode()
+    assert "gezinsleden/toevoegen" not in dash

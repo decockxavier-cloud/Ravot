@@ -1151,16 +1151,16 @@ def gezinslid_toevoegen():
     email = (request.form.get("email") or "").strip().lower()
     if not EMAIL_RE.match(email):
         flash("Dat lijkt geen geldig e-mailadres.", "error")
-        return redirect(url_for("account.profiel"))
+        return redirect(url_for("account.instellingen") + "#gezinsleden")
     if email == fam.email:
         flash("Dat is al het hoofdadres van jullie gezin.", "error")
-        return redirect(url_for("account.profiel"))
+        return redirect(url_for("account.instellingen") + "#gezinsleden")
     if email_in_gebruik(email):
         flash("Dit adres is al gekoppeld aan een Ravot-account.", "error")
-        return redirect(url_for("account.profiel"))
+        return redirect(url_for("account.instellingen") + "#gezinsleden")
     if len(fam.members) >= 4:
         flash("Maximaal 4 extra adressen per gezin.", "error")
-        return redirect(url_for("account.profiel"))
+        return redirect(url_for("account.instellingen") + "#gezinsleden")
     lid = FamilyMember(family_id=fam.id, email=email)
     db.session.add(lid)
     db.session.commit()
@@ -1175,7 +1175,7 @@ def gezinslid_toevoegen():
               f"{link}\n\nKen je dit gezin niet? Negeer deze mail gewoon."))
     flash(f"Uitnodiging verstuurd naar {email}. Zodra dat adres bevestigt, "
           "kan het inloggen én krijgt het de gezinsmails mee.", "ok")
-    return redirect(url_for("account.profiel"))
+    return redirect(url_for("account.instellingen") + "#gezinsleden")
 
 
 @bp.route("/gezinsleden/<int:lid_id>/verwijder", methods=["POST"])
@@ -1189,7 +1189,7 @@ def gezinslid_verwijder(lid_id):
     db.session.delete(lid)
     db.session.commit()
     flash("Adres losgekoppeld van jullie gezin.", "ok")
-    return redirect(url_for("account.profiel"))
+    return redirect(url_for("account.instellingen") + "#gezinsleden")
 
 
 @bp.route("/gezinsleden/<int:lid_id>/mail", methods=["POST"])
@@ -1204,4 +1204,4 @@ def gezinslid_mail_toggle(lid_id):
     db.session.commit()
     flash(("Gezinsmails aangezet voor " if lid.mail_aan else
            "Gezinsmails uitgezet voor ") + lid.email, "ok")
-    return redirect(url_for("account.profiel"))
+    return redirect(url_for("account.instellingen") + "#gezinsleden")
