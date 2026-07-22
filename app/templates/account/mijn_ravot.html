@@ -75,7 +75,7 @@
   {% for e in te_reviewen %}
   <div class="card mini-card">
     <div><a href="{{ url_for('public.event', slug=e.slug) }}"><strong>{{ e.title }}</strong></a><br><span class="meta">📍 {{ e.gemeente }} · {{ e.start.strftime('%d/%m') if e.start }}</span></div>
-    <a class="btn btn-zon btn-klein" href="{{ url_for('account.review', event_id=e.id) }}">Geef score</a>
+    <a class="btn btn-zon btn-klein" href="{{ url_for('account.review', event_id=e.id, terug='mijn') }}">Geef score</a>
   </div>
   {% endfor %}
 </section>
@@ -100,7 +100,7 @@
   {% for e in bewaard_voorbij %}
   <div class="card mini-card">
     <div><a href="{{ url_for('public.event', slug=e.slug) }}"><strong>{{ e.title }}</strong></a><br><span class="meta">{{ e.start.strftime('%d/%m') if e.start }}</span></div>
-    <a class="btn btn-stil btn-klein" href="{{ url_for('account.review', event_id=e.id) }}">Score geven</a>
+    <a class="btn btn-stil btn-klein" href="{{ url_for('account.review', event_id=e.id, terug='mijn') }}">Score geven</a>
   </div>
   {% endfor %}
 </section>

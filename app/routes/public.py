@@ -344,10 +344,13 @@ def permanente_pois(profile, limit=24):
     Fallback zodat Vandaag/Weekend niet leeg zijn als er weinig gedateerde events zijn."""
     candidates = Event.query.filter(Event.is_permanent.is_(True),
                                     Event.hidden.is_(False), Event.pending.is_(False)).limit(3000).all()
+    weggeklikt = _weggeklikt_ids()
     rows = []
     for e in candidates:
         s = score_event(e, profile)
         if s > 0:
+            if e.id in weggeklikt:   # 'niet voor ons' → hard achteraan
+                s *= 0.02
             total, _ = family_price(e.price_info, profile.child_ages)
             rows.append({"event": e, "score": s, "agg": None,
                          "family_total": total, "euro": euro_indicator(total),
@@ -382,6 +385,22 @@ def event_agg(e, cache=None):
     return agg or None
 
 
+def _weggeklikt_ids():
+    """Events die dit gezin als 'niet voor ons' markeerde: die zakken hard
+    achteraan (score × 0.02) maar verdwijnen niet — expliciet zoeken vindt
+    ze dus nog terug, en de knop op de kaart maakt het omkeerbaar.
+    Buiten een request (weekendmail, crons) is er geen sessie: dan geen
+    demping, want de mails bouwen hun eigen gezinsprofiel op."""
+    from flask import has_request_context
+    if not has_request_context():
+        return set()
+    fam = current_family()
+    if not fam:
+        return set()
+    return {i.event_id for i in
+            Interaction.query.filter_by(family_id=fam.id, type="dismiss")}
+
+
 def scored_events(profile, scope, extra_filter=None, limit=40, weer=True):
     start, end = window(scope)
     now = datetime.utcnow()
@@ -405,6 +424,7 @@ def scored_events(profile, scope, extra_filter=None, limit=40, weer=True):
         if get_bool("weer_aan"):
             from ..weer import regenkans
             regen = regenkans(profile.lat, profile.lng, start.date() if start else None)
+    weggeklikt = _weggeklikt_ids()
     agg_cache = {}
     rows = []
     for e in candidates:
@@ -426,6 +446,8 @@ def scored_events(profile, scope, extra_filter=None, limit=40, weer=True):
             s *= commercieel_factor(e)          # 3c: partner-bonus / demping
             if not e.image_url:                 # 6b: fiche zonder foto zakt wat
                 s *= _factor("foto_malus", 0.92)
+            if e.id in weggeklikt:              # 'niet voor ons' → hard achteraan
+                s *= 0.02
             total, _ = family_price(e.price_info, profile.child_ages)
             rows.append({"event": e, "score": s, "agg": agg if toon else None,
                          "toon_score": toon,

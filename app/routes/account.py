@@ -187,31 +187,50 @@ def instellingen():
 @login_required
 @limiter.limit("60/hour")
 def feedback(event_id, verdict):
+    """Leuk / Niet voor ons. Beide zijn een toggle en sluiten elkaar uit:
+    liken wist een eerdere 'niet voor ons' (en draait het gewichtseffect
+    terug) en omgekeerd. Zo kan er nooit een dubbel of gestapeld signaal
+    ontstaan."""
     if verdict not in ("like", "dismiss"):
         abort(400)
     fam = me()
     ev = db.session.get(Event, event_id) or abort(404)
-    if verdict == "like":
-        bestaand = Interaction.query.filter_by(
-            family_id=fam.id, event_id=event_id, type="like").first()
-        if bestaand:  # al leuk → toggle uit
-            db.session.delete(bestaand)
-            db.session.commit()
-            flash("Niet meer als leuk gemarkeerd.", "ok")
-            return redirect(request.referrer or url_for("public.vandaag"))
-    # smaakprofiel bijwerken
-    for cat in ev.categories or []:
-        interest = Interest.query.filter_by(family_id=fam.id, category=cat).first()
-        if interest is None:
-            interest = Interest(family_id=fam.id, category=cat, weight=1.0)
-            db.session.add(interest)
-        interest.weight = adjust_weight(interest.weight, liked=(verdict == "like"))
+
+    def _gewichten(liked, terugdraaien=False):
+        from ..scoring import reverse_weight
+        for cat in ev.categories or []:
+            interest = Interest.query.filter_by(family_id=fam.id, category=cat).first()
+            if interest is None:
+                interest = Interest(family_id=fam.id, category=cat, weight=1.0)
+                db.session.add(interest)
+            fn = reverse_weight if terugdraaien else adjust_weight
+            interest.weight = fn(interest.weight, liked=liked)
+
+    zelfde = Interaction.query.filter_by(
+        family_id=fam.id, event_id=event_id, type=verdict).first()
+    if zelfde:  # tweede klik = ongedaan maken, inclusief het gewichtseffect
+        db.session.delete(zelfde)
+        _gewichten(liked=(verdict == "like"), terugdraaien=True)
+        db.session.commit()
+        flash("Niet meer als leuk gemarkeerd." if verdict == "like"
+              else "Oké — we tonen dit weer gewoon tussen de rest.", "ok")
+        return redirect(request.referrer or url_for("public.vandaag"))
+
+    ander = "dismiss" if verdict == "like" else "like"
+    tegenpool = Interaction.query.filter_by(
+        family_id=fam.id, event_id=event_id, type=ander).first()
+    if tegenpool:  # wissel: het oude signaal (en zijn effect) eerst weg
+        db.session.delete(tegenpool)
+        _gewichten(liked=(ander == "like"), terugdraaien=True)
+
+    _gewichten(liked=(verdict == "like"))
     db.session.add(Interaction(family_id=fam.id, event_id=event_id, type=verdict))
     db.session.commit()
     if verdict == "like":
         flash("Leuk gevonden! We tonen je meer van dit soort activiteiten. 💚", "ok")
     else:
-        flash("Genoteerd — dit tonen we je minder. Je vindt het niet meer in je suggesties.", "ok")
+        flash("Genoteerd — dit zetten we voor jullie helemaal achteraan. "
+              "Nog eens klikken zet het terug.", "ok")
     return redirect(request.referrer or url_for("public.vandaag"))
 
 
@@ -259,7 +278,8 @@ def geweest(event_id):
         db.session.commit()
         if extra:
             flash(f"🦊 +{extra} ravotpunten — nieuwe stempel op jullie Ravotpas!", "ok")
-        return redirect(url_for("account.review", event_id=event_id))
+        return redirect(url_for("account.review", event_id=event_id,
+                                terug=request.form.get("terug") or None))
     sv.geweest = False
     db.session.commit()
     flash("Geen probleem — misschien een andere keer!", "ok")
@@ -276,14 +296,20 @@ def review(event_id):
     # Wraak-preventie: enkel scoorbaar als het gezin bevestigd "geweest" is.
     sv = SavedEvent.query.filter_by(family_id=fam.id, event_id=event_id).first()
     mag_scoren = existing is not None or (sv is not None and sv.geweest)
+    # Vanaf Mijn Ravot gestart? Dan keren we daar ook terug na het scoren,
+    # zodat de volgende te-scoren activiteit meteen klaarstaat.
+    terug = request.values.get("terug")
+    terug = terug if terug in ("mijn",) else None
     if not mag_scoren:
         # Nog niet bevestigd geweest → vraag dat eerst.
         return render_template("account/geweest.html", ev=ev, family=fam,
+                               terug=terug,
                                title="Waren jullie erbij?", active=None)
     if request.method == "POST":
         if existing:  # één per gezin per event — score niet kapot te trekken
             flash("Jullie gaven dit al een Ravotscore. Bedankt!", "ok")
-            return redirect(url_for("public.event", slug=ev.slug))
+            return redirect(url_for("account.mijn_home") if terug == "mijn"
+                            else url_for("public.event", slug=ev.slug))
         kid = int(request.form.get("kid_score", 0))
         parent = int(request.form.get("parent_score", 0))
         if not (1 <= kid <= 5 and 1 <= parent <= 3):
@@ -317,11 +343,13 @@ def review(event_id):
         if extra:
             boodschap += f" (+{extra} ravotpunten 🦊)"
         flash(boodschap, "ok")
-        return redirect(url_for("public.event", slug=ev.slug))
+        return redirect(url_for("account.mijn_home") if terug == "mijn"
+                        else url_for("public.event", slug=ev.slug))
     from ..models import VOORZIENING_LABELS
     betwistbaar = [(f"geen {lbl}", lbl) for veld, lbl in VOORZIENING_LABELS.items()
                    if getattr(ev, veld, None)]
     return render_template("account/review.html", ev=ev, existing=existing,
+                           terug=terug,
                            tags=REVIEW_TAGS, betwistbaar=betwistbaar,
                            family=fam, title=f"Ravotscore voor {ev.title}", active=None)
 

@@ -90,7 +90,9 @@
           </form>
           <form method="post" action="{{ url_for('account.feedback', event_id=e.id, verdict='dismiss') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button class="btn btn-stil btn-klein" type="submit">Niet voor ons</button>
+            <button class="btn btn-klein {{ 'actie-uit' if e.id in weggeklikt_ids|default([]) else 'btn-stil' }}" type="submit"
+                    title="{{ 'Klik om dit weer gewoon te tonen' if e.id in weggeklikt_ids|default([]) else 'Verberg dit soort suggesties' }}">
+              {{ '✕ Niet voor ons' if e.id in weggeklikt_ids|default([]) else 'Niet voor ons' }}</button>
           </form>
           <form method="post" action="{{ url_for('account.save', event_id=e.id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

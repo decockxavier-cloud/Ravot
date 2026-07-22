@@ -466,6 +466,7 @@ section h2 { font-size: 1.25rem; margin: 22px 0 8px; }
 
 /* Actie-aan-status (Leuk blijft zichtbaar) */
 .btn.actie-aan { background: #E3F1E7; border-color: var(--gras); color: var(--gras-donker); }
+.btn.actie-uit { background: #F1EEEA; border: 1.5px solid #b9b2a8; color: #6b6257; }
 .mini-actie.aan-groen { background: #E3F1E7; border-color: var(--gras); color: var(--gras-donker); }
 
 /* Weer-uitleg */

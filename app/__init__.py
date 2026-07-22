@@ -105,7 +105,7 @@ def create_app(config_object=Config):
         from .models import get_bool
         ctx = {"guest": g, "has_guest": bool(g.get("postcode")),
                "vakantie": vakantiecontext(), "bewaard_ids": set(),
-               "geliked_ids": set(),
+               "geliked_ids": set(), "weggeklikt_ids": set(),
                "feestjes_aan": get_bool("feestjes_aan"),
                "kampen_aan": get_bool("kampen_aan"),
                "label_aan": get_bool("label_aan")}
@@ -118,6 +118,8 @@ def create_app(config_object=Config):
                                       SavedEvent.query.filter_by(family_id=fid)}
                 ctx["geliked_ids"] = {i.event_id for i in
                     Interaction.query.filter_by(family_id=fid, type="like")}
+                ctx["weggeklikt_ids"] = {i.event_id for i in
+                    Interaction.query.filter_by(family_id=fid, type="dismiss")}
             except Exception:
                 pass
         # Login-status van uitbater en admin, zodat de navigatiebalk de juiste

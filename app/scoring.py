@@ -95,3 +95,10 @@ W_MIN, W_MAX = 0.3, 2.5
 def adjust_weight(current: float, liked: bool) -> float:
     w = current + (LIKE_STEP if liked else -DISMISS_STEP)
     return round(min(W_MAX, max(W_MIN, w)), 3)
+
+
+def reverse_weight(current: float, liked: bool) -> float:
+    """Draai één eerdere like/dismiss-stap terug (voor toggles en wissels),
+    zodat herhaald klikken niet stapelt."""
+    w = current - (LIKE_STEP if liked else -DISMISS_STEP)
+    return round(min(W_MAX, max(W_MIN, w)), 3)

@@ -11,6 +11,7 @@ Jullie score is volledig anoniem — privacy gegarandeerd, andere gezinnen zien 
 {% else %}
 <form method="post" class="card" id="score-form">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% if terug %}<input type="hidden" name="terug" value="{{ terug }}">{% endif %}
 
   <div class="score-blok">
     <label class="score-vraag">Hoe leuk vonden de kinderen het? <span class="hint">(laat ze zelf tikken!)</span></label>
