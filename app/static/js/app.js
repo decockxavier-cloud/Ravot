@@ -2,19 +2,52 @@
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/static/sw.js").catch(() => {});
 }
-let deferredPrompt = null;
-window.addEventListener("beforeinstallprompt", (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
-  const el = document.getElementById("install-cta");
-  if (el) {
-    el.hidden = false;
-    el.addEventListener("click", async () => {
-      el.hidden = true;
-      if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt = null; }
+// Chrome/Android geeft een echte installatieprompt (beforeinstallprompt).
+// iOS kent die API niet: daar tonen we een korte uitleg (Deel → beginscherm).
+// Al geïnstalleerd (standalone) of eerder weggeklikt: dan tonen we niets.
+(function () {
+  var rij = document.getElementById("install-rij");
+  var cta = document.getElementById("install-cta");
+  if (!rij || !cta) return;
+  var standalone = window.matchMedia("(display-mode: standalone)").matches ||
+                   window.navigator.standalone === true;
+  var weggeklikt = false;
+  try {
+    var tot = parseInt(localStorage.getItem("ravot_installtip_weg") || "0", 10);
+    weggeklikt = tot > Date.now();
+  } catch (e) { /* private modus: gewoon tonen */ }
+  if (standalone || weggeklikt) return;
+
+  var weg = document.getElementById("install-weg");
+  if (weg) weg.addEventListener("click", function () {
+    rij.hidden = true;
+    try {  // 60 dagen niet meer tonen
+      localStorage.setItem("ravot_installtip_weg",
+                           String(Date.now() + 60 * 24 * 3600 * 1000));
+    } catch (e) { /* ok */ }
+  });
+
+  var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+              (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (isIOS) {
+    rij.hidden = false;
+    var uitleg = document.getElementById("install-ios-uitleg");
+    cta.addEventListener("click", function () {
+      if (uitleg) uitleg.hidden = !uitleg.hidden;
     });
+    return;
   }
-});
+  var deferredPrompt = null;
+  window.addEventListener("beforeinstallprompt", function (e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    rij.hidden = false;
+  });
+  cta.addEventListener("click", function () {
+    rij.hidden = true;
+    if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt = null; }
+  });
+})();
 
 // Dynamisch kinderen toevoegen (onbeperkt) in onboarding/profiel
 document.addEventListener("click", function (e) {

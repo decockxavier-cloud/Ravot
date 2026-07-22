@@ -56,6 +56,16 @@ a { color: var(--gras); }
   background: var(--gras); color: var(--wit); font: 700 1rem Nunito, sans-serif;
   text-decoration: none; cursor: pointer; }
 .btn:focus-visible, a:focus-visible { outline: 3px solid var(--zon); outline-offset: 2px; }
+/* Het hidden-attribuut moet ALTIJD winnen, ook van .btn { display: inline-flex }.
+   Zonder deze regel stond de installatieknop op elk toestel zichtbaar. */
+[hidden] { display: none !important; }
+/* Installatietip: rustig, wegklikbaar, met iOS-uitleg */
+.install-rij { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 4px 0 12px; }
+.install-weg { border: none; background: none; font-size: 1.3rem; line-height: 1;
+  color: var(--gras-donker); opacity: .55; cursor: pointer; padding: 6px 10px; }
+.install-weg:hover { opacity: 1; }
+.install-uitleg { flex-basis: 100%; background: var(--wit); border: 1.5px solid var(--lijn);
+  border-radius: 12px; padding: 10px 14px; font-size: .92rem; }
 .btn-zon { background: var(--zon); color: var(--gras-donker); }
 .btn-stil { background: var(--wit); color: var(--gras-donker); border: 1.5px solid var(--lijn); }
 .btn-klein { min-height: 40px; padding: 6px 14px; font-size: .9rem; }
@@ -951,3 +961,18 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 .voorz-item { display: flex; flex-direction: column; gap: 4px;
   font-size: .9rem; font-weight: 500; }
 .voorz-item select { width: 100%; }
+
+/* --- Compacte kop op gsm (patch 94) ------------------------------------
+   De vandaag-pagina stapelde op mobiel drie banners plus de installatietip
+   vóór de zoekbalk. Zelfde info, veel minder hoogte. */
+@media (max-width: 640px) {
+  .vakantie-banner { padding: 8px 12px; font-size: .88rem; margin: 2px 0 8px;
+    border-radius: 12px; box-shadow: none; }
+  .weer-bericht { padding: 7px 10px; margin: 4px 0 8px; font-size: .85rem; gap: 8px; }
+  .weer-bericht .weer-emoji { font-size: 1.25rem; }
+  .weer-bericht em { display: none; }   /* de knipoog mag op gsm weg */
+  .weer-hint { padding: 8px 12px; font-size: .85rem; margin: 2px 0 8px; }
+  .answer { padding: 9px 12px; font-size: .9rem; margin: 2px 0 8px; }
+  .install-rij { margin: 2px 0 8px; }
+  .install-rij .btn-klein { min-height: 38px; padding: 6px 12px; font-size: .88rem; }
+}

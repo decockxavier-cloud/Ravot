@@ -24,7 +24,15 @@
     <span class="weer-uitleg" title="We halen de weersverwachting op voor de locatie en datum van elke activiteit (via Open-Meteo). Bij mooi weer krijgen buitenactiviteiten voorrang.">ⓘ hoe werkt dit?</span></div>
   {% endif %}
   {% if answer %}<p class="answer">{{ answer }}</p>{% endif %}
-  <button id="install-cta" class="btn btn-zon btn-klein" hidden>📲 Zet Ravot op je beginscherm</button>
+  <div class="install-rij" id="install-rij" hidden>
+    <button id="install-cta" class="btn btn-stil btn-klein" type="button">📲 Zet Ravot op je beginscherm</button>
+    <button id="install-weg" class="install-weg" type="button" aria-label="verberg deze tip">×</button>
+    <div id="install-ios-uitleg" class="install-uitleg" hidden>
+      Tik onderaan op <strong>Deel</strong> (het vierkantje met pijl omhoog)
+      en kies <strong>“Zet op beginscherm”</strong>. Ravot opent dan als app,
+      zonder adresbalk.
+    </div>
+  </div>
 
   {% if rows %}
   <div class="zoekrij">
@@ -86,7 +94,7 @@
           </form>
           <form method="post" action="{{ url_for('account.save', event_id=e.id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button class="btn btn-klein {{ 'actie-aan' if e.id in bewaard_ids|default([]) else 'btn-zon' }}" type="submit">
+            <button class="btn btn-klein {{ 'actie-aan' if e.id in bewaard_ids|default([]) else 'btn-stil' }}" type="submit">
               {{ '❤️ Bewaard' if e.id in bewaard_ids|default([]) else '🤍 Bewaar' }}</button>
           </form>
         </div>

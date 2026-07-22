@@ -130,7 +130,7 @@
 <div class="acties">
   <form method="post" action="{{ url_for('account.save', event_id=ev.id) }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button class="btn btn-zon" type="submit">{{ '❤️ Bewaard' if saved else '🤍 Bewaar' }}</button>
+    <button class="btn {{ 'actie-aan' if saved else 'btn-stil' }}" type="submit">{{ '❤️ Bewaard' if saved else '🤍 Bewaar' }}</button>
   </form>
   <form method="post" action="{{ url_for('account.share', event_id=ev.id) }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
