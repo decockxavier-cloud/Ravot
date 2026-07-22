@@ -68,15 +68,19 @@ def send_weekend_mail(family, mailer):
     text = "\n".join(
         f"- {p['event'].title} ({p['event'].gemeente})" for p in picks
     ) + f"\n\nUitschrijven (account blijft bestaan): {unsub_url}"
-    mailer(
-        family.email,
-        "Jullie weekend, geregeld — 5 Ravot-tips",
-        html, text,
-        headers={
-            "List-Unsubscribe": f"<{unsub_url}>",
-            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-        },
-    )
+    # Hoofdadres + bevestigde gezinsleden die de mails aan hebben staan.
+    adressen = [family.email] + [m.email for m in family.members
+                                 if m.bevestigd and m.mail_aan]
+    for adres in adressen:
+        mailer(
+            adres,
+            "Jullie weekend, geregeld — 5 Ravot-tips",
+            html, text,
+            headers={
+                "List-Unsubscribe": f"<{unsub_url}>",
+                "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+            },
+        )
     db.session.add(Interaction(family_id=family.id, type="mail_sent", meta={"n": len(picks)}))
     db.session.commit()
     return True

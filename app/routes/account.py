@@ -7,7 +7,7 @@ import secrets
 from datetime import date, datetime, timezone
 from functools import wraps
 
-from flask import (Blueprint, Response, abort, flash, redirect, render_template,
+from flask import (Blueprint, Response, abort, current_app, flash, redirect, render_template,
                    request, session, url_for)
 
 from ..extensions import db, limiter
@@ -506,6 +506,8 @@ def export():
     fam = me()
     data = {
         "email": fam.email, "display_name": fam.display_name,
+        "extra_adressen": [{"email": m.email, "bevestigd": m.bevestigd,
+                            "mail_aan": m.mail_aan} for m in fam.members],
         "postcode": fam.postcode, "radius_km": fam.radius_km,
         "budget_pref": fam.budget_pref,
         "newsletter_opt_in": fam.newsletter_opt_in,
@@ -1131,3 +1133,75 @@ def feestje_annuleer(fid):
     flash("Feestje geannuleerd. Al gecontacteerde zaken mag je gerust zelf "
           "even verwittigen.", "ok")
     return redirect(url_for("account.feestjes"))
+
+
+# ------------------------------------------------------------ gezinsleden --
+
+@bp.route("/gezinsleden/toevoegen", methods=["POST"])
+@login_required
+@limiter.limit("10/hour")
+def gezinslid_toevoegen():
+    """Extra e-mailadres uitnodigen voor dit gezinsaccount. Het adres wordt
+    pas actief nadat de eigenaar de bevestigingslink in de mail aanklikt."""
+    from itsdangerous import URLSafeTimedSerializer
+    from ..models import FamilyMember, email_in_gebruik
+    from ..services.magic import send_mail
+    from .auth import EMAIL_RE
+    fam = me()
+    email = (request.form.get("email") or "").strip().lower()
+    if not EMAIL_RE.match(email):
+        flash("Dat lijkt geen geldig e-mailadres.", "error")
+        return redirect(url_for("account.profiel"))
+    if email == fam.email:
+        flash("Dat is al het hoofdadres van jullie gezin.", "error")
+        return redirect(url_for("account.profiel"))
+    if email_in_gebruik(email):
+        flash("Dit adres is al gekoppeld aan een Ravot-account.", "error")
+        return redirect(url_for("account.profiel"))
+    if len(fam.members) >= 4:
+        flash("Maximaal 4 extra adressen per gezin.", "error")
+        return redirect(url_for("account.profiel"))
+    lid = FamilyMember(family_id=fam.id, email=email)
+    db.session.add(lid)
+    db.session.commit()
+    s = URLSafeTimedSerializer(current_app.config["SECRET_KEY"], salt="gezinslid")
+    link = current_app.config["SITE_URL"] + url_for(
+        "auth.gezinslid_bevestig", token=s.dumps(lid.id))
+    send_mail(
+        email, "Je bent uitgenodigd bij een Ravot-gezin 🦊",
+        render_template("mail/gezinslid_uitnodiging.html", fam=fam, link=link),
+        text=(f"Iemand van het gezinsaccount {fam.email} nodigt je uit om mee "
+              f"Ravot te gebruiken. Bevestig via deze link (7 dagen geldig): "
+              f"{link}\n\nKen je dit gezin niet? Negeer deze mail gewoon."))
+    flash(f"Uitnodiging verstuurd naar {email}. Zodra dat adres bevestigt, "
+          "kan het inloggen én krijgt het de gezinsmails mee.", "ok")
+    return redirect(url_for("account.profiel"))
+
+
+@bp.route("/gezinsleden/<int:lid_id>/verwijder", methods=["POST"])
+@login_required
+def gezinslid_verwijder(lid_id):
+    from ..models import FamilyMember
+    fam = me()
+    lid = db.session.get(FamilyMember, lid_id)
+    if lid is None or lid.family_id != fam.id:
+        abort(404)
+    db.session.delete(lid)
+    db.session.commit()
+    flash("Adres losgekoppeld van jullie gezin.", "ok")
+    return redirect(url_for("account.profiel"))
+
+
+@bp.route("/gezinsleden/<int:lid_id>/mail", methods=["POST"])
+@login_required
+def gezinslid_mail_toggle(lid_id):
+    from ..models import FamilyMember
+    fam = me()
+    lid = db.session.get(FamilyMember, lid_id)
+    if lid is None or lid.family_id != fam.id:
+        abort(404)
+    lid.mail_aan = not lid.mail_aan
+    db.session.commit()
+    flash(("Gezinsmails aangezet voor " if lid.mail_aan else
+           "Gezinsmails uitgezet voor ") + lid.email, "ok")
+    return redirect(url_for("account.profiel"))

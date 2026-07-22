@@ -52,10 +52,13 @@ def send_monday_mail(family, mailer, now=None):
             + "\n".join(f"- {e.title}: {site}{url_for('account.review', event_id=e.id)}"
                         for e in events)
             + f"\n\nGeen maandagvraag meer: {unsub_url}")
-    mailer(family.email, "Zijn jullie geweest? 😊 Geef een Ravotscore",
-           html, text,
-           headers={"List-Unsubscribe": f"<{unsub_url}>",
-                    "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"})
+    adressen = [family.email] + [m.email for m in family.members
+                                 if m.bevestigd and m.mail_aan]
+    for adres in adressen:
+        mailer(adres, "Zijn jullie geweest? 😊 Geef een Ravotscore",
+               html, text,
+               headers={"List-Unsubscribe": f"<{unsub_url}>",
+                        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"})
     return True
 
 

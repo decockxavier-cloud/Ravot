@@ -36,7 +36,8 @@ def login():
         # vreemde adressen krijgen zo nooit ongevraagde mail). We tonen eerst
         # de vraag of ze een nieuw profiel willen; pas na die bewuste klik
         # (veld "nieuw") vertrekt de code en volgt de onboarding.
-        bestaat = Family.query.filter_by(email=email).first() is not None
+        from ..models import find_family_by_email
+        bestaat = find_family_by_email(email) is not None
         if not bestaat and request.form.get("nieuw") != "1":
             return render_template("auth/nieuw_profiel.html", email=email,
                                    title="Nieuw bij Ravot?", family=None,
@@ -70,7 +71,8 @@ def code_verify():
         return render_template("auth/code_invoeren.html", email=email,
                                title="Voer je code in", family=None, active=None)
     session.pop("code_email", None)
-    family = Family.query.filter_by(email=email).first()
+    from ..models import find_family_by_email
+    family = find_family_by_email(email)
     session.permanent = True
     if family is None:
         session["pending_email"] = email
@@ -105,3 +107,33 @@ def unsubscribe(token):
         db.session.commit()
     return render_template("auth/unsub.html", ok=True, title="Uitgeschreven",
                            family=None, active=None)
+
+
+@bp.route("/gezinslid/<token>")
+def gezinslid_bevestig(token):
+    """Bevestiging van een extra gezinslid-adres via gesigneerde maillink.
+    Publiek bereikbaar: het nieuwe lid is meestal nog niet ingelogd."""
+    from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+    from ..models import FamilyMember
+    from ..extensions import db
+    from datetime import datetime
+    s = URLSafeTimedSerializer(current_app.config["SECRET_KEY"], salt="gezinslid")
+    try:
+        lid_id = s.loads(token, max_age=7 * 24 * 3600)
+    except SignatureExpired:
+        flash("Deze uitnodiging is verlopen. Vraag een nieuwe aan via het gezin.", "error")
+        return redirect(url_for("auth.login"))
+    except BadSignature:
+        flash("Deze link klopt niet.", "error")
+        return redirect(url_for("auth.login"))
+    lid = db.session.get(FamilyMember, lid_id)
+    if lid is None:
+        flash("Deze uitnodiging bestaat niet meer.", "error")
+        return redirect(url_for("auth.login"))
+    if not lid.bevestigd:
+        lid.bevestigd = True
+        lid.bevestigd_at = datetime.utcnow()
+        db.session.commit()
+    flash("Adres bevestigd! Meld je aan met je eigen e-mailadres — je krijgt "
+          "dan een inlogcode en komt in jullie gezinsaccount terecht.", "ok")
+    return redirect(url_for("auth.login"))

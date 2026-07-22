@@ -984,3 +984,14 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
   padding: 10px 14px; margin: 8px 0; }
 .weggeklikt-rij a { font-weight: 700; flex: 1 1 auto; min-width: 160px; }
 .weggeklikt-rij form { margin-left: auto; }
+
+/* Gezinsleden-beheer op profiel (patch 97) */
+.lid-rij { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 8px 0; border-bottom: 1px solid var(--lijn); }
+.lid-rij:last-of-type { border-bottom: none; }
+.lid-rij span:first-child, .lid-rij strong { min-width: 0; overflow-wrap: anywhere; }
+.lid-rij form { margin-left: auto; }
+.lid-rij form + form { margin-left: 0; }
+.lid-toevoegen { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.lid-toevoegen input[type=email] { flex: 1 1 220px; padding: 10px 14px;
+  border: 1.5px solid var(--lijn); border-radius: 999px; font: inherit; }

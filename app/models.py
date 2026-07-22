@@ -36,10 +36,45 @@ class Family(db.Model):
 
     children = db.relationship("Child", backref="family", cascade="all, delete-orphan")
     interests = db.relationship("Interest", backref="family", cascade="all, delete-orphan")
+    members = db.relationship("FamilyMember", backref="family",
+                              cascade="all, delete-orphan")
 
     def child_ages(self, year=None):
         year = year or utcnow().year
         return sorted(year - c.birth_year for c in self.children)
+
+
+class FamilyMember(db.Model):
+    """Extra e-mailadres binnen één gezinsaccount (bv. de partner).
+
+    Het oorspronkelijke Family.email blijft het hoofdadres. Extra adressen
+    moeten zichzelf eerst bevestigen via een gesigneerde maillink: zo kan
+    niemand andermans adres ongevraagd aan een gezin hangen. Na bevestiging
+    kan het adres gewoon inloggen met een eigen inlogcode en ontvangt het
+    (uitschakelbaar) de gezinsmails mee."""
+    __tablename__ = "family_members"
+    id = db.Column(db.Integer, primary_key=True)
+    family_id = db.Column(db.Integer, db.ForeignKey("families.id"), nullable=False, index=True)
+    email = db.Column(db.String(255), unique=True, nullable=False, index=True)
+    bevestigd = db.Column(db.Boolean, default=False, nullable=False)
+    mail_aan = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=utcnow)
+    bevestigd_at = db.Column(db.DateTime)
+
+
+def find_family_by_email(email):
+    """Gezin opzoeken op hoofdadres óf bevestigd gezinslid-adres."""
+    fam = Family.query.filter_by(email=email).first()
+    if fam:
+        return fam
+    lid = FamilyMember.query.filter_by(email=email, bevestigd=True).first()
+    return lid.family if lid else None
+
+
+def email_in_gebruik(email):
+    """Waar dan ook in gebruik (hoofdadres of gezinslid, ook onbevestigd)."""
+    return (Family.query.filter_by(email=email).first() is not None
+            or FamilyMember.query.filter_by(email=email).first() is not None)
 
 
 class Child(db.Model):
