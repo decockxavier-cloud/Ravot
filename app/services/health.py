@@ -104,6 +104,14 @@ def _ollama():
 
 
 def _overpass():
+    """Live-bereikbaarheid van de Overpass-servers, maar met de ouderdom van de
+    laatste OSM-sync als hoofdsignaal. De publieke servers zijn wispelturig en
+    de wekelijkse nachtsync heeft ruimere timeouts (90s) plus mirror-fallback:
+    een traag piekmoment is dus géén probleem zolang de sync recent is.
+    Rood is voorbehouden voor wat echt aandacht vraagt."""
+    from ..models import get_bool
+    if not get_bool("bron_osm_aan"):
+        return None, "bron staat uit (/beheer/verbindingen)"
     servers = ("https://overpass-api.de/api/status",
                "https://overpass.kumi.systems/api/status",
                "https://overpass.private.coffee/api/status")
@@ -118,7 +126,20 @@ def _overpass():
             laatste = f"{url.split('/')[2]} antwoordt {r.status_code}"
         except Exception as exc:
             laatste = f"{url.split('/')[2]}: {type(exc).__name__}"
-    return False, laatste or "geen server bereikbaar"
+    # Geen enkele server vlot bereikbaar: kijk naar de laatste geslaagde sync.
+    from datetime import datetime, timedelta
+    from ..models import SyncStatus
+    s = db.session.get(SyncStatus, "osm")
+    if s and s.last_run:
+        dagen = (datetime.utcnow() - s.last_run).days
+        if dagen <= 14:   # wekelijks schema + marge
+            return None, (f"servers traag op dit moment ({laatste}) — geen actie "
+                          f"nodig: laatste OSM-sync {dagen} dag(en) oud en de "
+                          f"nachtsync heeft ruimere timeouts en mirrors")
+        return False, (f"servers onbereikbaar ({laatste}) én laatste OSM-sync "
+                       f"{dagen} dagen oud — controleer de wekelijkse cron")
+    return False, (f"servers onbereikbaar ({laatste}) en nog geen geslaagde "
+                   f"OSM-sync geregistreerd")
 
 
 def _open_meteo():
