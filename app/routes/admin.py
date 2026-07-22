@@ -488,7 +488,7 @@ def verbindingen():
                            bron_tellingen=bron_tellingen,
                            groepen=inst_groepen, waarden=inst_waarden, defs=inst_defs, status=status,
                            syncstatus=syncstatus, sync_bezig=sync_bezig,
-                           title="Verbindingen", family=None, active=None)
+                           title="Verbindingen", family=None, active="verbindingen")
 
 
 @bp.route("/test-ollama", methods=["POST"])
@@ -663,7 +663,7 @@ def families():
         q = q.filter(db.func.lower(Family.email).like(f"%{zoek}%"))
     gezinnen = q.order_by(Family.created_at.desc()).limit(200).all()
     return render_template("admin/families.html", gezinnen=gezinnen, zoek=zoek,
-                           title="Gezinnen", family=None, active=None)
+                           title="Gezinnen", family=None, active="families")
 
 
 @bp.route("/families/<int:fid>", methods=["GET", "POST"])
@@ -754,7 +754,7 @@ def family_detail(fid):
                            inwissels=inwissels, statussen=INWISSEL_STATUSSEN,
                            pas_totaal=pas_totaal, pas_saldo=pas.saldo(fid),
                            pas_niveau=pas.niveau(pas_totaal),
-                           title=f"Gezin {fam.email}", family=None, active=None)
+                           title=f"Gezin {fam.email}", family=None, active="families")
 
 
 @bp.route("/paginas", methods=["GET"])
@@ -766,7 +766,7 @@ def paginas():
         cp = db.session.get(ContentPage, slug)
         pages.append({"slug": slug, "titel": titel, "bewerkt": cp.updated_at if cp else None})
     return render_template("admin/paginas.html", pages=pages,
-                           title="Inhoudspagina's", family=None, active=None)
+                           title="Inhoudspagina's", family=None, active="paginas")
 
 
 @bp.route("/paginas/<slug>", methods=["GET", "POST"])
@@ -790,7 +790,7 @@ def pagina_bewerk(slug):
     titel = cp.titel if cp else CONTENT_PAGES[slug]
     return render_template("admin/pagina_bewerk.html", slug=slug, titel=titel,
                            inhoud=inhoud, title=f"Bewerk: {CONTENT_PAGES[slug]}",
-                           family=None, active=None)
+                           family=None, active="paginas")
 
 
 @bp.route("/mails", methods=["GET"])
@@ -803,7 +803,7 @@ def mails():
         templates.append({"slug": slug, "naam": naam, "placeholders": placeholders,
                           "bewerkt": mt.updated_at if mt else None})
     return render_template("admin/mails.html", templates=templates,
-                           title="Mailteksten", family=None, active=None)
+                           title="Mailteksten", family=None, active="mails")
 
 
 @bp.route("/mails/<slug>", methods=["GET", "POST"])
@@ -828,7 +828,7 @@ def mail_bewerk(slug):
                            placeholders=placeholders,
                            onderwerp=mt.onderwerp if mt else "",
                            inhoud=mt.inhoud_md if mt else "",
-                           title=f"Bewerk mail: {naam}", family=None, active=None)
+                           title=f"Bewerk mail: {naam}", family=None, active="mails")
 
 
 @bp.route("/logout")

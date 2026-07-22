@@ -19,7 +19,8 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: ravot
-      POSTGRES_PASSWORD: ravot
+      # Wachtwoord komt uit .env (zelfde map); compose faalt luid als het ontbreekt.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD ontbreekt in .env}
       POSTGRES_DB: ravot
     volumes:
       - ravot_pgdata:/var/lib/postgresql/data
