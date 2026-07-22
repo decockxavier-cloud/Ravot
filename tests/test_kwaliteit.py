@@ -73,9 +73,13 @@ def test_herbereken_cli(app):
 
 def test_ontdek_default_sort_is_datum_en_wanneer_filtert(client, app):
     now = datetime.utcnow()
+    # Event dat de hele dag vandaag loopt, zodat de test niet faalt afhankelijk
+    # van het uur (00:01–23:59 = altijd 'vandaag lopend').
+    dagstart = now.replace(hour=0, minute=1, second=0, microsecond=0)
+    dageind = now.replace(hour=23, minute=59, second=0, microsecond=0)
     with app.app_context():
         db.session.add(Event(source="uit", ext_id="w1", slug="vandaag-evt",
-            title="Vandaagevent", start=now + timedelta(hours=2),
+            title="Vandaagevent", start=dagstart, end=dageind,
             gemeente="Gent", postcode="9000", lat=51.0, lng=3.7,
             age_min=0, age_max=12, categories=["buiten"], quality=70))
         db.session.add(Event(source="uit", ext_id="w2", slug="ver-evt",

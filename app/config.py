@@ -58,7 +58,11 @@ class Config:
     ENRICH_CLOUD_KEY = (os.environ.get("ENRICH_CLOUD_KEY")
                         or os.environ.get("ANTHROPIC_API_KEY", ""))
     # Mollie (Ravot Partner). Leeg = betalingen uit (portaal blijft gratis werken).
+    # Je kunt beide sleutels bewaren en in /beheer -> Instellingen wisselen tussen
+    # test en live (mollie_modus). MOLLIE_API_KEY blijft als terugval bestaan.
     MOLLIE_API_KEY = os.environ.get("MOLLIE_API_KEY", "")
+    MOLLIE_API_KEY_LIVE = os.environ.get("MOLLIE_API_KEY_LIVE", "")
+    MOLLIE_API_KEY_TEST = os.environ.get("MOLLIE_API_KEY_TEST", "")
     # Odoo (Peppol-conforme facturatie). Alles leeg = facturatie uit.
     ODOO_URL = os.environ.get("ODOO_URL", "")
     ODOO_DB = os.environ.get("ODOO_DB", "")

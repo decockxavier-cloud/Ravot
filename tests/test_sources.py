@@ -130,9 +130,14 @@ def test_child_safe_poort():
 
 def _add_dated_and_permanent():
     now = datetime.utcnow()
+    # Event dat de HELE dag vandaag loopt (00:01 tot 23:59), zodat het zowel
+    # 'toekomstig/lopend' is als binnen het 'vandaag'-venster valt — ongeacht
+    # het uur waarop de test draait.
+    dagstart = now.replace(hour=0, minute=1, second=0, microsecond=0)
+    dageind = now.replace(hour=23, minute=59, second=0, microsecond=0)
     dated = Event(source="uit", uit_id="d1", slug="dated-uit",
-                  title="Poppentheater Vandaag", start=now + timedelta(hours=2),
-                  end=now + timedelta(hours=4), gemeente="Gent", postcode="9000",
+                  title="Poppentheater Vandaag", start=dagstart,
+                  end=dageind, gemeente="Gent", postcode="9000",
                   lat=51.05, lng=3.72, age_min=3, age_max=8, categories=["cultuur"],
                   is_free=True, is_permanent=False)
     poi = Event(source="osm", ext_id="node/1", slug="speeltuin-osm",

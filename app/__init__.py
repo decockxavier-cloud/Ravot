@@ -120,6 +120,10 @@ def create_app(config_object=Config):
                     Interaction.query.filter_by(family_id=fid, type="like")}
             except Exception:
                 pass
+        # Login-status van uitbater en admin, zodat de navigatiebalk de juiste
+        # knoppen toont (i.p.v. altijd "Aanmelden" ook als je al ingelogd bent).
+        ctx["is_uitbater"] = bool(session.get("operator_id"))
+        ctx["is_admin"] = bool(session.get("admin_id") and session.get("admin_2fa_ok"))
         return ctx
 
     # -- Security headers (strategienota §8.2) -------------------------------
@@ -150,6 +154,10 @@ def create_app(config_object=Config):
         # anders kan je de modus niet meer uitzetten.
         pad = request.path
         if pad.startswith("/beheer") or pad.startswith("/static"):
+            return None
+        # /health blijft altijd antwoorden: anders ziet de Coolify-healthcheck
+        # de onderhoudsmodus als een kapotte app en gaat die herstarten.
+        if pad == "/health":
             return None
         # Ingelogde admins mogen de site gewoon bekijken (preview).
         if session.get("admin_id") and session.get("admin_2fa_ok"):

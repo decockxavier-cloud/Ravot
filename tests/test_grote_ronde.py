@@ -2951,3 +2951,49 @@ def test_een_operator_meerdere_zaken(client, seed, app):
     # beide zaken zichtbaar in het portaal + het facturatieblok toont het ene btw
     assert "Zaak Een" in h and "Zaak Twee" in h
     assert "BE0987654321" in h
+
+
+def test_nav_toont_ingelogde_uitbater(client, seed, app):
+    """Een ingelogde uitbater ziet 'Mijn zaken' in de nav, niet 'Aanmelden'."""
+    from app.models import Operator
+    op = Operator(email="navtest@zaak.be")
+    db.session.add(op); db.session.commit()
+    with client.session_transaction() as s:
+        s["operator_id"] = op.id
+    h = client.get("/ontdek").get_data(as_text=True)
+    assert "Mijn zaken" in h
+    # 'Aanmelden' mag niet meer als CTA verschijnen voor de ingelogde uitbater
+    assert "nav-cta\">Aanmelden" not in h and ">👋 Aanmelden" not in h
+
+
+def _zet(key, value):
+    from app import db
+    from app.models import Setting
+    db.session.merge(Setting(key=key, value=value))
+    db.session.commit()
+
+
+def test_mollie_test_live_schakelaar(app):
+    """De mollie_testmodus-schakelaar kiest de juiste sleutel."""
+    from app import mollie
+    with app.app_context():
+        app.config["MOLLIE_API_KEY_LIVE"] = "live_abc"
+        app.config["MOLLIE_API_KEY_TEST"] = "test_xyz"
+        app.config["MOLLIE_API_KEY"] = ""
+        _zet("mollie_testmodus", "0")
+        assert mollie.modus() == "live"
+        assert mollie._key() == "live_abc"
+        _zet("mollie_testmodus", "1")
+        assert mollie.modus() == "test"
+        assert mollie._key() == "test_xyz"
+
+
+def test_mollie_fallback_oude_sleutel(app):
+    """Zonder aparte test/live-sleutels valt _key terug op MOLLIE_API_KEY."""
+    from app import mollie
+    with app.app_context():
+        app.config["MOLLIE_API_KEY_LIVE"] = ""
+        app.config["MOLLIE_API_KEY_TEST"] = ""
+        app.config["MOLLIE_API_KEY"] = "live_oud"
+        _zet("mollie_testmodus", "0")
+        assert mollie._key() == "live_oud"

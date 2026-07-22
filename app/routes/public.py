@@ -986,6 +986,14 @@ def event(slug):
     if ev.pending and (ev.submitted_by is None
                        or session.get("family_id") != ev.submitted_by):
         abort(404)
+    if ev.hidden:
+        # Verborgen fiche (dubbel of afgekeurd): nooit publiek tonen.
+        # Een gekend dubbel stuurt 301 naar de canonieke fiche, zodat
+        # bestaande links en SEO-waarde mee verhuizen.
+        canon = db.session.get(Event, ev.dupe_of) if ev.dupe_of else None
+        if canon and canon.slug and not canon.hidden and not canon.pending:
+            return redirect(url_for("public.event", slug=canon.slug), code=301)
+        abort(404)
     if ev.end and ev.end < datetime.utcnow() - timedelta(days=1) and ev.series:
         # SEO §2.3: afgelopen event → permanente reekspagina (301)
         return redirect(url_for("public.reeks", slug=ev.series.slug), code=301)
@@ -1176,15 +1184,22 @@ def llms():
 def sitemap():
     site = current_app.config["SITE_URL"]
     urls = [f"{site}/", f"{site}/weekend", f"{site}/verkennen"]
+    # Enkel publiek zichtbare fiches: geen pending (detail geeft 404, dus
+    # Google zou dode links crawlen) en geen hidden dubbels (duplicate content).
+    publiek = (Event.hidden.is_(False), Event.pending.is_(False))
     gemeenten = db.session.query(Event.gemeente, db.func.count(Event.id)) \
-        .filter(Event.gemeente.isnot(None)).group_by(Event.gemeente).all()
+        .filter(Event.gemeente.isnot(None), *publiek) \
+        .group_by(Event.gemeente).all()
     for g_, n in gemeenten:
         if n >= current_app.config["NOINDEX_MIN_EVENTS"]:
             urls.append(f"{site}/{g_.lower()}")
             for facet in FACETS:
                 urls.append(f"{site}/{g_.lower()}/{facet}")
+    # Permanente plekken (start=NULL) zijn de evergreen-pagina's: altijd mee.
     for (slug,) in db.session.query(Event.slug).filter(
-            Event.start >= datetime.utcnow() - timedelta(days=1)).all():
+            *publiek, Event.slug.isnot(None),
+            db.or_(Event.is_permanent.is_(True),
+                   Event.start >= datetime.utcnow() - timedelta(days=1))).all():
         urls.append(f"{site}/e/{slug}")
     from ..models import EditionSeries
     for (slug,) in db.session.query(EditionSeries.slug).all():
@@ -1194,6 +1209,17 @@ def sitemap():
     xml += [f"<url><loc>{u}</loc></url>" for u in urls]
     xml.append("</urlset>")
     return Response("".join(xml), mimetype="application/xml")
+
+
+@bp.route("/health")
+def health():
+    """Healthcheck voor de Coolify-healthcheck en Uptime Kuma:
+    app draait én de databank antwoordt. Geen gevoelige details."""
+    try:
+        db.session.execute(db.text("SELECT 1"))
+    except Exception:
+        return {"status": "fout", "db": "onbereikbaar"}, 503
+    return {"status": "ok"}
 
 
 @bp.route("/manifest.webmanifest")

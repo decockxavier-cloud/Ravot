@@ -16,8 +16,25 @@ MOLLIE_API = "https://api.mollie.com/v2"
 PLAN_DAGEN = {"maand": 31, "jaar": 366, "founding": 366}
 
 
+def modus():
+    """'test' of 'live' — de door de beheerder gekozen Mollie-modus.
+    Schakelaar 'mollie_testmodus' aan = test, uit = live (standaard live)."""
+    from .models import get_bool
+    return "test" if get_bool("mollie_testmodus") else "live"
+
+
 def _key():
-    return current_app.config.get("MOLLIE_API_KEY") or ""
+    """Geef de actieve Mollie-sleutel op basis van de gekozen modus.
+    Valt terug op de losse MOLLIE_API_KEY zodat bestaande setups blijven werken."""
+    cfg = current_app.config
+    if modus() == "test":
+        return (cfg.get("MOLLIE_API_KEY_TEST")
+                or (cfg.get("MOLLIE_API_KEY", "") if cfg.get("MOLLIE_API_KEY", "").startswith("test_") else "")
+                or "")
+    return (cfg.get("MOLLIE_API_KEY_LIVE")
+            or (cfg.get("MOLLIE_API_KEY", "") if cfg.get("MOLLIE_API_KEY", "").startswith("live_") else "")
+            or cfg.get("MOLLIE_API_KEY", "")
+            or "")
 
 
 def actief():

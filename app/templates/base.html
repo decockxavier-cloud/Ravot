@@ -34,6 +34,10 @@
       {% if kampen_aan %}<a href="{{ url_for('public.kampen') }}" class="{{ 'on' if active=='kampen' }}">Kampen</a>{% endif %}
       {% if family %}
         <a href="{{ url_for('account.profiel') }}" class="nav-cta {{ 'on' if active=='profiel' }}">🏠 {{ family.display_name or "Mijn Ravot" }}</a>
+      {% elif is_uitbater %}
+        <a href="{{ url_for('uitbater.dashboard') }}" class="nav-cta {{ 'on' if active=='uitbater' }}">🏪 Mijn zaken</a>
+      {% elif is_admin %}
+        <a href="{{ url_for('admin.dashboard') }}" class="nav-cta {{ 'on' if active=='admin' }}">⚙️ Beheer</a>
       {% else %}
         <a href="{{ url_for('auth.login') }}" class="nav-cta">Aanmelden</a>
       {% endif %}
@@ -52,6 +56,10 @@
     {% if family %}
       <a href="{{ url_for('account.profiel') }}" class="{{ 'on' if active=='profiel' }}">🏠 {{ family.display_name or "Mijn Ravot" }}</a>
       <a href="{{ url_for('account.instellingen') }}">⚙️ Instellingen</a>
+    {% elif is_uitbater %}
+      <a href="{{ url_for('uitbater.dashboard') }}" class="{{ 'on' if active=='uitbater' }}">🏪 Mijn zaken</a>
+    {% elif is_admin %}
+      <a href="{{ url_for('admin.dashboard') }}" class="{{ 'on' if active=='admin' }}">⚙️ Beheer</a>
     {% else %}
       <a href="{{ url_for('auth.login') }}">👋 Aanmelden</a>
     {% endif %}

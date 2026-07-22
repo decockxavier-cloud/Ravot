@@ -1,3 +1,4 @@
+name: ravot
 # Coolify-compatibel. LET OP: nooit de pgdata-mapnaam wijzigen of wissen.
 # web hangt aan het externe proxy-netwerk (reverse proxy doet TLS/poorten);
 # db en ollama zitten enkel op het interne netwerk (nooit publiek bereikbaar).

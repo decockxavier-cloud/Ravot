@@ -48,12 +48,13 @@ def _smtp():
 def _mollie():
     from .. import mollie
     if not mollie.actief():
-        return False, "geen MOLLIE_API_KEY in .env — uitbaters zien de mail-terugval"
-    key = current_app.config["MOLLIE_API_KEY"]
+        return False, ("geen Mollie-sleutel voor de gekozen modus ("
+                       + mollie.modus() + ") — uitbaters zien de mail-terugval")
+    key = mollie._key()
     r = requests.get("https://api.mollie.com/v2/methods",
                      headers={"Authorization": f"Bearer {key}"}, timeout=4)
     if r.status_code == 200:
-        modus = "testmodus" if key.startswith("test_") else "live"
+        modus = "TEST — geen echt geld" if mollie.modus() == "test" else "live"
         return True, f"API ok ({modus})"
     return False, f"API antwoordt {r.status_code}"
 

@@ -335,7 +335,8 @@ INSTELLING_PAGINAS = {
     ],
     "facturatie": [
         ("Partner-abonnement", ["partner_prijs_jaar",
-                                "partner_btw_pct", "founding_aan", "founding_max"]),
+                                "partner_btw_pct", "mollie_testmodus",
+                                "founding_aan", "founding_max"]),
         ("Facturatie (Odoo)", ["odoo_product_id", "odoo_factuur_auto"]),
     ],
     "verbindingen": [

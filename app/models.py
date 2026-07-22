@@ -420,6 +420,7 @@ SETTING_DEFS = {
     "cloud_model": ("claude-haiku-4-5-20251001", "AI-verrijking: cloud-model (indien backend=cloud)", "text"),
     "partner_prijs_jaar": ("100.00", "Ravot Partner: prijs per jaar (EUR, excl. btw)", "text"),
     "partner_btw_pct": ("21", "Ravot Partner: btw-percentage", "text"),
+    "mollie_testmodus": ("0", "Mollie: testmodus gebruiken (1=test/geen echt geld, 0=live)", "bool"),
     "odoo_product_id": ("", "Odoo: product-id voor Partner-facturen (aanbevolen: product met 21% btw)", "text"),
     "odoo_factuur_auto": ("0", "Odoo: factuur meteen valideren (1) of als concept klaarzetten (0)", "bool"),
     "founding_aan": ("1", "Founding partners: gratis eerste jaar aanbieden", "bool"),
