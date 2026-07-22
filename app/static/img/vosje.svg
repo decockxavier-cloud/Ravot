@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Ravot-vosje: vlak en vriendelijk, in de huisstijlkleuren -->
+  <!-- oren -->
+  <path d="M13 30 L8 8 L29 15 Z" fill="#EE8035"/>
+  <path d="M51 30 L56 8 L35 15 Z" fill="#EE8035"/>
+  <path d="M14.5 24 L11.5 12 L23 15.8 Z" fill="#FAF7F0"/>
+  <path d="M49.5 24 L52.5 12 L41 15.8 Z" fill="#FAF7F0"/>
+  <!-- kop -->
+  <path d="M32 11 C45 11 55 20 55 31 C55 44 45 53 32 58 C19 53 9 44 9 31 C9 20 19 11 32 11 Z" fill="#EE8035"/>
+  <!-- crème wangen met snuitpunt in het midden -->
+  <path d="M10.5 33 C17 40 23.5 39.5 27 36 C29 34 35 34 37 36 C40.5 39.5 47 40 53.5 33 C52 46 42.5 54 32 58 C21.5 54 12 46 10.5 33 Z" fill="#FAF7F0"/>
+  <!-- ogen -->
+  <circle cx="23.5" cy="28.5" r="2.8" fill="#1F3A2A"/>
+  <circle cx="40.5" cy="28.5" r="2.8" fill="#1F3A2A"/>
+  <!-- neus + glimlach -->
+  <path d="M32 45 L28.1 40.8 A1.8 1.8 0 0 1 29.4 37.9 L34.6 37.9 A1.8 1.8 0 0 1 35.9 40.8 Z" fill="#1F3A2A"/>
+  <path d="M27 49 q5 3.6 10 0" fill="none" stroke="#1F3A2A" stroke-width="1.9" stroke-linecap="round"/>
+</svg>

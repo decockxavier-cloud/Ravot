@@ -31,8 +31,6 @@
       <span class="dash-cijfer">{{ te_reviewen|length }}</span><span>te scoren</span></a>
     <a class="dash-tegel" href="{{ url_for('account.daguitstappen') }}"><span class="dash-emoji">🧺</span>
       <span class="dash-cijfer">{{ daguitstappen_n }}</span><span>daguitstappen</span></a>
-    <a class="dash-tegel" href="{{ url_for('account.ravotpas') }}"><span class="dash-emoji">🦊</span>
-      <span>Ravotpas</span></a>
   </div>
 </section>
 
@@ -76,6 +74,24 @@
   <div class="card mini-card">
     <div><a href="{{ url_for('public.event', slug=e.slug) }}"><strong>{{ e.title }}</strong></a><br><span class="meta">📍 {{ e.gemeente }} · {{ e.start.strftime('%d/%m') if e.start }}</span></div>
     <a class="btn btn-zon btn-klein" href="{{ url_for('account.review', event_id=e.id, terug='mijn') }}">Geef score</a>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+{% if weggeklikt %}
+<section id="niet-voor-ons">
+  <h2>Niet voor ons 🚫</h2>
+  <p class="hint">Per ongeluk weggeklikt? Zet het terug — dan telt het weer gewoon mee
+  in jullie suggesties.</p>
+  {% for e in weggeklikt %}
+  <div class="card weggeklikt-rij">
+    <a href="{{ url_for('public.event', slug=e.slug) }}">{{ e.title }}</a>
+    <span class="hint">{{ e.gemeente or "" }}</span>
+    <form method="post" action="{{ url_for('account.feedback', event_id=e.id, verdict='dismiss') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-stil btn-klein" type="submit">↩ Zet terug</button>
+    </form>
   </div>
   {% endfor %}
 </section>

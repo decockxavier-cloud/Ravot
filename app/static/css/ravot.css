@@ -28,8 +28,9 @@ a { color: var(--gras); }
 .topbar { display: flex; justify-content: space-between; align-items: center;
   padding: 10px 16px; max-width: 680px; margin: 0 auto; }
 .logo { font-size: 1.5rem; font-weight: 800; color: var(--gras); text-decoration: none;
-  position: relative; display: inline-block; }
-.logo-dot { color: var(--zon); }
+  display: inline-flex; align-items: center; gap: 7px; }
+.logo-vos { width: 30px; height: 30px; display: block; }
+.logo-tekst { position: relative; display: inline-block; }
 .gras { position: absolute; left: 0; bottom: -7px; width: 58px; height: 10px; }
 .topnav a { font-weight: 600; text-decoration: none; padding: 10px; }
 
@@ -977,3 +978,9 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
   .install-rij { margin: 2px 0 8px; }
   .install-rij .btn-klein { min-height: 38px; padding: 6px 12px; font-size: .88rem; }
 }
+
+/* Niet voor ons-overzicht op Mijn Ravot (patch 96) */
+.weggeklikt-rij { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 10px 14px; margin: 8px 0; }
+.weggeklikt-rij a { font-weight: 700; flex: 1 1 auto; min-width: 160px; }
+.weggeklikt-rij form { margin-left: auto; }

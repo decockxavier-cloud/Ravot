@@ -144,8 +144,14 @@ def profiel():
     daguitstappen_n = DagUitstap.query.filter_by(family_id=fam.id).count()
     feestjes_open = Feestje.query.filter_by(family_id=fam.id, status="open").count()
 
+    # "Niet voor ons"-overzicht: omkeerbaar maken van weggeklikte suggesties.
+    weggeklikt = Event.query.join(Interaction, Interaction.event_id == Event.id) \
+        .filter(Interaction.family_id == fam.id, Interaction.type == "dismiss") \
+        .order_by(Interaction.created_at.desc()).limit(20).all()
+
     pas_totaal = pas.totaal(fam.id)
     return render_template("account/mijn_ravot.html", family=fam,
+                           weggeklikt=weggeklikt,
                            pas_totaal=pas_totaal,
                            pas_niveau=pas.niveau(pas_totaal),
                            pas_saldo=pas.saldo(fam.id),
