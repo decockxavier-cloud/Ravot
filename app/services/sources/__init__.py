@@ -49,9 +49,36 @@ def _set_status(source, state, result=None, error=None):
         db.session.rollback()
 
 
+STALE_NA_UREN = 6   # een run die zo lang "bezig" is, is een gesneuveld proces
+
+
+def heal_stale_runs(max_uren=STALE_NA_UREN):
+    """Zelfherstel: een status die al uren op "running" staat, hoort bij een
+    proces dat gestopt is zonder afronden (herstart of deploy tijdens de run).
+    Zonder herstel blijft de Synchroniseer-knop voor eeuwig geblokkeerd."""
+    from ...models import SyncStatus, utcnow
+    from datetime import timedelta
+    try:
+        grens = utcnow() - timedelta(hours=max_uren)
+        grens = grens.replace(tzinfo=None)   # db-kolommen zijn naïef-UTC
+        for row in SyncStatus.query.filter_by(state="running").all():
+            ts = row.updated_at or row.last_run
+            ts = ts.replace(tzinfo=None) if ts else None
+            if ts is None or ts <= grens:
+                row.state = "error"
+                row.last_run = utcnow()
+                row.last_error = ("afgebroken — het syncproces is gestopt "
+                                  "tijdens de run (bv. door een herstart of "
+                                  "deploy); status automatisch hersteld")
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+
 def is_sync_running():
     from ...models import SyncStatus
     try:
+        heal_stale_runs()
         return db.session.query(SyncStatus).filter_by(state="running").count() > 0
     except Exception:
         return False
@@ -60,6 +87,7 @@ def is_sync_running():
 def get_statuses():
     from ...models import SyncStatus
     try:
+        heal_stale_runs()
         return {s.source: s for s in SyncStatus.query.all()}
     except Exception:
         return {}
