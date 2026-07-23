@@ -97,24 +97,49 @@ def upsert_venue(source, ext_id, name, gemeente, postcode, lat, lng):
     return ven
 
 
+_CENTROID_CACHE = {"tijd": 0.0, "rijen": []}
+
+
+def _centroiden():
+    """Alle postcode-zwaartepunten, 15 min gecachet: tijdens een sync of
+    backfill over tienduizenden plekken willen we ze niet per plek herladen."""
+    import time
+    from flask import current_app
+    from ...models import PostcodeCentroid
+    nu = time.monotonic()
+    vervallen = not _CENTROID_CACHE["rijen"] or nu - _CENTROID_CACHE["tijd"] > 900
+    try:
+        if current_app.testing:
+            vervallen = True   # tests zaaien eigen zwaartepunten per testdatabank
+    except RuntimeError:
+        pass
+    if vervallen:
+        try:
+            _CENTROID_CACHE["rijen"] = [
+                (c.lat, c.lng, c.gemeente, c.postcode)
+                for c in PostcodeCentroid.query.all()
+                if c.lat is not None and c.lng is not None]
+            _CENTROID_CACHE["tijd"] = nu
+        except Exception:
+            return []
+    return _CENTROID_CACHE["rijen"]
+
+
 def dichtste_gemeente(lat, lng, max_km=10):
     """Gemeente + postcode van het dichtstbijzijnde postcode-zwaartepunt.
     OSM-punten dragen zelden een adres; zonder dit blijven speeltuinen en
     parken gemeenteloos en vallen ze uit de gemeentepagina's."""
-    from ...models import PostcodeCentroid
     from ...scoring import haversine_km
     best = None
-    try:
-        for c in PostcodeCentroid.query.all():
-            if c.lat is None or c.lng is None:
-                continue
-            d = haversine_km(lat, lng, c.lat, c.lng)
-            if best is None or d < best[0]:
-                best = (d, c)
-    except Exception:
-        return None, None
+    for clat, clng, gemeente, postcode in _centroiden():
+        # bounding box (~16 km): scheelt >95% van de afstandsberekeningen
+        if abs(clat - lat) > 0.15 or abs(clng - lng) > 0.25:
+            continue
+        d = haversine_km(lat, lng, clat, clng)
+        if best is None or d < best[0]:
+            best = (d, gemeente, postcode)
     if best and best[0] <= max_km:
-        return best[1].gemeente, best[1].postcode
+        return best[1], best[2]
     return None, None
 
 

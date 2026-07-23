@@ -236,8 +236,9 @@ def register_cli(app):
         from .services.sources.base import dichtste_gemeente
         q = Event.query.filter(Event.gemeente.is_(None),
                                Event.lat.isnot(None), Event.lng.isnot(None))
-        gevuld = zonder = 0
-        for ev in q.all():
+        totaal = q.count()
+        gevuld = zonder = klaar = 0
+        for ev in q.yield_per(500):
             g, p = dichtste_gemeente(ev.lat, ev.lng)
             if g:
                 ev.gemeente = g
@@ -245,6 +246,10 @@ def register_cli(app):
                 gevuld += 1
             else:
                 zonder += 1
+            klaar += 1
+            if klaar % 2000 == 0:
+                db.session.commit()   # in stukken: veilig herstartbaar
+                print(f"  {klaar} van {totaal}...", flush=True)
         db.session.commit()
         print(f"Gemeente aangevuld: {gevuld} · geen zwaartepunt binnen 10 km: {zonder}")
 
