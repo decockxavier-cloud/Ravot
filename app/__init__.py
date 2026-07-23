@@ -228,6 +228,28 @@ def register_cli(app):
         db.create_all()
         click.echo("Database klaar.")
 
+    @app.cli.command("laad-postcodes")
+    def laad_postcodes():
+        """Vul ontbrekende postcode-zwaartepunten aan uit de ingebakken
+        Vlaamse+Brusselse lijst (app/data/postcodes_vl.json). Bestaande
+        zwaartepunten (afgeleid uit echte events) blijven ongemoeid."""
+        import json
+        import os
+        from .models import PostcodeCentroid
+        pad = os.path.join(os.path.dirname(__file__), "data", "postcodes_vl.json")
+        lijst = json.load(open(pad))
+        bestaand = {c.postcode for c in PostcodeCentroid.query.all()}
+        nieuw = 0
+        for pc, info in lijst.items():
+            if pc in bestaand:
+                continue
+            db.session.add(PostcodeCentroid(postcode=pc, gemeente=info["gemeente"],
+                                            lat=info["lat"], lng=info["lng"]))
+            nieuw += 1
+        db.session.commit()
+        print(f"Zwaartepunten: {len(bestaand)} bestaand behouden · {nieuw} toegevoegd "
+              f"· totaal {len(bestaand) + nieuw}")
+
     @app.cli.command("opruim-buitenland")
     @click.option("--ja", is_flag=True, help="Effectief verwijderen (anders enkel tellen).")
     def opruim_buitenland(ja):

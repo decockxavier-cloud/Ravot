@@ -208,3 +208,28 @@ def test_opruim_buitenland(app):
     with app.app_context():
         titels = {e.title for e in Event.query.all()}
         assert titels == {"Gent", "Keulen"}
+
+
+# --------------------------------------------------------------- patch 108 --
+
+def test_laad_postcodes_vult_enkel_gaten(app):
+    from app.models import PostcodeCentroid
+    runner = app.test_cli_runner()
+    with app.app_context():
+        # bestaand event-afgeleid zwaartepunt met bewust afwijkende naam
+        db.session.add(PostcodeCentroid(postcode="8800", gemeente="Roeselare-eigen",
+                                        lat=50.95, lng=3.12))
+        db.session.commit()
+    uit = runner.invoke(args=["laad-postcodes"])
+    assert uit.exception is None, uit.output
+    assert "1 bestaand behouden" in uit.output
+    with app.app_context():
+        # bestaande niet overschreven
+        assert PostcodeCentroid.query.get("8800").gemeente == "Roeselare-eigen"
+        # gaten gevuld (bv. Ieper en Peer uit de ingebakken lijst)
+        assert PostcodeCentroid.query.get("8900").gemeente == "Ieper"
+        assert PostcodeCentroid.query.get("3990").gemeente == "Peer"
+        assert PostcodeCentroid.query.count() > 500
+    # herhaald draaien voegt niets meer toe
+    uit = runner.invoke(args=["laad-postcodes"])
+    assert "0 toegevoegd" in uit.output

@@ -1,0 +1,2707 @@
+{
+"1000": {
+"gemeente": "Brussel",
+"lat": 50.84656,
+"lng": 4.3517
+},
+"1020": {
+"gemeente": "Laken",
+"lat": 50.88339,
+"lng": 4.34871
+},
+"1030": {
+"gemeente": "Schaarbeek",
+"lat": 50.8676,
+"lng": 4.37371
+},
+"1040": {
+"gemeente": "Etterbeek",
+"lat": 50.83685,
+"lng": 4.38951
+},
+"1050": {
+"gemeente": "Elsene",
+"lat": 50.82229,
+"lng": 4.38157
+},
+"1060": {
+"gemeente": "Sint-Gillis",
+"lat": 50.82674,
+"lng": 4.34567
+},
+"1070": {
+"gemeente": "Anderlecht",
+"lat": 50.83814,
+"lng": 4.31234
+},
+"1080": {
+"gemeente": "Sint-Jans-Molenbeek",
+"lat": 50.85436,
+"lng": 4.32278
+},
+"1081": {
+"gemeente": "Koekelberg",
+"lat": 50.86226,
+"lng": 4.32571
+},
+"1082": {
+"gemeente": "Sint-Agatha-Berchem",
+"lat": 50.86398,
+"lng": 4.2927
+},
+"1083": {
+"gemeente": "Ganshoren",
+"lat": 50.87124,
+"lng": 4.31751
+},
+"1090": {
+"gemeente": "Jette",
+"lat": 50.87776,
+"lng": 4.32609
+},
+"1120": {
+"gemeente": "Neder-Over-Heembeek",
+"lat": 50.8978,
+"lng": 4.39049
+},
+"1130": {
+"gemeente": "Haren",
+"lat": 50.89197,
+"lng": 4.41257
+},
+"1140": {
+"gemeente": "Evere",
+"lat": 50.87045,
+"lng": 4.40216
+},
+"1150": {
+"gemeente": "Sint-Pieters-Woluwe",
+"lat": 50.82924,
+"lng": 4.4433
+},
+"1160": {
+"gemeente": "Oudergem",
+"lat": 50.81566,
+"lng": 4.43314
+},
+"1170": {
+"gemeente": "Watermaal-Bosvoorde",
+"lat": 50.79939,
+"lng": 4.41582
+},
+"1180": {
+"gemeente": "Ukkel",
+"lat": 50.80182,
+"lng": 4.33723
+},
+"1190": {
+"gemeente": "Vorst",
+"lat": 50.80914,
+"lng": 4.31775
+},
+"1200": {
+"gemeente": "Sint-Lambrechts-Woluwe",
+"lat": 50.84669,
+"lng": 4.42848
+},
+"1210": {
+"gemeente": "Saint-Josse-Ten-Noode",
+"lat": 50.85307,
+"lng": 4.37234
+},
+"1500": {
+"gemeente": "Halle",
+"lat": 50.73605,
+"lng": 4.23743
+},
+"1501": {
+"gemeente": "Buizingen",
+"lat": 50.73793,
+"lng": 4.26051
+},
+"1502": {
+"gemeente": "Lembeek",
+"lat": 50.7093,
+"lng": 4.21434
+},
+"1540": {
+"gemeente": "Herfelingen",
+"lat": 50.73551,
+"lng": 4.06175
+},
+"1541": {
+"gemeente": "Sint-Pieters-Kapelle",
+"lat": 50.70722,
+"lng": 3.99858
+},
+"1547": {
+"gemeente": "Biévène",
+"lat": 50.71645,
+"lng": 3.94315
+},
+"1560": {
+"gemeente": "Hoeilaart",
+"lat": 50.76748,
+"lng": 4.47441
+},
+"1570": {
+"gemeente": "Tollembeek",
+"lat": 50.75223,
+"lng": 4.00017
+},
+"1600": {
+"gemeente": "Sint-Laureins-Berchem",
+"lat": 50.78313,
+"lng": 4.2135
+},
+"1601": {
+"gemeente": "Ruisbroek",
+"lat": 50.78486,
+"lng": 4.29861
+},
+"1602": {
+"gemeente": "Vlezenbeek",
+"lat": 50.80559,
+"lng": 4.23604
+},
+"1620": {
+"gemeente": "Drogenbos",
+"lat": 50.78653,
+"lng": 4.31735
+},
+"1630": {
+"gemeente": "Linkebeek",
+"lat": 50.77161,
+"lng": 4.33456
+},
+"1640": {
+"gemeente": "Rhode-Saint-Genèse",
+"lat": 50.74503,
+"lng": 4.34637
+},
+"1650": {
+"gemeente": "Beersel",
+"lat": 50.76844,
+"lng": 4.30513
+},
+"1651": {
+"gemeente": "Lot",
+"lat": 50.76514,
+"lng": 4.273
+},
+"1652": {
+"gemeente": "Alsemberg",
+"lat": 50.74495,
+"lng": 4.32817
+},
+"1653": {
+"gemeente": "Dworp",
+"lat": 50.73424,
+"lng": 4.29502
+},
+"1654": {
+"gemeente": "Huizingen",
+"lat": 50.74932,
+"lng": 4.27325
+},
+"1670": {
+"gemeente": "Bogaarden",
+"lat": 50.74194,
+"lng": 4.14268
+},
+"1671": {
+"gemeente": "Elingen",
+"lat": 50.77935,
+"lng": 4.1742
+},
+"1673": {
+"gemeente": "Beert",
+"lat": 50.73549,
+"lng": 4.18534
+},
+"1674": {
+"gemeente": "Bellingen",
+"lat": 50.7378,
+"lng": 4.16015
+},
+"1700": {
+"gemeente": "Sint-Martens-Bodegem",
+"lat": 50.86228,
+"lng": 4.23381
+},
+"1701": {
+"gemeente": "Itterbeek",
+"lat": 50.8396,
+"lng": 4.25012
+},
+"1702": {
+"gemeente": "Groot-Bijgaarden",
+"lat": 50.87144,
+"lng": 4.26357
+},
+"1703": {
+"gemeente": "Schepdaal",
+"lat": 50.83631,
+"lng": 4.19515
+},
+"1730": {
+"gemeente": "Mollem",
+"lat": 50.91024,
+"lng": 4.22307
+},
+"1731": {
+"gemeente": "Relegem",
+"lat": 50.89311,
+"lng": 4.27672
+},
+"1740": {
+"gemeente": "Ternat",
+"lat": 50.87156,
+"lng": 4.18342
+},
+"1741": {
+"gemeente": "Wambeek",
+"lat": 50.85673,
+"lng": 4.16464
+},
+"1742": {
+"gemeente": "Sint-Katherina-Lombeek",
+"lat": 50.87267,
+"lng": 4.15356
+},
+"1745": {
+"gemeente": "Opwijk",
+"lat": 50.95597,
+"lng": 4.18071
+},
+"1750": {
+"gemeente": "Lennik",
+"lat": 50.80786,
+"lng": 4.1672
+},
+"1755": {
+"gemeente": "Leerbeek",
+"lat": 50.77763,
+"lng": 4.10125
+},
+"1760": {
+"gemeente": "Roosdaal",
+"lat": 50.83286,
+"lng": 4.10145
+},
+"1761": {
+"gemeente": "Borchtlombeek",
+"lat": 50.84818,
+"lng": 4.13691
+},
+"1770": {
+"gemeente": "Liedekerke",
+"lat": 50.87113,
+"lng": 4.08608
+},
+"1780": {
+"gemeente": "Wemmel",
+"lat": 50.9146,
+"lng": 4.31087
+},
+"1785": {
+"gemeente": "Merchtem",
+"lat": 50.99171,
+"lng": 4.20631
+},
+"1790": {
+"gemeente": "Affligem",
+"lat": 50.90171,
+"lng": 4.11667
+},
+"1800": {
+"gemeente": "Peutie",
+"lat": 50.92766,
+"lng": 4.44405
+},
+"1820": {
+"gemeente": "Perk",
+"lat": 50.91986,
+"lng": 4.49433
+},
+"1830": {
+"gemeente": "Machelen",
+"lat": 50.91242,
+"lng": 4.43536
+},
+"1831": {
+"gemeente": "Diegem",
+"lat": 50.89456,
+"lng": 4.4365
+},
+"1840": {
+"gemeente": "Steenhuffel",
+"lat": 51.00884,
+"lng": 4.26844
+},
+"1850": {
+"gemeente": "Grimbergen",
+"lat": 50.95031,
+"lng": 4.40137
+},
+"1851": {
+"gemeente": "Humbeek",
+"lat": 50.97282,
+"lng": 4.37776
+},
+"1852": {
+"gemeente": "Beigem",
+"lat": 50.95271,
+"lng": 4.36387
+},
+"1853": {
+"gemeente": "Strombeek-Bever",
+"lat": 50.91096,
+"lng": 4.34236
+},
+"1860": {
+"gemeente": "Meise",
+"lat": 50.93416,
+"lng": 4.32873
+},
+"1861": {
+"gemeente": "Wolvertem",
+"lat": 50.95103,
+"lng": 4.30852
+},
+"1880": {
+"gemeente": "Kapelle-Op-Den-Bos",
+"lat": 51.00156,
+"lng": 4.34957
+},
+"1910": {
+"gemeente": "Buken",
+"lat": 50.99384,
+"lng": 4.7263
+},
+"1930": {
+"gemeente": "Nossegem",
+"lat": 50.88272,
+"lng": 4.49133
+},
+"1932": {
+"gemeente": "Sint-Stevens-Woluwe",
+"lat": 50.86624,
+"lng": 4.43599
+},
+"1933": {
+"gemeente": "Sterrebeek",
+"lat": 50.85396,
+"lng": 4.51574
+},
+"1950": {
+"gemeente": "Kraainem",
+"lat": 50.86061,
+"lng": 4.46914
+},
+"1970": {
+"gemeente": "Wezembeek-Oppem",
+"lat": 50.84406,
+"lng": 4.48718
+},
+"1980": {
+"gemeente": "Eppegem",
+"lat": 50.97397,
+"lng": 4.44989
+},
+"1981": {
+"gemeente": "Hofstade",
+"lat": 50.9939,
+"lng": 4.50425
+},
+"1982": {
+"gemeente": "Elewijt",
+"lat": 50.97091,
+"lng": 4.49372
+},
+"2000": {
+"gemeente": "Antwerpen",
+"lat": 51.22111,
+"lng": 4.39971
+},
+"2018": {
+"gemeente": "Antwerpen",
+"lat": 51.22111,
+"lng": 4.39971
+},
+"2020": {
+"gemeente": "Antwerpen",
+"lat": 51.22111,
+"lng": 4.39971
+},
+"2030": {
+"gemeente": "Antwerpen",
+"lat": 51.22111,
+"lng": 4.39971
+},
+"2040": {
+"gemeente": "Lillo",
+"lat": 51.30776,
+"lng": 4.32319
+},
+"2050": {
+"gemeente": "Antwerpen",
+"lat": 51.22111,
+"lng": 4.39971
+},
+"2060": {
+"gemeente": "Antwerpen",
+"lat": 51.22111,
+"lng": 4.39971
+},
+"2070": {
+"gemeente": "Zwijndrecht",
+"lat": 51.21671,
+"lng": 4.33025
+},
+"2100": {
+"gemeente": "Deurne",
+"lat": 51.21153,
+"lng": 4.46953
+},
+"2110": {
+"gemeente": "Wijnegem",
+"lat": 51.22708,
+"lng": 4.52253
+},
+"2140": {
+"gemeente": "Borgerhout",
+"lat": 51.2103,
+"lng": 4.44039
+},
+"2150": {
+"gemeente": "Borsbeek",
+"lat": 51.19289,
+"lng": 4.48895
+},
+"2160": {
+"gemeente": "Wommelgem",
+"lat": 51.2031,
+"lng": 4.5238
+},
+"2170": {
+"gemeente": "Merksem",
+"lat": 51.24994,
+"lng": 4.44534
+},
+"2180": {
+"gemeente": "Ekeren",
+"lat": 51.2842,
+"lng": 4.43229
+},
+"2200": {
+"gemeente": "Noorderwijk",
+"lat": 51.14915,
+"lng": 4.83185
+},
+"2220": {
+"gemeente": "Hallaar",
+"lat": 51.07504,
+"lng": 4.71924
+},
+"2221": {
+"gemeente": "Booischot",
+"lat": 51.04717,
+"lng": 4.76929
+},
+"2222": {
+"gemeente": "Itegem",
+"lat": 51.10506,
+"lng": 4.75863
+},
+"2223": {
+"gemeente": "Schriek",
+"lat": 51.29074,
+"lng": 4.43612
+},
+"2230": {
+"gemeente": "Herselt",
+"lat": 51.04394,
+"lng": 4.86771
+},
+"2235": {
+"gemeente": "Houtvenne",
+"lat": 51.0606,
+"lng": 4.80832
+},
+"2240": {
+"gemeente": "Massenhoven",
+"lat": 51.20036,
+"lng": 4.6485
+},
+"2242": {
+"gemeente": "Pulderbos",
+"lat": 51.22573,
+"lng": 4.70339
+},
+"2243": {
+"gemeente": "Pulle",
+"lat": 51.20116,
+"lng": 4.69754
+},
+"2250": {
+"gemeente": "Olen",
+"lat": 51.14386,
+"lng": 4.85973
+},
+"2260": {
+"gemeente": "Tongerlo",
+"lat": 51.10865,
+"lng": 4.8991
+},
+"2270": {
+"gemeente": "Herenthout",
+"lat": 51.13924,
+"lng": 4.7544
+},
+"2275": {
+"gemeente": "Lille",
+"lat": 51.24948,
+"lng": 4.82973
+},
+"2280": {
+"gemeente": "Grobbendonk",
+"lat": 51.1887,
+"lng": 4.73188
+},
+"2288": {
+"gemeente": "Bouwel",
+"lat": 51.1621,
+"lng": 4.73706
+},
+"2290": {
+"gemeente": "Vorselaar",
+"lat": 51.20234,
+"lng": 4.76948
+},
+"2300": {
+"gemeente": "Turnhout",
+"lat": 51.32338,
+"lng": 4.94846
+},
+"2310": {
+"gemeente": "Rijkevorsel",
+"lat": 51.3495,
+"lng": 4.76071
+},
+"2320": {
+"gemeente": "Hoogstraten",
+"lat": 51.39574,
+"lng": 4.74407
+},
+"2321": {
+"gemeente": "Meer",
+"lat": 51.46092,
+"lng": 4.73725
+},
+"2322": {
+"gemeente": "Minderhout",
+"lat": 51.43156,
+"lng": 4.80708
+},
+"2323": {
+"gemeente": "Wortel",
+"lat": 51.39754,
+"lng": 4.80859
+},
+"2328": {
+"gemeente": "Meerle",
+"lat": 51.47435,
+"lng": 4.80517
+},
+"2330": {
+"gemeente": "Merksplas",
+"lat": 51.35806,
+"lng": 4.86275
+},
+"2340": {
+"gemeente": "Vlimmeren",
+"lat": 51.30615,
+"lng": 4.80988
+},
+"2350": {
+"gemeente": "Vosselaar",
+"lat": 51.31292,
+"lng": 4.8878
+},
+"2360": {
+"gemeente": "Oud-Turnhout",
+"lat": 51.31783,
+"lng": 4.98171
+},
+"2370": {
+"gemeente": "Arendonk",
+"lat": 51.32023,
+"lng": 5.08646
+},
+"2380": {
+"gemeente": "Ravels",
+"lat": 51.38086,
+"lng": 5.01981
+},
+"2381": {
+"gemeente": "Weelde",
+"lat": 51.41207,
+"lng": 5.01824
+},
+"2382": {
+"gemeente": "Poppel",
+"lat": 51.45063,
+"lng": 5.04881
+},
+"2387": {
+"gemeente": "Baarle-Hertog",
+"lat": 51.41275,
+"lng": 4.90041
+},
+"2390": {
+"gemeente": "Malle",
+"lat": 51.30048,
+"lng": 4.70648
+},
+"2400": {
+"gemeente": "Mol",
+"lat": 51.18404,
+"lng": 5.11553
+},
+"2430": {
+"gemeente": "Laakdal",
+"lat": 51.087,
+"lng": 5.0078
+},
+"2431": {
+"gemeente": "Varendonk",
+"lat": 51.06967,
+"lng": 4.96789
+},
+"2440": {
+"gemeente": "Geel",
+"lat": 51.16108,
+"lng": 4.99032
+},
+"2450": {
+"gemeente": "Meerhout",
+"lat": 51.13174,
+"lng": 5.07724
+},
+"2460": {
+"gemeente": "Lichtaart",
+"lat": 51.23799,
+"lng": 4.9227
+},
+"2470": {
+"gemeente": "Retie",
+"lat": 51.26759,
+"lng": 5.08439
+},
+"2480": {
+"gemeente": "Dessel",
+"lat": 51.23957,
+"lng": 5.11324
+},
+"2490": {
+"gemeente": "Balen",
+"lat": 51.1718,
+"lng": 5.19377
+},
+"2491": {
+"gemeente": "Olmen",
+"lat": 51.13369,
+"lng": 5.16482
+},
+"2500": {
+"gemeente": "Koningshooikt",
+"lat": 51.11201,
+"lng": 4.58652
+},
+"2520": {
+"gemeente": "Broechem",
+"lat": 51.1878,
+"lng": 4.59061
+},
+"2530": {
+"gemeente": "Boechout",
+"lat": 51.15969,
+"lng": 4.51041
+},
+"2531": {
+"gemeente": "Vremde",
+"lat": 51.17531,
+"lng": 4.52262
+},
+"2540": {
+"gemeente": "Hove",
+"lat": 51.14861,
+"lng": 4.47739
+},
+"2547": {
+"gemeente": "Lint",
+"lat": 51.12683,
+"lng": 4.49222
+},
+"2550": {
+"gemeente": "Kontich",
+"lat": 51.11982,
+"lng": 4.44932
+},
+"2560": {
+"gemeente": "Nijlen",
+"lat": 51.14738,
+"lng": 4.66753
+},
+"2570": {
+"gemeente": "Duffel",
+"lat": 51.09572,
+"lng": 4.5062
+},
+"2580": {
+"gemeente": "Beerzel",
+"lat": 51.06004,
+"lng": 4.64706
+},
+"2590": {
+"gemeente": "Berlaar",
+"lat": 51.11531,
+"lng": 4.66434
+},
+"2600": {
+"gemeente": "Berchem",
+"lat": 51.19185,
+"lng": 4.4317
+},
+"2610": {
+"gemeente": "Wilrijk",
+"lat": 51.16385,
+"lng": 4.38763
+},
+"2620": {
+"gemeente": "Hemiksem",
+"lat": 51.14421,
+"lng": 4.34206
+},
+"2627": {
+"gemeente": "Schelle",
+"lat": 51.12456,
+"lng": 4.33619
+},
+"2630": {
+"gemeente": "Aartselaar",
+"lat": 51.1333,
+"lng": 4.38702
+},
+"2640": {
+"gemeente": "Mortsel",
+"lat": 51.17418,
+"lng": 4.45933
+},
+"2650": {
+"gemeente": "Edegem",
+"lat": 51.15748,
+"lng": 4.43843
+},
+"2660": {
+"gemeente": "Hoboken",
+"lat": 51.17578,
+"lng": 4.35115
+},
+"2800": {
+"gemeente": "Mechelen",
+"lat": 51.04691,
+"lng": 4.4641
+},
+"2801": {
+"gemeente": "Heffen",
+"lat": 51.05194,
+"lng": 4.41248
+},
+"2811": {
+"gemeente": "Leest",
+"lat": 51.02336,
+"lng": 4.4181
+},
+"2812": {
+"gemeente": "Muizen",
+"lat": 51.00832,
+"lng": 4.5183
+},
+"2820": {
+"gemeente": "Bonheiden",
+"lat": 51.01361,
+"lng": 4.56102
+},
+"2830": {
+"gemeente": "Blaasveld",
+"lat": 51.05506,
+"lng": 4.37402
+},
+"2840": {
+"gemeente": "Terhagen",
+"lat": 51.08735,
+"lng": 4.40977
+},
+"2845": {
+"gemeente": "Niel",
+"lat": 51.10986,
+"lng": 4.33034
+},
+"2850": {
+"gemeente": "Boom",
+"lat": 51.08738,
+"lng": 4.36672
+},
+"2860": {
+"gemeente": "Sint-Katelijne-Waver",
+"lat": 51.06232,
+"lng": 4.51143
+},
+"2861": {
+"gemeente": "Onze-Lieve-Vrouw-Waver",
+"lat": 51.06249,
+"lng": 4.57996
+},
+"2870": {
+"gemeente": "Breendonk",
+"lat": 51.06308,
+"lng": 4.30466
+},
+"2880": {
+"gemeente": "Bornem",
+"lat": 51.09089,
+"lng": 4.23051
+},
+"2890": {
+"gemeente": "Oppuurs",
+"lat": 51.05123,
+"lng": 4.23388
+},
+"2900": {
+"gemeente": "Schoten",
+"lat": 51.25163,
+"lng": 4.49804
+},
+"2910": {
+"gemeente": "Essen",
+"lat": 51.4678,
+"lng": 4.47013
+},
+"2920": {
+"gemeente": "Kalmthout",
+"lat": 51.38327,
+"lng": 4.47633
+},
+"2930": {
+"gemeente": "Brasschaat",
+"lat": 51.29309,
+"lng": 4.48931
+},
+"2940": {
+"gemeente": "Hoevenen",
+"lat": 51.3209,
+"lng": 4.38751
+},
+"2950": {
+"gemeente": "Kapellen",
+"lat": 51.33276,
+"lng": 4.43123
+},
+"2960": {
+"gemeente": "Brecht",
+"lat": 51.32525,
+"lng": 4.61713
+},
+"2970": {
+"gemeente": "Schilde",
+"lat": 51.25979,
+"lng": 4.57556
+},
+"2980": {
+"gemeente": "Zoersel",
+"lat": 51.25726,
+"lng": 4.67941
+},
+"2990": {
+"gemeente": "Wuustwezel",
+"lat": 51.39235,
+"lng": 4.604
+},
+"3000": {
+"gemeente": "Leuven",
+"lat": 50.88125,
+"lng": 4.69299
+},
+"3001": {
+"gemeente": "Heverlee",
+"lat": 50.85173,
+"lng": 4.69313
+},
+"3010": {
+"gemeente": "Kessel Lo",
+"lat": 50.88992,
+"lng": 4.73076
+},
+"3012": {
+"gemeente": "Wilsele",
+"lat": 50.90954,
+"lng": 4.71363
+},
+"3018": {
+"gemeente": "Wijgmaal",
+"lat": 50.92643,
+"lng": 4.70012
+},
+"3020": {
+"gemeente": "Winksele",
+"lat": 50.90751,
+"lng": 4.64622
+},
+"3040": {
+"gemeente": "Loonbeek",
+"lat": 50.78937,
+"lng": 4.61548
+},
+"3050": {
+"gemeente": "Oud-Heverlee",
+"lat": 50.82177,
+"lng": 4.6679
+},
+"3051": {
+"gemeente": "Sint-Joris-Weert",
+"lat": 50.8051,
+"lng": 4.64583
+},
+"3052": {
+"gemeente": "Blanden",
+"lat": 50.82817,
+"lng": 4.70568
+},
+"3053": {
+"gemeente": "Haasrode",
+"lat": 50.81786,
+"lng": 4.72837
+},
+"3054": {
+"gemeente": "Vaalbeek",
+"lat": 50.82408,
+"lng": 4.68527
+},
+"3060": {
+"gemeente": "Bertem",
+"lat": 50.85883,
+"lng": 4.63112
+},
+"3061": {
+"gemeente": "Leefdaal",
+"lat": 50.84199,
+"lng": 4.5905
+},
+"3070": {
+"gemeente": "Kortenberg",
+"lat": 50.88327,
+"lng": 4.53647
+},
+"3071": {
+"gemeente": "Erps-Kwerps",
+"lat": 50.9105,
+"lng": 4.57509
+},
+"3078": {
+"gemeente": "Everberg",
+"lat": 50.87548,
+"lng": 4.57593
+},
+"3080": {
+"gemeente": "Duisburg",
+"lat": 50.8229,
+"lng": 4.53873
+},
+"3090": {
+"gemeente": "Overijse",
+"lat": 50.77293,
+"lng": 4.53852
+},
+"3110": {
+"gemeente": "Rotselaar",
+"lat": 50.95436,
+"lng": 4.71432
+},
+"3111": {
+"gemeente": "Wezemaal",
+"lat": 50.94826,
+"lng": 4.76833
+},
+"3118": {
+"gemeente": "Werchter",
+"lat": 50.97072,
+"lng": 4.70269
+},
+"3120": {
+"gemeente": "Tremelo",
+"lat": 50.99005,
+"lng": 4.67551
+},
+"3128": {
+"gemeente": "Baal",
+"lat": 51.00753,
+"lng": 4.75054
+},
+"3130": {
+"gemeente": "Betekom",
+"lat": 51.01012,
+"lng": 4.78674
+},
+"3140": {
+"gemeente": "Keerbergen",
+"lat": 51.00492,
+"lng": 4.62656
+},
+"3150": {
+"gemeente": "Wespelaar",
+"lat": 50.95807,
+"lng": 4.6436
+},
+"3190": {
+"gemeente": "Boortmeerbeek",
+"lat": 50.97829,
+"lng": 4.5758
+},
+"3191": {
+"gemeente": "Hever",
+"lat": 50.99259,
+"lng": 4.55533
+},
+"3200": {
+"gemeente": "Gelrode",
+"lat": 50.97562,
+"lng": 4.81442
+},
+"3201": {
+"gemeente": "Langdorp",
+"lat": 51.01187,
+"lng": 4.8857
+},
+"3202": {
+"gemeente": "Rillaar",
+"lat": 50.97591,
+"lng": 4.89705
+},
+"3210": {
+"gemeente": "Lubbeek",
+"lat": 50.89051,
+"lng": 4.80787
+},
+"3211": {
+"gemeente": "Binkom",
+"lat": 50.87214,
+"lng": 4.89089
+},
+"3212": {
+"gemeente": "Pellenberg",
+"lat": 50.87211,
+"lng": 4.78941
+},
+"3220": {
+"gemeente": "Kortrijk-Dutsel",
+"lat": 50.92035,
+"lng": 4.79012
+},
+"3221": {
+"gemeente": "Nieuwrode",
+"lat": 50.94703,
+"lng": 4.8338
+},
+"3270": {
+"gemeente": "Scherpenheuvel",
+"lat": 50.97074,
+"lng": 4.96508
+},
+"3271": {
+"gemeente": "Zichem",
+"lat": 51.01821,
+"lng": 4.98102
+},
+"3272": {
+"gemeente": "Messelbroek",
+"lat": 51.00438,
+"lng": 4.93657
+},
+"3290": {
+"gemeente": "Schaffen",
+"lat": 51.00044,
+"lng": 5.07263
+},
+"3293": {
+"gemeente": "Kaggevinne",
+"lat": 50.9777,
+"lng": 5.02994
+},
+"3294": {
+"gemeente": "Molenstede",
+"lat": 51.00718,
+"lng": 5.02475
+},
+"3300": {
+"gemeente": "Tienen",
+"lat": 50.80947,
+"lng": 4.94423
+},
+"3320": {
+"gemeente": "Hoegaarden",
+"lat": 50.78868,
+"lng": 4.8553
+},
+"3321": {
+"gemeente": "Outgaarden",
+"lat": 50.7666,
+"lng": 4.91936
+},
+"3350": {
+"gemeente": "Linter",
+"lat": 50.81812,
+"lng": 5.04437
+},
+"3360": {
+"gemeente": "Bierbeek",
+"lat": 50.83699,
+"lng": 4.7764
+},
+"3370": {
+"gemeente": "Vertrijk",
+"lat": 50.83365,
+"lng": 4.8399
+},
+"3380": {
+"gemeente": "Bunsbeek",
+"lat": 50.86178,
+"lng": 4.95571
+},
+"3381": {
+"gemeente": "Kapellen",
+"lat": 50.88735,
+"lng": 4.96088
+},
+"3384": {
+"gemeente": "Attenrode",
+"lat": 50.86946,
+"lng": 4.91676
+},
+"3390": {
+"gemeente": "Tielt-Winge",
+"lat": 50.9263,
+"lng": 4.88449
+},
+"3391": {
+"gemeente": "Meensel-Kiezegem",
+"lat": 50.89505,
+"lng": 4.91734
+},
+"3400": {
+"gemeente": "Eliksem",
+"lat": 50.83156,
+"lng": 4.96382
+},
+"3401": {
+"gemeente": "Walsbets",
+"lat": 50.72874,
+"lng": 5.08632
+},
+"3404": {
+"gemeente": "Attenhoven",
+"lat": 50.77374,
+"lng": 5.09002
+},
+"3440": {
+"gemeente": "Helen-Bos",
+"lat": 50.8324,
+"lng": 5.09972
+},
+"3450": {
+"gemeente": "Geetbets",
+"lat": 50.8853,
+"lng": 5.11575
+},
+"3454": {
+"gemeente": "Rummen",
+"lat": 50.88595,
+"lng": 5.15649
+},
+"3460": {
+"gemeente": "Bekkevoort",
+"lat": 50.94033,
+"lng": 4.99914
+},
+"3461": {
+"gemeente": "Molenbeek-Wersbeek",
+"lat": 50.92121,
+"lng": 4.95412
+},
+"3470": {
+"gemeente": "Ransberg",
+"lat": 50.87205,
+"lng": 5.02228
+},
+"3471": {
+"gemeente": "Hoeleden",
+"lat": 50.86681,
+"lng": 5.00146
+},
+"3472": {
+"gemeente": "Kersbeek-Miskom",
+"lat": 50.89309,
+"lng": 5.00651
+},
+"3473": {
+"gemeente": "Waanrode",
+"lat": 50.91294,
+"lng": 5.00377
+},
+"3500": {
+"gemeente": "Sint-Lambrechts-Herk",
+"lat": 50.91697,
+"lng": 5.32439
+},
+"3501": {
+"gemeente": "Wimmertingen",
+"lat": 50.87693,
+"lng": 5.35129
+},
+"3510": {
+"gemeente": "Spalbeek",
+"lat": 50.95075,
+"lng": 5.23939
+},
+"3511": {
+"gemeente": "Kuringen",
+"lat": 50.9574,
+"lng": 5.28997
+},
+"3512": {
+"gemeente": "Stevoort",
+"lat": 50.91698,
+"lng": 5.24443
+},
+"3520": {
+"gemeente": "Zonhoven",
+"lat": 50.99098,
+"lng": 5.36777
+},
+"3530": {
+"gemeente": "Houthalen",
+"lat": 51.04636,
+"lng": 5.38931
+},
+"3540": {
+"gemeente": "Schulen",
+"lat": 50.94565,
+"lng": 5.11883
+},
+"3545": {
+"gemeente": "Halen",
+"lat": 50.95024,
+"lng": 5.09409
+},
+"3550": {
+"gemeente": "Heusden",
+"lat": 51.02951,
+"lng": 5.29071
+},
+"3560": {
+"gemeente": "Meldert",
+"lat": 50.99189,
+"lng": 5.16234
+},
+"3570": {
+"gemeente": "Alken",
+"lat": 50.87547,
+"lng": 5.30799
+},
+"3580": {
+"gemeente": "Beringen",
+"lat": 51.0502,
+"lng": 5.22081
+},
+"3581": {
+"gemeente": "Beverlo",
+"lat": 51.08973,
+"lng": 5.24436
+},
+"3582": {
+"gemeente": "Koersel",
+"lat": 51.06979,
+"lng": 5.27116
+},
+"3583": {
+"gemeente": "Paal",
+"lat": 51.04746,
+"lng": 5.16167
+},
+"3590": {
+"gemeente": "Diepenbeek",
+"lat": 50.90785,
+"lng": 5.42003
+},
+"3600": {
+"gemeente": "Genk",
+"lat": 50.96549,
+"lng": 5.50015
+},
+"3620": {
+"gemeente": "Lanaken",
+"lat": 50.88665,
+"lng": 5.64346
+},
+"3621": {
+"gemeente": "Rekem",
+"lat": 50.92841,
+"lng": 5.66261
+},
+"3630": {
+"gemeente": "Vucht",
+"lat": 50.9772,
+"lng": 5.70454
+},
+"3631": {
+"gemeente": "Uikhoven",
+"lat": 50.93368,
+"lng": 5.71732
+},
+"3640": {
+"gemeente": "Kinrooi",
+"lat": 51.14825,
+"lng": 5.76615
+},
+"3650": {
+"gemeente": "Dilsen-Stokkem",
+"lat": 51.03575,
+"lng": 5.71947
+},
+"3660": {
+"gemeente": "Opglabbeek",
+"lat": 51.04299,
+"lng": 5.58196
+},
+"3665": {
+"gemeente": "As",
+"lat": 51.00054,
+"lng": 5.5722
+},
+"3668": {
+"gemeente": "Niel-Bij-As",
+"lat": 51.01825,
+"lng": 5.61617
+},
+"3670": {
+"gemeente": "Meeuwen-Gruitrode",
+"lat": 51.09341,
+"lng": 5.55301
+},
+"3680": {
+"gemeente": "Neeroeteren",
+"lat": 51.08092,
+"lng": 5.71439
+},
+"3690": {
+"gemeente": "Zutendaal",
+"lat": 50.9319,
+"lng": 5.57255
+},
+"3700": {
+"gemeente": "Widooie",
+"lat": 50.82384,
+"lng": 5.24512
+},
+"3717": {
+"gemeente": "Herstappe",
+"lat": 50.72738,
+"lng": 5.42609
+},
+"3720": {
+"gemeente": "Kortessem",
+"lat": 50.86195,
+"lng": 5.377
+},
+"3721": {
+"gemeente": "Vliermaalroot",
+"lat": 50.8668,
+"lng": 5.42986
+},
+"3722": {
+"gemeente": "Wintershoven",
+"lat": 50.85566,
+"lng": 5.40735
+},
+"3723": {
+"gemeente": "Guigoven",
+"lat": 50.84255,
+"lng": 5.40056
+},
+"3724": {
+"gemeente": "Vliermaal",
+"lat": 50.8326,
+"lng": 5.42591
+},
+"3730": {
+"gemeente": "Werm",
+"lat": 50.84275,
+"lng": 5.46877
+},
+"3732": {
+"gemeente": "Schalkhoven",
+"lat": 50.84229,
+"lng": 5.44817
+},
+"3740": {
+"gemeente": "Waltwilder",
+"lat": 50.85901,
+"lng": 5.5473
+},
+"3742": {
+"gemeente": "Martenslinde",
+"lat": 50.85233,
+"lng": 5.53405
+},
+"3746": {
+"gemeente": "Hoelbeek",
+"lat": 50.88326,
+"lng": 5.55614
+},
+"3770": {
+"gemeente": "Riemst",
+"lat": 50.80793,
+"lng": 5.59175
+},
+"3790": {
+"gemeente": "Fourons",
+"lat": 50.74755,
+"lng": 5.79894
+},
+"3791": {
+"gemeente": "Remersdaal",
+"lat": 50.72838,
+"lng": 5.88188
+},
+"3792": {
+"gemeente": "Fouron-Saint-Pierre",
+"lat": 50.7283,
+"lng": 5.82424
+},
+"3793": {
+"gemeente": "Teuven",
+"lat": 50.75322,
+"lng": 5.86953
+},
+"3798": {
+"gemeente": "Fouron-Le-Comte",
+"lat": 50.76114,
+"lng": 5.77195
+},
+"3800": {
+"gemeente": "Brustem",
+"lat": 50.79517,
+"lng": 5.22361
+},
+"3803": {
+"gemeente": "Duras",
+"lat": 50.83442,
+"lng": 5.15159
+},
+"3806": {
+"gemeente": "Velm",
+"lat": 50.78,
+"lng": 5.13221
+},
+"3830": {
+"gemeente": "Berlingen",
+"lat": 50.83343,
+"lng": 5.32667
+},
+"3831": {
+"gemeente": "Herten",
+"lat": 50.82705,
+"lng": 5.33224
+},
+"3832": {
+"gemeente": "Ulbeek",
+"lat": 50.8432,
+"lng": 5.29367
+},
+"3840": {
+"gemeente": "Hoepertingen",
+"lat": 50.82745,
+"lng": 5.30564
+},
+"3850": {
+"gemeente": "Nieuwerkerken",
+"lat": 50.87815,
+"lng": 5.20604
+},
+"3870": {
+"gemeente": "Heers",
+"lat": 50.75309,
+"lng": 5.29873
+},
+"3890": {
+"gemeente": "Vorsen",
+"lat": 50.72842,
+"lng": 5.16771
+},
+"3891": {
+"gemeente": "Buvingen",
+"lat": 50.75089,
+"lng": 5.18638
+},
+"3900": {
+"gemeente": "Overpelt",
+"lat": 51.21135,
+"lng": 5.42298
+},
+"3910": {
+"gemeente": "Neerpelt",
+"lat": 51.22714,
+"lng": 5.46257
+},
+"3920": {
+"gemeente": "Lommel",
+"lat": 51.23057,
+"lng": 5.30769
+},
+"3930": {
+"gemeente": "Hamont-Achel",
+"lat": 51.25926,
+"lng": 5.50782
+},
+"3940": {
+"gemeente": "Hechtel",
+"lat": 51.11665,
+"lng": 5.34156
+},
+"3941": {
+"gemeente": "Eksel",
+"lat": 51.15679,
+"lng": 5.34404
+},
+"3945": {
+"gemeente": "Ham",
+"lat": 51.10652,
+"lng": 5.16484
+},
+"3950": {
+"gemeente": "Reppel",
+"lat": 51.17782,
+"lng": 5.55638
+},
+"3960": {
+"gemeente": "Bree",
+"lat": 51.13684,
+"lng": 5.63046
+},
+"3970": {
+"gemeente": "Leopoldsburg",
+"lat": 51.12206,
+"lng": 5.26389
+},
+"3971": {
+"gemeente": "Heppen",
+"lat": 51.11583,
+"lng": 5.22654
+},
+"3980": {
+"gemeente": "Tessenderlo",
+"lat": 51.06816,
+"lng": 5.0894
+},
+"3990": {
+"gemeente": "Peer",
+"lat": 51.13764,
+"lng": 5.45874
+},
+"8000": {
+"gemeente": "Brugge",
+"lat": 51.22835,
+"lng": 3.22737
+},
+"8020": {
+"gemeente": "Waardamme",
+"lat": 51.11452,
+"lng": 3.23368
+},
+"8200": {
+"gemeente": "Sint-Andries",
+"lat": 51.18839,
+"lng": 3.19309
+},
+"8210": {
+"gemeente": "Zedelgem",
+"lat": 51.13206,
+"lng": 3.16555
+},
+"8211": {
+"gemeente": "Aartrijke",
+"lat": 51.118,
+"lng": 3.09133
+},
+"8300": {
+"gemeente": "Westkapelle",
+"lat": 51.33661,
+"lng": 3.30362
+},
+"8301": {
+"gemeente": "Ramskapelle",
+"lat": 51.3127,
+"lng": 3.2505
+},
+"8310": {
+"gemeente": "Sint-Kruis",
+"lat": 51.20376,
+"lng": 3.25386
+},
+"8340": {
+"gemeente": "Moerkerke",
+"lat": 51.25985,
+"lng": 3.32709
+},
+"8370": {
+"gemeente": "Uitkerke",
+"lat": 51.3081,
+"lng": 3.13512
+},
+"8377": {
+"gemeente": "Houtave",
+"lat": 51.2547,
+"lng": 3.12758
+},
+"8380": {
+"gemeente": "Lissewege",
+"lat": 51.30775,
+"lng": 3.2121
+},
+"8400": {
+"gemeente": "Stene",
+"lat": 51.21244,
+"lng": 2.93574
+},
+"8420": {
+"gemeente": "Klemskerke",
+"lat": 51.262,
+"lng": 3.04053
+},
+"8421": {
+"gemeente": "Vlissegem",
+"lat": 51.26417,
+"lng": 3.06356
+},
+"8430": {
+"gemeente": "Middelkerke",
+"lat": 51.18332,
+"lng": 2.80634
+},
+"8431": {
+"gemeente": "Wilskerke",
+"lat": 51.18095,
+"lng": 2.84014
+},
+"8432": {
+"gemeente": "Leffinge",
+"lat": 51.17468,
+"lng": 2.87768
+},
+"8433": {
+"gemeente": "Schore",
+"lat": 51.12853,
+"lng": 2.84804
+},
+"8434": {
+"gemeente": "Lombardsijde",
+"lat": 51.15618,
+"lng": 2.76637
+},
+"8450": {
+"gemeente": "Bredene",
+"lat": 51.2389,
+"lng": 2.97258
+},
+"8460": {
+"gemeente": "Roksem",
+"lat": 51.18215,
+"lng": 3.02066
+},
+"8470": {
+"gemeente": "Moere",
+"lat": 51.15117,
+"lng": 2.93967
+},
+"8480": {
+"gemeente": "Eernegem",
+"lat": 51.1215,
+"lng": 3.03699
+},
+"8490": {
+"gemeente": "Jabbeke",
+"lat": 51.19007,
+"lng": 3.09673
+},
+"8500": {
+"gemeente": "Kortrijk",
+"lat": 50.81788,
+"lng": 3.27842
+},
+"8501": {
+"gemeente": "Bissegem",
+"lat": 50.837,
+"lng": 3.23334
+},
+"8510": {
+"gemeente": "Bellegem",
+"lat": 50.7743,
+"lng": 3.27405
+},
+"8511": {
+"gemeente": "Aalbeke",
+"lat": 50.77746,
+"lng": 3.2186
+},
+"8520": {
+"gemeente": "Kuurne",
+"lat": 50.86005,
+"lng": 3.27363
+},
+"8530": {
+"gemeente": "Harelbeke",
+"lat": 50.82932,
+"lng": 3.34255
+},
+"8531": {
+"gemeente": "Bavikhove",
+"lat": 50.88056,
+"lng": 3.30582
+},
+"8540": {
+"gemeente": "Deerlijk",
+"lat": 50.83878,
+"lng": 3.36228
+},
+"8550": {
+"gemeente": "Zwevegem",
+"lat": 50.80407,
+"lng": 3.34191
+},
+"8551": {
+"gemeente": "Heestert",
+"lat": 50.78215,
+"lng": 3.41202
+},
+"8552": {
+"gemeente": "Moen",
+"lat": 50.77542,
+"lng": 3.38253
+},
+"8553": {
+"gemeente": "Otegem",
+"lat": 50.80928,
+"lng": 3.42455
+},
+"8554": {
+"gemeente": "Sint-Denijs",
+"lat": 50.7644,
+"lng": 3.34975
+},
+"8560": {
+"gemeente": "Wevelgem",
+"lat": 50.83321,
+"lng": 3.18133
+},
+"8570": {
+"gemeente": "Anzegem",
+"lat": 50.83426,
+"lng": 3.45095
+},
+"8572": {
+"gemeente": "Kaster",
+"lat": 50.81219,
+"lng": 3.49761
+},
+"8573": {
+"gemeente": "Tiegem",
+"lat": 50.81305,
+"lng": 3.46977
+},
+"8580": {
+"gemeente": "Avelgem",
+"lat": 50.7755,
+"lng": 3.4469
+},
+"8581": {
+"gemeente": "Kerkhove",
+"lat": 50.79561,
+"lng": 3.49566
+},
+"8582": {
+"gemeente": "Outrijve",
+"lat": 50.75869,
+"lng": 3.42573
+},
+"8583": {
+"gemeente": "Bossuit",
+"lat": 50.74805,
+"lng": 3.40808
+},
+"8587": {
+"gemeente": "Espierres",
+"lat": 50.72712,
+"lng": 3.35893
+},
+"8600": {
+"gemeente": "Esen",
+"lat": 51.02351,
+"lng": 2.92054
+},
+"8610": {
+"gemeente": "Handzame",
+"lat": 51.02696,
+"lng": 2.99092
+},
+"8620": {
+"gemeente": "Sint-Joris",
+"lat": 51.12695,
+"lng": 2.76255
+},
+"8630": {
+"gemeente": "Steenkerke",
+"lat": 51.04608,
+"lng": 2.6788
+},
+"8640": {
+"gemeente": "Oostvleteren",
+"lat": 50.9168,
+"lng": 2.74688
+},
+"8647": {
+"gemeente": "Lo-Reninge",
+"lat": 50.96407,
+"lng": 2.76877
+},
+"8650": {
+"gemeente": "Klerken",
+"lat": 50.97553,
+"lng": 2.91098
+},
+"8660": {
+"gemeente": "Adinkerke",
+"lat": 51.08182,
+"lng": 2.58514
+},
+"8670": {
+"gemeente": "Oostduinkerke",
+"lat": 51.11074,
+"lng": 2.68131
+},
+"8680": {
+"gemeente": "Koekelare",
+"lat": 51.08828,
+"lng": 2.95007
+},
+"8690": {
+"gemeente": "Sint-Rijkers",
+"lat": 51.00331,
+"lng": 2.70155
+},
+"8691": {
+"gemeente": "Gijverinkhove",
+"lat": 50.97254,
+"lng": 2.65733
+},
+"8700": {
+"gemeente": "Kanegem",
+"lat": 51.0139,
+"lng": 3.37182
+},
+"8710": {
+"gemeente": "Wielsbeke",
+"lat": 50.91031,
+"lng": 3.35905
+},
+"8720": {
+"gemeente": "Markegem",
+"lat": 50.9478,
+"lng": 3.40683
+},
+"8730": {
+"gemeente": "Oedelem",
+"lat": 51.13962,
+"lng": 3.34108
+},
+"8740": {
+"gemeente": "Pittem",
+"lat": 51.01046,
+"lng": 3.25817
+},
+"8750": {
+"gemeente": "Wingene",
+"lat": 51.05516,
+"lng": 3.24507
+},
+"8755": {
+"gemeente": "Ruiselede",
+"lat": 51.06276,
+"lng": 3.37895
+},
+"8760": {
+"gemeente": "Meulebeke",
+"lat": 50.94848,
+"lng": 3.28596
+},
+"8770": {
+"gemeente": "Ingelmunster",
+"lat": 50.92197,
+"lng": 3.26172
+},
+"8780": {
+"gemeente": "Oostrozebeke",
+"lat": 50.93435,
+"lng": 3.34682
+},
+"8790": {
+"gemeente": "Waregem",
+"lat": 50.8762,
+"lng": 3.42574
+},
+"8791": {
+"gemeente": "Beveren",
+"lat": 50.8717,
+"lng": 3.34275
+},
+"8792": {
+"gemeente": "Desselgem",
+"lat": 50.88303,
+"lng": 3.36691
+},
+"8793": {
+"gemeente": "Sint-Eloois-Vijve",
+"lat": 50.90572,
+"lng": 3.40361
+},
+"8800": {
+"gemeente": "Roeselare",
+"lat": 50.93315,
+"lng": 3.1385
+},
+"8810": {
+"gemeente": "Lichtervelde",
+"lat": 51.03033,
+"lng": 3.14227
+},
+"8820": {
+"gemeente": "Torhout",
+"lat": 51.05859,
+"lng": 3.09131
+},
+"8830": {
+"gemeente": "Gits",
+"lat": 50.98989,
+"lng": 3.08953
+},
+"8840": {
+"gemeente": "Westrozebeke",
+"lat": 50.94836,
+"lng": 3.02502
+},
+"8850": {
+"gemeente": "Ardooie",
+"lat": 50.97077,
+"lng": 3.20459
+},
+"8851": {
+"gemeente": "Koolskamp",
+"lat": 51.00753,
+"lng": 3.20161
+},
+"8860": {
+"gemeente": "Lendelede",
+"lat": 50.88507,
+"lng": 3.23201
+},
+"8870": {
+"gemeente": "Emelgem",
+"lat": 50.92912,
+"lng": 3.20646
+},
+"8880": {
+"gemeente": "Rollegem-Kapelle",
+"lat": 50.87185,
+"lng": 3.14927
+},
+"8890": {
+"gemeente": "Moorslede",
+"lat": 50.8685,
+"lng": 3.08944
+},
+"8900": {
+"gemeente": "Ieper",
+"lat": 50.85113,
+"lng": 2.86845
+},
+"8902": {
+"gemeente": "Zillebeke",
+"lat": 50.81909,
+"lng": 2.91218
+},
+"8904": {
+"gemeente": "Zuidschote",
+"lat": 50.90313,
+"lng": 2.84551
+},
+"8906": {
+"gemeente": "Elverdinge",
+"lat": 50.8812,
+"lng": 2.80861
+},
+"8908": {
+"gemeente": "Vlamertinge",
+"lat": 50.84722,
+"lng": 2.81466
+},
+"8920": {
+"gemeente": "Langemark",
+"lat": 50.91881,
+"lng": 2.9181
+},
+"8930": {
+"gemeente": "Rekkem",
+"lat": 50.78672,
+"lng": 3.15848
+},
+"8940": {
+"gemeente": "Wervik",
+"lat": 50.81338,
+"lng": 3.05594
+},
+"8950": {
+"gemeente": "Heuvelland",
+"lat": 50.75669,
+"lng": 2.83547
+},
+"8951": {
+"gemeente": "Dranouter",
+"lat": 50.76628,
+"lng": 2.7833
+},
+"8952": {
+"gemeente": "Wulvergem",
+"lat": 50.7675,
+"lng": 2.84087
+},
+"8953": {
+"gemeente": "Wijtschate",
+"lat": 50.78327,
+"lng": 2.91262
+},
+"8954": {
+"gemeente": "Westouter",
+"lat": 50.80034,
+"lng": 2.74096
+},
+"8956": {
+"gemeente": "Kemmel",
+"lat": 50.79521,
+"lng": 2.83837
+},
+"8957": {
+"gemeente": "Messines",
+"lat": 50.75965,
+"lng": 2.90012
+},
+"8958": {
+"gemeente": "Loker",
+"lat": 50.78373,
+"lng": 2.77973
+},
+"8970": {
+"gemeente": "Poperinge",
+"lat": 50.83034,
+"lng": 2.74293
+},
+"8972": {
+"gemeente": "Proven",
+"lat": 50.90332,
+"lng": 2.65115
+},
+"8978": {
+"gemeente": "Watou",
+"lat": 50.84519,
+"lng": 2.64491
+},
+"8980": {
+"gemeente": "Geluveld",
+"lat": 50.8544,
+"lng": 2.9991
+},
+"9000": {
+"gemeente": "Gent",
+"lat": 51.03971,
+"lng": 3.71415
+},
+"9030": {
+"gemeente": "Mariakerke",
+"lat": 51.07312,
+"lng": 3.67812
+},
+"9031": {
+"gemeente": "Drongen",
+"lat": 51.05289,
+"lng": 3.63952
+},
+"9032": {
+"gemeente": "Wondelgem",
+"lat": 51.0935,
+"lng": 3.70346
+},
+"9040": {
+"gemeente": "Sint-Amandsberg",
+"lat": 51.06188,
+"lng": 3.74887
+},
+"9041": {
+"gemeente": "Oostakker",
+"lat": 51.1002,
+"lng": 3.76441
+},
+"9042": {
+"gemeente": "Mendonk",
+"lat": 51.14103,
+"lng": 3.80973
+},
+"9050": {
+"gemeente": "Gentbrugge",
+"lat": 51.04096,
+"lng": 3.75015
+},
+"9051": {
+"gemeente": "Afsnee",
+"lat": 51.02497,
+"lng": 3.66261
+},
+"9052": {
+"gemeente": "Zwijnaarde",
+"lat": 51.00092,
+"lng": 3.70218
+},
+"9060": {
+"gemeente": "Zelzate",
+"lat": 51.2,
+"lng": 3.8105
+},
+"9070": {
+"gemeente": "Destelbergen",
+"lat": 51.04218,
+"lng": 3.79911
+},
+"9080": {
+"gemeente": "Beervelde",
+"lat": 51.10491,
+"lng": 3.86665
+},
+"9090": {
+"gemeente": "Gontrode",
+"lat": 50.99364,
+"lng": 3.79826
+},
+"9100": {
+"gemeente": "Nieuwkerken-Waas",
+"lat": 51.1786,
+"lng": 4.16375
+},
+"9111": {
+"gemeente": "Belsele",
+"lat": 51.15702,
+"lng": 4.09178
+},
+"9112": {
+"gemeente": "Sinaai-Waas",
+"lat": 51.1867,
+"lng": 3.97956
+},
+"9120": {
+"gemeente": "Melsele",
+"lat": 51.22153,
+"lng": 4.24343
+},
+"9130": {
+"gemeente": "Kieldrecht",
+"lat": 51.28201,
+"lng": 4.2273
+},
+"9140": {
+"gemeente": "Temse",
+"lat": 51.12886,
+"lng": 4.19936
+},
+"9150": {
+"gemeente": "Bazel",
+"lat": 51.14882,
+"lng": 4.29571
+},
+"9160": {
+"gemeente": "Daknam",
+"lat": 51.12699,
+"lng": 3.97906
+},
+"9170": {
+"gemeente": "Sint-Gillis-Waas",
+"lat": 51.23184,
+"lng": 4.11648
+},
+"9180": {
+"gemeente": "Moerbeke-Waas",
+"lat": 51.17427,
+"lng": 3.94464
+},
+"9185": {
+"gemeente": "Wachtebeke",
+"lat": 51.17019,
+"lng": 3.85743
+},
+"9190": {
+"gemeente": "Kemzeke",
+"lat": 51.2085,
+"lng": 4.05057
+},
+"9200": {
+"gemeente": "Dendermonde",
+"lat": 51.02242,
+"lng": 4.08268
+},
+"9220": {
+"gemeente": "Hamme",
+"lat": 51.075,
+"lng": 4.13944
+},
+"9230": {
+"gemeente": "Massemen",
+"lat": 50.98587,
+"lng": 3.87352
+},
+"9240": {
+"gemeente": "Zele",
+"lat": 51.06836,
+"lng": 4.03859
+},
+"9250": {
+"gemeente": "Waasmunster",
+"lat": 51.10971,
+"lng": 4.08422
+},
+"9255": {
+"gemeente": "Opdorp",
+"lat": 51.01996,
+"lng": 4.20709
+},
+"9260": {
+"gemeente": "Serskamp",
+"lat": 51.00077,
+"lng": 3.94658
+},
+"9270": {
+"gemeente": "Kalken",
+"lat": 51.03334,
+"lng": 3.88452
+},
+"9280": {
+"gemeente": "Denderbelle",
+"lat": 50.99339,
+"lng": 4.10813
+},
+"9290": {
+"gemeente": "Uitbergen",
+"lat": 51.03624,
+"lng": 3.97741
+},
+"9300": {
+"gemeente": "Aalst",
+"lat": 50.94298,
+"lng": 4.03964
+},
+"9308": {
+"gemeente": "Gijzegem",
+"lat": 50.97501,
+"lng": 4.03561
+},
+"9310": {
+"gemeente": "Moorsel",
+"lat": 50.95416,
+"lng": 4.11088
+},
+"9320": {
+"gemeente": "Erembodegem",
+"lat": 50.91918,
+"lng": 4.03173
+},
+"9340": {
+"gemeente": "Impe",
+"lat": 50.96485,
+"lng": 3.94315
+},
+"9400": {
+"gemeente": "Ninove",
+"lat": 50.82474,
+"lng": 4.00652
+},
+"9401": {
+"gemeente": "Pollare",
+"lat": 50.81686,
+"lng": 3.99695
+},
+"9402": {
+"gemeente": "Meerbeke",
+"lat": 50.81973,
+"lng": 4.04585
+},
+"9403": {
+"gemeente": "Neigem",
+"lat": 50.803,
+"lng": 4.06066
+},
+"9404": {
+"gemeente": "Aspelare",
+"lat": 50.84216,
+"lng": 3.95844
+},
+"9406": {
+"gemeente": "Outer",
+"lat": 50.84659,
+"lng": 3.99766
+},
+"9420": {
+"gemeente": "Burst",
+"lat": 50.93894,
+"lng": 3.88357
+},
+"9450": {
+"gemeente": "Denderhoutem",
+"lat": 50.88733,
+"lng": 3.98884
+},
+"9451": {
+"gemeente": "Kerksken",
+"lat": 50.88457,
+"lng": 3.97923
+},
+"9470": {
+"gemeente": "Denderleeuw",
+"lat": 50.88439,
+"lng": 4.06655
+},
+"9472": {
+"gemeente": "Iddergem",
+"lat": 50.87468,
+"lng": 4.04405
+},
+"9473": {
+"gemeente": "Welle",
+"lat": 50.90054,
+"lng": 4.04486
+},
+"9500": {
+"gemeente": "Ophasselt",
+"lat": 50.81729,
+"lng": 3.88314
+},
+"9506": {
+"gemeente": "Grimminge",
+"lat": 50.79696,
+"lng": 3.94739
+},
+"9520": {
+"gemeente": "Bavegem",
+"lat": 50.92576,
+"lng": 3.8751
+},
+"9521": {
+"gemeente": "Letterhoutem",
+"lat": 50.92696,
+"lng": 3.88126
+},
+"9550": {
+"gemeente": "Sint-Lievens-Esse",
+"lat": 50.86712,
+"lng": 3.8932
+},
+"9551": {
+"gemeente": "Ressegem",
+"lat": 50.89208,
+"lng": 3.91098
+},
+"9552": {
+"gemeente": "Borsbeke",
+"lat": 50.90472,
+"lng": 3.89458
+},
+"9570": {
+"gemeente": "Lierde",
+"lat": 50.80771,
+"lng": 3.8343
+},
+"9571": {
+"gemeente": "Hemelveerdegem",
+"lat": 50.80884,
+"lng": 3.86388
+},
+"9572": {
+"gemeente": "Sint-Martens-Lierde",
+"lat": 50.80452,
+"lng": 3.81578
+},
+"9600": {
+"gemeente": "Renaix",
+"lat": 50.74762,
+"lng": 3.60205
+},
+"9620": {
+"gemeente": "Zottegem",
+"lat": 50.86939,
+"lng": 3.81064
+},
+"9630": {
+"gemeente": "Munkzwalm",
+"lat": 50.88119,
+"lng": 3.72748
+},
+"9636": {
+"gemeente": "Nederzwalm-Hermelgem",
+"lat": 50.88676,
+"lng": 3.68799
+},
+"9660": {
+"gemeente": "Sint-Maria-Oudenhove",
+"lat": 50.80067,
+"lng": 3.98666
+},
+"9661": {
+"gemeente": "Parike",
+"lat": 50.78492,
+"lng": 3.79932
+},
+"9667": {
+"gemeente": "Horebeke",
+"lat": 50.83628,
+"lng": 3.69291
+},
+"9680": {
+"gemeente": "Maarkedal",
+"lat": 50.80582,
+"lng": 3.63924
+},
+"9681": {
+"gemeente": "Nukerke",
+"lat": 50.79656,
+"lng": 3.59547
+},
+"9688": {
+"gemeente": "Schorisse",
+"lat": 50.80618,
+"lng": 3.67824
+},
+"9690": {
+"gemeente": "Kluisbergen",
+"lat": 50.78179,
+"lng": 3.52172
+},
+"9700": {
+"gemeente": "Eine",
+"lat": 50.85625,
+"lng": 3.61702
+},
+"9750": {
+"gemeente": "Ouwegem",
+"lat": 50.90496,
+"lng": 3.61413
+},
+"9770": {
+"gemeente": "Kruishoutem",
+"lat": 50.92009,
+"lng": 3.54045
+},
+"9771": {
+"gemeente": "Nokere",
+"lat": 50.88536,
+"lng": 3.51085
+},
+"9772": {
+"gemeente": "Wannegem-Lede",
+"lat": 50.89024,
+"lng": 3.56058
+},
+"9790": {
+"gemeente": "Wortegem-Petegem",
+"lat": 50.84645,
+"lng": 3.54193
+},
+"9800": {
+"gemeente": "Deinze",
+"lat": 50.99063,
+"lng": 3.51555
+},
+"9810": {
+"gemeente": "Eke",
+"lat": 50.95837,
+"lng": 3.61906
+},
+"9820": {
+"gemeente": "Bottelare",
+"lat": 50.96814,
+"lng": 3.73741
+},
+"9830": {
+"gemeente": "Sint-Martens-Latem",
+"lat": 51.01345,
+"lng": 3.63063
+},
+"9831": {
+"gemeente": "Deurle",
+"lat": 51.00009,
+"lng": 3.61117
+},
+"9840": {
+"gemeente": "De Pinte",
+"lat": 50.98554,
+"lng": 3.67196
+},
+"9850": {
+"gemeente": "Nevele",
+"lat": 51.05111,
+"lng": 3.55364
+},
+"9860": {
+"gemeente": "Oosterzele",
+"lat": 50.95163,
+"lng": 3.79531
+},
+"9870": {
+"gemeente": "Olsene",
+"lat": 50.93855,
+"lng": 3.46654
+},
+"9880": {
+"gemeente": "Poeke",
+"lat": 51.05979,
+"lng": 3.44097
+},
+"9881": {
+"gemeente": "Bellem",
+"lat": 51.09028,
+"lng": 3.49945
+},
+"9890": {
+"gemeente": "Dikkelvenne",
+"lat": 50.93094,
+"lng": 3.68933
+},
+"9900": {
+"gemeente": "Eeklo",
+"lat": 51.18448,
+"lng": 3.5666
+},
+"9910": {
+"gemeente": "Knesselare",
+"lat": 51.13393,
+"lng": 3.44822
+},
+"9920": {
+"gemeente": "Lovendegem",
+"lat": 51.09568,
+"lng": 3.60761
+},
+"9921": {
+"gemeente": "Vinderhoute",
+"lat": 51.08764,
+"lng": 3.64124
+},
+"9930": {
+"gemeente": "Zomergem",
+"lat": 51.11958,
+"lng": 3.56424
+},
+"9931": {
+"gemeente": "Oostwinkel",
+"lat": 51.15087,
+"lng": 3.52532
+},
+"9932": {
+"gemeente": "Ronsele",
+"lat": 51.13038,
+"lng": 3.55324
+},
+"9940": {
+"gemeente": "Kluizen",
+"lat": 51.1437,
+"lng": 3.71664
+},
+"9950": {
+"gemeente": "Waarschoot",
+"lat": 51.15153,
+"lng": 3.60617
+},
+"9960": {
+"gemeente": "Assenede",
+"lat": 51.23004,
+"lng": 3.75681
+},
+"9961": {
+"gemeente": "Boekhoute",
+"lat": 51.25093,
+"lng": 3.70596
+},
+"9968": {
+"gemeente": "Oosteeklo",
+"lat": 51.21209,
+"lng": 3.68341
+},
+"9970": {
+"gemeente": "Kaprijke",
+"lat": 51.22895,
+"lng": 3.62193
+},
+"9971": {
+"gemeente": "Lembeke",
+"lat": 51.19424,
+"lng": 3.63463
+},
+"9980": {
+"gemeente": "Sint-Laureins",
+"lat": 51.23305,
+"lng": 3.53748
+},
+"9981": {
+"gemeente": "Sint-Margriete",
+"lat": 51.26767,
+"lng": 3.5315
+},
+"9982": {
+"gemeente": "Sint-Jan-In-Eremo",
+"lat": 51.26822,
+"lng": 3.58009
+},
+"9988": {
+"gemeente": "Watervliet",
+"lat": 51.28338,
+"lng": 3.60877
+},
+"9990": {
+"gemeente": "Maldegem",
+"lat": 51.22631,
+"lng": 3.41545
+},
+"9991": {
+"gemeente": "Adegem",
+"lat": 51.20353,
+"lng": 3.48585
+},
+"9992": {
+"gemeente": "Middelburg",
+"lat": 51.25583,
+"lng": 3.40714
+}
+}
