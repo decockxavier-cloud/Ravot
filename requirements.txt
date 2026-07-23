@@ -18,3 +18,4 @@ icalendar==6.1.0
 feedparser==6.0.11
 redis==5.0.8
 overturemaps>=0.8
+tzdata==2025.2

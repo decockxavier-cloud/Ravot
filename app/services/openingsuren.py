@@ -177,7 +177,9 @@ def status(ev, nu=None):
     ou = getattr(ev, "openingsuren", None)
     if not ou:
         return None, None
-    nu = nu or datetime.now()
+    if nu is None:
+        from ..tijd import nu_lokaal
+        nu = nu_lokaal()          # Belgische wandklok: de container draait op UTC
     dag = DAGEN[nu.weekday()]
     blokken = dag_blokken(ou.get(dag))
     if not blokken:

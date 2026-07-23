@@ -390,3 +390,40 @@ def test_kaart_api_respecteert_filters_en_fouten(client, app):
     assert client.get("/api/kaart?zoom=9").status_code == 400
     js = open("app/static/js/verkennen.js").read()
     assert "/api/kaart?" in js and "moveend zoomend" in js
+
+
+# --------------------------------------------------------------- patch 114 --
+
+def test_openingsuren_gebruiken_belgische_klok(app):
+    """Server draait op UTC: om 22u55 Belgische tijd is het 20u55 UTC, waardoor
+    een zaak die om 22:00 sluit ten onrechte 'open' bleef tonen."""
+    from datetime import datetime, timezone
+    from unittest.mock import patch
+    from app.services.openingsuren import status
+    from app import tijd
+
+    class Zaak:
+        openingsuren = {"do": [["11:30", "22:00"]]}
+
+    # donderdag 23/07/2026, 20:55 UTC = 22:55 in Brussel (zomertijd)
+    utc = datetime(2026, 7, 23, 20, 55, tzinfo=timezone.utc)
+    with patch("app.tijd.datetime") as dt:
+        dt.now.side_effect = lambda tz=None: (utc.astimezone(tz).replace(tzinfo=None)
+                                              if tz else utc.replace(tzinfo=None))
+        assert status(Zaak())[0] == "dicht"      # was 'open' vóór deze fix
+
+    # en om 19:00 UTC = 21:00 lokaal hoort hij nog open te zijn
+    utc = datetime(2026, 7, 23, 19, 0, tzinfo=timezone.utc)
+    with patch("app.tijd.datetime") as dt:
+        dt.now.side_effect = lambda tz=None: (utc.astimezone(tz).replace(tzinfo=None)
+                                              if tz else utc.replace(tzinfo=None))
+        st, sluit = status(Zaak())
+        assert st == "bijna" and sluit == "22:00"
+
+
+def test_nu_lokaal_loopt_voor_op_utc(app):
+    from datetime import datetime, timezone
+    from app.tijd import nu_lokaal
+    verschil = (nu_lokaal() - datetime.now(timezone.utc).replace(tzinfo=None))
+    uren = round(verschil.total_seconds() / 3600)
+    assert uren in (1, 2), f"onverwacht tijdverschil: {uren} uur"
