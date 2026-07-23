@@ -150,3 +150,61 @@ def test_geen_inline_terug_onclicks_meer(app):
         assert "history.back" not in inhoud, pad
     assert "data-terug" in open("app/templates/public/score_uitleg.html").read()
     assert "data-terug" in open("app/templates/uitbater/zaak_nieuw.html").read()
+
+
+# --------------------------------------------------------------- patch 107 --
+
+def test_backfill_gemeenten_zonder_cursorcrash(app):
+    """Regressie: yield_per + tussentijdse commits brak de servercursor
+    ('named cursor isn't valid anymore'). Nu: eerst lezen, dan schrijven."""
+    from app.models import Event, PostcodeCentroid
+    runner = app.test_cli_runner()
+    with app.app_context():
+        db.session.add(PostcodeCentroid(postcode="8800", gemeente="Roeselare",
+                                        lat=50.95, lng=3.12))
+        for i in range(2500):   # ruim over de commitgrens van 2000
+            db.session.add(Event(uit_id=f"c{i}", slug=f"c{i}", title=f"P{i}",
+                                 is_permanent=True, lat=50.951, lng=3.121,
+                                 age_min=0, age_max=12))
+        db.session.commit()
+    uit = runner.invoke(args=["backfill-gemeenten"])
+    assert uit.exception is None, uit.output
+    assert "Gemeente aangevuld: 2500" in uit.output
+    with app.app_context():
+        assert Event.query.filter(Event.gemeente == "Roeselare").count() == 2500
+
+
+def test_opruim_buitenland(app):
+    from app.models import Event, Family, Review, Child
+    runner = app.test_cli_runner()
+    with app.app_context():
+        db.session.add(Event(uit_id="bi", slug="binnen", title="Gent",
+                             source="osm", is_permanent=True,
+                             lat=51.05, lng=3.72, age_min=0, age_max=12))
+        db.session.add(Event(uit_id="bu", slug="utrecht", title="Utrecht",
+                             source="osm", is_permanent=True,
+                             lat=52.09, lng=5.12, age_min=0, age_max=12))
+        keulen = Event(uit_id="ke", slug="keulen", title="Keulen",
+                       source="osm", is_permanent=True,
+                       lat=50.94, lng=6.96, age_min=0, age_max=12)
+        db.session.add(keulen)
+        db.session.flush()
+        fam = Family(email="r@t.be", postcode="9000")
+        db.session.add(fam)
+        db.session.flush()
+        db.session.add(Child(family_id=fam.id, birth_year=2018))
+        db.session.add(Review(family_id=fam.id, event_id=keulen.id,
+                              kid_score=4, parent_score=3, child_ages=[8]))
+        db.session.commit()
+    # zonder --ja: enkel tellen
+    uit = runner.invoke(args=["opruim-buitenland"])
+    assert "Buiten Vlaanderen+Brussel: 2" in uit.output
+    assert "Niets verwijderd" in uit.output
+    with app.app_context():
+        assert Event.query.count() == 3
+    # met --ja: Utrecht weg, Keulen blijft (review), Gent blijft (binnen)
+    uit = runner.invoke(args=["opruim-buitenland", "--ja"])
+    assert uit.exception is None, uit.output
+    with app.app_context():
+        titels = {e.title for e in Event.query.all()}
+        assert titels == {"Gent", "Keulen"}

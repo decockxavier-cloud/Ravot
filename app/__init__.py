@@ -228,28 +228,75 @@ def register_cli(app):
         db.create_all()
         click.echo("Database klaar.")
 
+    @app.cli.command("opruim-buitenland")
+    @click.option("--ja", is_flag=True, help="Effectief verwijderen (anders enkel tellen).")
+    def opruim_buitenland(ja):
+        """Verwijder OSM-plekken ver buiten Vlaanderen+Brussel (Nederland,
+        Duitsland, ...). Zonder --ja wordt enkel geteld. Plekken waar een
+        gezin of uitbater iets aan koppelde (review, foto, claim, ...)
+        worden altijd overgeslagen."""
+        from sqlalchemy import or_, text
+        from .models import Event
+        # Vlaanderen + Brussel met marge (grensstreek blijft bewust binnen)
+        Z, W, N, O = 50.60, 2.45, 51.60, 6.00
+        buiten = Event.query.filter(
+            Event.source == "osm",
+            Event.lat.isnot(None), Event.lng.isnot(None),
+            or_(Event.lat < Z, Event.lat > N, Event.lng < W, Event.lng > O))
+        totaal = buiten.count()
+        vrij = buiten
+        for tabel in ("interactions", "saved_events", "reviews", "shares",
+                      "reports", "photos", "enrich_proposals", "operator_claims",
+                      "edit_proposals", "partner_payments", "daguitstap_items",
+                      "feestje_aanvragen"):
+            vrij = vrij.filter(text(
+                f"NOT EXISTS (SELECT 1 FROM {tabel} "
+                f"WHERE {tabel}.event_id = events.id)"))
+        vrij_n = vrij.count()
+        print(f"Buiten Vlaanderen+Brussel: {totaal} OSM-plekken "
+              f"({vrij_n} zonder koppelingen, {totaal - vrij_n} met — die blijven).")
+        if not ja:
+            print("Niets verwijderd. Draai met --ja om effectief op te ruimen.")
+            return
+        ids = [r.id for r in vrij.with_entities(Event.id).all()]
+        weg = 0
+        for i in range(0, len(ids), 1000):
+            stuk = ids[i:i + 1000]
+            db.session.execute(Event.__table__.delete()
+                               .where(Event.id.in_(stuk)))
+            db.session.commit()
+            weg += len(stuk)
+            print(f"  {weg} van {len(ids)} verwijderd...", flush=True)
+        print(f"Klaar: {weg} buitenlandse plekken verwijderd.")
+
     @app.cli.command("backfill-gemeenten")
     def backfill_gemeenten():
         """Vul gemeente/postcode aan voor plekken zonder adres (OSM-punten),
-        via het dichtstbijzijnde postcode-zwaartepunt. Veilig herhaalbaar."""
+        via het dichtstbijzijnde postcode-zwaartepunt. Veilig herhaalbaar.
+        Leest eerst alle kandidaten in en schrijft daarna in stukken — een
+        open leescursor combineren met commits brak op Postgres."""
+        from sqlalchemy import update as sa_update, func as sa_func
         from .models import Event
         from .services.sources.base import dichtste_gemeente
-        q = Event.query.filter(Event.gemeente.is_(None),
-                               Event.lat.isnot(None), Event.lng.isnot(None))
-        totaal = q.count()
-        gevuld = zonder = klaar = 0
-        for ev in q.yield_per(500):
-            g, p = dichtste_gemeente(ev.lat, ev.lng)
+        kandidaten = (Event.query
+                      .filter(Event.gemeente.is_(None),
+                              Event.lat.isnot(None), Event.lng.isnot(None))
+                      .with_entities(Event.id, Event.lat, Event.lng).all())
+        totaal = len(kandidaten)
+        gevuld = zonder = 0
+        for i, (eid, lat, lng) in enumerate(kandidaten, 1):
+            g, p = dichtste_gemeente(lat, lng)
             if g:
-                ev.gemeente = g
-                ev.postcode = ev.postcode or p
+                db.session.execute(
+                    sa_update(Event).where(Event.id == eid)
+                    .values(gemeente=g,
+                            postcode=sa_func.coalesce(Event.postcode, p)))
                 gevuld += 1
             else:
                 zonder += 1
-            klaar += 1
-            if klaar % 2000 == 0:
+            if i % 2000 == 0:
                 db.session.commit()   # in stukken: veilig herstartbaar
-                print(f"  {klaar} van {totaal}...", flush=True)
+                print(f"  {i} van {totaal}...", flush=True)
         db.session.commit()
         print(f"Gemeente aangevuld: {gevuld} · geen zwaartepunt binnen 10 km: {zonder}")
 
