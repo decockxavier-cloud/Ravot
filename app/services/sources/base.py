@@ -131,7 +131,8 @@ def upsert_event(data):
         if not handmatig and not geclaimd:
             ev.openingsuren = data["openingsuren"]
     # Contact & speeltuindetail: bron vult/ververst, maar wist nooit.
-    for f in ("telefoon", "email", "socials", "speeltoestellen"):
+    for f in ("telefoon", "email", "socials", "speeltoestellen",
+              "cuisine", "uitbater_naam"):
         if data.get(f):
             setattr(ev, f, data[f])
     # Ouder-filters uit de bron: enkel AANzetten als de bron het bevestigt.
@@ -139,7 +140,8 @@ def upsert_event(data):
     # kunnen deze velden ook zetten en dat mag een sync niet ongedaan maken.
     for f in ("omheind", "verzorgingstafel", "buggy_ok",
               "kinderstoel", "speelhoek", "kindermenu",
-              "toegankelijk", "toilet", "drinkwater", "picknick", "bbq"):
+              "toegankelijk", "toilet", "drinkwater", "picknick", "bbq",
+              "veggie", "afhaal", "reserveren", "huisdieren"):
         if data.get(f) is True and getattr(ev, f, None) is not True:
             setattr(ev, f, True)
     ev.has_vlieg = False  # Vlieg is een publiq-label; nooit op andere bronnen

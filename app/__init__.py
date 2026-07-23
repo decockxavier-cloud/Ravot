@@ -51,6 +51,16 @@ def create_app(config_object=Config):
     app.jinja_env.globals["uren_overzicht"] = uren_overzicht
     app.jinja_env.globals["heeft_uren"] = heeft_uren
     app.jinja_env.globals["dag_blokken"] = dag_blokken
+    KEUKEN_NL = {"friture": "frituur", "fries": "frituur", "chips": "frituur",
+                 "ice_cream": "ijssalon", "pizza": "pizzeria",
+                 "pancake": "pannenkoekenhuis", "sandwich": "broodjeszaak",
+                 "burger": "burgerzaak", "pasta": "pastazaak",
+                 "regional": "streekkeuken", "italian": "Italiaans",
+                 "asian": "Aziatisch", "greek": "Grieks", "turkish": "Turks",
+                 "kebab": "kebabzaak", "seafood": "viszaak", "tea": "theehuis",
+                 "coffee_shop": "koffiebar", "breakfast": "ontbijtzaak"}
+    app.jinja_env.globals["keuken_label"] = \
+        lambda c: KEUKEN_NL.get((c or "").lower(), (c or "").replace("_", " "))
     from .models import KAMP_THEMAS, KAMP_TALEN
     app.jinja_env.globals["kamp_themas"] = KAMP_THEMAS
     app.jinja_env.globals["kamp_talen"] = KAMP_TALEN
@@ -428,6 +438,9 @@ def register_cli(app):
             "email VARCHAR(255)", "socials JSON", "toilet BOOLEAN",
             "drinkwater BOOLEAN", "picknick BOOLEAN", "bbq BOOLEAN",
             "speeltoestellen JSON",
+            # patch 102: horeca-detail + uitbater
+            "cuisine VARCHAR(80)", "veggie BOOLEAN", "afhaal BOOLEAN",
+            "reserveren BOOLEAN", "uitbater_naam VARCHAR(120)",
         ]
         _extra_nieuw = False
         for coldef in _extra_ev:
@@ -436,8 +449,9 @@ def register_cli(app):
                 db.session.execute(text(
                     f"ALTER TABLE events ADD COLUMN IF NOT EXISTS {coldef}"))
                 _extra_nieuw = True
-        db.session.execute(text(
-            "ALTER TABLE horeca_kandidaten ADD COLUMN IF NOT EXISTS socials JSON"))
+        for kd in ("socials JSON", "brand VARCHAR(80)", "confidence REAL"):
+            db.session.execute(text(
+                f"ALTER TABLE horeca_kandidaten ADD COLUMN IF NOT EXISTS {kd}"))
         if _extra_nieuw:
             added.append("events.voorzieningen + openingsuren")
         if ev_cols and "reservatie_url" not in ev_cols:

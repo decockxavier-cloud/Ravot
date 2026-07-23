@@ -157,6 +157,14 @@ def laad_horeca(bbox=BELGIE_BBOX, log=print):
             tel = rec.get("phones") or []
             k.telefoon = (tel[0][:40] if tel else None)
             k.socials = (socials[:5] or None)
+            merk = rec.get("brand")
+            if isinstance(merk, dict):
+                merk = (merk.get("names") or {}).get("primary") or merk.get("name")
+            k.brand = (str(merk)[:80] if merk else None)
+            try:
+                k.confidence = float(rec.get("confidence"))
+            except (TypeError, ValueError):
+                k.confidence = None
             mails = rec.get("emails") or []
             k.email = (mails[0][:255] if mails else None)
             k.is_feest = False
@@ -215,7 +223,9 @@ def zoek_kandidaten(lat, lng, straal_km=5):
                     "zomerbar": bool(k.zomerbar_hint),
                     "winterbar": bool(getattr(k, "winterbar_hint", False)),
                     "km": round(km, 1),
-                    "ai": k.ai_advies, "ai_uitleg": k.ai_uitleg})
+                    "ai": k.ai_advies, "ai_uitleg": k.ai_uitleg,
+                    "brand": getattr(k, "brand", None),
+                    "confidence": getattr(k, "confidence", None)})
     # AI-'ja' bovenaan, daarna twijfel, dan op afstand — zo bevestig je eerst
     # de meest kansrijke zaken.
     volgorde = {"ja": 0, "twijfel": 1, None: 1, "nee": 2}

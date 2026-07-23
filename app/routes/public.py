@@ -671,7 +671,8 @@ def ontdek():
                               "kinderstoel", "speelhoek", "kindermenu",
                               "terras", "overdekt_terras", "parking",
                               "toegankelijk", "allergievriendelijk",
-                              "babyvoeding", "huisdieren")}
+                              "babyvoeding", "huisdieren",
+                              "toilet", "drinkwater", "picknick", "veggie")}
     for veld in ouder_filters:
         q = q.filter(getattr(Event, veld).is_(True))
     # Soort plek (speeltuin, museum, horeca, ...): filter op subtype.
@@ -901,7 +902,8 @@ def verkennen():
                               "kinderstoel", "speelhoek", "kindermenu",
                               "terras", "overdekt_terras", "parking",
                               "toegankelijk", "allergievriendelijk",
-                              "babyvoeding", "huisdieren")}
+                              "babyvoeding", "huisdieren",
+                              "toilet", "drinkwater", "picknick", "veggie")}
     lft = request.args.get("lft") or ""
     band = next((b for b in LEEFTIJDEN if b[0] == lft), None)
     if not band:

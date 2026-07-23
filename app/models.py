@@ -143,6 +143,11 @@ class Event(db.Model):
     picknick = db.Column(db.Boolean)                 # picknicktafels (OSM)
     bbq = db.Column(db.Boolean)                      # bbq toegelaten/aanwezig (OSM)
     speeltoestellen = db.Column(db.JSON)             # ["glijbaan", "kabelbaan", ...]
+    cuisine = db.Column(db.String(80))               # keukentype uit OSM (friture, pizza, ...)
+    veggie = db.Column(db.Boolean)                   # vegetarische opties (diet:vegetarian)
+    afhaal = db.Column(db.Boolean)                   # om mee te nemen (takeaway)
+    reserveren = db.Column(db.Boolean)               # reserveren aangeraden/nodig
+    uitbater_naam = db.Column(db.String(120))        # operator-tag (curatie & claims)
     attribution = db.Column(db.String(120))          # korte bronvermelding (licentie-compliance)
     is_permanent = db.Column(db.Boolean, default=False, nullable=False, index=True)  # POI zonder vaste datum
     hidden = db.Column(db.Boolean, default=False, nullable=False, index=True)  # dubbel: verborgen in lijsten
@@ -883,6 +888,8 @@ class HorecaKandidaat(db.Model):
     website = db.Column(db.String(300))
     telefoon = db.Column(db.String(40))
     socials = db.Column(db.JSON)     # [urls] uit Overture, mee naar de fiche
+    brand = db.Column(db.String(80))         # keten (Overture) — curatiehulp
+    confidence = db.Column(db.Float)         # Overture-betrouwbaarheid 0..1
     email = db.Column(db.String(255))
     zomerbar_hint = db.Column(db.Boolean, default=False)
     winterbar_hint = db.Column(db.Boolean, default=False)

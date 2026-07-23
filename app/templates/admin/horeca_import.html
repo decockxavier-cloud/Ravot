@@ -56,7 +56,9 @@ staan bovenaan.</p>
         <td>{{ r.naam }}
           {% if r.bestaat %}<span class="badge pil-ok">al in Ravot</span>{% endif %}
           {% if r.website %}<a href="{{ r.website }}" target="_blank" rel="noopener">↗</a>{% endif %}</td>
-        <td>{{ r.amenity }}</td>
+        <td>{{ r.amenity }}
+          {% if r.get('brand') %}<br><span class="badge">🏬 {{ r.brand }}</span>{% endif %}
+          {% if r.get('confidence') is not none %}<br><small class="hint">betrouwbaarheid {{ (r.confidence * 100) | round | int }}%</small>{% endif %}</td>
         <td>{{ r.gemeente or '' }} {{ r.adres or '' }}{% if r.km is defined and r.km is not none %} · {{ r.km }} km{% endif %}</td>
         <td>{% for s in r.signalen %}<span class="badge pil-ok">{{ s }}</span>{% endfor %}
             {% if r.buiten %}<span class="badge">terras</span>{% endif %}

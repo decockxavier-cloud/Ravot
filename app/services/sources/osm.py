@@ -57,6 +57,27 @@ def _voorzieningen(tags):
     return uit
 
 
+def _horeca_extra(tags):
+    """Keukentype, veggie, afhaal, reserveren, honden, uitbater — enkel
+    positieve/duidelijke signalen."""
+    uit = {}
+    keuken = (tags.get("cuisine") or "").split(";")[0].strip().lower()
+    if keuken:
+        uit["cuisine"] = keuken[:80]
+    if tags.get("diet:vegetarian") in ("yes", "only"):
+        uit["veggie"] = True
+    if tags.get("takeaway") in ("yes", "only"):
+        uit["afhaal"] = True
+    if tags.get("reservation") in ("yes", "required", "recommended"):
+        uit["reserveren"] = True
+    if tags.get("dog") in ("yes", "leashed"):
+        uit["huisdieren"] = True
+    operator = (tags.get("operator") or "").strip()
+    if operator:
+        uit["uitbater_naam"] = operator[:120]
+    return uit
+
+
 def _fee_prijs(tags, standaard_gratis):
     """fee/charge -> (is_free, price_info). Zonder tag: het bestaande standaard-
     gedrag; met fee-tag wint de bron. charge enkel bij een eenduidig bedrag."""
@@ -294,6 +315,7 @@ def normalise(el):
     }
     uit.update(_contact(tags))
     uit.update(_voorzieningen(tags))
+    uit.update(_horeca_extra(tags))
     if tags.get("wheelchair") == "yes":
         uit["toegankelijk"] = True
     if kind == "playground":
@@ -380,6 +402,7 @@ def _normalise_horeca(el, tags):
         uit["buggy_ok"] = True
         uit["toegankelijk"] = True
     uit.update(_contact(tags))
+    uit.update(_horeca_extra(tags))
     return uit
 
 
@@ -523,6 +546,7 @@ def importeer_horeca(ext_ids_met_soort):
         }
         data.update(_contact(tags))
         data.update(_voorzieningen(tags))
+        data.update(_horeca_extra(tags))
         if not data["gemeente"] or not data["postcode"]:
             buurman = _dichtste(float(lat), float(lng))
             if buurman:

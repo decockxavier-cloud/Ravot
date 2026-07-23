@@ -46,6 +46,10 @@
   {% if ev.drinkwater %}<span class="badge">🚰 drinkwater</span>{% endif %}
   {% if ev.picknick %}<span class="badge">🧺 picknicktafels</span>{% endif %}
   {% if ev.bbq %}<span class="badge">🍖 bbq</span>{% endif %}
+  {% if ev.cuisine %}<span class="badge">🍽️ {{ keuken_label(ev.cuisine) }}</span>{% endif %}
+  {% if ev.veggie %}<span class="badge">🥦 vegetarische opties</span>{% endif %}
+  {% if ev.afhaal %}<span class="badge">🥡 om mee te nemen</span>{% endif %}
+  {% if ev.reserveren %}<span class="badge">🗓️ reserveren aangeraden</span>{% endif %}
   {% if ev.overdekt_terras %}<span class="badge">⛱️ overdekt terras</span>{% endif %}
   {% if ev.parking %}<span class="badge">🅿️ parking</span>{% endif %}
   {% if ev.toegankelijk %}<span class="badge">♿ toegankelijk</span>{% endif %}
@@ -120,6 +124,7 @@
   {% for s in ev.socials or [] %}<a class="btn btn-stil btn-klein" href="{{ s }}" rel="noopener nofollow" target="_blank">{{ "📘 Facebook" if "facebook" in s else ("📸 Instagram" if "instagram" in s else "🔗 Social") }}</a>{% endfor %}
   {% if ev.reservatie_url and ev.partner_until and ev.partner_until > nu_utc %}<a class="btn btn-zon" href="{{ ev.reservatie_url }}" rel="noopener nofollow" target="_blank">🍽️ Menu &amp; reserveren</a>{% endif %}
 </div>
+{% if ev.uitbater_naam %}<p class="hint">Uitgebaat door {{ ev.uitbater_naam }}</p>{% endif %}
 {% if ev.attribution %}<p class="hint">Bron: {{ ev.attribution }}</p>{% endif %}
 {% if ev.uit_id %}<p class="hint uit-bron">Activiteitgegevens via <a href="https://www.uitinvlaanderen.be/?utm_source=ravot&utm_medium=partnerlink&utm_campaign=backlinks" rel="noopener" target="_blank">UiTinVlaanderen</a>.</p>{% endif %}
 
