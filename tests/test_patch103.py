@@ -272,3 +272,40 @@ def test_herstart_ververst_startmoment(app):
         db.session.expire_all()
         vers = db.session.get(SyncStatus, "osm")
         assert (datetime.utcnow() - vers.updated_at).total_seconds() < 120
+
+
+# --------------------------------------------------------------- patch 112 --
+
+def test_gemeentezoek_toont_de_hele_gemeente(client, app):
+    """Bij een herkende plaats werd de buurt pas NA de cap van 1000 toegepast:
+    1000 willekeurige fiches uit heel Vlaanderen, waarvan er toevallig een
+    handvol in de gezochte gemeente lag (3 eetplekken in Oostende i.p.v. 196).
+    De buurt hoort al in de databank geknepen te worden."""
+    import random
+    import re
+    from app.models import Event, PostcodeCentroid
+    with app.app_context():
+        db.session.add(PostcodeCentroid(postcode="8400", gemeente="Oostende",
+                                        lat=51.2155, lng=2.927))
+        random.seed(7)
+        for i in range(1500):          # elders in Vlaanderen
+            db.session.add(Event(uit_id=f"v{i}", slug=f"v{i}", title=f"Zaak {i}",
+                                 source="overture", subtype="horeca",
+                                 is_permanent=True, gemeente="Elders",
+                                 postcode="9000", curated=True, quality=58,
+                                 lat=50.9 + random.random() * 0.5,
+                                 lng=3.5 + random.random() * 1.5,
+                                 age_min=0, age_max=12))
+        for i in range(120):           # in Oostende
+            db.session.add(Event(uit_id=f"h{i}", slug=f"h{i}", title=f"Eetzaak {i}",
+                                 source="overture", subtype="horeca",
+                                 is_permanent=True, gemeente="Oostende",
+                                 postcode="8400", curated=True, quality=58,
+                                 lat=51.23, lng=2.92, age_min=0, age_max=12))
+        db.session.commit()
+    html = client.get("/ontdek?wanneer=alle&q=oostende&groep=smullen").data.decode()
+    m = re.search(r"(\d+)\s+activiteiten", html)
+    assert m, "resultaatteller niet gevonden"
+    assert int(m.group(1)) >= 100, f"slechts {m.group(1)} resultaten in Oostende"
+    # en geen fiches van ver buiten de gezochte gemeente
+    assert "Zaak 1" not in html

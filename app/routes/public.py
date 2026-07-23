@@ -659,6 +659,16 @@ def ontdek():
         like = f"%{zoek}%"
         q = q.filter(db.or_(db.func.lower(Event.title).like(like),
                             db.func.lower(Event.gemeente).like(like)))
+    elif centrum:
+        # Herkende plaats: knijp de buurt AL in de databank (ruime rechthoek van
+        # ~20 km) i.p.v. pas na de cap. Anders vullen 1000 willekeurige fiches
+        # uit heel Vlaanderen de selectie en blijft er van de gezochte gemeente
+        # bijna niets over — dat gaf 3 eetplekken in Oostende i.p.v. 194.
+        from math import cos, radians
+        d_lat = 20.0 / 111.0
+        d_lng = 20.0 / max(1.0, 111.0 * cos(radians(centrum[0])))
+        q = q.filter(Event.lat.between(centrum[0] - d_lat, centrum[0] + d_lat),
+                     Event.lng.between(centrum[1] - d_lng, centrum[1] + d_lng))
     if filter_type == "gratis":
         q = q.filter(Event.is_free.is_(True))
     elif filter_type == "binnen":
@@ -710,10 +720,13 @@ def ontdek():
         q = q.filter(db.func.lower(db.cast(Event.categories, db.String)).like(f'%"{cat}"%'))
     if verberg_sp:
         q = q.filter(db.or_(Event.subtype.is_(None), Event.subtype != "playground"))
-    # Gedateerde events eerst (permanente POI's met start=None achteraan), zodat
-    # de 1000-cap niet volloopt met permanente plekken.
-    candidates = q.order_by(Event.start.is_(None).asc(),
-                            Event.start.asc()).limit(1000).all()
+    # Twee aparte emmers i.p.v. één cap van 1000 met gedateerde events eerst:
+    # anders duwen duizend activiteiten alle vaste plekken uit de selectie.
+    gedateerd_cand = (q.filter(Event.start.isnot(None))
+                       .order_by(Event.start.asc()).limit(700).all())
+    vast_cand = (q.filter(Event.start.is_(None))
+                  .order_by(Event.quality.desc().nullslast()).limit(700).all())
+    candidates = gedateerd_cand + vast_cand
     # Partners APART ophalen — zonder de 1000-cap ÉN zonder de kwaliteits-/
     # curatiedrempel. Een betaalde partner hoort altijd zichtbaar te zijn, ook
     # als zijn fiche (nog) een lage quality heeft. We passen wél de datum-/
