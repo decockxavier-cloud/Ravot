@@ -216,6 +216,36 @@ def register_cli(app):
         db.create_all()
         click.echo("Database klaar.")
 
+    @app.cli.command("backfill-openingsuren")
+    def backfill_openingsuren():
+        """Eenmalig: 'Openingsuren: ...' uit beschrijvingen halen en omzetten
+        naar het gestructureerde openingsuren-veld (urentabel + open/dicht-badge
+        op de fiche). Veilig herhaalbaar; rapporteert de aantallen."""
+        import re
+        from .models import Event
+        from .services.openingsuren import parse_osm_uren
+        patroon = re.compile(r"\s*Openingsuren:\s*([^\n]+?)\s*$")
+        gevuld = gestript = onleesbaar = 0
+        for ev in Event.query.filter(Event.description.contains("Openingsuren:")).all():
+            m = patroon.search(ev.description or "")
+            if not m:
+                continue
+            spec = m.group(1).strip()
+            if not ev.openingsuren:
+                uren = parse_osm_uren(spec)
+                if uren:
+                    ev.openingsuren = uren
+                    gevuld += 1
+                else:
+                    onleesbaar += 1
+                    continue   # tekst laten staan: beter ruw dan niets
+            ev.description = patroon.sub("", ev.description).strip()
+            gestript += 1
+        db.session.commit()
+        totaal = Event.query.filter(Event.openingsuren.isnot(None)).count()
+        print(f"Gestructureerd gevuld: {gevuld} · tekst opgekuist: {gestript} "
+              f"· onleesbaar gelaten: {onleesbaar} · totaal plekken met uren: {totaal}")
+
     @app.cli.command("migrate-db")
     def migrate_db():
         """Voegt ontbrekende kolommen/tabellen toe zonder data te wissen."""

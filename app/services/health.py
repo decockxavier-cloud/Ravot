@@ -241,6 +241,21 @@ def _schijf():
     return True, detail
 
 
+def _openingsuren():
+    """Hoeveel vaste plekken hebben nette openingsuren, en hoeveel slepen nog
+    ruwe 'Openingsuren:'-tekst mee in hun beschrijving (op te kuisen met
+    `flask backfill-openingsuren`)."""
+    from ..models import Event
+    vast = Event.query.filter(Event.is_permanent.is_(True))
+    met = vast.filter(Event.openingsuren.isnot(None)).count()
+    ruw = Event.query.filter(Event.description.contains("Openingsuren:")).count()
+    totaal = vast.count()
+    detail = f"{met} van {totaal} vaste plekken met urentabel"
+    if ruw:
+        return None, detail + f" — {ruw} met ruwe tekst: draai flask backfill-openingsuren"
+    return True, detail
+
+
 def alle_checks():
     """Live checks + de laatste runs van alle databronnen."""
     checks = []
@@ -256,6 +271,7 @@ def alle_checks():
         ("UiTdatabank", _uit),
         ("Overture-voorraad", _overture),
         ("Database-backup", _backup),
+        ("Openingsuren (plekken)", _openingsuren),
         ("Werkvoorraad", _werkvoorraad),
         ("Schijfruimte", _schijf),
     ):

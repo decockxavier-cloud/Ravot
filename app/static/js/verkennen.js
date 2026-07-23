@@ -72,7 +72,9 @@
       else badges += '<span class="fiche-badge grijs">nog geen score</span>';
       if (badges) fiche += '<div class="fiche-badges">' + badges + "</div>";
 
-      fiche += '<a class="fiche-knop" href="' + esc(m.url) + '">Bekijk activiteit →</a>';
+      var knop = m.eet ? 'Bekijk eetplek →'
+                 : (m.permanent ? 'Bekijk plek →' : 'Bekijk activiteit →');
+      fiche += '<a class="fiche-knop" href="' + esc(m.url) + '">' + knop + '</a>';
       fiche += "</div></div>";
 
       L.marker([m.lat, m.lng], { icon: icon })

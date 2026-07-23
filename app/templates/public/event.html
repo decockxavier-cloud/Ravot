@@ -25,6 +25,8 @@
 <script src="{{ url_for('static', filename='js/minimap.js') }}"></script>
 {% endif %}
 <div class="badges">
+  {% set at = activiteit_type(ev) %}
+  <span class="badge badge-type">{{ at.emoji }} {{ at.label }}</span>
   <span class="badge">{{ ev.age_min }}–{{ ev.age_max }} jaar</span>
   {% if ev.is_free %}<span class="badge badge-free">Gratis</span>
   {% elif family_total is not none %}<span class="badge">Voor jullie gezin: €{{ "%.0f"|format(family_total) }}</span>{% endif %}

@@ -200,7 +200,7 @@ def normalise(el):
 
     website = tags.get("website") or tags.get("contact:website") or None
     oh = tags.get("opening_hours")
-    descr = f"Openingsuren: {oh}" if oh else ""
+    descr = ""   # uren tonen we gestructureerd, nooit als ruwe tekst
 
     from urllib.parse import quote
     beeld = tags.get("image")
@@ -262,8 +262,6 @@ def _normalise_horeca(el, tags):
         troeven.append("verschoontafel")
     descr = f"Kindvriendelijke zaak met {', '.join(troeven)}."
     oh = tags.get("opening_hours")
-    if oh:
-        descr += f" Openingsuren: {oh}"
     soort = {"restaurant": "restaurant", "cafe": "café",
              "fast_food": "eethuis", "ice_cream": "ijssalon"}.get(
                  tags.get("amenity"), "zaak")
@@ -422,11 +420,10 @@ def importeer_horeca(ext_ids_met_soort):
         descr = basis + (f" met {extra}." if extra else ".")
         if tags.get("outdoor_seating") == "yes":
             descr += " Terras aanwezig."
-        if tags.get("opening_hours"):
-            descr += f" Openingsuren: {tags['opening_hours']}"
         data = {
             "source": "osm", "ext_id": ext_id, "title": naam,
             "description": descr[:2000], "start": None, "end": None,
+            "openingsuren": parse_osm_uren(tags.get("opening_hours")) or None,
             "is_permanent": True,
             "gemeente": tags.get("addr:city"),
             "postcode": clean_postcode(tags.get("addr:postcode")),

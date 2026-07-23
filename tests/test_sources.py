@@ -329,7 +329,10 @@ def test_osm_museum(app):
                                 "website": "https://kindermuseum.be"}})
     assert d["categories"] == ["cultuur"] and d["indoor"] is True
     assert d["source_url"] == "https://kindermuseum.be"
-    assert "Openingsuren" in d["description"]
+    # Sinds patch 98: uren gestructureerd, nooit als ruwe tekst in de beschrijving
+    assert "Openingsuren" not in d["description"]
+    assert d["openingsuren"]["di"] == ["10:00", "17:00"]
+    assert d["openingsuren"].get("ma") is None  # ma niet vermeld = onbekend
 
 
 def test_osm_erotisch_museum_geweerd(app):

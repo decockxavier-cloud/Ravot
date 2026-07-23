@@ -994,6 +994,7 @@ def _kaart_marker(e):
         "leeftijd": f"{e.age_min}\u2013{e.age_max} jaar" if e.age_min is not None else None,
         "indoor": bool(e.indoor), "img": poi_image(e),
         "emoji": activiteit_type(e)["emoji"], "type": activiteit_type(e)["label"],
+        "permanent": bool(e.is_permanent), "eet": e.subtype == "horeca",
         "partner": partner_actief(e),
         "score": None, "count": None,
     }
