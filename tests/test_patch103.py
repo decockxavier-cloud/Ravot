@@ -252,3 +252,23 @@ def test_laad_postcodes_vult_enkel_gaten(app):
     # herhaald draaien voegt niets meer toe
     uit = runner.invoke(args=["laad-postcodes"])
     assert "0 toegevoegd" in uit.output
+
+
+def test_herstart_ververst_startmoment(app):
+    """Herstart je een sync die al op 'running' staat, dan moet het startmoment
+    mee opschuiven — anders toont de badge 'bezig sinds' een oude tijd."""
+    from datetime import datetime, timedelta
+    from app.services.sources import _set_status
+    with app.app_context():
+        rij = SyncStatus(source="osm", state="running")
+        db.session.add(rij)
+        db.session.commit()
+        db.session.execute(db.text(
+            "UPDATE sync_status SET updated_at = :t WHERE source = 'osm'"),
+            {"t": datetime.utcnow() - timedelta(hours=5)})
+        db.session.commit()
+        db.session.expire_all()
+        _set_status("osm", "running")          # herstart
+        db.session.expire_all()
+        vers = db.session.get(SyncStatus, "osm")
+        assert (datetime.utcnow() - vers.updated_at).total_seconds() < 120

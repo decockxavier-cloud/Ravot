@@ -37,6 +37,12 @@ def _set_status(source, state, result=None, error=None):
     try:
         row = db.session.get(SyncStatus, source) or SyncStatus(source=source)
         row.state = state
+        if state == "running":
+            # Expliciet stempelen: stond de rij al op "running" (herstart na een
+            # gesneuvelde run), dan verandert er anders geen enkel veld, schrijft
+            # SQLAlchemy niets weg en blijft updated_at op de óude starttijd
+            # hangen — waardoor de badge "bezig sinds" uren te vroeg toont.
+            row.updated_at = utcnow()
         if state in ("done", "error", "idle"):
             row.last_run = utcnow()
         if result is not None:
