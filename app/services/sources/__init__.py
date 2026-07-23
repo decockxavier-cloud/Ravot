@@ -61,10 +61,18 @@ def heal_stale_runs(max_uren=STALE_NA_UREN):
     try:
         grens = utcnow() - timedelta(hours=max_uren)
         grens = grens.replace(tzinfo=None)   # db-kolommen zijn naïef-UTC
+        from ...models import Event
+        pols = utcnow().replace(tzinfo=None) - timedelta(minutes=30)
         for row in SyncStatus.query.filter_by(state="running").all():
             ts = row.updated_at or row.last_run
             ts = ts.replace(tzinfo=None) if ts else None
-            if ts is None or ts <= grens:
+            if ts is not None and ts > grens:
+                continue
+            # Hartslag: raakt de bron nog records aan, dan leeft de sync —
+            # ook al draait hij (legitiem) langer dan de drempel.
+            leeft = Event.query.filter(Event.source == row.source,
+                                       Event.updated_at > pols).count() > 0
+            if not leeft:
                 row.state = "error"
                 row.last_run = utcnow()
                 row.last_error = ("afgebroken — het syncproces is gestopt "

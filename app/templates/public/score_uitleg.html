@@ -1,8 +1,7 @@
 {% extends "base.html" %}
 {% block body_class %}met-sfeer{% endblock %}
 {% block content %}
-<a href="{{ url_for('public.ontdek') }}" class="terug-link"
-   onclick="if (history.length > 1) { history.back(); return false; }">← Terug</a>
+<a href="{{ url_for('public.ontdek') }}" class="terug-link" data-terug>← Terug</a>
 <h1>Zo werken de Ravotscore &amp; de Ravotpas 🦊</h1>
 
 <div class="card">

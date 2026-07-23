@@ -239,3 +239,20 @@ document.addEventListener('click', function (e) {
   var blok = document.getElementById('foto-blok');
   if (blok) { blok.open = true; blok.scrollIntoView({behavior: 'smooth'}); e.preventDefault(); }
 });
+
+// Terugknop: ga écht terug naar waar je vandaan kwam (kaart mét zoomstand,
+// gefilterde lijst, ...). Extern bestand: de CSP blokkeert inline onclick —
+// daardoor viel de knop stilletjes terug op zijn vaste href.
+(function () {
+  document.addEventListener("click", function (e) {
+    var knop = e.target.closest("[data-terug]");
+    if (!knop) return;
+    var eigenSite = document.referrer &&
+        document.referrer.indexOf(window.location.origin) === 0;
+    if (eigenSite && history.length > 1) {
+      e.preventDefault();
+      history.back();
+    }
+    // anders (rechtstreeks binnengekomen via deellink/Google): volg de href
+  });
+})();

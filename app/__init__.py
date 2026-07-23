@@ -228,6 +228,26 @@ def register_cli(app):
         db.create_all()
         click.echo("Database klaar.")
 
+    @app.cli.command("backfill-gemeenten")
+    def backfill_gemeenten():
+        """Vul gemeente/postcode aan voor plekken zonder adres (OSM-punten),
+        via het dichtstbijzijnde postcode-zwaartepunt. Veilig herhaalbaar."""
+        from .models import Event
+        from .services.sources.base import dichtste_gemeente
+        q = Event.query.filter(Event.gemeente.is_(None),
+                               Event.lat.isnot(None), Event.lng.isnot(None))
+        gevuld = zonder = 0
+        for ev in q.all():
+            g, p = dichtste_gemeente(ev.lat, ev.lng)
+            if g:
+                ev.gemeente = g
+                ev.postcode = ev.postcode or p
+                gevuld += 1
+            else:
+                zonder += 1
+        db.session.commit()
+        print(f"Gemeente aangevuld: {gevuld} · geen zwaartepunt binnen 10 km: {zonder}")
+
     @app.cli.command("backfill-openingsuren")
     def backfill_openingsuren():
         """Eenmalig: 'Openingsuren: ...' uit beschrijvingen halen en omzetten

@@ -1,8 +1,7 @@
 {% extends "base.html" %}
 {% block body_class %}met-sfeer{% endblock %}
 {% block content %}
-<a href="{{ url_for('public.ontdek') }}" class="terug-link"
-   onclick="if (history.length > 1) { history.back(); return false; }">← Terug</a>
+<a href="{{ url_for('public.ontdek') }}" class="terug-link" data-terug>← Terug</a>
 <div class="event-kop">
   <h1>{{ ev.title }}</h1>
   {% set lbl = label_info(ev) %}

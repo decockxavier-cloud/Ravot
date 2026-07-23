@@ -97,10 +97,36 @@ def upsert_venue(source, ext_id, name, gemeente, postcode, lat, lng):
     return ven
 
 
+def dichtste_gemeente(lat, lng, max_km=10):
+    """Gemeente + postcode van het dichtstbijzijnde postcode-zwaartepunt.
+    OSM-punten dragen zelden een adres; zonder dit blijven speeltuinen en
+    parken gemeenteloos en vallen ze uit de gemeentepagina's."""
+    from ...models import PostcodeCentroid
+    from ...scoring import haversine_km
+    best = None
+    try:
+        for c in PostcodeCentroid.query.all():
+            if c.lat is None or c.lng is None:
+                continue
+            d = haversine_km(lat, lng, c.lat, c.lng)
+            if best is None or d < best[0]:
+                best = (d, c)
+    except Exception:
+        return None, None
+    if best and best[0] <= max_km:
+        return best[1].gemeente, best[1].postcode
+    return None, None
+
+
 def upsert_event(data):
     """Generieke upsert op (source, ext_id). Werkt voor alle niet-UiT bronnen.
     UiT houdt zijn eigen gespecialiseerde upsert (met reeks-matching)."""
     source, ext_id = data["source"], data["ext_id"]
+    if (not data.get("gemeente")) and data.get("lat") and data.get("lng"):
+        g, p = dichtste_gemeente(data["lat"], data["lng"])
+        if g:
+            data["gemeente"] = g
+            data["postcode"] = data.get("postcode") or p
     # Venue eerst oplossen: dit doet een flush; het Event mag pas daarna in de
     # sessie, anders probeert autoflush een half-leeg Event weg te schrijven.
     venue = upsert_venue(source, data.get("venue_ext_id") or ext_id,

@@ -4,7 +4,25 @@
     var el = document.getElementById("map-data");
     if (!el || typeof L === "undefined") { setTimeout(init, 50); return; }
     var data = JSON.parse(el.textContent);
-    var map = L.map("map").setView(data.center, data.zoom || 10);
+    var STAND = "ravot-kaartstand";
+    var start = [data.center, data.zoom || 10];
+    if (!data.gezocht) {
+      try {
+        var vorig = JSON.parse(sessionStorage.getItem(STAND) || "null");
+        if (vorig && vorig.pad === window.location.pathname) {
+          start = [vorig.center, vorig.zoom];
+        }
+      } catch (e) { /* geen herstel */ }
+    }
+    var map = L.map("map").setView(start[0], start[1]);
+    map.on("moveend zoomend", function () {
+      try {
+        sessionStorage.setItem(STAND, JSON.stringify({
+          pad: window.location.pathname,
+          center: [map.getCenter().lat, map.getCenter().lng],
+          zoom: map.getZoom() }));
+      } catch (e) { /* private mode */ }
+    });
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
       { attribution: "© OpenStreetMap", maxZoom: 19 }).addTo(map);
     var cluster = (typeof L.markerClusterGroup === "function")
