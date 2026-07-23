@@ -175,19 +175,25 @@ def test_backfill_gemeenten_zonder_cursorcrash(app):
 
 
 def test_opruim_buitenland(app):
+    """Naam+afstand i.p.v. rechthoek: Eindhoven en Maastricht liggen bínnen
+    elke rechthoek rond Vlaanderen en bleven vroeger staan."""
     from app.models import Event, Family, Review, Child
     runner = app.test_cli_runner()
     with app.app_context():
-        db.session.add(Event(uit_id="bi", slug="binnen", title="Gent",
-                             source="osm", is_permanent=True,
-                             lat=51.05, lng=3.72, age_min=0, age_max=12))
-        db.session.add(Event(uit_id="bu", slug="utrecht", title="Utrecht",
-                             source="osm", is_permanent=True,
-                             lat=52.09, lng=5.12, age_min=0, age_max=12))
-        keulen = Event(uit_id="ke", slug="keulen", title="Keulen",
-                       source="osm", is_permanent=True,
-                       lat=50.94, lng=6.96, age_min=0, age_max=12)
-        db.session.add(keulen)
+        def plek(slug, titel, gemeente, lat, lng, bron="osm"):
+            ev = Event(uit_id=slug, slug=slug, title=titel, source=bron,
+                       gemeente=gemeente, is_permanent=True, lat=lat, lng=lng,
+                       age_min=0, age_max=12)
+            db.session.add(ev)
+            return ev
+        plek("gent", "Gent", "Gent", 51.05, 3.72)
+        plek("voeren", "Voeren", "Voeren", 50.75, 5.80)
+        plek("ehv", "Eindhoven", "Eindhoven", 51.44, 5.47)
+        plek("maas", "Maastricht", "Maastricht", 50.85, 5.69)
+        plek("adam", "Amsterdam", "Amsterdam", 52.37, 4.90, bron="overture")
+        plek("rijsel", "Marcq", "Marcq-en-Barœul", 50.68, 3.09, bron="wd")
+        efteling = plek("eft", "Efteling", "Kaatsheuvel", 51.65, 5.04, bron="uit")
+        keulen = plek("keulen", "Keulen", "Köln", 50.94, 6.96)
         db.session.flush()
         fam = Family(email="r@t.be", postcode="9000")
         db.session.add(fam)
@@ -196,18 +202,34 @@ def test_opruim_buitenland(app):
         db.session.add(Review(family_id=fam.id, event_id=keulen.id,
                               kid_score=4, parent_score=3, child_ages=[8]))
         db.session.commit()
-    # zonder --ja: enkel tellen
+
     uit = runner.invoke(args=["opruim-buitenland"])
-    assert "Buiten Vlaanderen+Brussel: 2" in uit.output
+    assert uit.exception is None, uit.output
+    assert "Buiten Vlaanderen/Brussel: 5" in uit.output   # ehv, maas, adam, rijsel, keulen
+    assert "Efteling" in uit.output                        # UiT enkel gemeld
     assert "Niets verwijderd" in uit.output
     with app.app_context():
-        assert Event.query.count() == 3
-    # met --ja: Utrecht weg, Keulen blijft (review), Gent blijft (binnen)
+        assert Event.query.count() == 8
+
     uit = runner.invoke(args=["opruim-buitenland", "--ja"])
     assert uit.exception is None, uit.output
     with app.app_context():
         titels = {e.title for e in Event.query.all()}
-        assert titels == {"Gent", "Keulen"}
+        # Vlaams blijft, buitenland weg, Keulen blijft (review), Efteling blijft (UiT)
+        assert titels == {"Gent", "Voeren", "Efteling", "Keulen"}
+
+
+def test_vlaanderen_toets_grensgevallen(app):
+    from app.vlaanderen import is_vlaams
+    assert is_vlaams("Roeselare", 50.94, 3.12)
+    assert is_vlaams("Voeren", 50.75, 5.80)          # naam ontbreekt in lijst, pal op kern
+    assert is_vlaams("Middelburg", 51.25, 3.45)      # Belgisch Middelburg
+    assert not is_vlaams("Middelburg", 51.50, 3.61)  # Zeeuws Middelburg
+    assert not is_vlaams("Eindhoven", 51.44, 5.47)
+    assert not is_vlaams("Maastricht", 50.85, 5.69)
+    assert not is_vlaams(None, 52.37, 4.90)          # zonder naam, ver weg
+    assert is_vlaams(None, 51.05, 3.72)              # zonder naam, in Vlaanderen
+    assert is_vlaams("Onbekend", None, None)         # geen coördinaten: sparen
 
 
 # --------------------------------------------------------------- patch 108 --

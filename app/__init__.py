@@ -253,43 +253,72 @@ def register_cli(app):
     @app.cli.command("opruim-buitenland")
     @click.option("--ja", is_flag=True, help="Effectief verwijderen (anders enkel tellen).")
     def opruim_buitenland(ja):
-        """Verwijder OSM-plekken ver buiten Vlaanderen+Brussel (Nederland,
-        Duitsland, ...). Zonder --ja wordt enkel geteld. Plekken waar een
-        gezin of uitbater iets aan koppelde (review, foto, claim, ...)
-        worden altijd overgeslagen."""
-        from sqlalchemy import or_, text
-        from .models import Event
-        # Vlaanderen + Brussel met marge (grensstreek blijft bewust binnen)
-        Z, W, N, O = 50.60, 2.45, 51.60, 6.00
-        buiten = Event.query.filter(
-            Event.source == "osm",
-            Event.lat.isnot(None), Event.lng.isnot(None),
-            or_(Event.lat < Z, Event.lat > N, Event.lng < W, Event.lng > O))
-        totaal = buiten.count()
-        vrij = buiten
-        for tabel in ("interactions", "saved_events", "reviews", "shares",
-                      "reports", "photos", "enrich_proposals", "operator_claims",
-                      "edit_proposals", "partner_payments", "daguitstap_items",
-                      "feestje_aanvragen"):
-            vrij = vrij.filter(text(
-                f"NOT EXISTS (SELECT 1 FROM {tabel} "
-                f"WHERE {tabel}.event_id = events.id)"))
-        vrij_n = vrij.count()
-        print(f"Buiten Vlaanderen+Brussel: {totaal} OSM-plekken "
-              f"({vrij_n} zonder koppelingen, {totaal - vrij_n} met — die blijven).")
+        """Verwijder plekken buiten Vlaanderen/Brussel uit de automatische
+        bronnen (OSM, Overture, Wikidata). Beoordeelt op plaatsnaam én afstand
+        tot een Vlaams postcode-zwaartepunt — een rechthoek volstaat niet
+        (die bevat ook Rijsel, Eindhoven en Maastricht). Plekken met
+        koppelingen (review, foto, claim, ...) blijven altijd staan, net als
+        gecureerde UiT-events (die worden enkel gemeld)."""
+        from sqlalchemy import text
+        from .models import Event, PostcodeCentroid
+        from .vlaanderen import is_vlaams
+
+        kandidaten = (Event.query
+                      .filter(Event.source.in_(("osm", "overture", "wd")))
+                      .with_entities(Event.id, Event.gemeente,
+                                     Event.lat, Event.lng).all())
+        buiten = [eid for eid, gem, lat, lng in kandidaten
+                  if not is_vlaams(gem, lat, lng)]
+        print(f"Buiten Vlaanderen/Brussel: {len(buiten)} van {len(kandidaten)} "
+              "plekken uit automatische bronnen.")
+
+        # UiT-events enkel melden (gecureerd, bv. attractiepark net over de grens)
+        uit_buiten = [e for e in Event.query.filter(Event.source == "uit").all()
+                      if not is_vlaams(e.gemeente, e.lat, e.lng)]
+        if uit_buiten:
+            print(f"Ter info — {len(uit_buiten)} UiT-events buiten het gebied "
+                  "(blijven staan, beoordeel zelf via /beheer):")
+            for ev in uit_buiten[:15]:
+                print(f"  · {ev.title} ({ev.gemeente or '?'})")
+
+        # plekken met koppelingen sparen
+        if buiten:
+            gekoppeld = set()
+            for tabel in ("interactions", "saved_events", "reviews", "shares",
+                          "reports", "photos", "enrich_proposals",
+                          "operator_claims", "edit_proposals", "partner_payments",
+                          "daguitstap_items", "feestje_aanvragen"):
+                rijen = db.session.execute(text(
+                    f"SELECT DISTINCT event_id FROM {tabel} "
+                    "WHERE event_id IS NOT NULL")).fetchall()
+                gekoppeld |= {r[0] for r in rijen}
+            vrij = [i for i in buiten if i not in gekoppeld]
+            print(f"  {len(vrij)} zonder koppelingen, "
+                  f"{len(buiten) - len(vrij)} met (blijven staan).")
+        else:
+            vrij = []
+
         if not ja:
             print("Niets verwijderd. Draai met --ja om effectief op te ruimen.")
             return
-        ids = [r.id for r in vrij.with_entities(Event.id).all()]
         weg = 0
-        for i in range(0, len(ids), 1000):
-            stuk = ids[i:i + 1000]
-            db.session.execute(Event.__table__.delete()
-                               .where(Event.id.in_(stuk)))
+        for i in range(0, len(vrij), 1000):
+            stuk = vrij[i:i + 1000]
+            db.session.execute(Event.__table__.delete().where(Event.id.in_(stuk)))
             db.session.commit()
             weg += len(stuk)
-            print(f"  {weg} van {len(ids)} verwijderd...", flush=True)
-        print(f"Klaar: {weg} buitenlandse plekken verwijderd.")
+            print(f"  {weg} van {len(vrij)} verwijderd...", flush=True)
+        # zwaartepunten die uit buitenlandse events groeiden opruimen
+        import json as _json, os as _os
+        pad = _os.path.join(_os.path.dirname(__file__), "data", "postcodes_vl.json")
+        geldig = set(_json.load(open(pad)).keys())
+        vuil = [c.postcode for c in PostcodeCentroid.query.all()
+                if c.postcode not in geldig]
+        for pc in vuil:
+            db.session.delete(db.session.get(PostcodeCentroid, pc))
+        db.session.commit()
+        print(f"Klaar: {weg} plekken verwijderd · {len(vuil)} vervuilde "
+              "postcode-zwaartepunten opgeruimd.")
 
     @app.cli.command("backfill-gemeenten")
     def backfill_gemeenten():

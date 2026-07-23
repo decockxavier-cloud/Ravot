@@ -136,6 +136,17 @@ REGIOS = {
     "fr-nord":    (49.00, 1.55, 51.10, 4.27),   # Hauts-de-France
 }
 
+# Administratieve gebieden: een rechthoek rond Vlaanderen bevat ook Rijsel,
+# Eindhoven en Maastricht. Overpass kan filteren op het echte gewest/land,
+# de bbox blijft enkel als snelheidsbegrenzer per cel.
+REGIO_AREA = {
+    "vlaanderen": '["ISO3166-2"="BE-VLG"]',
+    "brussel":    '["ISO3166-2"="BE-BRU"]',
+    "wallonie":   '["ISO3166-2"="BE-WAL"]',
+    "nederland":  '["ISO3166-1"="NL"][admin_level=2]',
+    "fr-nord":    '["ISO3166-2"="FR-HDF"]',
+}
+
 UA = "Ravot/1.0 (+https://ravot.be; gezinsuitstappen)"
 
 # Servers die ons net afremden (429/503/504) even overslaan binnen dit proces.
@@ -163,9 +174,12 @@ def _grid(bbox, step=0.7):
         lat += step
 
 
-def _query(tag, bbox):
+def _query(tag, bbox, area=None):
     s, w, n, e = bbox
     key = OSM_KEY[tag]
+    if area:
+        return (f'[out:json][timeout:90];area{area}->.g;'
+                f'(nwr["{key}"="{tag}"](area.g)({s},{w},{n},{e}););out center tags;')
     return (f'[out:json][timeout:90];'
             f'(nwr["{key}"="{tag}"]({s},{w},{n},{e}););out center tags;')
 
@@ -178,16 +192,18 @@ HORECA_AMENITY = ("restaurant", "cafe", "fast_food", "ice_cream")
 HORECA_SIGNALEN = ("kids_area", "highchair", "changing_table", "playground")
 
 
-def _query_horeca(bbox):
+def _query_horeca(bbox, area=None):
     """Bewust géén regex op 'amenity' (duur voor Overpass): we vragen op de
     zéldzame kind-signaaltags (highchair, kids_area, ...) met enkel een
     goedkope key-check op amenity erbij. Welke amenity het precies is,
     filteren wij daarna zelf in normalise() — gratis voor de servers."""
     s, w, n, e = bbox
+    geb = "(area.g)" if area else ""
     delen = "".join(
-        f'nwr["{sig}"]["{sig}"!="no"]["amenity"]({s},{w},{n},{e});'
+        f'nwr["{sig}"]["{sig}"!="no"]["amenity"]{geb}({s},{w},{n},{e});'
         for sig in HORECA_SIGNALEN)
-    return f'[out:json][timeout:90];({delen});out center tags;'
+    kop = f'[out:json][timeout:90];area{area}->.g;' if area else '[out:json][timeout:90];'
+    return f'{kop}({delen});out center tags;'
 
 
 def _run(query):
@@ -230,12 +246,12 @@ def fetch():
     for regio in regios:
         for tag in tags:
             for bbox in _grid(REGIOS[regio]):
-                for el in _run(_query(tag, bbox)):
+                for el in _run(_query(tag, bbox, REGIO_AREA.get(regio))):
                     yield el
                 time.sleep(0.5)   # vriendelijk blijven voor de gratis servers
         if horeca:
             for bbox in _grid(REGIOS[regio]):
-                for el in _run(_query_horeca(bbox)):
+                for el in _run(_query_horeca(bbox, REGIO_AREA.get(regio))):
                     yield el
                 time.sleep(0.5)
 
