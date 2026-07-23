@@ -41,18 +41,24 @@ def test_verse_running_blijft_gewoon_bezig(app):
 
 def test_badge_toont_startmoment_bij_running(client, app):
     from datetime import datetime
+    from argon2 import PasswordHasher
+    import pyotp
+    from app.models import Admin
     with app.app_context():
-        from app.models import Admin
         db.session.add(SyncStatus(source="osm", state="running"))
-        admin = Admin(email="a@t.be", pw_hash="x", totp_secret="s",
-                      totp_confirmed=True, role="admin")
+        admin = Admin(email="badge-test@ravot.be",
+                      pw_hash=PasswordHasher().hash("wachtwoord123"),
+                      totp_secret=pyotp.random_base32(),
+                      totp_confirmed=True)
         db.session.add(admin)
         db.session.commit()
         aid = admin.id
     with client.session_transaction() as s:
         s["admin_id"] = aid
         s["admin_2fa_ok"] = True
-    html = client.get("/beheer/verbindingen").data.decode()
+    r = client.get("/beheer/verbindingen")
+    assert r.status_code == 200, r.status_code   # géén redirect naar login
+    html = r.data.decode()
     assert "bezig… sinds" in html
     # het startmoment is van vandaag, niet de vorige run
     assert datetime.utcnow().strftime("%d/%m") in html
