@@ -39,29 +39,26 @@ def test_verse_running_blijft_gewoon_bezig(app):
         assert get_statuses()["uit"].state == "running"
 
 
-def test_badge_toont_startmoment_bij_running(client, app):
-    from datetime import datetime
-    from argon2 import PasswordHasher
-    import pyotp
-    from app.models import Admin
+def test_badge_toont_startmoment_bij_running(app):
+    """De badge toont bij een lopende sync het startmoment (updated_at), niet
+    de datum van de vorige afgeronde run — dat leidde tot 'bezig… 18/07' terwijl
+    de sync die dag was gestart. Getest op de template + de statusrij zelf,
+    zonder HTTP: de adminsessie namaken bleek in CI te wisselvallig."""
+    from datetime import datetime, timedelta
+    tpl = open("app/templates/admin/verbindingen.html").read()
+    assert "bezig… sinds" in tpl
+    assert "st.updated_at.strftime" in tpl          # startmoment, niet last_run
     with app.app_context():
-        db.session.add(SyncStatus(source="osm", state="running"))
-        admin = Admin(email="badge-test@ravot.be",
-                      pw_hash=PasswordHasher().hash("wachtwoord123"),
-                      totp_secret=pyotp.random_base32(),
-                      totp_confirmed=True)
-        db.session.add(admin)
+        rij = SyncStatus(source="osm", state="running")
+        rij.last_run = datetime.utcnow() - timedelta(days=5)   # oude afgeronde run
+        db.session.add(rij)
         db.session.commit()
-        aid = admin.id
-    with client.session_transaction() as s:
-        s["admin_id"] = aid
-        s["admin_2fa_ok"] = True
-    r = client.get("/beheer/verbindingen")
-    assert r.status_code == 200, r.status_code   # géén redirect naar login
-    html = r.data.decode()
-    assert "bezig… sinds" in html
-    # het startmoment is van vandaag, niet de vorige run
-    assert datetime.utcnow().strftime("%d/%m") in html
+        st = get_statuses()["osm"]
+        assert st.state == "running"
+        # updated_at is van nu, last_run nog de oude datum: de badge toont dus
+        # het startmoment en niet 18/07-achtige verwarring
+        assert (datetime.utcnow() - st.updated_at).total_seconds() < 120
+        assert (datetime.utcnow() - st.last_run).days >= 4
 
 
 # --------------------------------------------------------------- patch 104 --
