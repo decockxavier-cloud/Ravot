@@ -16,11 +16,10 @@ elke nacht automatisch een sync (cron).</p>
   {% set st = syncstatus.get(code) %}
   {% if st %}
     <span class="badge {% if st.state == 'running' %}pil-bezig{% elif st.state == 'done' %}pil-ok{% elif st.state == 'error' %}pil-fout{% endif %}">
-      {% if st.state == 'running' %}bezig…
-      {% elif st.state == 'done' %}{{ st.last_result }}
-      {% elif st.state == 'error' %}fout
-      {% else %}{{ st.last_result or 'nog niet gedraaid' }}{% endif %}
-      {% if st.last_run %} · {{ st.last_run.strftime('%d/%m %H:%M') }}{% endif %}
+      {% if st.state == 'running' %}bezig… sinds {{ st.updated_at.strftime('%d/%m %H:%M') if st.updated_at else '?' }}
+      {% elif st.state == 'done' %}{{ st.last_result }}{% if st.last_run %} · {{ st.last_run.strftime('%d/%m %H:%M') }}{% endif %}
+      {% elif st.state == 'error' %}fout{% if st.last_run %} · {{ st.last_run.strftime('%d/%m %H:%M') }}{% endif %}
+      {% else %}{{ st.last_result or 'nog niet gedraaid' }}{% if st.last_run %} · {{ st.last_run.strftime('%d/%m %H:%M') }}{% endif %}{% endif %}
     </span>
     {% if st.state == 'error' and st.last_error %}
     <div class="hint" style="color:var(--rood)">{{ st.last_error }}</div>{% endif %}
