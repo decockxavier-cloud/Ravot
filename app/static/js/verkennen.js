@@ -30,8 +30,8 @@
                                showCoverageOnHover: false, chunkedLoading: true })
       : null;
     var laag = cluster || map;   // val terug op de kaart als de plugin ontbreekt
-    (data.markers || []).forEach(function (m) {
-      if (m.lat == null || m.lng == null) return;
+    function maakMarker(m) {
+      if (m.lat == null || m.lng == null) return null;
 
       function esc(s) {
         return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
@@ -95,11 +95,17 @@
       fiche += '<a class="fiche-knop" href="' + esc(m.url) + '">' + knop + '</a>';
       fiche += "</div></div>";
 
-      L.marker([m.lat, m.lng], { icon: icon })
-        .addTo(laag)
+      return L.marker([m.lat, m.lng], { icon: icon })
         .bindPopup(fiche, { minWidth: 250, maxWidth: 300, className: "fiche-popup" });
+    }
+
+    (data.markers || []).forEach(function (m) {
+      var mk = maakMarker(m);
+      if (mk) { laag.addLayer(mk); }
     });
     if (cluster) map.addLayer(cluster);
+    // Handvat voor het gebiedsgestuurd bijladen (onderaan dit bestand).
+    window._ravotKaart = { map: map, laag: laag, maakMarker: maakMarker };
     // Geen automatische fitBounds meer over álle markers: met data in BE, NL én
     // Noord-Frankrijk zou dat de kaart veel te ver uitzoomen en alles op één hoop
     // duwen. We vertrouwen op de door de server gekozen centrering (gezochte
@@ -134,4 +140,79 @@
   if (document.readyState === "loading")
     document.addEventListener("DOMContentLoaded", init);
   else init();
+})();
+
+// ---------------------------------------------------------------------------
+// De kaart laadt wat je ziet (patch 113). Bij verplaatsen/zoomen vraagt hij de
+// markers voor het zichtbare gebied op; ver uitgezoomd toont hij bolletjes per
+// gemeente. Zonder dit koos de server een vast contingent uit héél Vlaanderen,
+// waardoor inzoomen op de kust een lege kaart gaf.
+(function () {
+  function start() {
+    var el = document.getElementById("map-data");
+    if (!el || typeof L === "undefined" || !window._ravotKaart) {
+      return setTimeout(start, 60);
+    }
+    var K = window._ravotKaart;                 // {map, laag, maakMarker}
+    var teller = document.getElementById("kaart-teller");
+    var bezig = null, laatste = "";
+
+    function params() {
+      var b = K.map.getBounds(), p = new URLSearchParams(window.location.search);
+      var uit = new URLSearchParams();
+      ["wanneer", "groep", "soort", "filter"].forEach(function (k) {
+        if (p.get(k)) uit.set(k, p.get(k));
+      });
+      p.getAll("ouder").forEach(function (v) { uit.append("ouder", v); });
+      uit.set("z", b.getSouth().toFixed(4)); uit.set("n", b.getNorth().toFixed(4));
+      uit.set("w", b.getWest().toFixed(4)); uit.set("o", b.getEast().toFixed(4));
+      uit.set("zoom", K.map.getZoom());
+      return uit.toString();
+    }
+
+    function toon(data) {
+      K.laag.clearLayers();
+      if (data.modus === "gemeenten") {
+        (data.groepen || []).forEach(function (g) {
+          var m = L.marker([g.lat, g.lng], {
+            icon: L.divIcon({ className: "gemeente-bol", html:
+              '<span>' + g.aantal + '</span><small>' + g.gemeente + '</small>',
+              iconSize: [54, 54] })
+          });
+          m.on("click", function () { K.map.setView([g.lat, g.lng], 12); });
+          K.laag.addLayer(m);
+        });
+        if (teller) {
+          teller.textContent = data.totaal + " plekken in beeld · zoom in voor details";
+        }
+        return;
+      }
+      (data.markers || []).forEach(function (m) { K.laag.addLayer(K.maakMarker(m)); });
+      if (teller) {
+        teller.textContent = data.getoond < data.totaal
+          ? data.getoond + " van " + data.totaal + " plekken in beeld · zoom verder in voor de rest"
+          : data.getoond + " plekken in beeld";
+      }
+    }
+
+    function herlaad() {
+      var qs = params();
+      if (qs === laatste) { return; }
+      laatste = qs;
+      if (bezig) { bezig.abort(); }
+      var ctrl = new AbortController(); bezig = ctrl;
+      fetch("/api/kaart?" + qs, { signal: ctrl.signal })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) { if (d) { toon(d); } })
+        .catch(function () { /* afgebroken of offline: markers laten staan */ });
+    }
+
+    var wacht;
+    K.map.on("moveend zoomend", function () {
+      clearTimeout(wacht);
+      wacht = setTimeout(herlaad, 400);   // niet vuren bij elke muisbeweging
+    });
+    herlaad();
+  }
+  start();
 })();

@@ -309,3 +309,84 @@ def test_gemeentezoek_toont_de_hele_gemeente(client, app):
     assert int(m.group(1)) >= 100, f"slechts {m.group(1)} resultaten in Oostende"
     # en geen fiches van ver buiten de gezochte gemeente
     assert "Zaak 1" not in html
+
+
+def test_kaart_toont_de_gezochte_gemeente(client, app):
+    """Zelfde euvel als de lijst, maar dan op de kaart: de contingenten (300
+    beste eetplekken van héél Vlaanderen) werden gevuld vóór het buurtfilter,
+    waardoor een zoekopdracht op Oostende een bijna lege kaart gaf."""
+    import json
+    import random
+    import re
+    from app.models import Event, PostcodeCentroid
+    with app.app_context():
+        db.session.add(PostcodeCentroid(postcode="8400", gemeente="Oostende",
+                                        lat=51.2155, lng=2.927))
+        random.seed(11)
+        for i in range(1200):          # elders, met hógere kwaliteit
+            db.session.add(Event(uit_id=f"v{i}", slug=f"v{i}", title=f"Zaak {i}",
+                                 source="overture", subtype="horeca",
+                                 is_permanent=True, gemeente="Elders",
+                                 postcode="9000", curated=True, quality=70,
+                                 lat=50.9 + random.random() * 0.5,
+                                 lng=3.5 + random.random() * 1.5,
+                                 age_min=0, age_max=12))
+        for i in range(150):           # in Oostende
+            db.session.add(Event(uit_id=f"h{i}", slug=f"h{i}", title=f"Eetzaak {i}",
+                                 source="overture", subtype="horeca",
+                                 is_permanent=True, gemeente="Oostende",
+                                 postcode="8400", curated=True, quality=58,
+                                 lat=51.23, lng=2.92, age_min=0, age_max=12))
+        db.session.commit()
+    html = client.get("/verkennen?wanneer=alle&q=oostende&groep=smullen").data.decode()
+    blok = re.search(r'id="map-data">(.*?)</script>', html, re.S)
+    assert blok, "map-data ontbreekt"
+    markers = json.loads(blok.group(1))["markers"]
+    oostendse = [m for m in markers if m["title"].startswith("Eetzaak")]
+    assert len(oostendse) >= 100, f"slechts {len(oostendse)} Oostendse pins"
+
+
+# --------------------------------------------------------------- patch 113 --
+
+def _kaartplekken(app, n_kust=150, n_gent=250):
+    from app.models import Event
+    import random
+    random.seed(13)
+    with app.app_context():
+        for i in range(n_kust):
+            db.session.add(Event(uit_id=f"k{i}", slug=f"k{i}", title=f"Kust {i}",
+                                 source="osm", subtype="playground", is_permanent=True,
+                                 gemeente="Oostende", lat=51.23 + random.random() * .01,
+                                 lng=2.92, age_min=0, age_max=12, quality=50))
+        for i in range(n_gent):
+            db.session.add(Event(uit_id=f"g{i}", slug=f"g{i}", title=f"Gent {i}",
+                                 source="osm", subtype="playground", is_permanent=True,
+                                 gemeente="Gent", lat=51.05 + random.random() * .01,
+                                 lng=3.72, age_min=0, age_max=12, quality=80))
+        db.session.commit()
+
+
+def test_kaart_api_geeft_pins_van_het_zichtbare_gebied(client, app):
+    _kaartplekken(app)
+    d = client.get("/api/kaart?z=51.15&n=51.30&w=2.80&o=3.05&zoom=12&wanneer=alle").get_json()
+    assert d["modus"] == "pins"
+    assert d["totaal"] == 150                      # enkel de kust, niet Gent
+    assert all(m["title"].startswith("Kust") for m in d["markers"])
+
+
+def test_kaart_api_groepeert_ver_uitgezoomd(client, app):
+    _kaartplekken(app)
+    d = client.get("/api/kaart?z=50.6&n=51.6&w=2.4&o=6.0&zoom=8&wanneer=alle").get_json()
+    assert d["modus"] == "gemeenten"
+    per_gem = {g["gemeente"]: g["aantal"] for g in d["groepen"]}
+    assert per_gem == {"Oostende": 150, "Gent": 250}
+
+
+def test_kaart_api_respecteert_filters_en_fouten(client, app):
+    _kaartplekken(app)
+    d = client.get("/api/kaart?z=50.6&n=51.6&w=2.4&o=6.0&zoom=12"
+                   "&wanneer=alle&groep=smullen").get_json()
+    assert d["totaal"] == 0                        # speeltuinen zijn geen eetplekken
+    assert client.get("/api/kaart?zoom=9").status_code == 400
+    js = open("app/static/js/verkennen.js").read()
+    assert "/api/kaart?" in js and "moveend zoomend" in js

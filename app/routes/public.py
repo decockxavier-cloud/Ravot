@@ -13,8 +13,8 @@ SEO-architectuur (SEO/GEO-plan):
 import re
 from datetime import datetime, timedelta
 
-from flask import (Blueprint, abort, current_app, g, redirect, render_template,
-                   request, session, url_for, Response)
+from flask import (Blueprint, abort, current_app, g, jsonify, redirect,
+                   render_template, request, session, url_for, Response)
 
 from ..extensions import db, limiter
 from ..models import (get_int, get_setting, DagUitstap, Event, Family,
@@ -857,8 +857,19 @@ def verkennen():
     # Gebalanceerd: gedateerde events én permanente POI's krijgen elk een
     # eigen deel van de kaart (anders verdringen 1000en speeltuinen de agenda).
     wanneer = request.args.get("wanneer", "deze-week")   # standaard: deze week
+    # Gezocht op een plaats? Bereken één keer de rechthoek van ~30 km en pas
+    # die toe vóór élk contingent (zie ook perm_basis verderop).
+    _box = ()
+    if centrum:
+        from math import cos, radians
+        _d_lat = 30.0 / 111.0
+        _d_lng = 30.0 / max(1.0, 111.0 * cos(radians(centrum[0])))
+        _box = (Event.lat.between(centrum[0] - _d_lat, centrum[0] + _d_lat),
+                Event.lng.between(centrum[1] - _d_lng, centrum[1] + _d_lng))
     gedateerd_q = geldige_events(Event.query, now).filter(
         Event.lat.isnot(None), Event.is_permanent.is_(False))
+    if _box:
+        gedateerd_q = gedateerd_q.filter(*_box)
     if wanneer in ("vandaag", "deze-week", "weekend"):
         w_start, w_end = window(wanneer)
         gedateerd_q = gedateerd_q.filter(
@@ -878,6 +889,12 @@ def verkennen():
     _soort_vooraf = request.args.get("soort") or ""
     if _soort_vooraf in _TYPES:
         perm_basis = perm_basis.filter(Event.subtype == _soort_vooraf)
+    # Gezocht op een plaats? Knijp de buurt AL in de databank (rechthoek van
+    # ~30 km) vóór de contingenten toeslaan. Anders vullen de 300 best
+    # scorende eetplekken van héél Vlaanderen het contingent en blijft er van
+    # de gezochte gemeente bijna niets over.
+    if _box:
+        perm_basis = perm_basis.filter(*_box)
     horeca = perm_basis.filter(Event.subtype == "horeca") \
         .order_by(Event.quality.desc().nullslast()).limit(300).all()
     # Gezinsplekken: eigen contingent — door mensen aangebracht en door de
@@ -1013,6 +1030,81 @@ def _kaart_marker(e):
         "partner": partner_actief(e),
         "score": None, "count": None,
     }
+
+
+@bp.route("/api/kaart")
+@limiter.limit("90/minute;900/hour")   # kaart laadt bij elke verplaatsing bij
+def api_kaart():
+    """Markers voor het zichtbare kaartgebied.
+
+    De kaart vraagt zelf op wat er in beeld is, i.p.v. dat de server een vast
+    contingent uit héél Vlaanderen kiest. Ver uitgezoomd sturen we bolletjes
+    per gemeente met een aantal; ingezoomd echte pins.
+    """
+    from ..types import TYPES, GROEP_SMULLEN, GROEP_BELEVEN
+    now = datetime.utcnow()
+    try:
+        zuid = float(request.args["z"]); noord = float(request.args["n"])
+        west = float(request.args["w"]); oost = float(request.args["o"])
+        zoom = int(float(request.args.get("zoom", 11)))
+    except (KeyError, ValueError):
+        return jsonify({"fout": "gebied ontbreekt"}), 400
+    if noord < zuid or oost < west:
+        return jsonify({"fout": "gebied klopt niet"}), 400
+
+    q = type_filter(geldige_events(Event.query, now)).filter(
+        Event.lat.isnot(None), Event.lng.isnot(None),
+        Event.lat.between(zuid, noord), Event.lng.between(west, oost))
+
+    wanneer = request.args.get("wanneer", "deze-week")
+    if wanneer in ("vandaag", "deze-week", "weekend"):
+        w_start, w_end = window(wanneer)
+        q = q.filter(db.or_(
+            Event.is_permanent.is_(True),
+            db.and_(Event.start <= w_end,
+                    (Event.end >= w_start) | (Event.start >= w_start))))
+    groep = request.args.get("groep") or ""
+    if groep == "smullen":
+        q = q.filter(Event.subtype.in_(list(GROEP_SMULLEN)))
+    elif groep == "beleven":
+        q = q.filter(Event.subtype.in_(list(GROEP_BELEVEN)))
+    elif groep == "ravotten":
+        niet = list(GROEP_SMULLEN | GROEP_BELEVEN)
+        q = q.filter(db.or_(Event.subtype.is_(None), Event.subtype.notin_(niet)))
+    soort = request.args.get("soort") or ""
+    if soort in TYPES:
+        q = q.filter(Event.subtype == soort)
+    ft = request.args.get("filter") or ""
+    if ft == "gratis":
+        q = q.filter(Event.is_free.is_(True))
+    elif ft == "binnen":
+        q = q.filter(Event.indoor.is_(True))
+    elif ft == "buiten":
+        q = q.filter(Event.indoor.is_(False))
+    for veld in request.args.getlist("ouder"):
+        if veld in ("omheind", "verzorgingstafel", "buggy_ok", "kinderstoel",
+                    "speelhoek", "kindermenu", "terras", "overdekt_terras",
+                    "parking", "toegankelijk", "allergievriendelijk",
+                    "babyvoeding", "huisdieren", "toilet", "drinkwater",
+                    "picknick", "veggie"):
+            q = q.filter(getattr(Event, veld).is_(True))
+
+    totaal = q.count()
+    # Ver uitgezoomd: bolletjes per gemeente i.p.v. duizenden pins.
+    if zoom < 10:
+        rijen = (q.with_entities(Event.gemeente, db.func.count(Event.id),
+                                 db.func.avg(Event.lat), db.func.avg(Event.lng))
+                  .group_by(Event.gemeente)
+                  .order_by(db.func.count(Event.id).desc()).limit(250).all())
+        groepen = [{"gemeente": g or "?", "aantal": int(n),
+                    "lat": float(la), "lng": float(lo)}
+                   for g, n, la, lo in rijen if la is not None]
+        return jsonify({"modus": "gemeenten", "totaal": totaal,
+                        "groepen": groepen, "getoond": sum(g["aantal"] for g in groepen)})
+
+    evs = q.order_by(Event.quality.desc().nullslast()).limit(600).all()
+    return jsonify({"modus": "pins", "totaal": totaal, "getoond": len(evs),
+                    "markers": [_kaart_marker(e) for e in evs]})
 
 
 @bp.route("/e/<slug>")

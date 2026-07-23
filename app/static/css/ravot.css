@@ -995,3 +995,14 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 .lid-toevoegen { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .lid-toevoegen input[type=email] { flex: 1 1 220px; padding: 10px 14px;
   border: 1.5px solid var(--lijn); border-radius: 999px; font: inherit; }
+
+/* Gemeente-bolletjes op de uitgezoomde kaart (patch 113) */
+.gemeente-bol { background: none; border: 0; }
+.gemeente-bol span { display: block; width: 46px; height: 46px; line-height: 46px;
+  margin: 0 auto; border-radius: 50%; background: var(--oranje); color: #fff;
+  font-weight: 800; text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,.25);
+  border: 3px solid var(--zon); }
+.gemeente-bol small { display: block; text-align: center; font-size: 11px;
+  font-weight: 700; color: var(--donker); text-shadow: 0 1px 3px #FAF7F0,
+  0 -1px 3px #FAF7F0, 1px 0 3px #FAF7F0, -1px 0 3px #FAF7F0; margin-top: 2px;
+  white-space: nowrap; }
