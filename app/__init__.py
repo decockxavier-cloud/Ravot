@@ -45,10 +45,12 @@ def create_app(config_object=Config):
     app.jinja_env.globals["label_info"] = label_info
     app.jinja_env.globals["kamp_thumb"] = kamp_thumb
     app.jinja_env.globals["kamp_fotos"] = kamp_fotos
-    from .services.openingsuren import status_badge, uren_overzicht, heeft_uren
+    from .services.openingsuren import (status_badge, uren_overzicht,
+                                        heeft_uren, dag_blokken)
     app.jinja_env.globals["open_badge"] = status_badge
     app.jinja_env.globals["uren_overzicht"] = uren_overzicht
     app.jinja_env.globals["heeft_uren"] = heeft_uren
+    app.jinja_env.globals["dag_blokken"] = dag_blokken
     from .models import KAMP_THEMAS, KAMP_TALEN
     app.jinja_env.globals["kamp_themas"] = KAMP_THEMAS
     app.jinja_env.globals["kamp_talen"] = KAMP_TALEN
@@ -225,12 +227,32 @@ def register_cli(app):
         from .models import Event
         from .services.openingsuren import parse_osm_uren
         patroon = re.compile(r"\s*Openingsuren:\s*([^\n]+?)\s*$")
-        gevuld = gestript = onleesbaar = 0
+        gevuld = gestript = onleesbaar = omschreven = 0
         for ev in Event.query.filter(Event.description.contains("Openingsuren:")).all():
             m = patroon.search(ev.description or "")
             if not m:
                 continue
             spec = m.group(1).strip()
+            laag = spec.lower()
+
+            # Betekenisvolle notaties zonder klokuren -> vriendelijke NL-zin
+            zin = None
+            if any(w in laag for w in ("sunrise", "sunset", "dawn", "dusk",
+                                       "einbruch der dunkelheit")):
+                zin = "Vrij toegankelijk van zonsopgang tot zonsondergang."
+            elif "afspraak" in laag or "appointment" in laag:
+                zin = "Enkel op afspraak."
+            if zin:
+                ev.description = (patroon.sub("", ev.description).strip()
+                                  + " " + zin).strip()
+                omschreven += 1
+                continue
+            # "off"/"closed" zonder meer: geen informatiewaarde -> gewoon weg
+            if laag.strip("'\" ") in ("off", "closed"):
+                ev.description = patroon.sub("", ev.description).strip()
+                gestript += 1
+                continue
+
             if not ev.openingsuren:
                 uren = parse_osm_uren(spec)
                 if uren:
@@ -244,6 +266,7 @@ def register_cli(app):
         db.session.commit()
         totaal = Event.query.filter(Event.openingsuren.isnot(None)).count()
         print(f"Gestructureerd gevuld: {gevuld} · tekst opgekuist: {gestript} "
+              f"· omschreven (daglicht/afspraak): {omschreven} "
               f"· onleesbaar gelaten: {onleesbaar} · totaal plekken met uren: {totaal}")
 
     @app.cli.command("migrate-db")
@@ -401,6 +424,10 @@ def register_cli(app):
             "terras BOOLEAN", "overdekt_terras BOOLEAN", "parking BOOLEAN",
             "toegankelijk BOOLEAN", "allergievriendelijk BOOLEAN",
             "babyvoeding BOOLEAN", "huisdieren BOOLEAN", "openingsuren JSON",
+            # patch 101: contact + praktische voorzieningen uit OSM/Overture
+            "email VARCHAR(255)", "socials JSON", "toilet BOOLEAN",
+            "drinkwater BOOLEAN", "picknick BOOLEAN", "bbq BOOLEAN",
+            "speeltoestellen JSON",
         ]
         _extra_nieuw = False
         for coldef in _extra_ev:
@@ -409,6 +436,8 @@ def register_cli(app):
                 db.session.execute(text(
                     f"ALTER TABLE events ADD COLUMN IF NOT EXISTS {coldef}"))
                 _extra_nieuw = True
+        db.session.execute(text(
+            "ALTER TABLE horeca_kandidaten ADD COLUMN IF NOT EXISTS socials JSON"))
         if _extra_nieuw:
             added.append("events.voorzieningen + openingsuren")
         if ev_cols and "reservatie_url" not in ev_cols:

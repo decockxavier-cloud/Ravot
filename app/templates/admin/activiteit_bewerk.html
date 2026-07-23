@@ -143,16 +143,23 @@
   </div>
 
   <h2 class="sectie-kop">Openingsuren</h2>
-  <p class="hint">Laat een dag leeg als je het niet weet, of vink "gesloten" aan.</p>
+  <p class="hint">Laat een dag leeg als je het niet weet, of vink "gesloten" aan.
+  Het tweede vak is voor zaken met een middagpauze (bv. 11:30–14:30 en 18:00–22:00).</p>
   <table class="uren-invoer">
     {% set ou = ev.openingsuren or {} %}
     {% for d, dlabel in [('ma','Maandag'),('di','Dinsdag'),('wo','Woensdag'),('do','Donderdag'),('vr','Vrijdag'),('za','Zaterdag'),('zo','Zondag')] %}
-    {% set dag = ou.get(d) %}
+    {% set blokken = dag_blokken(ou.get(d)) or [] %}
+    {% set b1 = blokken[0] if blokken|length > 0 else None %}
+    {% set b2 = blokken[1] if blokken|length > 1 else None %}
     <tr>
       <td class="uren-dag">{{ dlabel }}</td>
-      <td><input type="time" name="open_{{ d }}" value="{{ dag[0] if dag and dag|length == 2 else '' }}"></td>
+      <td><input type="time" name="open_{{ d }}" value="{{ b1[0] if b1 else '' }}"></td>
       <td>tot</td>
-      <td><input type="time" name="sluit_{{ d }}" value="{{ dag[1] if dag and dag|length == 2 else '' }}"></td>
+      <td><input type="time" name="sluit_{{ d }}" value="{{ b1[1] if b1 else '' }}"></td>
+      <td>en</td>
+      <td><input type="time" name="open2_{{ d }}" value="{{ b2[0] if b2 else '' }}"></td>
+      <td>tot</td>
+      <td><input type="time" name="sluit2_{{ d }}" value="{{ b2[1] if b2 else '' }}"></td>
       <td><label class="check"><input type="checkbox" name="dicht_{{ d }}" value="1" {{ 'checked' if d in ou and ou.get(d) is none }}> gesloten</label></td>
     </tr>
     {% endfor %}

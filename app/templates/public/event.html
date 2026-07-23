@@ -42,6 +42,10 @@
   {% if ev.speelhoek %}<span class="badge">🧸 speelhoek</span>{% endif %}
   {% if ev.kindermenu %}<span class="badge">🍟 kindermenu</span>{% endif %}
   {% if ev.terras %}<span class="badge">☀️ terras</span>{% endif %}
+  {% if ev.toilet %}<span class="badge">🚻 toilet</span>{% endif %}
+  {% if ev.drinkwater %}<span class="badge">🚰 drinkwater</span>{% endif %}
+  {% if ev.picknick %}<span class="badge">🧺 picknicktafels</span>{% endif %}
+  {% if ev.bbq %}<span class="badge">🍖 bbq</span>{% endif %}
   {% if ev.overdekt_terras %}<span class="badge">⛱️ overdekt terras</span>{% endif %}
   {% if ev.parking %}<span class="badge">🅿️ parking</span>{% endif %}
   {% if ev.toegankelijk %}<span class="badge">♿ toegankelijk</span>{% endif %}
@@ -52,6 +56,9 @@
     <a class="score-info" href="{{ url_for('public.score_uitleg') }}" title="Hoe werkt de Ravotscore?">ⓘ</a></span>
   {% elif toon_score is defined and not toon_score %}<span class="badge badge-leeg" title="Deze zaak toont (nog) geen Ravotscore op Ravot">zonder Ravotscore-badge</span>{% endif %}
 </div>
+{% if ev.speeltoestellen %}
+<p class="meta speeltoestellen">🛝 Op de speeltuin: {{ ev.speeltoestellen|join(" · ") }}</p>
+{% endif %}
 
 {# Bovenaan enkel het officiële beeld van de organisatie (bron of uitbater).
    Gezinsfoto's staan onderaan in de fotogalerij. #}
@@ -108,6 +115,9 @@
   <a class="btn btn-stil" href="{{ url_for('public.event_ics', slug=ev.slug) }}">📅 Zet in agenda</a>
   {% if ev.uit_id %}<a class="btn btn-stil" href="https://www.uitinvlaanderen.be/agenda/e/x/{{ ev.uit_id }}?utm_source=ravot&utm_medium=partnerlink&utm_campaign=backlinks" rel="noopener" target="_blank">ℹ️ Meer info & tickets</a>
   {% elif ev.source_url %}<a class="btn btn-stil" href="{{ ev.source_url }}" rel="noopener nofollow" target="_blank">🔗 Naar de website</a>{% endif %}
+  {% if ev.telefoon %}<a class="btn btn-stil" href="tel:{{ ev.telefoon|replace(" ", "")|replace("/", "") }}">📞 Bel {{ ev.telefoon }}</a>{% endif %}
+  {% if ev.email %}<a class="btn btn-stil" href="mailto:{{ ev.email }}">✉️ Mail</a>{% endif %}
+  {% for s in ev.socials or [] %}<a class="btn btn-stil btn-klein" href="{{ s }}" rel="noopener nofollow" target="_blank">{{ "📘 Facebook" if "facebook" in s else ("📸 Instagram" if "instagram" in s else "🔗 Social") }}</a>{% endfor %}
   {% if ev.reservatie_url and ev.partner_until and ev.partner_until > nu_utc %}<a class="btn btn-zon" href="{{ ev.reservatie_url }}" rel="noopener nofollow" target="_blank">🍽️ Menu &amp; reserveren</a>{% endif %}
 </div>
 {% if ev.attribution %}<p class="hint">Bron: {{ ev.attribution }}</p>{% endif %}

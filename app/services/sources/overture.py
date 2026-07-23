@@ -156,6 +156,7 @@ def laad_horeca(bbox=BELGIE_BBOX, log=print):
             k.website = web[:300] if web else None
             tel = rec.get("phones") or []
             k.telefoon = (tel[0][:40] if tel else None)
+            k.socials = (socials[:5] or None)
             mails = rec.get("emails") or []
             k.email = (mails[0][:255] if mails else None)
             k.is_feest = False
@@ -263,6 +264,8 @@ def importeer(ext_ids_met_soort, auto_nagekeken=False):
             "subtype": soort, "indoor": soort not in ("zomerbar",),
             "is_free": False, "price_info": [], "image_url": None,
             "source_url": k.website,
+            "telefoon": k.telefoon,
+            "socials": getattr(k, "socials", None),
             "attribution": "Bron: Overture Maps Foundation (CDLA Permissive 2.0)",
             "venue_ext_id": ext_id, "venue_name": k.naam,
         }

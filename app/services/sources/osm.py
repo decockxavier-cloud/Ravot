@@ -18,6 +18,63 @@ from flask import current_app
 from .base import clean_postcode, NIET_KINDVRIENDELIJK
 from ..openingsuren import parse_osm_uren
 
+
+TOESTEL_NL = {"slide": "glijbaan", "swing": "schommel", "basketswing": "nestschommel",
+              "climbingframe": "klimrek", "climbing_frame": "klimrek",
+              "zipwire": "kabelbaan", "sandpit": "zandbak", "water_play": "waterspeeltuin",
+              "seesaw": "wip", "springy": "veertoestel", "trampoline": "trampoline",
+              "playhouse": "speelhuisje", "slide_hill": "heuvelglijbaan",
+              "balancebeam": "evenwichtsbalk", "carousel": "draaimolen"}
+
+
+def _contact(tags):
+    """Telefoon, e-mail en socials uit OSM-tags (incl. contact:*-varianten)."""
+    uit = {}
+    tel = tags.get("phone") or tags.get("contact:phone")
+    if tel:
+        uit["telefoon"] = tel[:40]
+    mail = tags.get("email") or tags.get("contact:email")
+    if mail and "@" in mail:
+        uit["email"] = mail[:255]
+    socials = [tags.get(k) for k in ("contact:facebook", "contact:instagram")
+               if (tags.get(k) or "").startswith("http")]
+    if socials:
+        uit["socials"] = socials
+    return uit
+
+
+def _voorzieningen(tags):
+    """Toilet, drinkwater, picknick, bbq: enkel positieve signalen."""
+    uit = {}
+    if tags.get("toilets") == "yes":
+        uit["toilet"] = True
+    if tags.get("drinking_water") == "yes":
+        uit["drinkwater"] = True
+    if tags.get("picnic_table") == "yes":
+        uit["picknick"] = True
+    if tags.get("bbq") == "yes":
+        uit["bbq"] = True
+    return uit
+
+
+def _fee_prijs(tags, standaard_gratis):
+    """fee/charge -> (is_free, price_info). Zonder tag: het bestaande standaard-
+    gedrag; met fee-tag wint de bron. charge enkel bij een eenduidig bedrag."""
+    import re as _re
+    fee = (tags.get("fee") or "").lower()
+    if fee == "no":
+        return True, [{"name": "basis", "price": 0}]
+    if fee in ("yes", "donation"):
+        m = _re.search(r"(\d+(?:[.,]\d{1,2})?)", tags.get("charge") or "")
+        if m:
+            return False, [{"name": "basis",
+                            "price": float(m.group(1).replace(",", "."))}]
+        return False, []
+    if standaard_gratis:
+        return True, [{"name": "basis", "price": 0}]
+    return False, []
+
+
 # tag -> (Ravot-categorie, (leeftijd_min, leeftijd_max), binnen?, blacklist-check?)
 TAG_CATEGORIE = {
     # tag: (categorie, (leeftijd), binnen?, blacklist-check?, naam verplicht?)
@@ -209,7 +266,8 @@ def normalise(el):
         beeld = ("https://commons.wikimedia.org/wiki/Special:FilePath/"
                  + quote(wm[5:]) + "?width=800")
 
-    return {
+    gratis, prijs_info = _fee_prijs(tags, standaard_gratis=(kind == "playground"))
+    uit = {
         "source": "osm",
         "ext_id": ext_id,
         "title": title,
@@ -225,8 +283,8 @@ def normalise(el):
         "categories": [cat],
         "subtype": kind,
         "indoor": indoor,
-        "is_free": kind == "playground",
-        "price_info": [{"name": "basis", "price": 0}] if kind == "playground" else [],
+        "is_free": gratis,
+        "price_info": prijs_info,
         "image_url": beeld,
         "source_url": website,
         "openingsuren": parse_osm_uren(oh) or None,
@@ -234,6 +292,30 @@ def normalise(el):
         "venue_ext_id": ext_id,
         "venue_name": title,
     }
+    uit.update(_contact(tags))
+    uit.update(_voorzieningen(tags))
+    if tags.get("wheelchair") == "yes":
+        uit["toegankelijk"] = True
+    if kind == "playground":
+        toestellen = sorted({TOESTEL_NL[k.split(":", 1)[1]]
+                             for k, v in tags.items()
+                             if k.startswith("playground:") and v == "yes"
+                             and k.split(":", 1)[1] in TOESTEL_NL})
+        if toestellen:
+            uit["speeltoestellen"] = toestellen
+        try:
+            uit["age_min"] = max(0, min(int(tags.get("min_age", "")), 16))
+        except ValueError:
+            pass
+        try:
+            a = int(tags.get("max_age", ""))
+            if a >= uit.get("age_min", 0):
+                uit["age_max"] = max(0, min(a, 16))
+        except ValueError:
+            pass
+        if tags.get("fenced") == "yes" or tags.get("barrier") == "fence":
+            uit["omheind"] = True
+    return uit
 
 
 def _normalise_horeca(el, tags):
@@ -296,6 +378,8 @@ def _normalise_horeca(el, tags):
         uit["verzorgingstafel"] = True
     if tags.get("wheelchair") == "yes":
         uit["buggy_ok"] = True
+        uit["toegankelijk"] = True
+    uit.update(_contact(tags))
     return uit
 
 
@@ -437,6 +521,8 @@ def importeer_horeca(ext_ids_met_soort):
             "attribution": "© OpenStreetMap-bijdragers (ODbL)",
             "venue_ext_id": ext_id, "venue_name": naam,
         }
+        data.update(_contact(tags))
+        data.update(_voorzieningen(tags))
         if not data["gemeente"] or not data["postcode"]:
             buurman = _dichtste(float(lat), float(lng))
             if buurman:

@@ -136,6 +136,13 @@ class Event(db.Model):
     ext_id = db.Column(db.String(120), index=True)   # externe id binnen de bron (app-uniek per bron)
     source_url = db.Column(db.String(500))           # canonieke "meer info & tickets"-link (niet-UiT)
     telefoon = db.Column(db.String(40))              # contact (bv. via Overture-verrijking)
+    email = db.Column(db.String(255))                # contact (OSM/Overture)
+    socials = db.Column(db.JSON)                     # [urls] Facebook/Instagram e.d.
+    toilet = db.Column(db.Boolean)                   # toilet aanwezig (OSM)
+    drinkwater = db.Column(db.Boolean)               # drinkwaterpunt (OSM)
+    picknick = db.Column(db.Boolean)                 # picknicktafels (OSM)
+    bbq = db.Column(db.Boolean)                      # bbq toegelaten/aanwezig (OSM)
+    speeltoestellen = db.Column(db.JSON)             # ["glijbaan", "kabelbaan", ...]
     attribution = db.Column(db.String(120))          # korte bronvermelding (licentie-compliance)
     is_permanent = db.Column(db.Boolean, default=False, nullable=False, index=True)  # POI zonder vaste datum
     hidden = db.Column(db.Boolean, default=False, nullable=False, index=True)  # dubbel: verborgen in lijsten
@@ -289,6 +296,9 @@ VOORZIENING_LABELS = {
     "overdekt_terras": "een overdekt terras",
     "parking": "parking",
     "toegankelijk": "rolstoel-/buggytoegankelijkheid",
+    "toilet": "een toilet",
+    "drinkwater": "een drinkwaterpunt",
+    "picknick": "picknicktafels",
     "allergievriendelijk": "allergievriendelijke opties",
     "babyvoeding": "babyvoeding opwarmen",
     "huisdieren": "huisdieren toelaten",
@@ -872,6 +882,7 @@ class HorecaKandidaat(db.Model):
     lng = db.Column(db.Float, index=True)
     website = db.Column(db.String(300))
     telefoon = db.Column(db.String(40))
+    socials = db.Column(db.JSON)     # [urls] uit Overture, mee naar de fiche
     email = db.Column(db.String(255))
     zomerbar_hint = db.Column(db.Boolean, default=False)
     winterbar_hint = db.Column(db.Boolean, default=False)

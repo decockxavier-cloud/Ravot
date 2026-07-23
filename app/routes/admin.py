@@ -1458,15 +1458,23 @@ def _parse_openingsuren(f):
     import re as _re
     from ..services.openingsuren import DAGEN
     uren = {}
+    geldig = lambda t: bool(_re.match(r"^\d{1,2}:\d{2}$", t))
     for d in DAGEN:
         if f.get(f"dicht_{d}"):
             uren[d] = None            # expliciet gesloten
             continue
-        o = (f.get(f"open_{d}") or "").strip()
-        s = (f.get(f"sluit_{d}") or "").strip()
-        if _re.match(r"^\d{1,2}:\d{2}$", o) and _re.match(r"^\d{1,2}:\d{2}$", s):
-            uren[d] = [o, s]
-    return uren or None
+        blokken = []
+        for nr in ("", "2"):          # hoofdblok + optioneel tweede blok (pauze)
+            o = (f.get(f"open{nr}_{d}") or "").strip()
+            s = (f.get(f"sluit{nr}_{d}") or "").strip()
+            if geldig(o) and geldig(s):
+                blokken.append([o, s])
+        if blokken:
+            uren[d] = blokken
+    if not uren:
+        return None
+    uren["_handmatig"] = True   # sync mag deze uren nooit meer overschrijven
+    return uren
 
 
 @bp.route("/activiteiten/<int:event_id>", methods=["GET", "POST"])

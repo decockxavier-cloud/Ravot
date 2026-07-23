@@ -2430,7 +2430,8 @@ def test_openingsuren_opslaan_via_admin(client, seed, app):
         "actie": "opslaan", "title": "Uren Café",
         "open_ma": "09:00", "sluit_ma": "17:00", "dicht_zo": "1"})
     ev2 = db.session.get(Event, ev.id)
-    assert ev2.openingsuren["ma"] == ["09:00", "17:00"]
+    assert ev2.openingsuren["ma"] == [["09:00", "17:00"]]
+    assert ev2.openingsuren["_handmatig"] is True
     assert ev2.openingsuren["zo"] is None
 
 

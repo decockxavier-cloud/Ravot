@@ -22,6 +22,35 @@ DAG_LABELS = {"ma": "Maandag", "di": "Dinsdag", "wo": "Woensdag",
 BIJNA_MINUTEN = 60   # "sluit binnenkort" als er < 60 min rest
 
 
+def dag_blokken(v):
+    """Normaliseer een dagwaarde naar een lijst tijdsblokken of None (gesloten).
+
+    Twee formaten leven naast elkaar in de databank:
+      oud:   ["11:30", "22:00"]                       (één blok)
+      nieuw: [["11:30","14:30"], ["18:00","22:00"]]   (blokken, met pauze)
+    """
+    if v is None:
+        return None
+    if not isinstance(v, list) or not v:
+        return []
+    if len(v) == 2 and all(isinstance(x, str) for x in v):
+        return [list(v)]
+    return [list(b) for b in v
+            if isinstance(b, list) and len(b) == 2 and _parse(b[0]) and _parse(b[1])]
+
+
+def _voeg_samen(blokken):
+    """Sorteer blokken en voeg overlappende/aansluitende samen."""
+    blokken = sorted(blokken, key=lambda b: b[0])
+    uit = []
+    for b in blokken:
+        if uit and b[0] <= uit[-1][1]:
+            uit[-1][1] = max(uit[-1][1], b[1])
+        else:
+            uit.append(list(b))
+    return uit
+
+
 def _parse(hhmm):
     try:
         u, m = hhmm.split(":")
@@ -53,12 +82,13 @@ def parse_osm_uren(spec):
     if not spec:
         return {}
     if spec in ("24/7", "mo-su 00:00-24:00", "24x7"):
-        return {d: ["00:00", "23:59"] for d in DAGEN}
+        return {d: [["00:00", "23:59"]] for d in DAGEN}
 
     resultaat = {}
 
     def _zet(dagcodes, blok):
-        """blok = (open, sluit) of None (=gesloten)."""
+        """blok = (open, sluit) of None (=gesloten). Meerdere blokken per dag
+        (middagpauze!) blijven bewaard als aparte blokken."""
         for dc in dagcodes:
             nl = _OSM_DAGEN.get(dc)
             if not nl:
@@ -66,12 +96,10 @@ def parse_osm_uren(spec):
             if blok is None:
                 resultaat.setdefault(nl, None)
             else:
-                o, s = blok
-                if nl in resultaat and resultaat[nl]:
-                    # ruimste opening bewaren bij meerdere blokken
-                    resultaat[nl] = [min(resultaat[nl][0], o), max(resultaat[nl][1], s)]
+                if resultaat.get(nl):
+                    resultaat[nl].append([blok[0], blok[1]])
                 else:
-                    resultaat[nl] = [o, s]
+                    resultaat[nl] = [[blok[0], blok[1]]]
 
     for regel in spec.split(";"):
         regel = regel.strip()
@@ -86,6 +114,16 @@ def parse_osm_uren(spec):
             continue
         dagdeel = deel[0]
         tijddeel = deel[1] if len(deel) > 1 else ""
+        # "Mo-Su,PH 08:00-18:00": feestdag-token in de daglijst mag weg
+        dagdeel = dagdeel.replace(",ph", "").replace("ph,", "")
+        # "08:00-18:00+" (open einde): het plusje strippen, uren blijven juist
+        tijddeel = tijddeel.rstrip("+")
+        # Regel zonder dagcodes maar mét geldig tijdsblok = elke dag
+        # (bv. "08:00-20:00" of "09:00-13:00,15:00-20:00")
+        if dagdeel[:2] not in _OSM_VOLGORDE and "-" in dagdeel \
+                and _parse(dagdeel.split(",")[0].partition("-")[0]):
+            tijddeel = regel.replace(" ", "").rstrip("+")
+            dagdeel = "mo-su"
         gesloten = "off" in regel or "closed" in regel
 
         # dagcodes uitlezen: "mo-fr", "sa", "mo,we,fr"
@@ -109,8 +147,7 @@ def parse_osm_uren(spec):
             _zet(dagcodes, None)
             continue
 
-        # tijdsblok: "09:00-17:00" (evt. meerdere met komma -> ruimste)
-        vroegste, laatste = None, None
+        # tijdsblokken: "09:00-17:00" of "11:30-14:30,18:00-22:00" (pauze)
         for tb in tijddeel.split(","):
             if "-" not in tb:
                 continue
@@ -119,11 +156,11 @@ def parse_osm_uren(spec):
             if s == "24:00":
                 s = "23:59"
             if _parse(o) and _parse(s):
-                vroegste = o if vroegste is None or o < vroegste else vroegste
-                laatste = s if laatste is None or s > laatste else laatste
-        if vroegste and laatste:
-            _zet(dagcodes, (vroegste, laatste))
+                _zet(dagcodes, (o, s))
 
+    for d, v in resultaat.items():
+        if v:
+            resultaat[d] = _voeg_samen(v)
     # enkel teruggeven als er minstens één open dag bij zit
     if any(v for v in resultaat.values()):
         return resultaat
@@ -132,7 +169,7 @@ def parse_osm_uren(spec):
 
 def heeft_uren(ev):
     ou = getattr(ev, "openingsuren", None)
-    return bool(ou) and any(ou.get(d) for d in DAGEN)
+    return bool(ou) and any(dag_blokken(ou.get(d)) for d in DAGEN)
 
 
 def status(ev, nu=None):
@@ -142,20 +179,20 @@ def status(ev, nu=None):
         return None, None
     nu = nu or datetime.now()
     dag = DAGEN[nu.weekday()]
-    vandaag = ou.get(dag)
-    if not vandaag or len(vandaag) != 2:
+    blokken = dag_blokken(ou.get(dag))
+    if not blokken:
         return "dicht", None
-    open_t, sluit_t = _parse(vandaag[0]), _parse(vandaag[1])
-    if not open_t or not sluit_t:
-        return None, None
     nu_t = nu.time()
-    if open_t <= nu_t < sluit_t:
-        # resterende minuten tot sluiten
-        rest = (sluit_t.hour * 60 + sluit_t.minute) - (nu_t.hour * 60 + nu_t.minute)
-        if rest <= BIJNA_MINUTEN:
-            return "bijna", vandaag[1]
-        return "open", vandaag[1]
-    return "dicht", None
+    for o, s in blokken:
+        open_t, sluit_t = _parse(o), _parse(s)
+        if not open_t or not sluit_t:
+            continue
+        if open_t <= nu_t < sluit_t:
+            rest = (sluit_t.hour * 60 + sluit_t.minute) - (nu_t.hour * 60 + nu_t.minute)
+            if rest <= BIJNA_MINUTEN:
+                return "bijna", s
+            return "open", s
+    return "dicht", None   # buiten alle blokken (bv. tijdens de middagpauze)
 
 
 def status_badge(ev, nu=None):
@@ -175,9 +212,10 @@ def uren_overzicht(ev):
     ou = getattr(ev, "openingsuren", None) or {}
     rijen = []
     for d in DAGEN:
-        v = ou.get(d)
-        if v and len(v) == 2:
-            rijen.append((DAG_LABELS[d], f"{v[0]}–{v[1]}"))
+        blokken = dag_blokken(ou.get(d)) if d in ou else None
+        if blokken:
+            rijen.append((DAG_LABELS[d],
+                          " en ".join(f"{o}–{s}" for o, s in blokken)))
         elif d in ou:   # expliciet gesloten
             rijen.append((DAG_LABELS[d], "gesloten"))
         else:

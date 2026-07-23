@@ -118,16 +118,28 @@ def upsert_event(data):
             if f == "image_url" and not data[f] and ev.image_url:
                 continue   # een bestaande (bv. gezins)foto nooit wissen bij hersync
             setattr(ev, f, data[f])
-    # Openingsuren als "eerste gok" uit de bron: alleen invullen als de fiche
-    # er nog geen heeft. Zo overschrijven we nooit de uren die een uitbater of
-    # de beheerder zelf ingaf — die zijn altijd leidend.
-    if data.get("openingsuren") and not ev.openingsuren:
-        ev.openingsuren = data["openingsuren"]
+    # Openingsuren uit de bron verversen bij elke sync, TENZIJ een mens ze
+    # zelf instelde: de beheerder (marker "_handmatig" in de JSON) of een
+    # goedgekeurde uitbater-claim — die blijven altijd leidend.
+    if data.get("openingsuren"):
+        handmatig = bool((ev.openingsuren or {}).get("_handmatig"))
+        geclaimd = False
+        if ev.id:
+            from ...models import OperatorClaim
+            geclaimd = OperatorClaim.query.filter_by(
+                event_id=ev.id, status="approved").count() > 0
+        if not handmatig and not geclaimd:
+            ev.openingsuren = data["openingsuren"]
+    # Contact & speeltuindetail: bron vult/ververst, maar wist nooit.
+    for f in ("telefoon", "email", "socials", "speeltoestellen"):
+        if data.get(f):
+            setattr(ev, f, data[f])
     # Ouder-filters uit de bron: enkel AANzetten als de bron het bevestigt.
     # Nooit terug naar onbekend/uit — de community (reviews) en de beheerder
     # kunnen deze velden ook zetten en dat mag een sync niet ongedaan maken.
     for f in ("omheind", "verzorgingstafel", "buggy_ok",
-              "kinderstoel", "speelhoek", "kindermenu"):
+              "kinderstoel", "speelhoek", "kindermenu",
+              "toegankelijk", "toilet", "drinkwater", "picknick", "bbq"):
         if data.get(f) is True and getattr(ev, f, None) is not True:
             setattr(ev, f, True)
     ev.has_vlieg = False  # Vlieg is een publiq-label; nooit op andere bronnen
