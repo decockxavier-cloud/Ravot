@@ -627,6 +627,10 @@ def ontdek():
     has_profile = bool(fam or guest_profile().get("postcode"))
     sort = request.args.get("sort", "datum")       # datum (standaard) | score
     zoek = (request.args.get("q") or "").strip().lower()
+    # Autocomplete levert "torhout (8820)"; strip het (postcode)-deel zodat het
+    # tekst-/gemeentefilter op de kale naam werkt (het middelpunt komt los via
+    # zoek_centrum, dat de postcode wél begrijpt).
+    zoek = re.sub(r"\s*\(\d{4,5}\)\s*$", "", zoek).strip()
     filter_type = request.args.get("filter", "")   # ''|gratis|binnen|buiten
     wanneer = request.args.get("wanneer", "deze-week")   # standaard: deze week
     # 'alle' (of onbekende waarde) = geen datumbegrenzing; de drie vensters
@@ -846,6 +850,7 @@ def ontdek():
 def verkennen():
     profile, fam = build_profile()
     zoek = (request.args.get("q") or "").strip().lower()
+    zoek = re.sub(r"\s*\(\d{4,5}\)\s*$", "", zoek).strip()   # "torhout (8820)" -> "torhout"
     filter_type = request.args.get("filter", "")
     now = datetime.utcnow()
 

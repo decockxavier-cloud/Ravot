@@ -492,3 +492,37 @@ def test_zoekvak_op_vandaag_zoekt_echt(app):
     assert "url_for('public.ontdek')" in tpl
     assert 'name="q"' in tpl and 'name="wanneer"' in tpl
     assert "in heel Vlaanderen" in tpl
+
+
+# --------------------------------------------------------------- patch 116 --
+
+def test_zoekterm_met_postcode_tussen_haakjes(client, app):
+    """De autocomplete vult "torhout (8820)" in als zoekterm. Die haakjesvorm
+    werd niet als gemeente herkend, waardoor de lijst (en de wissel kaart->lijst)
+    leeg bleef. De (postcode) hoort gestript te worden."""
+    from app.models import Event, PostcodeCentroid
+    with app.app_context():
+        db.session.add(PostcodeCentroid(postcode="8820", gemeente="Torhout",
+                                        lat=51.066, lng=3.10))
+        for i in range(12):
+            db.session.add(Event(uit_id=f"t{i}", slug=f"t{i}", title=f"Torhout {i}",
+                                 source="osm", subtype="playground", is_permanent=True,
+                                 gemeente="Torhout", lat=51.066, lng=3.10,
+                                 age_min=0, age_max=12, quality=50))
+        db.session.commit()
+    # exact zoals de autocomplete het invult
+    for pad in ("/ontdek?q=torhout+(8820)&wanneer=alle",
+                "/ontdek?q=torhout&wanneer=alle",
+                "/verkennen?q=torhout+(8820)&wanneer=alle"):
+        html = client.get(pad).data.decode()
+        assert "Torhout 1" in html, f"geen Torhout-resultaten op {pad}"
+
+
+def test_zoekvak_autosuggest_houdt_kale_naam(app):
+    """Het zoekvak in de filterkop moet na een suggestiekeuze de kále naam
+    overhouden (data-zelf=zoek), niet 'Naam (postcode)'. Anders belandt de
+    haakjesvorm alsnog in de URL."""
+    kop = open("app/templates/public/_filters_kop.html").read()
+    assert 'data-zelf="zoek"' in kop
+    js = open("app/static/js/plaatsen.js").read()
+    assert 'veld.dataset.zelf === "zoek"' in js

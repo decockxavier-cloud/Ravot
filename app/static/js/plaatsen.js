@@ -31,6 +31,7 @@
       if (gm) gm.value = m[1];
       if (veld.dataset.zelf === "postcode") veld.value = m[2];
       else if (veld.dataset.zelf === "gemeente" && (pc || gm)) veld.value = m[1];
+      else if (veld.dataset.zelf === "zoek") veld.value = m[1];  // zoekvak: kale naam
       return true;
     }
 

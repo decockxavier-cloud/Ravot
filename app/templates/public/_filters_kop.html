@@ -6,7 +6,7 @@
 <div class="ontdek-kop">
   <form method="get" action="{{ url_for(zoek_endpoint) }}" class="zoekrij">
     <input type="search" name="q" value="{{ zoek }}" class="zoekveld"
-           data-plaatsen data-zelf="gemeente"
+           data-plaatsen data-zelf="zoek"
            placeholder="🔍 Zoek op naam of gemeente…" aria-label="Zoek">
     {% if sort is defined and sort and sort != 'datum' %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
     <input type="hidden" name="wanneer" value="{{ wanneer }}">
