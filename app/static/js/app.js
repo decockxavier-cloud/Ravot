@@ -58,10 +58,28 @@ document.addEventListener("click", function (e) {
   if (!wrap) return;
   var row = document.createElement("div");
   row.className = "kind-rij";
+  // Neem het veld over van de rij die er al staat: het probeer-formulier vraagt
+  // de leeftijd, het accountformulier het geboortejaar. Anders vroeg het eerste
+  // kind om een leeftijd en het tweede om een geboortejaar.
+  var voorbeeld = wrap.querySelector("input");
   var jaar = new Date().getFullYear();
-  row.innerHTML = '<input type="number" name="birth_year" min="' + (jaar - 17) + '" max="' + jaar +
-    '" placeholder="geboortejaar (bv. ' + (jaar - 6) + ')" inputmode="numeric">' +
-                  '<button type="button" class="kind-weg" aria-label="verwijder">×</button>';
+  if (voorbeeld) {
+    var kopie = voorbeeld.cloneNode(true);
+    kopie.value = "";
+    kopie.removeAttribute("id");
+    row.appendChild(kopie);
+  } else {
+    var inp = document.createElement("input");
+    inp.type = "number"; inp.name = "birth_year";
+    inp.min = jaar - 17; inp.max = jaar;
+    inp.placeholder = "geboortejaar (bv. " + (jaar - 6) + ")";
+    inp.setAttribute("inputmode", "numeric");
+    row.appendChild(inp);
+  }
+  var weg = document.createElement("button");
+  weg.type = "button"; weg.className = "kind-weg";
+  weg.setAttribute("aria-label", "verwijder"); weg.textContent = "×";
+  row.appendChild(weg);
   wrap.appendChild(row);
   row.querySelector("input").focus();
 });

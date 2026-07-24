@@ -467,13 +467,23 @@ def nieuwe_vriendcode(family_id):
     wordt bewaard, gekoppeld aan het gezin. Niet te raden, niet voorspelbaar."""
     from ..models import FriendInvite
     from datetime import date, datetime, timezone, timedelta
-    # Bestaande geldige code hergebruiken zodat de pagina stabiel blijft bij refresh
     now = datetime.now(timezone.utc).replace(tzinfo=None)
+    # Refresh mag geen nieuwe code opleveren: enkel de hash staat in de databank,
+    # dus bewaren we de leesbare code in de sessie en hergebruiken we die zolang
+    # de bijhorende uitnodiging geldig en ongebruikt is.
+    bewaard = session.get("vriendcode")
+    if bewaard:
+        inv = FriendInvite.query.filter_by(
+            code_hash=_hash_friend(bewaard), family_id=family_id,
+            used_at=None).first()
+        if inv is not None and inv.expires_at > now:
+            return bewaard
     code = _leesbare_code()
     db.session.add(FriendInvite(
         family_id=family_id, code_hash=_hash_friend(code),
         expires_at=now + timedelta(hours=24)))
     db.session.commit()
+    session["vriendcode"] = code
     return code
 
 

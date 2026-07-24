@@ -660,15 +660,22 @@ def ontdek():
         q = q.filter(db.or_(db.func.lower(Event.title).like(like),
                             db.func.lower(Event.gemeente).like(like)))
     elif centrum:
-        # Herkende plaats: knijp de buurt AL in de databank (ruime rechthoek van
-        # ~20 km) i.p.v. pas na de cap. Anders vullen 1000 willekeurige fiches
-        # uit heel Vlaanderen de selectie en blijft er van de gezochte gemeente
-        # bijna niets over — dat gaf 3 eetplekken in Oostende i.p.v. 194.
-        from math import cos, radians
-        d_lat = 20.0 / 111.0
-        d_lng = 20.0 / max(1.0, 111.0 * cos(radians(centrum[0])))
-        q = q.filter(Event.lat.between(centrum[0] - d_lat, centrum[0] + d_lat),
-                     Event.lng.between(centrum[1] - d_lng, centrum[1] + d_lng))
+        # Herkende plaats: eerst kijken of de gemeente zélf genoeg oplevert.
+        # Zo krijg je bij "Torhout" Torhout te zien en niet vooral Brugge en
+        # Roeselare, die toevallig binnen 20 km liggen.
+        like = f"%{zoek}%"
+        in_gemeente = q.filter(db.func.lower(Event.gemeente).like(like))
+        if in_gemeente.count() >= 5:
+            q = in_gemeente
+        else:
+            # Te weinig in de gemeente zelf → toon de buurt (rechthoek ~20 km),
+            # al in de databank i.p.v. pas na de cap.
+            from math import cos, radians
+            d_lat = 20.0 / 111.0
+            d_lng = 20.0 / max(1.0, 111.0 * cos(radians(centrum[0])))
+            q = q.filter(
+                Event.lat.between(centrum[0] - d_lat, centrum[0] + d_lat),
+                Event.lng.between(centrum[1] - d_lng, centrum[1] + d_lng))
     if filter_type == "gratis":
         q = q.filter(Event.is_free.is_(True))
     elif filter_type == "binnen":

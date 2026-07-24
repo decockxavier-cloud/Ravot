@@ -35,10 +35,14 @@
   </div>
 
   {% if rows %}
-  <div class="zoekrij">
-    <input type="search" id="zoek" class="zoekveld" placeholder="🔍 Zoek op naam, gemeente of postcode…"
+  <form method="get" action="{{ url_for('public.ontdek') }}" class="zoekrij">
+    <input type="hidden" name="wanneer" value="{{ 'vandaag' if scope == 'vandaag' else ('weekend' if scope == 'weekend' else 'deze-week') }}">
+    <input type="search" id="zoek" name="q" class="zoekveld" placeholder="🔍 Zoek op naam, gemeente of postcode…"
            aria-label="Zoek in activiteiten" autocomplete="off">
-  </div>
+    <button type="submit" class="btn btn-klein">Zoek</button>
+  </form>
+  <p class="hint zoek-hint">Tikken filtert wat hier staat; op <strong>Zoek</strong>
+  drukken zoekt in heel Vlaanderen.</p>
   <div class="filterbalk" id="filterbalk" role="group" aria-label="Filters">
     <span class="filterchip aan" data-filter="alles">Alles</span>
     <span class="filterchip" data-filter="gratis">Gratis</span>

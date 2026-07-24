@@ -427,3 +427,68 @@ def test_nu_lokaal_loopt_voor_op_utc(app):
     verschil = (nu_lokaal() - datetime.now(timezone.utc).replace(tzinfo=None))
     uren = round(verschil.total_seconds() / 3600)
     assert uren in (1, 2), f"onverwacht tijdverschil: {uren} uur"
+
+
+# --------------------------------------------------------------- patch 115 --
+
+def test_zoeken_op_gemeente_toont_die_gemeente(client, app):
+    """Torhout gaf vooral Brugge en Roeselare: die liggen binnen 20 km van het
+    middelpunt. De gemeente zelf hoort voorrang te krijgen."""
+    import re
+    from app.models import Event, PostcodeCentroid
+    with app.app_context():
+        db.session.add(PostcodeCentroid(postcode="8820", gemeente="Torhout",
+                                        lat=51.066, lng=3.100))
+        for i in range(12):
+            db.session.add(Event(uit_id=f"t{i}", slug=f"t{i}", title=f"Torhout {i}",
+                                 source="osm", subtype="playground", is_permanent=True,
+                                 gemeente="Torhout", lat=51.066, lng=3.100,
+                                 age_min=0, age_max=12, quality=50))
+        for i in range(200):       # buurgemeenten binnen 20 km
+            db.session.add(Event(uit_id=f"b{i}", slug=f"b{i}", title=f"Brugge {i}",
+                                 source="osm", subtype="playground", is_permanent=True,
+                                 gemeente="Brugge", lat=51.209, lng=3.224,
+                                 age_min=0, age_max=12, quality=90))
+        db.session.commit()
+    html = client.get("/ontdek?wanneer=alle&q=torhout").data.decode()
+    assert "Torhout 1" in html
+    assert "Brugge" not in html.split("<main")[-1][:4000]
+
+
+def test_vriendencode_blijft_gelijk_bij_refresh(client, app):
+    """Elke refresh gaf een nieuwe code, terwijl je die net wil doorgeven."""
+    from app.models import Family, Child
+    with app.app_context():
+        fam = Family(email="v@t.be", postcode="9000")
+        db.session.add(fam); db.session.flush()
+        db.session.add(Child(family_id=fam.id, birth_year=2018))
+        db.session.commit()
+        fid = fam.id
+    with client.session_transaction() as s:
+        s["family_id"] = fid
+    import re
+    codes = []
+    for _ in range(3):
+        html = client.get("/mijn/vrienden").data.decode()
+        m = re.search(r'font-family:monospace">([A-Z2-9]{6})<', html)
+        codes.append(m.group(1) if m else None)
+    assert codes[0] is not None, "geen code gevonden op de pagina"
+    assert len(set(codes)) == 1, f"code wisselde bij refresh: {codes}"
+
+
+def test_kindveld_neemt_bestaand_veld_over(app):
+    js = open("app/static/js/app.js").read()
+    assert "cloneNode(true)" in js and "wrap.querySelector(\"input\")" in js
+    # probeer-formulier vraagt leeftijd, accountformulier geboortejaar
+    assert 'placeholder="leeftijd"' in open("app/templates/public/proberen.html").read()
+    assert "geboortejaar" in open("app/templates/account/onboarding.html").read()
+
+
+def test_zoekvak_op_vandaag_zoekt_echt(app):
+    """Het zoekvak op de scope-pagina's (vandaag/deze week/weekend) filterde
+    enkel de kaartjes op het scherm; nu stuurt het een echte zoekopdracht naar
+    /ontdek, met het juiste tijdvenster mee."""
+    tpl = open("app/templates/public/lijst.html").read()
+    assert "url_for('public.ontdek')" in tpl
+    assert 'name="q"' in tpl and 'name="wanneer"' in tpl
+    assert "in heel Vlaanderen" in tpl

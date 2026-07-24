@@ -62,6 +62,14 @@
     <a class="dash-tegel" href="{{ url_for('account.instellingen') }}"><span class="dash-emoji">⚙️</span>
       <span>instellingen</span></a>
   </div>
+  {% if not aantal_vrienden %}
+  <div class="kaartje vrienden-uitnodiging">
+    <p><strong>🤝 Koppel met bevriende gezinnen</strong><br>
+    Zie welke uitstappen zij tof vonden — en zij de jullie. Je deelt een code,
+    zij vullen die in, klaar.</p>
+    <a class="btn" href="{{ url_for('account.friends') }}">Vrienden koppelen →</a>
+  </div>
+  {% endif %}
 </section>
 
 {% if te_reviewen %}
