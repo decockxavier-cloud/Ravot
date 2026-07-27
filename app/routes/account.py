@@ -7,7 +7,7 @@ import secrets
 from datetime import date, datetime, timezone
 from functools import wraps
 
-from flask import (Blueprint, Response, abort, current_app, flash, redirect, render_template,
+from flask import (Blueprint, Response, abort, current_app, flash, jsonify, redirect, render_template,
                    request, session, url_for)
 
 from ..extensions import db, limiter
@@ -188,6 +188,61 @@ def instellingen():
 
 
 # ------------------------------------------------------- feedback & bewaren --
+
+@bp.route("/veld-stem/<int:event_id>/<veld>/<waarde>", methods=["POST"])
+@login_required
+@limiter.limit("120/hour")
+def veld_stem(event_id, veld, waarde):
+    """Fase 1 zelf-curatie: één ouder bevestigt of ontkent een voorziening.
+
+    Voor zachte velden volstaat één bevestiging om het veld live te zetten —
+    een fout corrigeert zichzelf via de volgende bezoeker. Klikt de ouder
+    dezelfde knop opnieuw, dan wordt de stem ingetrokken (toggle), zodat er
+    nooit een gestapeld of dubbel signaal ontstaat. Alles loopt via de
+    stemmenteller; de Event-boolean wordt afgeleid, niet los gezet.
+    """
+    from ..models import ZACHTE_VELDEN, VOORZIENING_LABELS, VeldStem
+    from .. import stemmen
+    if veld not in ZACHTE_VELDEN or waarde not in ("ja", "nee"):
+        abort(400)
+    fam = me()
+    ev = db.session.get(Event, event_id) or abort(404)
+    ja = (waarde == "ja")
+
+    bestaand = VeldStem.query.filter_by(
+        event_id=ev.id, veld=veld, stemmer=str(fam.id)).first()
+    if bestaand is not None and bestaand.waarde == ja:
+        # tweede keer dezelfde knop = intrekken
+        db.session.delete(bestaand)
+        _herbereken_boolean(ev, veld)
+        db.session.commit()
+        flash("Je antwoord is ingetrokken.", "ok")
+        return redirect(request.referrer or url_for("public.event", slug=ev.slug))
+
+    stemmen.leg_stem_vast(ev.id, veld, ja, family=fam)
+    _herbereken_boolean(ev, veld)
+    db.session.commit()
+
+    lbl = VOORZIENING_LABELS.get(veld, veld)
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return jsonify({"ok": True, "veld": veld, "waarde": ja})
+    if ja:
+        flash(f"Bedankt! Dankzij jou weet Ravot nu dat hier {lbl} is.", "ok")
+    else:
+        flash(f"Bedankt! We noteren dat hier geen {lbl} is.", "ok")
+    return redirect(request.referrer or url_for("public.event", slug=ev.slug))
+
+
+def _herbereken_boolean(ev, veld):
+    """Zet de Event-boolean gelijk aan de uitkomst van de stemmenteller.
+    Zo blijven bestaande lijsten/filters (die de boolean lezen) meelopen met
+    de community, zonder dat we die overal moeten ombouwen. None-uitkomst
+    (niemand weet het) laat de boolean op None staan."""
+    from .. import stemmen
+    st = stemmen.veld_status(ev.id, veld)
+    if st["waarde"] is not None:
+        setattr(ev, veld, st["waarde"])
+
 
 @bp.route("/feedback/<int:event_id>/<verdict>", methods=["POST"])
 @login_required

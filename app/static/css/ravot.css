@@ -1015,3 +1015,27 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 
 /* Personaliseer-banner: knoppen naast elkaar (patch 117) */
 .personaliseer-banner .banner-acties { display: flex; gap: 8px; flex-shrink: 0; }
+
+/* Zelf-curatie: help de fiche aanvullen (fase 1) */
+.help-aanvullen { margin: 18px 0; padding: 14px 16px; background: #FBF6EA;
+  border: 1.5px solid var(--zon); border-radius: 14px; }
+.help-aanvullen h3 { margin: 0 0 4px; font-size: 1.05rem; }
+.help-aanvullen .hint { margin: 0 0 10px; }
+.help-vragen { display: flex; flex-direction: column; gap: 8px; }
+.help-vraag { display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 6px 0; border-top: 1px dashed #E4D9BE; }
+.help-vraag:first-child { border-top: 0; }
+.help-label { font-weight: 600; }
+.help-knoppen { display: flex; gap: 6px; flex-shrink: 0; }
+.help-knop { border: 1.5px solid var(--gras); background: #fff; color: var(--gras);
+  border-radius: 999px; padding: 4px 14px; font-weight: 700; cursor: pointer;
+  font-size: .95rem; }
+.help-knop:hover { background: var(--gras); color: #fff; }
+.help-knop.help-nee { border-color: #C0663B; color: #C0663B; }
+.help-knop.help-nee:hover { background: #C0663B; color: #fff; }
+.help-knop[aria-pressed="true"] { background: var(--gras); color: #fff; }
+.help-knop.help-nee[aria-pressed="true"] { background: #C0663B; color: #fff; }
+.help-knop:disabled { opacity: .5; cursor: default; }
+.help-klaar { margin: 6px 0; color: var(--gras); font-weight: 700; }
+/* herkomstbijschrift bij een voorziening */
+.badge .bron-bij { font-weight: 400; opacity: .7; font-size: .85em; }

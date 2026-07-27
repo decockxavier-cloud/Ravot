@@ -22,6 +22,7 @@
    target="_blank" rel="noopener">🧭 Routebeschrijving</a></p>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="{{ url_for('static', filename='js/minimap.js') }}"></script>
+<script src="{{ url_for('static', filename='js/helpaanvullen.js') }}" defer></script>
 {% endif %}
 <div class="badges">
   {% set at = activiteit_type(ev) %}
@@ -61,6 +62,34 @@
 </div>
 {% if ev.speeltoestellen %}
 <p class="meta speeltoestellen">🛝 Op de speeltuin: {{ ev.speeltoestellen|join(" · ") }}</p>
+{% endif %}
+
+{# --- Zelf-curatie fase 1: help de fiche aanvullen -------------------------
+   Kleine vragen voor voorzieningen die de databank (nog) niet kent. Eén tik
+   van een ingelogd gezin vult het gaatje meteen. Niet-ingelogd: uitnodiging
+   om aan te melden. #}
+{% if ontbrekende_velden %}
+<section class="help-aanvullen">
+  <h3>Weet jij het? Help andere gezinnen</h3>
+  {% if family %}
+  <p class="hint">Eén tik en je maakt deze fiche completer voor elk gezin na jou.</p>
+  <div class="help-vragen">
+    {% for veld, label in ontbrekende_velden[:6] %}
+    <div class="help-vraag" data-veld="{{ veld }}">
+      <span class="help-label">{{ label|capitalize }}?</span>
+      <span class="help-knoppen">
+        <button type="button" class="help-knop" data-stem-url="{{ url_for('account.veld_stem', event_id=ev.id, veld=veld, waarde='ja') }}"
+          {% if mijn_stemmen.get(veld) == true %}aria-pressed="true"{% endif %}>✓ ja</button>
+        <button type="button" class="help-knop help-nee" data-stem-url="{{ url_for('account.veld_stem', event_id=ev.id, veld=veld, waarde='nee') }}"
+          {% if mijn_stemmen.get(veld) == false %}aria-pressed="true"{% endif %}>✗ nee</button>
+      </span>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="hint">Ken jij deze plek? <a href="{{ url_for('auth.login') }}">Meld je aan</a> en help de info aanvullen — het kost één tik per vraag.</p>
+  {% endif %}
+</section>
 {% endif %}
 
 {# Bovenaan enkel het officiële beeld van de organisatie (bron of uitbater).

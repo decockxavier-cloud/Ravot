@@ -648,3 +648,65 @@ def test_stem_zaaien_is_idempotent(app):
         stemmen.zaai_bronstemmen(e); db.session.commit()
         n2 = VeldStem.query.filter_by(event_id=e.id).count()
         assert n1 == n2 == 2
+
+
+# Fase 1 — micro-vragen op de fiche: één tik vult een ontbrekend zacht veld.
+
+def _fiche_met_gezin(app, **velden):
+    from app.models import Event, Family
+    with app.app_context():
+        e = Event(uit_id="fa1", slug="fa1", title="Speeltuin", source="osm",
+                  subtype="playground", is_permanent=True, gemeente="Gent",
+                  lat=51.05, lng=3.72, age_min=0, age_max=12, **velden)
+        db.session.add(e)
+        fam = Family(email="fa1@t.be", postcode="9000")
+        db.session.add(fam); db.session.flush()
+        db.session.commit()
+        return e.id, fam.id
+
+
+def test_fiche_toont_microvragen_enkel_ingelogd(client, app):
+    eid, fid = _fiche_met_gezin(app, toilet=None, picknick=None)
+    # uitgelogd: uitnodiging, geen knoppen
+    html = client.get("/e/fa1").data.decode()
+    assert "Meld je aan" in html and "data-stem-url" not in html
+    # ingelogd: knoppen
+    with client.session_transaction() as s:
+        s["family_id"] = fid
+    html = client.get("/e/fa1").data.decode()
+    assert "data-stem-url" in html
+
+
+def test_een_stem_vult_veld_en_boolean_loopt_mee(client, app):
+    from app.models import Event
+    eid, fid = _fiche_met_gezin(app, toilet=None)
+    with client.session_transaction() as s:
+        s["family_id"] = fid
+    r = client.post(f"/mijn/veld-stem/{eid}/toilet/ja",
+                    headers={"X-Requested-With": "XMLHttpRequest"})
+    assert r.status_code == 200 and r.get_json()["ok"] is True
+    with app.app_context():
+        assert db.session.get(Event, eid).toilet is True
+    # de beantwoorde vraag verdwijnt
+    html = client.get("/e/fa1").data.decode()
+    assert f"veld-stem/{eid}/toilet" not in html
+
+
+def test_stem_toggle_trekt_in(client, app):
+    from app.models import VeldStem
+    eid, fid = _fiche_met_gezin(app, picknick=None)
+    with client.session_transaction() as s:
+        s["family_id"] = fid
+    client.post(f"/mijn/veld-stem/{eid}/picknick/ja")
+    client.post(f"/mijn/veld-stem/{eid}/picknick/ja")   # tweede keer = intrekken
+    with app.app_context():
+        assert VeldStem.query.filter_by(event_id=eid, veld="picknick",
+                                        stemmer=str(fid)).count() == 0
+
+
+def test_stem_weigert_onbekend_veld(client, app):
+    eid, fid = _fiche_met_gezin(app)
+    with client.session_transaction() as s:
+        s["family_id"] = fid
+    assert client.post(f"/mijn/veld-stem/{eid}/onzin/ja").status_code == 400
+    assert client.post(f"/mijn/veld-stem/{eid}/toilet/misschien").status_code == 400

@@ -1186,6 +1186,24 @@ def event(slug):
     if fam:
         mijn_daguitstappen = DagUitstap.query.filter_by(family_id=fam.id) \
             .order_by(DagUitstap.updated_at.desc()).limit(10).all()
+    # Zelf-curatie (fase 1): welke zachte velden zijn nog onbekend? Die tonen we
+    # als micro-vraag. En van welke stem heeft dit gezin er al één gegeven?
+    from ..models import ZACHTE_VELDEN, VOORZIENING_LABELS, VeldStem
+    from .. import stemmen as _stemmen
+    _status = _stemmen.alle_velden(ev.id)
+    _ontbreekt = [v for v in ZACHTE_VELDEN
+                  if _status.get(v, {}).get("waarde") is None]
+    # stabiele, leesbare volgorde; toon de meest relevante eerst
+    _volgorde = ["toilet", "drinkwater", "picknick", "parking", "speelhoek",
+                 "terras", "overdekt_terras", "kinderstoel", "omheind",
+                 "toegankelijk", "verzorgingstafel", "kindermenu", "buggy_ok",
+                 "allergievriendelijk", "babyvoeding", "huisdieren"]
+    ontbrekende_velden = [(v, VOORZIENING_LABELS.get(v, v))
+                          for v in _volgorde if v in _ontbreekt]
+    mijn_stemmen = {}
+    if fam:
+        for s in VeldStem.query.filter_by(event_id=ev.id, stemmer=str(fam.id)).all():
+            mijn_stemmen[s.veld] = s.waarde
     return render_template(
         "public/event.html", ev=ev, agg=agg if toon_score else None,
         toon_score=toon_score, family_total=total,
@@ -1193,6 +1211,7 @@ def event(slug):
         euro=euro_indicator(total), reviews=[r.public_dict() for r in series_reviews[:10]],
         friends=friends_interested, saved=saved, shared=shared, family=fam,
         fotos=goedgekeurde_fotos,
+        ontbrekende_velden=ontbrekende_velden, mijn_stemmen=mijn_stemmen,
         meta_title=title, meta_desc=desc,
         jsonld=[seo.event_jsonld(ev, agg if toon_score else None, total),
                 seo.breadcrumb_jsonld([("Ravot", "/"),
