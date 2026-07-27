@@ -576,3 +576,75 @@ def test_oud_gastprofiel_blijft_werken(client, app):
         s["guest"] = {"postcode": "9000", "ages": [4, 7], "radius": 25, "budget": "all"}
     assert client.get("/vandaag").status_code == 200
     assert client.get("/proberen").status_code == 200
+
+
+# ============================================================ crowdsourcing ==
+# Fase 0 — het fundament: stemmenteller per veld. Verandert (nog) niets aan
+# wat de gebruiker ziet; de uitkomst per veld is gelijk aan de bestaande boolean.
+
+def test_stem_fundament_uitkomst_gelijk_aan_boolean(app):
+    from app.models import Event
+    from app import stemmen
+    with app.app_context():
+        e = Event(uit_id="cs1", slug="cs1", title="Plek", source="osm",
+                  subtype="playground", is_permanent=True, gemeente="Gent",
+                  lat=51.05, lng=3.72, toilet=True, drinkwater=False, picknick=None)
+        db.session.add(e); db.session.flush()
+        stemmen.zaai_bronstemmen(e); db.session.commit()
+        assert stemmen.veld_status(e.id, "toilet")["waarde"] is True
+        assert stemmen.veld_status(e.id, "drinkwater")["waarde"] is False
+        # onbekend (None) levert geen stem en dus geen waarde
+        assert stemmen.veld_status(e.id, "picknick")["waarde"] is None
+
+
+def test_stem_een_stem_per_stemmer_geen_stapeling(app):
+    from app.models import Event, Family, VeldStem
+    from app import stemmen
+    with app.app_context():
+        e = Event(uit_id="cs2", slug="cs2", title="Plek", source="osm",
+                  subtype="playground", is_permanent=True, gemeente="Gent",
+                  lat=51.05, lng=3.72, toilet=True)
+        db.session.add(e)
+        fam = Family(email="cs@t.be", postcode="9000")
+        db.session.add(fam); db.session.flush()
+        stemmen.zaai_bronstemmen(e)
+        stemmen.leg_stem_vast(e.id, "toilet", False, family=fam)
+        db.session.commit()
+        # bron (ja) + gebruiker (nee) = 2 rijen
+        assert VeldStem.query.filter_by(event_id=e.id, veld="toilet").count() == 2
+        # gebruiker verandert van gedacht → nog steeds 2 rijen (geen stapeling)
+        stemmen.leg_stem_vast(e.id, "toilet", True, family=fam)
+        db.session.commit()
+        assert VeldStem.query.filter_by(event_id=e.id, veld="toilet").count() == 2
+
+
+def test_stem_herkomst_bezoekers_zodra_gebruiker_stemt(app):
+    from app.models import Event, Family
+    from app import stemmen
+    with app.app_context():
+        e = Event(uit_id="cs3", slug="cs3", title="Plek", source="osm",
+                  subtype="playground", is_permanent=True, gemeente="Gent",
+                  lat=51.05, lng=3.72, toilet=True)
+        db.session.add(e)
+        fam = Family(email="cs3@t.be", postcode="9000")
+        db.session.add(fam); db.session.flush()
+        stemmen.zaai_bronstemmen(e); db.session.commit()
+        assert stemmen.veld_status(e.id, "toilet")["herkomst"] == "bron"
+        stemmen.leg_stem_vast(e.id, "toilet", True, family=fam)
+        db.session.commit()
+        assert stemmen.veld_status(e.id, "toilet")["herkomst"] == "bezoekers"
+
+
+def test_stem_zaaien_is_idempotent(app):
+    from app.models import Event, VeldStem
+    from app import stemmen
+    with app.app_context():
+        e = Event(uit_id="cs4", slug="cs4", title="Plek", source="osm",
+                  subtype="playground", is_permanent=True, gemeente="Gent",
+                  lat=51.05, lng=3.72, toilet=True, drinkwater=True)
+        db.session.add(e); db.session.flush()
+        stemmen.zaai_bronstemmen(e); db.session.commit()
+        n1 = VeldStem.query.filter_by(event_id=e.id).count()
+        stemmen.zaai_bronstemmen(e); db.session.commit()
+        n2 = VeldStem.query.filter_by(event_id=e.id).count()
+        assert n1 == n2 == 2

@@ -872,6 +872,50 @@ class RavotPunt(db.Model):
                                           name="uq_punt_family_reden_ref"),)
 
 
+# Zachte velden: één bevestiging maakt ze live (fout corrigeert zichzelf).
+# Gevoelige velden vragen meer overeenstemming of een blik van de admin — die
+# lijst houden we los omdat de gevolgen van een fout er groter zijn.
+ZACHTE_VELDEN = {
+    "toilet", "drinkwater", "picknick", "terras", "overdekt_terras",
+    "parking", "speelhoek", "kinderstoel", "verzorgingstafel", "omheind",
+    "toegankelijk", "kindermenu", "buggy_ok", "allergievriendelijk",
+    "babyvoeding", "huisdieren",
+}
+# Startgewicht van een bronstem (OSM/Overture). Bewust matig: één bezoeker die
+# ter plaatse kijkt, mag een verouderde brontag kunnen bijsturen.
+BRON_GEWICHT = 1.0
+GEBRUIKER_BASIS_GEWICHT = 1.0
+
+
+class VeldStem(db.Model):
+    """Grootboek van stemmen over één veld van één plek (fase 0 van de
+    zelf-curatie). Bewust een logboek zoals RavotPunt: uitlegbaar, auditeerbaar,
+    terugdraaibaar. De getoonde waarde van een veld is de uitkomst van deze
+    stemmen — nooit twee cijfers naast elkaar, altijd één teller per veld.
+
+    Eén stem per (bron, plek, veld): een bron of gebruiker die van gedacht
+    verandert, wijzigt zijn bestaande stem in plaats van te stapelen.
+    """
+    __tablename__ = "veld_stemmen"
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("events.id"),
+                         nullable=False, index=True)
+    veld = db.Column(db.String(40), nullable=False)
+    # Wie stemde: 'bron' voor OSM/Overture, anders het family-id als tekst.
+    # Bewust geen FK: de bronstem heeft geen family, en zo werkt de dedupe-
+    # sleutel voor beide soorten stemmers gelijk.
+    stemmer = db.Column(db.String(40), nullable=False)
+    # De stem zelf: True = "ja, aanwezig", False = "nee, niet aanwezig".
+    waarde = db.Column(db.Boolean, nullable=False)
+    # Gewicht op het moment van stemmen (bevroren): zo blijft een oude stem
+    # beoordeeld naar wat toen gold en herrekenen we niet met terugwerkende kracht.
+    gewicht = db.Column(db.Float, default=1.0, nullable=False)
+    created_at = db.Column(db.DateTime, default=utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
+    __table_args__ = (db.UniqueConstraint("event_id", "veld", "stemmer",
+                                          name="uq_stem_event_veld_stemmer"),)
+
+
 class HorecaKandidaat(db.Model):
     """Staging voor de Horeca-verkenner: kandidaten uit Overture Maps.
     Nog géén fiches — de beheerder kiest wat Ravot-waardig is."""

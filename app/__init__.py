@@ -351,6 +351,36 @@ def register_cli(app):
         db.session.commit()
         print(f"Gemeente aangevuld: {gevuld} · geen zwaartepunt binnen 10 km: {zonder}")
 
+    @app.cli.command("zaai-veldstemmen")
+    def zaai_veldstemmen():
+        """Fase 0 zelf-curatie: lees de bestaande voorziening-booleans op elke
+        plek in als 'bronstem'. Verandert niets aan wat de gebruiker ziet — de
+        uitkomst per veld blijft gelijk aan de huidige waarde. Veilig
+        herhaalbaar (idempotent): een bestaande bronstem wordt bijgewerkt, niet
+        gedupliceerd. Eerst lezen, dan in stukken committen (Postgres-cursor)."""
+        from .models import Event, ZACHTE_VELDEN
+        from .stemmen import leg_stem_vast
+        velden = list(ZACHTE_VELDEN)
+        kol = [Event.id] + [getattr(Event, v) for v in velden]
+        rijen = (Event.query
+                 .filter(Event.hidden.is_(False))
+                 .with_entities(*kol).all())
+        totaal = len(rijen)
+        stemmen = 0
+        for i, rij in enumerate(rijen, 1):
+            eid = rij[0]
+            for j, veld in enumerate(velden, start=1):
+                waarde = rij[j]
+                if waarde is None:
+                    continue            # onbekend is geen 'nee'
+                leg_stem_vast(eid, veld, bool(waarde), family=None)
+                stemmen += 1
+            if i % 1000 == 0:
+                db.session.commit()
+                print(f"  {i} van {totaal} plekken...", flush=True)
+        db.session.commit()
+        print(f"Bronstemmen gezaaid: {stemmen} over {totaal} plekken.")
+
     @app.cli.command("backfill-openingsuren")
     def backfill_openingsuren():
         """Eenmalig: 'Openingsuren: ...' uit beschrijvingen halen en omzetten
