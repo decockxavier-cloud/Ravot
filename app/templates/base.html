@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>{{ meta_title or title or "Ravot — waar gaan we vandaag ravotten?" }}</title>
   <meta name="description" content="{{ meta_desc or "Elke dag de leukste kinderactiviteiten in jouw buurt, op maat van jouw gezin. Gratis, zonder pop-ups of bannerreclame en zonder account te proberen." }}">
   {% if noindex %}<meta name="robots" content="noindex,follow">{% endif %}

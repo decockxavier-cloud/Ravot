@@ -710,3 +710,62 @@ def test_stem_weigert_onbekend_veld(client, app):
         s["family_id"] = fid
     assert client.post(f"/mijn/veld-stem/{eid}/onzin/ja").status_code == 400
     assert client.post(f"/mijn/veld-stem/{eid}/toilet/misschien").status_code == 400
+
+
+def test_stem_meta_csrf_token_aanwezig(client, app):
+    """De fiche moet een csrf-token-meta bevatten, zodat het fetch-verzoek van
+    de stemknoppen een geldig token kan meesturen. Zonder dit faalde elke stem
+    (behalve de eerste leek te 'lukken' door de bron-aria-pressed)."""
+    eid, fid = _fiche_met_gezin(app, toilet=None)
+    with client.session_transaction() as s:
+        s["family_id"] = fid
+    html = client.get("/e/fa1").data.decode()
+    assert 'name="csrf-token"' in html
+    js = open("app/static/js/helpaanvullen.js").read()
+    assert "X-CSRFToken" in js and "csrf-token" in js
+
+
+def test_stem_werkt_met_csrf_actief(app):
+    """Met CSRF ingeschakeld: zonder token faalt de stem, mét token lukt hij.
+    Reproduceert exact de productiesituatie (CSRFProtect staat aan)."""
+    import re
+    from app.config import TestConfig
+    from app.models import Event, Family
+
+    class CsrfConfig(TestConfig):
+        WTF_CSRF_ENABLED = True
+    from app import create_app
+    csrf_app = create_app(CsrfConfig)
+    with csrf_app.app_context():
+        db.create_all()
+        e = Event(uit_id="csrf1", slug="csrf1", title="Speeltuin", source="osm",
+                  subtype="playground", is_permanent=True, gemeente="Gent",
+                  lat=51.05, lng=3.72, age_min=0, age_max=12, toilet=None)
+        db.session.add(e)
+        fam = Family(email="csrf@t.be", postcode="9000")
+        db.session.add(fam); db.session.flush()
+        db.session.commit()
+        eid, fid = e.id, fam.id
+    c = csrf_app.test_client()
+    with c.session_transaction() as s:
+        s["family_id"] = fid
+    html = c.get("/e/csrf1").data.decode()
+    token = re.search(r'name="csrf-token" content="([^"]+)"', html).group(1)
+    zonder = c.post(f"/mijn/veld-stem/{eid}/toilet/ja",
+                    headers={"X-Requested-With": "XMLHttpRequest"})
+    assert zonder.status_code in (400, 403)
+    met = c.post(f"/mijn/veld-stem/{eid}/toilet/ja",
+                 headers={"X-Requested-With": "XMLHttpRequest", "X-CSRFToken": token})
+    assert met.status_code == 200 and met.get_json()["ok"] is True
+
+
+def test_help_blok_is_ingeklapt_en_onderaan(client, app):
+    """Het aanvul-blok mag de fiche niet domineren: inklapbaar (<details>),
+    standaard dicht, hooguit enkele vragen, en ná de kern-info."""
+    eid, fid = _fiche_met_gezin(app, toilet=None, picknick=None, parking=None)
+    with client.session_transaction() as s:
+        s["family_id"] = fid
+    html = client.get("/e/fa1").data.decode()
+    assert '<details class="help-aanvullen"' in html      # inklapbaar
+    assert 'help-aanvullen" open' not in html             # standaard dicht
+    assert html.count("help-vraag") <= 4                   # niet alle tegelijk

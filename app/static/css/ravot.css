@@ -1016,12 +1016,21 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 /* Personaliseer-banner: knoppen naast elkaar (patch 117) */
 .personaliseer-banner .banner-acties { display: flex; gap: 8px; flex-shrink: 0; }
 
-/* Zelf-curatie: help de fiche aanvullen (fase 1) */
-.help-aanvullen { margin: 18px 0; padding: 14px 16px; background: #FBF6EA;
-  border: 1.5px solid var(--zon); border-radius: 14px; }
-.help-aanvullen h3 { margin: 0 0 4px; font-size: 1.05rem; }
+/* Zelf-curatie: help de fiche aanvullen (fase 1) — bescheiden & inklapbaar */
+.help-aanvullen { margin: 16px 0; padding: 0 14px; background: #FBF6EA;
+  border: 1px solid #E4D9BE; border-radius: 12px; }
+.help-aanvullen > summary { list-style: none; cursor: pointer; padding: 12px 0;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  font-weight: 600; }
+.help-aanvullen > summary::-webkit-details-marker { display: none; }
+.help-aanvullen > summary::after { content: "▾"; color: var(--gras);
+  transition: transform .2s; }
+.help-aanvullen[open] > summary::after { transform: rotate(180deg); }
+.help-titel { flex: 1; }
+.help-aantal { font-weight: 400; font-size: .82rem; color: #8A7C5C;
+  background: #F0E7CF; border-radius: 999px; padding: 2px 9px; flex-shrink: 0; }
 .help-aanvullen .hint { margin: 0 0 10px; }
-.help-vragen { display: flex; flex-direction: column; gap: 8px; }
+.help-vragen { display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px; }
 .help-vraag { display: flex; align-items: center; justify-content: space-between;
   gap: 10px; padding: 6px 0; border-top: 1px dashed #E4D9BE; }
 .help-vraag:first-child { border-top: 0; }

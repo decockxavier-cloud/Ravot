@@ -24,9 +24,15 @@
     var knoppen = vraag ? vraag.querySelectorAll(".help-knop") : [knop];
     knoppen.forEach(function (k) { k.disabled = true; });
 
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    var token = meta ? meta.getAttribute("content") : "";
+
     fetch(url, {
       method: "POST",
-      headers: { "X-Requested-With": "XMLHttpRequest" },
+      headers: {
+        "X-Requested-With": "XMLHttpRequest",
+        "X-CSRFToken": token,
+      },
       credentials: "same-origin",
     }).then(function (r) {
       if (!r.ok) throw new Error("stem mislukt");
