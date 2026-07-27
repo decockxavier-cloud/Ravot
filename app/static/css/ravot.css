@@ -1012,3 +1012,6 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
   border: 1.5px solid var(--zon); border-radius: 14px; padding: 12px 16px; }
 .vrienden-uitnodiging p { margin: 0 0 10px; }
 .zoek-hint { margin: 4px 0 10px; }
+
+/* Personaliseer-banner: knoppen naast elkaar (patch 117) */
+.personaliseer-banner .banner-acties { display: flex; gap: 8px; flex-shrink: 0; }

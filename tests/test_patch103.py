@@ -479,8 +479,8 @@ def test_vriendencode_blijft_gelijk_bij_refresh(client, app):
 def test_kindveld_neemt_bestaand_veld_over(app):
     js = open("app/static/js/app.js").read()
     assert "cloneNode(true)" in js and "wrap.querySelector(\"input\")" in js
-    # probeer-formulier vraagt leeftijd, accountformulier geboortejaar
-    assert 'placeholder="leeftijd"' in open("app/templates/public/proberen.html").read()
+    # beide formulieren vragen nu het geboortejaar (patch 117)
+    assert "geboortejaar" in open("app/templates/public/proberen.html").read()
     assert "geboortejaar" in open("app/templates/account/onboarding.html").read()
 
 
@@ -526,3 +526,53 @@ def test_zoekvak_autosuggest_houdt_kale_naam(app):
     assert 'data-zelf="zoek"' in kop
     js = open("app/static/js/plaatsen.js").read()
     assert 'veld.dataset.zelf === "zoek"' in js
+
+
+# --------------------------------------------------------------- patch 117 --
+
+def test_personaliseer_gebruikt_geboortejaar(client, app):
+    """Personaliseer vroeg de leeftijd, het account het geboortejaar — nu beide
+    het geboortejaar, zodat de leeftijd elk jaar vanzelf meegroeit."""
+    from datetime import datetime
+    jaar = datetime.utcnow().year
+    html = client.get("/proberen").data.decode()
+    assert 'name="birth_year"' in html and "geboortejaar" in html
+    assert 'name="age"' not in html          # geen losse leeftijd meer
+    client.post("/proberen", data={"postcode": "9000",
+                                   "birth_year": [str(jaar - 6), str(jaar - 3)],
+                                   "radius": "25", "budget": "all"})
+    with client.session_transaction() as s:
+        g = s["guest"]
+        assert g["birth_years"] == [jaar - 6, jaar - 3]
+        assert g["ages"] == [6, 3]            # afgeleid voor de scoring
+
+
+def test_personaliseer_aanpassen_en_wissen(client, app):
+    """Zodra een gastprofiel bestaat, hoort de banner Aanpassen + Wissen te
+    tonen (voorheen verdween de banner en zat je eraan vast)."""
+    from app.models import Event
+    from datetime import datetime
+    with app.app_context():
+        db.session.add(Event(uit_id="p117", slug="p117", title="Plek",
+                             source="osm", subtype="playground", is_permanent=True,
+                             gemeente="Gent", lat=51.05, lng=3.72,
+                             age_min=0, age_max=12, quality=50))
+        db.session.commit()
+    jaar = datetime.utcnow().year
+    client.post("/proberen", data={"postcode": "9000", "birth_year": str(jaar - 5),
+                                   "radius": "25", "budget": "all"})
+    html = client.get("/vandaag").data.decode()
+    assert "Aanpassen" in html and "Wissen" in html
+    # wissen leegt het profiel
+    client.get("/opnieuw")
+    with client.session_transaction() as s:
+        assert not s.get("guest")
+
+
+def test_oud_gastprofiel_blijft_werken(client, app):
+    """Backwards-compat: een bestaand gastprofiel met enkel 'ages' (van vóór
+    deze patch) mag niet breken."""
+    with client.session_transaction() as s:
+        s["guest"] = {"postcode": "9000", "ages": [4, 7], "radius": 25, "budget": "all"}
+    assert client.get("/vandaag").status_code == 200
+    assert client.get("/proberen").status_code == 200

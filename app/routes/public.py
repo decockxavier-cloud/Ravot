@@ -221,6 +221,12 @@ def guest_profile():
     return session.get("guest", {})
 
 
+def gast_actief():
+    """True als er een anoniem 'personaliseer'-profiel is maar geen account.
+    Bepaalt of we de banner met Aanpassen/Wissen tonen i.p.v. Personaliseer."""
+    return bool(guest_profile().get("postcode")) and current_family() is None
+
+
 def _veilig_int(waarde, standaard):
     try:
         return int(str(waarde).strip() or standaard)
@@ -537,13 +543,24 @@ def opnieuw():
 def proberen():
     """Anonieme snelstart: postcode + leeftijden, zonder account."""
     if request.method == "POST":
-        ages = [int(a) for a in request.form.getlist("age") if a.strip().isdigit()]
+        # Geboortejaren (net als een account): de leeftijd groeit zo elk jaar
+        # vanzelf mee. We bewaren de jaren én de afgeleide leeftijden — de
+        # leeftijden voeden de scoring, de jaren tonen we terug in het formulier.
+        huidig = datetime.utcnow().year
+        jaren = []
+        for j in request.form.getlist("birth_year"):
+            if j.strip().isdigit():
+                jr = int(j)
+                if huidig - 17 <= jr <= huidig:
+                    jaren.append(jr)
+        ages = [huidig - jr for jr in jaren]
         try:
             radius = int(re.sub(r"\D", "", request.form.get("radius", "") or "") or 25)
         except ValueError:
             radius = 25
         session["guest"] = {
             "postcode": re.sub(r"\D", "", request.form.get("postcode", ""))[:4],
+            "birth_years": jaren[:6],
             "ages": ages[:6],
             "radius": max(1, min(radius, 200)),
             "budget": request.form.get("budget", "all"),
@@ -551,6 +568,7 @@ def proberen():
         session.permanent = True
         return redirect(url_for("public.vandaag"))
     return render_template("public/proberen.html", family=None, active=None,
+                           current_year=datetime.utcnow().year,
                            title="Meteen kijken wat er te doen is")
 
 
@@ -590,7 +608,7 @@ def vandaag():
                            title="Wat gaan we vandaag doen?", answer=answer,
                            regen=rows[0].get("regen") if rows else None,
                            weer=weerbericht("vandaag", fam),
-                           has_profile=has_profile, family=fam, active="vandaag")
+                           has_profile=has_profile, gast_actief=gast_actief(), family=fam, active="vandaag")
 
 
 @bp.route("/deze-week")
@@ -602,7 +620,7 @@ def deze_week():
                            title="Deze week", answer=None,
                            regen=rows[0].get("regen") if rows else None,
                            weer=weerbericht("deze-week", fam),
-                           has_profile=has_profile, family=fam, active="deze-week")
+                           has_profile=has_profile, gast_actief=gast_actief(), family=fam, active="deze-week")
 
 
 @bp.route("/weekend")
@@ -614,7 +632,7 @@ def weekend():
                            title="Dit weekend", answer=None,
                            regen=rows[0].get("regen") if rows else None,
                            weer=weerbericht("weekend", fam),
-                           has_profile=has_profile, family=fam, active="weekend")
+                           has_profile=has_profile, gast_actief=gast_actief(), family=fam, active="weekend")
 
 
 @bp.route("/ontdek")
@@ -836,7 +854,7 @@ def ontdek():
     aantal_actief = ((1 if filter_type else 0) + (1 if cat else 0)
                      + (1 if soort else 0) + len(ouder_filters)
                      + (1 if lft else 0) + (1 if sort == "score" else 0))
-    return render_template("public/ontdek.html", lft=lft, leeftijden=LEEFTIJDEN, rows=pagina_rows, uitgelichte_partners=uitgelichte_partners, sort=sort, zoek=zoek, wanneer=wanneer, cat=cat, verberg_sp=verberg_sp, toon_alles=toon_alles, curatie_aan=_gb("enkel_gecureerd"), ouder_filters=ouder_filters, weer=weer, soort=soort, groep=groep, soorten=TYPES, flink=_ontdek_url, aantal_actief=aantal_actief,
+    return render_template("public/ontdek.html", lft=lft, leeftijden=LEEFTIJDEN, rows=pagina_rows, uitgelichte_partners=uitgelichte_partners, sort=sort, zoek=zoek, wanneer=wanneer, cat=cat, verberg_sp=verberg_sp, toon_alles=toon_alles, curatie_aan=_gb("enkel_gecureerd"), ouder_filters=ouder_filters, weer=weer, soort=soort, groep=groep, soorten=TYPES, flink=_ontdek_url, aantal_actief=aantal_actief, gast_actief=gast_actief(),
                            wissel_lijst=_ontdek_url(), wissel_kaart=_ontdek_url("public.verkennen"),
                            wis_url=url_for("public.ontdek", wanneer=wanneer, q=zoek),
                            zoek_endpoint="public.ontdek", weergave="lijst", toon_sorteer=True, kaart=False,
