@@ -1048,3 +1048,8 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 .help-klaar { margin: 6px 0; color: var(--gras); font-weight: 700; }
 /* herkomstbijschrift bij een voorziening */
 .badge .bron-bij { font-weight: 400; opacity: .7; font-size: .85em; }
+
+/* Fase 2: subkoppen en status in het aanvul-blok */
+.help-subkop { margin: 10px 0 4px; font-weight: 700; font-size: .85rem;
+  color: #8A7C5C; text-transform: uppercase; letter-spacing: .03em; }
+.help-status { font-weight: 400; opacity: .7; font-size: .88em; }

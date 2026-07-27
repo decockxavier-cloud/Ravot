@@ -203,31 +203,54 @@
 
 {% if ev.series %}<p class="hint">Keert dit jaarlijks terug? Bekijk de <a href="{{ url_for('public.reeks', slug=ev.series.slug) }}">reekspagina met historiek</a>.</p>{% endif %}
 
-{# --- Zelf-curatie fase 1: help de fiche aanvullen -------------------------
-   Bescheiden en ingeklapt: staat onderaan, standaard dicht, en toont enkele
-   vragen tegelijk. Zo helpt wie wil, zonder de score/foto's/reviews weg te
-   duwen. #}
-{% if ontbrekende_velden %}
+{# --- Zelf-curatie fase 2: help de fiche aanvullen én bevestigen -----------
+   Bescheiden en ingeklapt, onderaan. Onbekende velden → open vraag.
+   Voorlopige velden (door enkele stemmen ingevuld, nog niet vast) → "klopt dit?"
+   zodat de volgende bezoeker ze kan versterken of weerleggen. #}
+{% if ontbrekende_velden or voorlopige_velden %}
 <details class="help-aanvullen">
   <summary>
     <span class="help-titel">🧩 Weet jij het? Help deze fiche completer maken</span>
-    <span class="help-aantal">{{ ontbrekende_velden|length }} open</span>
+    <span class="help-aantal">{{ (ontbrekende_velden|length) + (voorlopige_velden|length) }} open</span>
   </summary>
   {% if family %}
-  <p class="hint">Eén tik per vraag — je maakt de fiche completer voor elk gezin na jou.</p>
+  <p class="hint">Eén tik per vraag — je maakt de fiche completer en juister voor elk gezin na jou.</p>
+
+  {% if voorlopige_velden %}
+  <p class="help-subkop">Klopt dit nog?</p>
+  <div class="help-vragen">
+    {% for veld, label, waarde, pct in voorlopige_velden[:4] %}
+    <div class="help-vraag" data-veld="{{ veld }}">
+      <span class="help-label">
+        {{ label|capitalize }}
+        {% if waarde %}<span class="help-status">— nu: ja{% if pct %} ({{ pct }}%){% endif %}</span>
+        {% else %}<span class="help-status">— nu: nee{% if pct %} ({{ pct }}%){% endif %}</span>{% endif %}
+      </span>
+      <span class="help-knoppen">
+        <button type="button" class="help-knop" data-stem-url="{{ url_for('account.veld_stem', event_id=ev.id, veld=veld, waarde='ja') }}"
+          {% if mijn_stemmen.get(veld) == true %}aria-pressed="true"{% endif %}>👍 ja</button>
+        <button type="button" class="help-knop help-nee" data-stem-url="{{ url_for('account.veld_stem', event_id=ev.id, veld=veld, waarde='nee') }}"
+          {% if mijn_stemmen.get(veld) == false %}aria-pressed="true"{% endif %}>👎 nee</button>
+      </span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if ontbrekende_velden %}
+  {% if voorlopige_velden %}<p class="help-subkop">Nog onbekend</p>{% endif %}
   <div class="help-vragen">
     {% for veld, label in ontbrekende_velden[:4] %}
     <div class="help-vraag" data-veld="{{ veld }}">
       <span class="help-label">{{ label|capitalize }}?</span>
       <span class="help-knoppen">
-        <button type="button" class="help-knop" data-stem-url="{{ url_for('account.veld_stem', event_id=ev.id, veld=veld, waarde='ja') }}"
-          {% if mijn_stemmen.get(veld) == true %}aria-pressed="true"{% endif %}>✓ ja</button>
-        <button type="button" class="help-knop help-nee" data-stem-url="{{ url_for('account.veld_stem', event_id=ev.id, veld=veld, waarde='nee') }}"
-          {% if mijn_stemmen.get(veld) == false %}aria-pressed="true"{% endif %}>✗ nee</button>
+        <button type="button" class="help-knop" data-stem-url="{{ url_for('account.veld_stem', event_id=ev.id, veld=veld, waarde='ja') }}">✓ ja</button>
+        <button type="button" class="help-knop help-nee" data-stem-url="{{ url_for('account.veld_stem', event_id=ev.id, veld=veld, waarde='nee') }}">✗ nee</button>
       </span>
     </div>
     {% endfor %}
   </div>
+  {% endif %}
   {% else %}
   <p class="hint">Ken jij deze plek? <a href="{{ url_for('auth.login') }}">Meld je aan</a> en help de info aanvullen — het kost één tik per vraag.</p>
   {% endif %}

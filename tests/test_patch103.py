@@ -687,9 +687,11 @@ def test_een_stem_vult_veld_en_boolean_loopt_mee(client, app):
     assert r.status_code == 200 and r.get_json()["ok"] is True
     with app.app_context():
         assert db.session.get(Event, eid).toilet is True
-    # de beantwoorde vraag verdwijnt
+    # Fase 2: na één stem is het veld 'voorlopig' — de open ja/nee-vraag maakt
+    # plaats voor een 'klopt dit?'-vraag (versterken/weerleggen), dus de knop
+    # blijft bestaan maar de OPEN vraag onder "Nog onbekend" is weg.
     html = client.get("/e/fa1").data.decode()
-    assert f"veld-stem/{eid}/toilet" not in html
+    assert "Klopt dit nog?" in html
 
 
 def test_stem_toggle_trekt_in(client, app):
@@ -769,3 +771,74 @@ def test_help_blok_is_ingeklapt_en_onderaan(client, app):
     assert '<details class="help-aanvullen"' in html      # inklapbaar
     assert 'help-aanvullen" open' not in html             # standaard dicht
     assert html.count("help-vraag") <= 4                   # niet alle tegelijk
+
+
+# Fase 2 — drie toestanden, versterken/weerleggen, twijfel, veroudering.
+
+def test_veld_drie_toestanden(app):
+    from app.models import Event, Family
+    from app import stemmen
+    with app.app_context():
+        e = Event(uit_id="t2a", slug="t2a", title="Plek", source="osm",
+                  subtype="playground", is_permanent=True, gemeente="Gent",
+                  lat=51.05, lng=3.72, toilet=None)
+        db.session.add(e); db.session.flush()
+        fams = [Family(email=f"t2a{i}@t.be", postcode="9000") for i in range(3)]
+        for f in fams: db.session.add(f)
+        db.session.flush()
+        # onbekend
+        assert stemmen.veld_status(e.id, "toilet")["toestand"] == "onbekend"
+        # 1 stem → voorlopig
+        stemmen.leg_stem_vast(e.id, "toilet", True, family=fams[0]); db.session.commit()
+        assert stemmen.veld_status(e.id, "toilet")["toestand"] == "voorlopig"
+        # 3 overeenstemmende stemmen → bevestigd
+        stemmen.leg_stem_vast(e.id, "toilet", True, family=fams[1])
+        stemmen.leg_stem_vast(e.id, "toilet", True, family=fams[2]); db.session.commit()
+        assert stemmen.veld_status(e.id, "toilet")["toestand"] == "bevestigd"
+
+
+def test_tegenstem_toont_twijfel(app):
+    from app.models import Event, Family
+    from app import stemmen
+    with app.app_context():
+        e = Event(uit_id="t2b", slug="t2b", title="Plek", source="osm",
+                  subtype="playground", is_permanent=True, gemeente="Gent",
+                  lat=51.05, lng=3.72, toilet=None)
+        db.session.add(e); db.session.flush()
+        fams = [Family(email=f"t2b{i}@t.be", postcode="9000") for i in range(4)]
+        for f in fams: db.session.add(f)
+        db.session.flush()
+        for f in fams[:3]:
+            stemmen.leg_stem_vast(e.id, "toilet", True, family=f)
+        stemmen.leg_stem_vast(e.id, "toilet", False, family=fams[3])
+        db.session.commit()
+        st = stemmen.veld_status(e.id, "toilet")
+        assert st["waarde"] is True                 # meerderheid nog ja
+        assert st["meerderheid_pct"] == 75          # maar eerlijk: 75%
+
+
+def test_oude_stemmen_verouderen(app):
+    from datetime import datetime, timedelta
+    from app.models import Event, Family, VeldStem
+    from app import stemmen
+    with app.app_context():
+        e = Event(uit_id="t2c", slug="t2c", title="Plek", source="osm",
+                  subtype="playground", is_permanent=True, gemeente="Gent",
+                  lat=51.05, lng=3.72, toilet=None)
+        db.session.add(e); db.session.flush()
+        fams = [Family(email=f"t2c{i}@t.be", postcode="9000") for i in range(4)]
+        for f in fams: db.session.add(f)
+        db.session.flush()
+        for f in fams[:3]:
+            stemmen.leg_stem_vast(e.id, "toilet", True, family=f)
+        stemmen.leg_stem_vast(e.id, "toilet", False, family=fams[3])
+        db.session.commit()
+        # maak de 3 ja-stemmen ruim ouder dan de halfwaardetijd
+        oud = datetime.utcnow() - timedelta(days=1300)
+        for s in VeldStem.query.filter_by(event_id=e.id, veld="toilet", waarde=True).all():
+            s.updated_at = oud
+        db.session.commit()
+        ja = stemmen.veld_status(e.id, "toilet")["ja"]
+        nee = stemmen.veld_status(e.id, "toilet")["nee"]
+        # de 3 oude ja's zijn zo vervaagd dat ze de verse nee amper nog overstemmen
+        assert ja < 1.5 and abs(ja - nee) < 0.5

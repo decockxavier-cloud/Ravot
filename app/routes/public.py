@@ -1186,20 +1186,31 @@ def event(slug):
     if fam:
         mijn_daguitstappen = DagUitstap.query.filter_by(family_id=fam.id) \
             .order_by(DagUitstap.updated_at.desc()).limit(10).all()
-    # Zelf-curatie (fase 1): welke zachte velden zijn nog onbekend? Die tonen we
-    # als micro-vraag. En van welke stem heeft dit gezin er al één gegeven?
+    # Zelf-curatie (fase 2): drie toestanden per zacht veld.
+    #  - onbekend  → open vraag "Is er een toilet? ja/nee"
+    #  - voorlopig → getoond, maar met "klopt dit? 👍/👎" om te versterken/weerleggen
+    #  - bevestigd → staat vast, geen vraag meer
     from ..models import ZACHTE_VELDEN, VOORZIENING_LABELS, VeldStem
     from .. import stemmen as _stemmen
     _status = _stemmen.alle_velden(ev.id)
-    _ontbreekt = [v for v in ZACHTE_VELDEN
-                  if _status.get(v, {}).get("waarde") is None]
-    # stabiele, leesbare volgorde; toon de meest relevante eerst
     _volgorde = ["toilet", "drinkwater", "picknick", "parking", "speelhoek",
                  "terras", "overdekt_terras", "kinderstoel", "omheind",
                  "toegankelijk", "verzorgingstafel", "kindermenu", "buggy_ok",
                  "allergievriendelijk", "babyvoeding", "huisdieren"]
-    ontbrekende_velden = [(v, VOORZIENING_LABELS.get(v, v))
-                          for v in _volgorde if v in _ontbreekt]
+    onbekende_velden = []      # nog niemand → open vraag
+    voorlopige_velden = []     # getoond, vraagt bevestiging
+    for v in _volgorde:
+        if v not in ZACHTE_VELDEN:
+            continue
+        st = _status.get(v)
+        label = VOORZIENING_LABELS.get(v, v)
+        if st is None or st["toestand"] == "onbekend":
+            onbekende_velden.append((v, label))
+        elif st["toestand"] == "voorlopig":
+            voorlopige_velden.append((v, label, st["waarde"], st["meerderheid_pct"]))
+        # 'bevestigd' → geen vraag
+    # compat met de template die één lijst verwacht
+    ontbrekende_velden = onbekende_velden
     mijn_stemmen = {}
     if fam:
         for s in VeldStem.query.filter_by(event_id=ev.id, stemmer=str(fam.id)).all():
@@ -1211,7 +1222,8 @@ def event(slug):
         euro=euro_indicator(total), reviews=[r.public_dict() for r in series_reviews[:10]],
         friends=friends_interested, saved=saved, shared=shared, family=fam,
         fotos=goedgekeurde_fotos,
-        ontbrekende_velden=ontbrekende_velden, mijn_stemmen=mijn_stemmen,
+        ontbrekende_velden=ontbrekende_velden,
+        voorlopige_velden=voorlopige_velden, mijn_stemmen=mijn_stemmen,
         meta_title=title, meta_desc=desc,
         jsonld=[seo.event_jsonld(ev, agg if toon_score else None, total),
                 seo.breadcrumb_jsonld([("Ravot", "/"),
