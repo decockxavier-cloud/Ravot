@@ -812,7 +812,9 @@ def test_tegenstem_toont_twijfel(app):
             stemmen.leg_stem_vast(e.id, "toilet", True, family=f)
         stemmen.leg_stem_vast(e.id, "toilet", False, family=fams[3])
         db.session.commit()
-        st = stemmen.veld_status(e.id, "toilet")
+        # neutraal vertrouwen (fase 2 isoleren van fase 3): elk gezin telt gelijk
+        cache = {str(f.id): 1.0 for f in fams}
+        st = stemmen.veld_status(e.id, "toilet", vertrouwen_cache=cache)
         assert st["waarde"] is True                 # meerderheid nog ja
         assert st["meerderheid_pct"] == 75          # maar eerlijk: 75%
 
@@ -838,7 +840,184 @@ def test_oude_stemmen_verouderen(app):
         for s in VeldStem.query.filter_by(event_id=e.id, veld="toilet", waarde=True).all():
             s.updated_at = oud
         db.session.commit()
-        ja = stemmen.veld_status(e.id, "toilet")["ja"]
-        nee = stemmen.veld_status(e.id, "toilet")["nee"]
+        cache = {str(f.id): 1.0 for f in fams}      # neutraal vertrouwen
+        st = stemmen.veld_status(e.id, "toilet", vertrouwen_cache=cache)
+        ja, nee = st["ja"], st["nee"]
         # de 3 oude ja's zijn zo vervaagd dat ze de verse nee amper nog overstemmen
         assert ja < 1.5 and abs(ja - nee) < 0.5
+
+
+# Fase 3 — onzichtbaar vertrouwen, gevoelige velden, plausibiliteit.
+
+def test_vertrouwen_betrouwbaar_weegt_zwaarder(app):
+    from app.models import Event, Family
+    from app import stemmen
+    with app.app_context():
+        fams = {n: Family(email=f"v3{n}@t.be", postcode="9000") for n in "ABCD"}
+        for f in fams.values(): db.session.add(f)
+        db.session.flush()
+        for i in range(8):
+            e = Event(uit_id=f"v3e{i}", slug=f"v3e{i}", title=f"P{i}", source="osm",
+                      subtype="playground", is_permanent=True, gemeente="Gent",
+                      lat=51.05, lng=3.72, toilet=None)
+            db.session.add(e); db.session.flush()
+            stemmen.leg_stem_vast(e.id, "toilet", True, family=fams["C"])
+            stemmen.leg_stem_vast(e.id, "toilet", True, family=fams["D"])
+            stemmen.leg_stem_vast(e.id, "toilet", True, family=fams["A"])
+            stemmen.leg_stem_vast(e.id, "toilet", False, family=fams["B"])
+        db.session.commit()
+        va = stemmen.stemmer_vertrouwen(str(fams["A"].id))
+        vb = stemmen.stemmer_vertrouwen(str(fams["B"].id))
+        assert va > 1.0 > vb            # A boven basis, B eronder
+        assert va > vb
+
+
+def test_veranderingsmelder_niet_gestraft(app):
+    """Kernprincipe: wie een verandering meldt en wiens tijdgenoten dat beamen,
+    wordt niet gestraft — ook al gaat hij tegen oudere stemmen in."""
+    from app.models import Event, Family
+    from app import stemmen
+    with app.app_context():
+        fams = {n: Family(email=f"chg{n}@t.be", postcode="9000") for n in "CXY"}
+        for f in fams.values(): db.session.add(f)
+        db.session.flush()
+        e = Event(uit_id="v3chg", slug="v3chg", title="P", source="osm",
+                  subtype="playground", is_permanent=True, gemeente="Gent",
+                  lat=51.05, lng=3.72, toilet=None)
+        db.session.add(e); db.session.flush()
+        for n in "CXY":
+            stemmen.leg_stem_vast(e.id, "toilet", False, family=fams[n])
+        db.session.commit()
+        assert stemmen.stemmer_vertrouwen(str(fams["C"].id)) >= 1.0
+
+
+def test_gevoelig_veld_hogere_drempel(app):
+    from app.models import Event, Family
+    from app import stemmen
+    with app.app_context():
+        e = Event(uit_id="v3g", slug="v3g", title="P", source="osm",
+                  subtype="playground", is_permanent=True, gemeente="Gent",
+                  lat=51.05, lng=3.72)
+        db.session.add(e); db.session.flush()
+        fams = [Family(email=f"v3g{i}@t.be", postcode="9000") for i in range(3)]
+        for f in fams: db.session.add(f)
+        db.session.flush()
+        # 3 stemmen op een gevoelig veld → nog NIET bevestigd (hogere drempel)
+        for f in fams:
+            stemmen.leg_stem_vast(e.id, "gesloten", True, family=f)
+        db.session.commit()
+        st = stemmen.veld_status(e.id, "gesloten")
+        assert st["toestand"] == "voorlopig"     # zou 'bevestigd' zijn bij zacht veld
+
+
+def test_plausibiliteit_markeert_onmogelijk(app):
+    from app.models import Event
+    from app import stemmen
+    with app.app_context():
+        e = Event(uit_id="v3p", slug="v3p", title="P", source="osm",
+                  subtype="playground", is_permanent=True, gemeente="Gent",
+                  lat=51.05, lng=3.72, age_min=8, age_max=2)
+        db.session.add(e); db.session.flush()
+        w = stemmen.plausibiliteitswaarschuwingen(e)
+        assert any("omgekeerd" in x for x in w)
+
+
+# Fase 4 — motivatie: bijdrage-punten en badges.
+
+def test_bijdrage_geeft_punten_niet_farmbaar(app):
+    from app.models import Event, Family
+    from app import punten
+    with app.app_context():
+        e = Event(uit_id="p4a", slug="p4a", title="P", source="osm",
+                  subtype="playground", is_permanent=True, gemeente="Gent",
+                  lat=51.05, lng=3.72)
+        db.session.add(e)
+        fam = Family(email="p4a@t.be", postcode="9000")
+        db.session.add(fam); db.session.flush()
+        db.session.commit()
+        assert punten.ken_toe(fam.id, "veld_stem", ref_id=e.id * 100 + 1) == 3
+        # tweede keer zelfde ref → geen extra
+        assert punten.ken_toe(fam.id, "veld_stem", ref_id=e.id * 100 + 1) == 0
+
+
+def test_pionier_badge_voor_eerste_bijdragers(app):
+    from app.models import Event, Family
+    from app import stemmen, punten
+    with app.app_context():
+        e = Event(uit_id="p4b", slug="p4b", title="P", source="osm",
+                  subtype="playground", is_permanent=True, gemeente="Gent",
+                  lat=51.05, lng=3.72)
+        db.session.add(e)
+        fam = Family(email="p4b@t.be", postcode="9000")
+        db.session.add(fam); db.session.flush()
+        stemmen.leg_stem_vast(e.id, "toilet", True, family=fam)
+        db.session.commit()
+        punten._pionier_cache = None
+        bs = {b["naam"]: b for b in punten.badges(fam.id)}
+        assert bs["Pionier"]["behaald"] is True
+        assert bs["Fiche-aanvuller"]["teller"] == 1
+
+
+def test_eerste_score_bonus_bestaat(app):
+    from app.models import PUNT_REDENEN
+    assert PUNT_REDENEN["eerste_score"] > PUNT_REDENEN["review"]
+    assert "veld_stem" in PUNT_REDENEN
+
+
+# Selectieve vragen: enkel velden die bij het type plek passen.
+
+def test_relevante_velden_per_type(app):
+    from app.models import Event
+    from app import stemmen
+    with app.app_context():
+        sp = Event(uit_id="rv_sp", slug="rv_sp", title="S", source="osm",
+                   subtype="playground", is_permanent=True, gemeente="Gent",
+                   lat=51.05, lng=3.72)
+        ho = Event(uit_id="rv_ho", slug="rv_ho", title="H", source="osm",
+                   subtype="horeca", is_permanent=True, gemeente="Gent",
+                   lat=51.05, lng=3.72)
+        db.session.add_all([sp, ho]); db.session.flush()
+        # speeltuin: geen kindermenu, wel drinkwater
+        assert "kindermenu" not in stemmen.relevante_velden(sp)
+        assert "drinkwater" in stemmen.relevante_velden(sp)
+        # horeca: wel kindermenu, geen omheining
+        assert "kindermenu" in stemmen.relevante_velden(ho)
+        assert "omheind" not in stemmen.relevante_velden(ho)
+        # toilet is overal relevant
+        assert "toilet" in stemmen.relevante_velden(sp)
+        assert "toilet" in stemmen.relevante_velden(ho)
+
+
+def test_stem_weigert_irrelevant_veld_voor_type(client, app):
+    from app.models import Event, Family
+    with app.app_context():
+        e = Event(uit_id="rv_w", slug="rv_w", title="S", source="osm",
+                  subtype="playground", is_permanent=True, gemeente="Gent",
+                  lat=51.05, lng=3.72)
+        db.session.add(e)
+        fam = Family(email="rvw@t.be", postcode="9000")
+        db.session.add(fam); db.session.flush()
+        db.session.commit()
+        eid, fid = e.id, fam.id
+    with client.session_transaction() as s:
+        s["family_id"] = fid
+    # kindermenu hoort niet bij een speeltuin → geweigerd
+    assert client.post(f"/mijn/veld-stem/{eid}/kindermenu/ja").status_code == 400
+    # drinkwater hoort er wel bij → toegestaan
+    assert client.post(f"/mijn/veld-stem/{eid}/drinkwater/ja").status_code in (200, 302)
+
+
+# Fase 5 — eerlijke inkadering.
+
+def test_zo_help_je_mee_pagina(client, app):
+    r = client.get("/zo-help-je-mee")
+    assert r.status_code == 200
+    html = r.data.decode()
+    assert "jij bouwt mee" in html.lower()
+    assert "Ravotscore" in html
+
+
+def test_homepage_toont_bouw_mee_blok(client, app):
+    html = client.get("/").data.decode()
+    assert "bouw-mee" in html or "bouwt mee" in html.lower()
+    assert "zo-help-je-mee" in html

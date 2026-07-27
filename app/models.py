@@ -853,6 +853,8 @@ PUNT_REDENEN = {
     "daguitstap": 5,       # daguitstap samengesteld
     "feestje": 10,         # verjaardagsfeestje georganiseerd via Ravot
     "plek": 15,            # zelf een plek toegevoegd die live ging
+    "veld_stem": 3,        # een voorziening bevestigd of aangevuld (fase 4)
+    "eerste_score": 15,    # de állereerste Ravotscore van een plek (fase 4)
 }
 
 

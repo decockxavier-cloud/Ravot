@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Zo help je mee 🦊</h1>
+
+<div class="card">
+  <p><strong>Ravot is jong — en jij bouwt mee.</strong> We verzamelen de leukste
+  gezinsuitstappen van Vlaanderen, maar we kunnen niet overal geweest zijn.
+  Jij wel. Met een paar tikjes maak je Ravot beter voor elk gezin na jou.</p>
+  <p>Je hoeft niets groots te doen. Drie kleine dingen helpen enorm:</p>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">🧩 Vul info aan</h2>
+  <p>Op elke fiche staan kleine vragen: <em>is er een toilet? een picknicktafel?
+  een parking?</em> Eén tik en het staat er — voor iedereen. Weet je het niet
+  zeker? Dan sla je die vraag gewoon over.</p>
+  <p class="hint">Klopt bestaande info niet meer? Bij "Klopt dit nog?" tik je
+  👍 of 👎. Zo blijft alles up-to-date, ook als een plek verandert.</p>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">😄 Geef een Ravotscore</h2>
+  <p>Ben je ergens geweest? Laat in twee tikjes weten hoe de kinderen het vonden
+  en hoe jij het vond. Jouw score helpt honderden gezinnen na jou kiezen — en de
+  Ravotscore komt <strong>altijd</strong> van gezinnen, nooit van reclame.</p>
+  <p class="hint">Ben je de eerste die een plek scoort? Dan verdien je een extra
+  beloning — de eerste score is de moeilijkste én de waardevolste.</p>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">📸 Voeg een foto toe</h2>
+  <p>Een echte foto van een gezin zegt meer dan duizend woorden. Heb je er een?
+  Andere ouders zien in één oogopslag of een plek iets voor hen is.</p>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">🌟 En wat krijg jij ervan?</h2>
+  <p>Elke bijdrage levert <strong>ravotpunten</strong> op voor je Ravotpas, en er
+  zijn badges te verdienen — van <em>Fiche-aanvuller</em> tot <em>Scorekampioen</em>.
+  Wie bij de eersten hoort die meebouwen, verdient de zeldzame
+  <strong>🌟 Pionier</strong>-badge. Die kan later niemand meer halen.</p>
+  <p>Maar het mooiste? Je maakt Ravot een beetje van jou. En van elk gezin dat na
+  jou komt.</p>
+  {% if not family %}
+  <div class="acties" style="margin-top:12px">
+    <a class="btn" href="{{ url_for('auth.login') }}">Maak een gratis profiel</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

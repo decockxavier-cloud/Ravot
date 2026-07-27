@@ -207,6 +207,10 @@ def veld_stem(event_id, veld, waarde):
         abort(400)
     fam = me()
     ev = db.session.get(Event, event_id) or abort(404)
+    # Alleen velden die bij dít type plek horen (geen "kindermenu" op een
+    # speeltuin, ook niet via een handgemaakte URL).
+    if veld not in stemmen.relevante_velden(ev):
+        abort(400)
     ja = (waarde == "ja")
 
     bestaand = VeldStem.query.filter_by(
@@ -221,6 +225,11 @@ def veld_stem(event_id, veld, waarde):
 
     stemmen.leg_stem_vast(ev.id, veld, ja, family=fam)
     _herbereken_boolean(ev, veld)
+    # Ravotpas: beloon de moeite van het bijdragen (fase 4). Idempotent per
+    # (gezin, plek+veld): blijven tikken levert nooit extra punten op. De punten
+    # belonen de moeite, nooit de inhoud — je koopt geen betere score.
+    from ..punten import ken_toe
+    ken_toe(fam.id, "veld_stem", ref_id=ev.id * 100 + (hash(veld) % 100))
     db.session.commit()
 
     lbl = VOORZIENING_LABELS.get(veld, veld)
@@ -397,7 +406,13 @@ def review(event_id):
             tags=tags, child_ages=fam.child_ages(),
         ))
         db.session.add(Interaction(family_id=fam.id, event_id=event_id, type="review"))
+        # Was dit de állereerste Ravotscore van deze plek? Dan een extra bonus:
+        # de eerste score is de moeilijkste en waardevolste (fase 4).
+        eerste = Review.query.filter(Review.event_id == event_id,
+                                     Review.family_id != fam.id).first() is None
         extra = pas.ken_toe(fam.id, "review", event_id)
+        if eerste:
+            extra += pas.ken_toe(fam.id, "eerste_score", event_id)
         _tags_naar_velden(ev, tags)
         db.session.commit()
         boodschap = "Ravotscore bewaard — bedankt om andere gezinnen te helpen! 🌟"

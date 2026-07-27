@@ -1193,15 +1193,12 @@ def event(slug):
     from ..models import ZACHTE_VELDEN, VOORZIENING_LABELS, VeldStem
     from .. import stemmen as _stemmen
     _status = _stemmen.alle_velden(ev.id)
-    _volgorde = ["toilet", "drinkwater", "picknick", "parking", "speelhoek",
-                 "terras", "overdekt_terras", "kinderstoel", "omheind",
-                 "toegankelijk", "verzorgingstafel", "kindermenu", "buggy_ok",
-                 "allergievriendelijk", "babyvoeding", "huisdieren"]
+    # Enkel de velden die zinnig zijn voor dít type plek (geen "kindermenu?" bij
+    # een speeltuin). De relevantie zit in stemmen.relevante_velden().
+    _volgorde = _stemmen.relevante_velden(ev)
     onbekende_velden = []      # nog niemand → open vraag
     voorlopige_velden = []     # getoond, vraagt bevestiging
     for v in _volgorde:
-        if v not in ZACHTE_VELDEN:
-            continue
         st = _status.get(v)
         label = VOORZIENING_LABELS.get(v, v)
         if st is None or st["toestand"] == "onbekend":
@@ -1451,6 +1448,14 @@ def _content_of_template(slug, fallback_template, titel):
 @bp.route("/over")
 def over():
     return _content_of_template("over", "public/over.html", "Over Ravot")
+
+
+@bp.route("/zo-help-je-mee")
+def zo_help_je_mee():
+    """Fase 5: eerlijke inkadering — één scherm dat uitlegt hoe je meebouwt."""
+    return render_template("public/zo_help_je_mee.html",
+                           family=current_family(), active=None,
+                           title="Zo help je mee")
 
 
 @bp.route("/hoe-werkt-het")

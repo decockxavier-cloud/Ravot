@@ -34,6 +34,8 @@ BADGES = [
     ("recensent", "😄", "Scorekampioen", "Geef 5 Ravotscores", 5),
     ("ontdekker", "🦊", "Echte Ravotter", "Bezoek 10 verschillende plekken", 10),
     ("reiziger", "🗺️", "Vlaanderen-verkenner", "Ravot in 5 verschillende gemeenten", 5),
+    ("aanvuller", "🧩", "Fiche-aanvuller", "Vul 10 keer info aan op een fiche", 10),
+    ("pionier", "🌟", "Pionier", "Bij de eersten die meebouwden aan Ravot", 1),
 ]
 
 _BADGE_TYPES = {
@@ -155,6 +157,31 @@ def _bezochte_events(family_id):
         family_id=family_id, geweest=True).all() if s.event]
 
 
+# Pionier: de eerste ~100 gezinnen die ooit een voorziening bijdroegen. Tijdelijk
+# en onherhaalbaar — wie te laat is, kan hem nooit meer halen. Dat maakt hem
+# begeerd en zet vroege gebruikers aan om nú te helpen.
+PIONIER_AANTAL = 100
+_pionier_cache = None
+
+
+def _is_pionier(family_id_str):
+    """Hoort dit gezin bij de eerste PIONIER_AANTAL bijdragers? Bepaald op de
+    vroegste bijdrage per stemmer, chronologisch. Gecachet per proces."""
+    global _pionier_cache
+    if _pionier_cache is None:
+        from .models import VeldStem
+        # vroegste bijdrage per gebruiker (bron uitgesloten)
+        rijen = (VeldStem.query
+                 .filter(VeldStem.stemmer != "bron")
+                 .with_entities(VeldStem.stemmer,
+                                db.func.min(VeldStem.created_at).label("eerste"))
+                 .group_by(VeldStem.stemmer)
+                 .order_by(db.text("eerste ASC"))
+                 .limit(PIONIER_AANTAL).all())
+        _pionier_cache = {r[0] for r in rijen}
+    return family_id_str in _pionier_cache
+
+
 def stempelkaart(family_id):
     """De verzameling: elke bevestigde plek als stempel {emoji, titel, slug,
     gemeente}. Nieuwste eerst — dat voelt als 'kaarten verzamelen'."""
@@ -175,6 +202,12 @@ def badges(family_id):
     fotos = Photo.query.filter_by(family_id=family_id, status="approved").count()
     reviews = Review.query.filter_by(family_id=family_id).count()
     gemeenten = {e.gemeente for e in events if e.gemeente}
+    # Bijdrage-tellers (fase 4): aantal voorziening-bijdragen van dit gezin, en
+    # of het gezin tot de eerste ~100 bijdragers hoort (Pionier).
+    from .models import VeldStem
+    fid = str(family_id)
+    aanvullingen = VeldStem.query.filter_by(stemmer=fid).count()
+    is_pionier = _is_pionier(fid) if aanvullingen else False
     uit = []
     for code, emoji, naam, uitleg, doel in BADGES:
         if code in _BADGE_TYPES:
@@ -189,6 +222,10 @@ def badges(family_id):
             teller = len({e.id for e in events})
         elif code == "reiziger":
             teller = len(gemeenten)
+        elif code == "aanvuller":
+            teller = aanvullingen
+        elif code == "pionier":
+            teller = 1 if is_pionier else 0
         else:
             teller = 0
         uit.append({"emoji": emoji, "naam": naam, "uitleg": uitleg,

@@ -145,6 +145,12 @@ def test_punten_geweest_en_review_idempotent(client, seed):
     from app import punten as pas
     fam, ev = seed["fam_a"], seed["events"][0]
     _voorbij(ev)
+    # bestaande review van een ander gezin: zo is fam_a niet de eerste scoorder
+    # en telt de eerste-score-bonus (fase 4) hier niet mee.
+    from app.models import Review as _Rv
+    db.session.add(_Rv(family_id=seed["fam_b"].id, event_id=ev.id,
+                       kid_score=4, parent_score=3))
+    db.session.commit()
     login_as(client, fam)
     client.post(f"/mijn/geweest/{ev.id}", data={"antwoord": "ja"})
     assert pas.totaal(fam.id) == 5
@@ -728,6 +734,12 @@ def test_wisselen_verlaagt_saldo_niet_niveau(client, seed):
     fam = seed["fam_a"]
     _oud_genoeg(fam)
     _voorbij(*seed["events"][:2])
+    # bestaande reviews van een ander gezin → geen eerste-score-bonus (fase 4)
+    from app.models import Review as _Rv
+    for ev in seed["events"][:2]:
+        db.session.add(_Rv(family_id=seed["fam_b"].id, event_id=ev.id,
+                           kid_score=4, parent_score=3))
+    db.session.commit()
     login_as(client, fam)
     # verdien 30 punten (2 bezoeken + 2 reviews)
     for ev in seed["events"][:2]:
@@ -766,6 +778,10 @@ def test_annulatie_geeft_voorraad_en_punten_terug(client, seed, app):
     fam = seed["fam_a"]
     _oud_genoeg(fam)
     _voorbij(seed["events"][0])
+    from app.models import Review as _Rv
+    db.session.add(_Rv(family_id=seed["fam_b"].id, event_id=seed["events"][0].id,
+                       kid_score=4, parent_score=3))
+    db.session.commit()
     login_as(client, fam)
     client.post(f"/mijn/geweest/{seed['events'][0].id}", data={"antwoord": "ja"})
     client.post(f"/mijn/review/{seed['events'][0].id}",

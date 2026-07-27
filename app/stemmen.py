@@ -37,12 +37,124 @@ HALFWAARDE_DAGEN = {
 }
 STANDAARD_HALFWAARDE = 800
 
+# --- Welke velden zijn relevant voor welk soort plek? -----------------------
+# Niet alles is overal van toepassing: "kindermenu?" bij een speeltuin is onzin,
+# "speelhoek?" bij een museum ook. We tonen per plek enkel de zinnige vragen.
+# 'ALGEMEEN' geldt overal; daarnaast per familie de specifieke velden.
+VELDEN_ALGEMEEN = ["toilet", "parking", "toegankelijk", "huisdieren"]
+
+# Buitenplekken: speeltuin, park, natuur, speelbos...
+VELDEN_BUITEN = ["drinkwater", "picknick", "omheind", "buggy_ok"]
+# Eetplekken: horeca, bars, kinderboerderij-met-cafetaria...
+VELDEN_HORECA = ["kindermenu", "kinderstoel", "terras", "overdekt_terras",
+                 "speelhoek", "allergievriendelijk", "babyvoeding"]
+# Bezoekplekken (binnen of gemengd): museum, kasteel, zoo, pretpark...
+VELDEN_BEZOEK = ["kinderstoel", "verzorgingstafel", "buggy_ok", "speelhoek"]
+
+# Per type-code de familie. Onbekende types → enkel de algemene velden.
+_TYPE_VELDEN = {
+    # buiten
+    "playground": VELDEN_BUITEN + ["verzorgingstafel"],
+    "park": VELDEN_BUITEN, "nature_reserve": VELDEN_BUITEN,
+    "swimming_area": VELDEN_BUITEN, "viewpoint": ["drinkwater", "picknick"],
+    "uit_wandeling": ["drinkwater", "picknick"],
+    # bezoek
+    "museum": VELDEN_BEZOEK, "castle": VELDEN_BEZOEK,
+    "zoo": VELDEN_BEZOEK + ["picknick", "drinkwater"],
+    "aquarium": VELDEN_BEZOEK,
+    "theme_park": VELDEN_BEZOEK + ["picknick"],
+    "water_park": ["kinderstoel", "verzorgingstafel", "terras"],
+    "attraction": VELDEN_BEZOEK, "miniature_golf": ["terras", "drinkwater"],
+    "uit_kinderboerderij": VELDEN_BEZOEK + ["picknick", "drinkwater"],
+    "uit_indoorspeeltuin": VELDEN_HORECA + ["verzorgingstafel"],
+    # eten
+    "horeca": VELDEN_HORECA, "zomerbar": VELDEN_HORECA,
+    "winterbar": VELDEN_HORECA,
+}
+
+
+def relevante_velden(event):
+    """De zachte velden die zinnig zijn om te vragen voor déze plek, in een
+    stabiele volgorde. Algemene velden eerst, dan de type-specifieke."""
+    code = getattr(event, "subtype", None)
+    specifiek = _TYPE_VELDEN.get(code, [])
+    volgorde = []
+    for v in VELDEN_ALGEMEEN + specifiek:
+        if v in ZACHTE_VELDEN and v not in volgorde:
+            volgorde.append(v)
+    return volgorde
+
 # Drempels voor de drie toestanden (netto gewicht = |ja - nee|).
 # Eén verse gebruikersstem (gewicht ~1) tilt een veld al naar 'voorlopig':
 # het wordt getoond, maar blijft vragen om bevestiging tot het stevig staat.
 DREMPEL_BEVESTIGD = 2.5   # genoeg overeenstemming → staat vast, geen vraag meer
 # twijfel: als de minderheid een noemenswaardig deel is, tonen we "meestal ja"
 TWIJFEL_AANDEEL = 0.20    # ≥20% tegenstem → eerlijk als "meestal" tonen
+
+# --- Fase 3: vertrouwen -----------------------------------------------------
+# Het gewicht van een stemmer wordt LIVE uit zijn geschiedenis berekend (zoals
+# de badges), niet als kolom bewaard: geen migratie, altijd consistent, nooit
+# verouderd. Onzichtbaar voor de gebruiker.
+VERTROUWEN_MIN = 0.4      # ondergrens: een onruststoker telt nooit helemaal weg
+VERTROUWEN_MAX = 2.5      # bovengrens: één bewezen bijdrager domineert niet
+# Tijdvenster waarbinnen stemmen "tijdgenoten" zijn (dagen). Klopte je met wie
+# in dezelfde periode stemde? Niet met de verre toekomst.
+VENSTER_DAGEN = 120
+# Gevoelige velden: hogere drempel vóór ze doorwerken, want een fout heeft grote
+# of moeilijk terug te draaien gevolgen. (Deze staan niet in ZACHTE_VELDEN.)
+GEVOELIGE_VELDEN = {"gesloten", "niet_kindvriendelijk"}
+DREMPEL_GEVOELIG = 5.5
+
+
+def stemmer_vertrouwen(stemmer, nu=None):
+    """Live gewicht van één stemmer (family-id als tekst), tussen VERTROUWEN_MIN
+    en VERTROUWEN_MAX. De bron heeft een vast, neutraal gewicht.
+
+    Principe (jouw keuze): je klopt of niet t.o.v. je TIJDGENOTEN, niet t.o.v.
+    de verre toekomst. Voor elke stem die je ooit gaf, kijken we of ze
+    overeenkwam met wat andere stemmers in hetzelfde tijdvenster op datzelfde
+    veld zeiden. Veel overeenkomst → gewicht omhoog; stelselmatig ertegen in →
+    omlaag. Wie de wereld ziet veranderen en dat meldt, wordt NIET gestraft,
+    want de tijdgenoten zien dezelfde verandering.
+    """
+    if stemmer == "bron":
+        return BRON_GEWICHT
+    nu = nu or datetime.utcnow()
+    from datetime import timedelta
+    eigen = VeldStem.query.filter_by(stemmer=stemmer).all()
+    if not eigen:
+        return GEBRUIKER_BASIS_GEWICHT
+    juist = 0.0
+    fout = 0.0
+    for s in eigen:
+        moment = s.updated_at or s.created_at or nu
+        venster_start = moment - timedelta(days=VENSTER_DAGEN)
+        venster_eind = moment + timedelta(days=VENSTER_DAGEN)
+        # tijdgenoten: andere stemmers, zelfde veld+plek, binnen het venster
+        buren = VeldStem.query.filter(
+            VeldStem.event_id == s.event_id, VeldStem.veld == s.veld,
+            VeldStem.stemmer != stemmer, VeldStem.stemmer != "bron").all()
+        ja = nee = 0
+        for b in buren:
+            bm = b.updated_at or b.created_at or nu
+            if venster_start <= bm <= venster_eind:
+                if b.waarde:
+                    ja += 1
+                else:
+                    nee += 1
+        if ja == nee:
+            continue                 # geen tijdgenoten of gelijkspel: neutraal
+        tijdgenoten_zeggen = ja > nee
+        if s.waarde == tijdgenoten_zeggen:
+            juist += 1
+        else:
+            fout += 1
+    if juist + fout == 0:
+        return GEBRUIKER_BASIS_GEWICHT
+    # verhouding juist/totaal, geschaald rond het basisgewicht
+    ratio = juist / (juist + fout)
+    gewicht = GEBRUIKER_BASIS_GEWICHT * (0.5 + ratio)   # 0.5x .. 1.5x
+    return max(VERTROUWEN_MIN, min(VERTROUWEN_MAX, gewicht))
 
 
 def _stemmer_id(family):
@@ -81,16 +193,23 @@ def _verval_factor(veld, stem, nu=None):
     return 0.5 ** (dagen / halfwaarde)
 
 
-def _weeg(stemmen, veld, nu=None):
-    """Splits in (gewicht_ja, gewicht_nee), mét veroudering per stem.
+def _weeg(stemmen, veld, nu=None, vertrouwen_cache=None):
+    """Splits in (gewicht_ja, gewicht_nee), mét veroudering én vertrouwen.
 
-    Dit is de enige plek waar veroudering (fase 2) en straks vertrouwen (fase 3)
-    ingrijpen — de rest van de code merkt er niets van.
+    De enige plek waar veroudering (fase 2) en vertrouwen (fase 3) ingrijpen —
+    de rest van de code merkt er niets van. Elke stem telt voor:
+        basisgewicht × verval-door-tijd × vertrouwen-van-de-stemmer
     """
     nu = nu or datetime.utcnow()
+    cache = vertrouwen_cache if vertrouwen_cache is not None else {}
     ja = nee = 0.0
     for s in stemmen:
-        g = s.gewicht * _verval_factor(veld, s, nu)
+        if s.stemmer not in cache:
+            cache[s.stemmer] = stemmer_vertrouwen(s.stemmer, nu)
+        vertrouwen = cache[s.stemmer]
+        # de bronstem heeft zijn gewicht al in s.gewicht; niet dubbel wegen
+        basis = s.gewicht if s.stemmer == "bron" else vertrouwen
+        g = basis * _verval_factor(veld, s, nu)
         if s.waarde:
             ja += g
         else:
@@ -98,7 +217,7 @@ def _weeg(stemmen, veld, nu=None):
     return ja, nee
 
 
-def veld_status(event_id, veld, stemmen=None, nu=None):
+def veld_status(event_id, veld, stemmen=None, nu=None, vertrouwen_cache=None):
     """De uitkomst voor één veld, als dict:
 
         {waarde, ja, nee, herkomst, toestand, meerderheid_pct}
@@ -116,7 +235,7 @@ def veld_status(event_id, veld, stemmen=None, nu=None):
                 "toestand": "onbekend", "meerderheid_pct": None}
 
     nu = nu or datetime.utcnow()
-    ja, nee = _weeg(stemmen, veld, nu)
+    ja, nee = _weeg(stemmen, veld, nu, vertrouwen_cache)
     heeft_gebruiker = any(s.stemmer != "bron" for s in stemmen)
     herkomst = "bezoekers" if heeft_gebruiker else "bron"
 
@@ -128,9 +247,10 @@ def veld_status(event_id, veld, stemmen=None, nu=None):
 
     netto = abs(ja - nee)
     totaal = ja + nee
+    drempel = DREMPEL_GEVOELIG if veld in GEVOELIGE_VELDEN else DREMPEL_BEVESTIGD
     if waarde is None or totaal <= 0:
         toestand = "onbekend"
-    elif netto >= DREMPEL_BEVESTIGD:
+    elif netto >= drempel:
         toestand = "bevestigd"
     else:
         toestand = "voorlopig"
@@ -149,14 +269,40 @@ def veld_status(event_id, veld, stemmen=None, nu=None):
 
 def alle_velden(event_id, nu=None):
     """Alle velden met stemmen voor één plek → {veld: status-dict}. Eén query,
-    één gedeeld 'nu'-moment zodat de veroudering consistent is."""
+    één gedeeld 'nu'-moment én één gedeelde vertrouwen-cache (fase 3), zodat de
+    weging consistent en zonder herberekening gebeurt."""
     nu = nu or datetime.utcnow()
     rijen = VeldStem.query.filter_by(event_id=event_id).all()
     per_veld = {}
     for r in rijen:
         per_veld.setdefault(r.veld, []).append(r)
-    return {veld: veld_status(event_id, veld, stemmen, nu=nu)
+    cache = {}
+    return {veld: veld_status(event_id, veld, stemmen, nu=nu,
+                              vertrouwen_cache=cache)
             for veld, stemmen in per_veld.items()}
+
+
+# --- Fase 3: plausibiliteitscheks -------------------------------------------
+# Simpele als-dan-regels die onmogelijke combinaties markeren voor de admin-
+# wachtrij. Geen intelligentie, geen ML — enkel gezond verstand in code.
+def plausibiliteitswaarschuwingen(event):
+    """Retourneert een lijst korte waarschuwingen over onmogelijke of verdachte
+    combinaties op één plek. Leeg = niets aan de hand."""
+    uit = []
+    amin = getattr(event, "age_min", None)
+    amax = getattr(event, "age_max", None)
+    if amin is not None and amax is not None:
+        if amin > amax:
+            uit.append(f"leeftijd van-tot omgekeerd ({amin}-{amax})")
+        if amax - amin <= 1 and getattr(event, "subtype", None) == "playground":
+            uit.append(f"speeltuin met heel smalle leeftijd ({amin}-{amax})")
+    # gratis én een prijs ingevuld
+    if getattr(event, "is_free", None) and getattr(event, "prijs_indicatie", None):
+        uit.append("gemarkeerd als gratis maar met een prijs")
+    # binnen én buiten tegelijk als expliciete booleans
+    if getattr(event, "indoor", None) is True and getattr(event, "outdoor", None) is True:
+        uit.append("zowel binnen als buiten aangevinkt")
+    return uit
 
 
 def zaai_bronstemmen(event, velden=None):
