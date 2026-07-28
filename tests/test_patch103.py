@@ -1124,3 +1124,14 @@ def test_leeftijd_badge_niet_op_fiche_bij_default(client, app):
     # geen "0–12 jaar"-badge meer op een gewone fiche
     assert "0–12 jaar" not in html
     assert "0-12 jaar" not in html
+
+
+def test_zoekknop_ingebouwd_op_ontdek_en_kaart(client, app):
+    """De zoekknop hoort in het zoekveld te zitten (zoekveld-wrap + zoek-knop),
+    net als op de Vandaag-pagina — niet los eronder."""
+    for url in ("/ontdek", "/ontdek?weergave=kaart"):
+        html = client.get(url).data.decode()
+        assert "zoekveld-wrap" in html
+        assert "zoek-knop" in html
+        # de oude losse knop mag er niet meer staan
+        assert 'class="btn btn-klein" type="submit">Zoek' not in html

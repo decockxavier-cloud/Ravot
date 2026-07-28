@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 {% block body_class %}met-sfeer{% endblock %}
 {% block content %}
-<h1>Ontdek alles 🔭</h1>
+<div class="vandaag-kop">
+  <h1>Ontdek alles 🔭</h1>
+  {% include "public/_weer.html" ignore missing %}
+</div>
 
 {% if not has_profile %}
 <div class="personaliseer-banner">
@@ -20,8 +23,6 @@
   </span>
 </div>
 {% endif %}
-
-{% include "public/_weer.html" ignore missing %}
 
 {% include "public/_groepbalk.html" %}
 
