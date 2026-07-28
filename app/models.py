@@ -169,6 +169,7 @@ class Event(db.Model):
     start = db.Column(db.DateTime, index=True)
     end = db.Column(db.DateTime, index=True)
     gemeente = db.Column(db.String(80), index=True)
+    deelgemeente = db.Column(db.String(80))   # bv. "Rumbeke" bij gemeente "Roeselare"
     postcode = db.Column(db.String(4), index=True)
     adres = db.Column(db.String(255))   # straat + huisnummer (bv. uit OSM addr:*)
     lat = db.Column(db.Float)

@@ -41,6 +41,10 @@ def create_app(config_object=Config):
     app.jinja_env.globals["event_datum"] = event_datum
     from .plaatsen import land_label
     app.jinja_env.globals["land_label"] = land_label
+    from .gemeenten import toon_gemeente as _toon_gem
+    app.jinja_env.globals["toon_gemeente"] = (
+        lambda e: _toon_gem(getattr(e, "gemeente", None),
+                            getattr(e, "deelgemeente", None)))
     from .services.label import label_info, kamp_thumb, kamp_fotos
     app.jinja_env.globals["label_info"] = label_info
     app.jinja_env.globals["kamp_thumb"] = kamp_thumb
@@ -351,6 +355,30 @@ def register_cli(app):
         db.session.commit()
         print(f"Gemeente aangevuld: {gevuld} · geen zwaartepunt binnen 10 km: {zonder}")
 
+    @app.cli.command("backfill-gemeenten-fusie")
+    def backfill_gemeenten_fusie():
+        """Zet bestaande fiches om naar de officiële fusiegemeente, met de
+        deelgemeente als bijschrift. Bv. gemeente 'Rumbeke' (postcode 8800) wordt
+        gemeente 'Roeselare' + deelgemeente 'Rumbeke'. Idempotent en veilig:
+        werkt op postcode, dus dubbelnamen (Beveren 8800 vs 9120) gaan juist."""
+        from .models import Event
+        from .gemeenten import normaliseer
+        rijen = Event.query.with_entities(
+            Event.id, Event.gemeente, Event.postcode).all()
+        gewijzigd = 0
+        for i, (eid, gem, pc) in enumerate(rijen, 1):
+            fusie, deel = normaliseer(pc, gem)
+            if fusie and (fusie != gem or deel):
+                ev = db.session.get(Event, eid)
+                ev.gemeente = fusie
+                ev.deelgemeente = deel
+                gewijzigd += 1
+            if i % 1000 == 0:
+                db.session.commit()
+                print(f"  {i} van {len(rijen)}...", flush=True)
+        db.session.commit()
+        print(f"Gemeenten genormaliseerd: {gewijzigd} van {len(rijen)} fiches.")
+
     @app.cli.command("zaai-veldstemmen")
     def zaai_veldstemmen():
         """Fase 0 zelf-curatie: lees de bestaande voorziening-booleans op elke
@@ -594,6 +622,7 @@ def register_cli(app):
             # patch 102: horeca-detail + uitbater
             "cuisine VARCHAR(80)", "veggie BOOLEAN", "afhaal BOOLEAN",
             "reserveren BOOLEAN", "uitbater_naam VARCHAR(120)",
+            "deelgemeente VARCHAR(80)",
         ]
         _extra_nieuw = False
         for coldef in _extra_ev:

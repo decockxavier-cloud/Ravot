@@ -152,6 +152,14 @@ def upsert_event(data):
         if g:
             data["gemeente"] = g
             data["postcode"] = data.get("postcode") or p
+    # Normaliseer deelgemeente → fusiegemeente op basis van de postcode.
+    # OSM levert vaak de deelgemeente (Rumbeke); wij tonen de fusiegemeente
+    # (Roeselare) met de deelgemeente als bijschrift.
+    from ...gemeenten import normaliseer
+    _fusie, _deel = normaliseer(data.get("postcode"), data.get("gemeente"))
+    if _fusie:
+        data["gemeente"] = _fusie
+    data["deelgemeente"] = _deel
     # Venue eerst oplossen: dit doet een flush; het Event mag pas daarna in de
     # sessie, anders probeert autoflush een half-leeg Event weg te schrijven.
     venue = upsert_venue(source, data.get("venue_ext_id") or ext_id,
@@ -162,7 +170,7 @@ def upsert_event(data):
         ev = Event(source=source, ext_id=ext_id)
         db.session.add(ev)
     for f in ("title", "description", "start", "end", "is_permanent",
-              "gemeente", "postcode", "adres", "lat", "lng", "age_min", "age_max",
+              "gemeente", "deelgemeente", "postcode", "adres", "lat", "lng", "age_min", "age_max",
               "categories", "subtype", "indoor", "is_free", "price_info", "image_url",
               "source_url", "attribution", "pending"):
         if f in data:

@@ -233,6 +233,12 @@ def upsert_event(data):
                               "slug": _unieke_slug(Organizer,
                                                    slugify(data["organizer"]["name"]),
                                                    data["organizer"]["uit_id"])})
+    # Normaliseer deelgemeente → fusiegemeente op basis van de postcode.
+    from ..gemeenten import normaliseer
+    _fusie, _deel = normaliseer(data.get("postcode"), data.get("gemeente"))
+    if _fusie:
+        data["gemeente"] = _fusie
+    data["deelgemeente"] = _deel
     venue = _get_or_create(Venue, data["venue"]["uit_id"], {
         "name": data["venue"]["name"], "gemeente": data["gemeente"],
         "postcode": data["postcode"], "lat": data["lat"], "lng": data["lng"],
@@ -243,7 +249,7 @@ def upsert_event(data):
     if ev is None:
         ev = Event(uit_id=data["uit_id"], source="uit")
         db.session.add(ev)
-    for f in ("title", "description", "start", "end", "gemeente", "postcode",
+    for f in ("title", "description", "start", "end", "gemeente", "deelgemeente", "postcode",
               "lat", "lng", "age_min", "age_max", "categories", "indoor",
               "is_free", "price_info", "image_url", "has_vlieg"):
         setattr(ev, f, data[f])

@@ -78,7 +78,12 @@ def test_gemeente_fallback_bij_upsert(app):
                           start=None, end=None))
         db.session.commit()
         ev = Event.query.filter_by(ext_id="g1").first()
-        assert ev.gemeente == "Merelbeke" and ev.postcode == "9820"
+        # 9820 is sinds 2025 officieel "Merelbeke-Melle"; de dichtste_gemeente-
+        # fallback vult Merelbeke in, de normalisatie zet het om naar de
+        # fusiegemeente met Merelbeke als deelgemeente.
+        assert ev.postcode == "9820"
+        assert ev.gemeente == "Merelbeke-Melle"
+        assert ev.deelgemeente == "Merelbeke"
 
 
 def test_backfill_gemeenten_cli(app):
@@ -1021,3 +1026,42 @@ def test_homepage_toont_bouw_mee_blok(client, app):
     html = client.get("/").data.decode()
     assert "bouw-mee" in html or "bouwt mee" in html.lower()
     assert "zo-help-je-mee" in html
+
+
+# Gemeentenormalisatie: deelgemeente → officiële fusiegemeente (postcode-based).
+
+def test_gemeente_normalisatie_deelgemeente(app):
+    from app import gemeenten
+    with app.app_context():
+        # bekende probleemgevallen
+        assert gemeenten.normaliseer("8800", "Rumbeke") == ("Roeselare", "Rumbeke")
+        assert gemeenten.normaliseer("8800", "Roeselare") == ("Roeselare", None)
+        assert gemeenten.normaliseer("8830", "Gits") == ("Hooglede", "Gits")
+        assert gemeenten.normaliseer("9850", "Nevele") == ("Deinze", "Nevele")
+        assert gemeenten.normaliseer("8020", "Waardamme") == ("Oostkamp", "Waardamme")
+
+
+def test_gemeente_dubbelnaam_via_postcode(app):
+    """'Beveren' is deelgemeente van Roeselare (8800) én een aparte fusie in O-Vl
+    (9120). De postcode beslist, niet de naam."""
+    from app import gemeenten
+    with app.app_context():
+        assert gemeenten.normaliseer("8800", "Beveren")[0] == "Roeselare"
+        # 9120 hoort bij de fusie Beveren-Kruibeke-Zwijndrecht
+        assert gemeenten.normaliseer("9120", "Beveren")[0] == "Beveren-Kruibeke-Zwijndrecht"
+
+
+def test_gemeente_onbekende_postcode_behoudt_naam(app):
+    from app import gemeenten
+    with app.app_context():
+        # postcode niet in de lijst → naam blijft, geen deelgemeente
+        assert gemeenten.normaliseer("0000", "Ergens") == ("Ergens", None)
+
+
+def test_toon_gemeente_weergave(app):
+    from app import gemeenten
+    with app.app_context():
+        assert gemeenten.toon_gemeente("Roeselare", "Rumbeke") == "Roeselare (Rumbeke)"
+        assert gemeenten.toon_gemeente("Roeselare", None) == "Roeselare"
+        # deelgemeente gelijk aan gemeente → geen dubbeling
+        assert gemeenten.toon_gemeente("Torhout", "Torhout") == "Torhout"
