@@ -1190,7 +1190,7 @@ def event(slug):
     #  - onbekend  → open vraag "Is er een toilet? ja/nee"
     #  - voorlopig → getoond, maar met "klopt dit? 👍/👎" om te versterken/weerleggen
     #  - bevestigd → staat vast, geen vraag meer
-    from ..models import ZACHTE_VELDEN, VOORZIENING_LABELS, VeldStem
+    from ..models import ZACHTE_VELDEN, VOORZIENING_LABELS, VOORZIENING_VRAAG, VeldStem
     from .. import stemmen as _stemmen
     _status = _stemmen.alle_velden(ev.id)
     # Enkel de velden die zinnig zijn voor dít type plek (geen "kindermenu?" bij
@@ -1200,11 +1200,11 @@ def event(slug):
     voorlopige_velden = []     # getoond, vraagt bevestiging
     for v in _volgorde:
         st = _status.get(v)
-        label = VOORZIENING_LABELS.get(v, v)
+        vraag = VOORZIENING_VRAAG.get(v, VOORZIENING_LABELS.get(v, v) + "?")
         if st is None or st["toestand"] == "onbekend":
-            onbekende_velden.append((v, label))
+            onbekende_velden.append((v, vraag))
         elif st["toestand"] == "voorlopig":
-            voorlopige_velden.append((v, label, st["waarde"], st["meerderheid_pct"]))
+            voorlopige_velden.append((v, vraag, st["waarde"], st["meerderheid_pct"]))
         # 'bevestigd' → geen vraag
     # compat met de template die één lijst verwacht
     ontbrekende_velden = onbekende_velden

@@ -217,20 +217,21 @@
   <p class="hint">Eén tik per vraag — je maakt de fiche completer en juister voor elk gezin na jou.</p>
 
   {% if voorlopige_velden %}
-  <p class="help-subkop">Klopt dit nog?</p>
+  <p class="help-subkop">Al ingevuld — klopt het?</p>
   <div class="help-vragen">
-    {% for veld, label, waarde, pct in voorlopige_velden[:4] %}
+    {% for veld, vraag, waarde, pct in voorlopige_velden[:4] %}
     <div class="help-vraag" data-veld="{{ veld }}">
       <span class="help-label">
-        {{ label|capitalize }}
-        {% if waarde %}<span class="help-status">— nu: ja{% if pct %} ({{ pct }}%){% endif %}</span>
-        {% else %}<span class="help-status">— nu: nee{% if pct %} ({{ pct }}%){% endif %}</span>{% endif %}
+        {{ vraag }}
+        <span class="help-status">
+          {% if waarde %}nu: <b>ja</b>{% else %}nu: <b>nee</b>{% endif %}{% if pct %}, {{ pct }}% zeker{% endif %}
+        </span>
       </span>
       <span class="help-knoppen">
         <button type="button" class="help-knop" data-stem-url="{{ url_for('account.veld_stem', event_id=ev.id, veld=veld, waarde='ja') }}"
-          {% if mijn_stemmen.get(veld) == true %}aria-pressed="true"{% endif %}>👍 ja</button>
+          {% if mijn_stemmen.get(veld) == true %}aria-pressed="true"{% endif %}>✓ ja, wel</button>
         <button type="button" class="help-knop help-nee" data-stem-url="{{ url_for('account.veld_stem', event_id=ev.id, veld=veld, waarde='nee') }}"
-          {% if mijn_stemmen.get(veld) == false %}aria-pressed="true"{% endif %}>👎 nee</button>
+          {% if mijn_stemmen.get(veld) == false %}aria-pressed="true"{% endif %}>✗ nee, niet</button>
       </span>
     </div>
     {% endfor %}
@@ -240,9 +241,9 @@
   {% if ontbrekende_velden %}
   {% if voorlopige_velden %}<p class="help-subkop">Nog onbekend</p>{% endif %}
   <div class="help-vragen">
-    {% for veld, label in ontbrekende_velden[:4] %}
+    {% for veld, vraag in ontbrekende_velden[:4] %}
     <div class="help-vraag" data-veld="{{ veld }}">
-      <span class="help-label">{{ label|capitalize }}?</span>
+      <span class="help-label">{{ vraag }}</span>
       <span class="help-knoppen">
         <button type="button" class="help-knop" data-stem-url="{{ url_for('account.veld_stem', event_id=ev.id, veld=veld, waarde='ja') }}">✓ ja</button>
         <button type="button" class="help-knop help-nee" data-stem-url="{{ url_for('account.veld_stem', event_id=ev.id, veld=veld, waarde='nee') }}">✗ nee</button>

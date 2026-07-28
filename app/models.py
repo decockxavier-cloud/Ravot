@@ -308,6 +308,28 @@ VOORZIENING_LABELS = {
     "babyvoeding": "babyvoeding opwarmen",
     "huisdieren": "huisdieren toelaten",
 }
+
+# Korte vraagvorm per veld, zodat elke vraag netjes leest en de knoppen ja/nee
+# altijd hetzelfde betekenen ("ja" = aanwezig). Los van VOORZIENING_LABELS omdat
+# die soms als losse woordgroep zijn geschreven ("huisdieren toelaten").
+VOORZIENING_VRAAG = {
+    "verzorgingstafel": "Is er een verschoontafel?",
+    "buggy_ok": "Vlot toegankelijk met de wandelwagen?",
+    "omheind": "Is het speelterrein afgesloten?",
+    "kinderstoel": "Zijn er kinderstoelen?",
+    "speelhoek": "Is er een speelhoek?",
+    "kindermenu": "Is er een kindermenu?",
+    "terras": "Is er een terras?",
+    "overdekt_terras": "Is er een overdekt terras?",
+    "parking": "Is er parking?",
+    "toegankelijk": "Rolstoel- en buggytoegankelijk?",
+    "toilet": "Is er een toilet?",
+    "drinkwater": "Is er een drinkwaterpunt?",
+    "picknick": "Zijn er picknicktafels?",
+    "allergievriendelijk": "Zijn er allergievriendelijke opties?",
+    "babyvoeding": "Kan je er babyvoeding opwarmen?",
+    "huisdieren": "Zijn huisdieren toegelaten?",
+}
 COST_RANGES = ["0", "<20", "20-50", "50-100", ">100"]
 
 

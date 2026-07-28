@@ -691,7 +691,7 @@ def test_een_stem_vult_veld_en_boolean_loopt_mee(client, app):
     # plaats voor een 'klopt dit?'-vraag (versterken/weerleggen), dus de knop
     # blijft bestaan maar de OPEN vraag onder "Nog onbekend" is weg.
     html = client.get("/e/fa1").data.decode()
-    assert "Klopt dit nog?" in html
+    assert "klopt het?" in html
 
 
 def test_stem_toggle_trekt_in(client, app):
