@@ -143,7 +143,7 @@ blijven altijd staan.</p>
     <td>{{ n }}</td>
     <td>
       <form method="post" action="{{ url_for('admin.bron_data_wissen') }}" style="display:inline"
-            onsubmit="return confirm('Alle {{ n }} fiches van bron {{ bron }} wissen? Reviews en foto\'s van die fiches gaan mee.')">
+            data-confirm="Alle {{ n }} fiches van bron {{ bron }} wissen? Reviews en foto's van die fiches gaan mee.">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="bron" value="{{ bron }}">
         <label class="hint" style="margin-right:8px">

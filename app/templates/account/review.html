@@ -47,7 +47,7 @@ Jullie score is volledig anoniem — privacy gegarandeerd, andere gezinnen zien 
       <div class="schuif-labels"><span>{{ links }}</span>
         <span class="schuif-cijfer" id="{{ naam }}-uit">3</span><span>{{ rechts }}</span></div>
       <input type="range" name="{{ naam }}" min="1" max="5" step="1" value="3"
-             class="sfeer-schuif" oninput="document.getElementById('{{ naam }}-uit').textContent=this.value">
+             class="sfeer-schuif" data-uitvoer="{{ naam }}-uit">
     </div>
     {% endfor %}
   </div>

@@ -9,6 +9,8 @@
   <tr><td>{{ t.naam }}</td><td><code>{{ t.placeholders }}</code></td>
     <td>{{ t.bewerkt.strftime('%d/%m/%Y') if t.bewerkt else '— standaard' }}</td>
     <td><a class="btn btn-klein btn-stil" href="{{ url_for('admin.mail_bewerk', slug=t.slug) }}">Bewerk</a></td></tr>
+  {% else %}
+  <tr><td colspan="4" class="hint">Nog geen mailteksten gevonden.</td></tr>
   {% endfor %}
 </table>
 {% endblock %}

@@ -6,7 +6,7 @@
 <div class="acties" style="margin:6px 0 12px">
   <a class="btn btn-stil btn-klein" href="{{ url_for('account.feestje_bewerk', fid=f.id) }}">✏️ Bewerk</a>
   <form method="post" action="{{ url_for('account.feestje_annuleer', fid=f.id) }}" style="display:inline"
-        onsubmit="return confirm('Feestje annuleren? De verstuurde aanvragen blijven zichtbaar voor je eigen overzicht.')">
+        data-confirm="Feestje annuleren? De verstuurde aanvragen blijven zichtbaar voor je eigen overzicht.">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button class="btn btn-stil btn-klein" type="submit">🗑️ Annuleer feestje</button>
   </form>
@@ -27,7 +27,7 @@
   <form method="post" action="{{ url_for('account.feestje_status', fid=f.id, aid=a.id) }}"
         class="feest-status-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <select name="status" onchange="this.form.submit()">
+    <select name="status" data-autosubmit>
       {% for code, label in statussen.items() %}
       <option value="{{ code }}" {{ 'selected' if a.status == code }}>{{ label }}</option>
       {% endfor %}

@@ -17,7 +17,7 @@ per uitstap, dus ± €{{ "%.2f"|format(30 * punt_eur) }} aan beloningswaarde.</
     <label style="flex:1;min-width:180px">Naam<input type="text" name="naam" value="{{ bw.naam if bw else '' }}" required></label>
     <label style="flex:1;min-width:180px">Beschrijving<input type="text" name="beschrijving" value="{{ bw.beschrijving or '' if bw else '' }}"></label>
     <label>Waarde (€)<input type="text" name="waarde" id="bel-eur" style="width:90px" placeholder="8" value="{{ bw.waarde_eur if bw else '' }}"></label>
-    <label>Punten<input type="number" name="punten" id="bel-pt" style="width:90px" required value="{{ bw.punten if bw else '' }}"></label>
+    <label>Punten<input type="number" name="punten" id="bel-pt" data-punt-eur="{{ punt_eur }}" style="width:90px" required value="{{ bw.punten if bw else '' }}"></label>
     <label>Voorraad <small class="hint">(leeg = onbeperkt)</small><input type="number" name="voorraad" style="width:90px" value="{{ bw.voorraad if bw and bw.voorraad is not none else '' }}"></label>
     <label>Partner-goodie van
       <select name="partner_id"><option value="">— (Ravot zelf)</option>
@@ -26,15 +26,6 @@ per uitstap, dus ± €{{ "%.2f"|format(30 * punt_eur) }} aan beloningswaarde.</
     <button class="btn" type="submit">{{ 'Bewaar wijzigingen' if bw else 'Toevoegen' }}</button>
     {% if bw %}<a class="btn btn-stil" href="{{ url_for('admin.beloningen') }}">Annuleer</a>{% endif %}
   </form>
-  <script>
-    (function () {
-      var eur = document.getElementById('bel-eur'), pt = document.getElementById('bel-pt');
-      eur.addEventListener('input', function () {
-        var v = parseFloat(eur.value.replace(',', '.'));
-        if (!isNaN(v)) pt.value = Math.round(v / {{ punt_eur }} / 10) * 10;
-      });
-    })();
-  </script>
 </div>
 
 <h2>Catalogus</h2>
@@ -58,7 +49,7 @@ per uitstap, dus ± €{{ "%.2f"|format(30 * punt_eur) }} aan beloningswaarde.</
         <button class="btn btn-stil btn-klein" type="submit">{{ 'Zet uit' if b.actief else 'Zet aan' }}</button>
       </form>
       <form method="post" style="display:inline"
-            onsubmit="return confirm('Beloning \'{{ b.naam }}\' definitief verwijderen?')">
+            data-confirm="Beloning '{{ b.naam }}' definitief verwijderen?">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="actie" value="verwijder">
         <input type="hidden" name="bid" value="{{ b.id }}">
@@ -107,7 +98,7 @@ maar zonder punten — een klikker merkt dus niets en bereikt niets.</p>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="actie" value="status">
         <input type="hidden" name="iid" value="{{ i.id }}">
-        <select name="status" onchange="this.form.submit()">
+        <select name="status" data-autosubmit>
           {% for code, label in statussen.items() %}
           <option value="{{ code }}" {{ 'selected' if i.status == code }}>{{ label }}</option>
           {% endfor %}

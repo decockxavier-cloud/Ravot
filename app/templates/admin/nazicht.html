@@ -208,7 +208,7 @@
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn btn-klein btn-stil" type="submit"
                   title="Definitief wissen, mét reviews en foto's. Let op: een bronplek (OSM/Overture) kan bij een volgende sync terugkomen — verbergen niet."
-                  onclick="return confirm('Definitief verwijderen? Verbergen is omkeerbaar, dit niet.')">Verwijder plek</button>
+                  data-confirm="Definitief verwijderen? Verbergen is omkeerbaar, dit niet.">Verwijder plek</button>
         </form>
         <form method="post" action="{{ url_for('admin.nazicht_melding', report_id=r.id, actie='ok') }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

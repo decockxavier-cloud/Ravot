@@ -11,32 +11,3 @@
             placeholder="Typ hier je tekst. Gebruik de knoppen voor opmaak.">{{ inhoud }}</textarea>
   <p class="hint">Opmaak met Markdown: **vet**, *cursief*, ## Kop, [tekst](link), - lijst.</p>
 </div>
-<script>
-(function () {
-  var ta = document.getElementById("md-tekst");
-  if (!ta) return;
-  function wrap(voor, na) {
-    var s = ta.selectionStart, e = ta.selectionEnd, tekst = ta.value;
-    var sel = tekst.slice(s, e) || "tekst";
-    ta.value = tekst.slice(0, s) + voor + sel + na + tekst.slice(e);
-    ta.focus();
-    ta.selectionStart = s + voor.length; ta.selectionEnd = s + voor.length + sel.length;
-  }
-  function regel(prefix) {
-    var s = ta.selectionStart, tekst = ta.value;
-    var lijnStart = tekst.lastIndexOf("\n", s - 1) + 1;
-    ta.value = tekst.slice(0, lijnStart) + prefix + tekst.slice(lijnStart);
-    ta.focus();
-  }
-  document.querySelectorAll(".md-knoppen button").forEach(function (b) {
-    b.addEventListener("click", function () {
-      var t = b.dataset.md;
-      if (t === "bold") wrap("**", "**");
-      else if (t === "italic") wrap("*", "*");
-      else if (t === "h2") regel("## ");
-      else if (t === "ul") regel("- ");
-      else if (t === "link") wrap("[", "](https://)");
-    });
-  });
-})();
-</script>

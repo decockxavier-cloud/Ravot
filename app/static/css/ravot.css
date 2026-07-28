@@ -951,11 +951,16 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 }
 
 /* ---- Uitgelicht partnerblok bovenaan de lijst ---- */
-.partner-uitgelicht { background: #fff8f2; border: 2px solid #F4B233;
+.partner-uitgelicht { background: #fff8f2; border: 2px solid var(--zon);
   border-radius: 14px; padding: 12px 14px 14px; margin-bottom: 18px; }
 .partner-uitgelicht-kop { display: flex; align-items: center; gap: 10px;
   margin-bottom: 10px; flex-wrap: wrap; }
 .partner-uitgelicht-sub { font-size: .82rem; color: #99857a; }
+/* Partnerbadge (⭐): valt op in dezelfde gele huisstijl als het blok. */
+.badge-partner { background: var(--zon); border-color: var(--zon);
+  color: var(--gras-donker); font-weight: 700; }
+/* Partnerblok op de gemeentepagina: zelfde uitstraling als .partner-uitgelicht. */
+.card.partnerblok { background: #fff8f2; border: 2px solid var(--zon); }
 
 /* ---- Voorzieningen-grid (admin bewerk): netjes leesbaar i.p.v. geknepen ---- */
 .voorz-grid { display: grid; gap: 12px 16px;

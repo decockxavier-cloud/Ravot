@@ -40,7 +40,7 @@
     {{ op.email }} <span class="hint">({{ claim.status }}{{ ', domein-match' if claim.domein_match }})</span>{% if not loop.last %}, {% endif %}
   {% endfor %}
   <form method="post" action="{{ url_for('admin.activiteit_ontclaim', event_id=ev.id) }}"
-        onsubmit="return confirm('Alle claims op deze zaak intrekken? De uitbater verliest de toegang.');"
+        data-confirm="Alle claims op deze zaak intrekken? De uitbater verliest de toegang."
         style="display:inline;margin-left:8px">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button class="btn btn-klein btn-stil" type="submit">Claim intrekken</button>
@@ -61,7 +61,7 @@
   <strong>⭐ Partner</strong> tot {{ ev.partner_until.strftime("%d/%m/%Y") }}.
   <p class="hint" style="margin:4px 0 8px">Je kunt hieronder gratis verlengen, of het partnerschap intrekken.</p>
   <form method="post" action="{{ url_for('admin.partner_intrekken') }}" class="inline-form"
-        onsubmit="return confirm('Partnerschap van deze zaak intrekken? De zaak verliest meteen de partner-status.');"
+        data-confirm="Partnerschap van deze zaak intrekken? De zaak verliest meteen de partner-status."
         style="margin-bottom:8px">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="event_id" value="{{ ev.id }}">
@@ -198,7 +198,7 @@
 </form>
 
 <form method="post" action="{{ url_for('admin.activiteit_verwijder', event_id=ev.id) }}"
-      onsubmit="return confirm('Deze fiche definitief verwijderen?');" style="margin-top:20px">
+      data-confirm="Deze fiche definitief verwijderen?" style="margin-top:20px">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <button class="btn btn-klein btn-stil" type="submit">🗑️ Verwijder fiche</button>
 </form>

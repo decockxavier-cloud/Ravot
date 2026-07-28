@@ -33,7 +33,7 @@
 <div class="card" style="border:1.5px solid var(--rood)">
   <h3 style="margin-top:0">Verwijderen (GDPR)</h3>
   <p class="hint">Verwijdert het gezin én alle scores, bewaarde items en gegevens. Onomkeerbaar.</p>
-  <form method="post" onsubmit="return confirm('Zeker? Dit verwijdert alles onomkeerbaar.')">
+  <form method="post" data-confirm="Zeker? Dit verwijdert alles onomkeerbaar.">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="actie" value="verwijder">
     <button class="btn btn-klein" type="submit" style="background:var(--rood);color:#fff">Definitief verwijderen</button>

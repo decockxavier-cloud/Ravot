@@ -47,7 +47,7 @@
       {{ '🔗 Deellink uitschakelen' if d.share_token else '🔗 Maak deelbare link' }}</button>
   </form>
   <form method="post" action="{{ url_for('account.daguitstap_verwijder', uid=d.id) }}"
-        onsubmit="return confirm('Deze daguitstap verwijderen?')">
+        data-confirm="Deze daguitstap verwijderen?">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button class="btn btn-stil" type="submit">🗑️ Verwijderen</button>
   </form>

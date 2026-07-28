@@ -274,3 +274,40 @@ document.addEventListener('click', function (e) {
     // anders (rechtstreeks binnengekomen via deellink/Google): volg de href
   });
 })();
+
+// -- Generieke gedragspatronen (CSP-veilig, geen inline handlers) ------------
+// data-confirm op een <form>: vraagt bevestiging vóór verzenden.
+// data-confirm op een <button>/<a>: vraagt bevestiging vóór de klik doorgaat.
+// data-autosubmit op een <select>: verstuurt het formulier bij wijziging.
+// data-uitvoer op een <input type=range>: schrijft de waarde naar #<id>.
+(function () {
+  "use strict";
+  document.addEventListener("submit", function (e) {
+    var f = e.target.closest ? e.target : null;
+    if (f && f.dataset && f.dataset.confirm && !window.confirm(f.dataset.confirm)) {
+      e.preventDefault();
+    }
+  });
+  document.addEventListener("click", function (e) {
+    var el = e.target.closest("[data-confirm]");
+    if (!el || el.tagName === "FORM") return;
+    if (!window.confirm(el.dataset.confirm)) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+  }, true);
+  document.addEventListener("change", function (e) {
+    var el = e.target;
+    if (el.matches && el.matches("select[data-autosubmit]") && el.form) {
+      if (el.form.requestSubmit) el.form.requestSubmit();
+      else el.form.submit();
+    }
+  });
+  document.addEventListener("input", function (e) {
+    var el = e.target;
+    if (el.matches && el.matches("[data-uitvoer]")) {
+      var doel = document.getElementById(el.dataset.uitvoer);
+      if (doel) doel.textContent = el.value;
+    }
+  });
+})();

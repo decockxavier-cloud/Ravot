@@ -10,23 +10,7 @@
 <div id="minimap" class="event-minimap" style="height:280px;border-radius:14px;margin:12px 0;"
      data-markers='{{ markers | tojson }}'></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-  (function () {
-    var el = document.getElementById('minimap');
-    var punten = JSON.parse(el.dataset.markers || '[]');
-    if (!punten.length) return;
-    var map = L.map('minimap');
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      {attribution: '&copy; OpenStreetMap'}).addTo(map);
-    var groep = [];
-    punten.forEach(function (p, i) {
-      var m = L.marker([p.lat, p.lng]).addTo(map)
-        .bindPopup('<strong>' + (i + 1) + '. ' + p.title + '</strong>');
-      groep.push(m.getLatLng());
-    });
-    map.fitBounds(L.latLngBounds(groep).pad(0.2));
-  })();
-</script>
+<script src="{{ static_v('js/minimap.js') }}"></script>
 {% endif %}
 
 {% for item in items %}

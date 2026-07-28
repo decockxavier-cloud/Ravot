@@ -131,7 +131,7 @@
       <td>{{ rv.kid_score }}/5</td>
       <td>{{ rv.parent_score }}/3</td>
       <td><form method="post" action="{{ url_for('admin.delete_review', review_id=rv.id) }}"
-                onsubmit="return confirm('Deze score verwijderen?')">
+                data-confirm="Deze score verwijderen?">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="btn btn-klein btn-stil" type="submit">Verwijder</button></form></td>
     </tr>

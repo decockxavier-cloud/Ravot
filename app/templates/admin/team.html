@@ -44,7 +44,7 @@
       <td>
         {% if a.id != session.get('admin_id') %}
         <form method="post" action="{{ url_for('admin.team_verwijder', aid=a.id) }}"
-              onsubmit="return confirm('{{ a.email }} verwijderen?');">
+              data-confirm="{{ a.email }} verwijderen?">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn btn-klein btn-stil" type="submit">Verwijder</button>
         </form>

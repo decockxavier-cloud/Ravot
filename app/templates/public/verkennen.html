@@ -33,7 +33,7 @@
 <script type="application/json" id="map-data">{{ {"center": center, "zoom": zoom, "gezocht": gezocht, "markers": markers}|tojson|safe }}</script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-<script src="{{ url_for('static', filename='js/verkennen.js') }}" defer></script>
+<script src="{{ static_v('js/verkennen.js') }}" defer></script>
   </div>
 </div>
 {% endblock %}

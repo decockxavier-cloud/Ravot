@@ -21,8 +21,8 @@
 <p class="meta"><a href="https://www.google.com/maps/dir/?api=1&destination={{ ev.lat }},{{ ev.lng }}"
    target="_blank" rel="noopener">🧭 Routebeschrijving</a></p>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="{{ url_for('static', filename='js/minimap.js') }}"></script>
-<script src="{{ url_for('static', filename='js/helpaanvullen.js') }}" defer></script>
+<script src="{{ static_v('js/minimap.js') }}"></script>
+<script src="{{ static_v('js/helpaanvullen.js') }}" defer></script>
 {% endif %}
 <div class="badges">
   {% set at = activiteit_type(ev) %}

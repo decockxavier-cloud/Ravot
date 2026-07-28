@@ -10,12 +10,14 @@
   <h2>Vaste plekken</h2>
   <table class="admin-tabel">
     <tr><th>Zichtbaar</th><th>Type</th><th>Aantal</th></tr>
-    {% for r in rijen if r.plaats %}
+    {% for r in rijen if r.plaats %}{# vaste plekken #}
     <tr>
       <td><input type="checkbox" name="zichtbaar" value="{{ r.code }}" {{ 'checked' if r.zichtbaar }}></td>
       <td>{{ r.emoji }} {{ r.label }}</td>
       <td>{{ r.aantal }}</td>
     </tr>
+    {% else %}
+    <tr><td colspan="3" class="hint">Nog geen types met aantallen — draai eerst een sync.</td></tr>
     {% endfor %}
   </table>
 
@@ -28,6 +30,8 @@
       <td>{{ r.emoji }} {{ r.label }}</td>
       <td>{{ r.aantal }}</td>
     </tr>
+    {% else %}
+    <tr><td colspan="3" class="hint">Nog geen types met aantallen — draai eerst een sync.</td></tr>
     {% endfor %}
   </table>
 

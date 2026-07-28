@@ -104,33 +104,8 @@ staan bovenaan.</p>
 {% endif %}
 
 {% if resultaten is not none and bron == 'overture' %}
-<script>
-(function () {
-  var bezig = {{ 'true' if ai_bezig else 'false' }};
-  if (!bezig) return;
-  var url = "{{ url_for('admin.horeca_ai_voortgang') }}?plaats=" +
-            encodeURIComponent("{{ zoekterm }}") + "&straal={{ straal }}";
-  var teller = document.getElementById('ai-teller');
-  var vul = document.getElementById('ai-balk-vul');
-  var badge = document.getElementById('ai-bezig');
-  var timer = setInterval(function () {
-    fetch(url).then(function (r) { return r.json(); }).then(function (d) {
-      teller.textContent = 'AI-advies: ' + d.klaar + '/' + d.totaal + ' beoordeeld';
-      if (d.totaal) vul.style.width = Math.round(d.klaar / d.totaal * 100) + '%';
-      if (d.fout && badge) { badge.textContent = 'AI-fout: ' + d.fout; badge.className = 'badge pil-uit'; }
-      if (!d.bezig) {
-        clearInterval(timer);
-        if (badge && !d.fout) badge.textContent = 'AI klaar — lijst wordt ververst…';
-        // Klaar: het zoekformulier één keer automatisch opnieuw indienen
-        // zodat de badges en sortering meteen kloppen.
-        if (!d.fout) {
-          var form = document.querySelector('form.acties') || document.forms[0];
-          if (form) form.submit();
-        }
-      }
-    }).catch(function () {});
-  }, 2500);
-})();
-</script>
+<div id="ai-poll" hidden
+     data-bezig="{{ '1' if ai_bezig else '0' }}"
+     data-url="{{ url_for('admin.horeca_ai_voortgang') }}?plaats={{ zoekterm | urlencode }}&straal={{ straal }}"></div>
 {% endif %}
 {% endblock %}

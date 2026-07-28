@@ -9,7 +9,7 @@
   <a class="filterchip {{ 'aan' if status == '' or status == 'alles' }}" href="{{ url_for('admin.activiteiten', status='alles') }}">Alles</a>
   {% if status == 'nakijken' and tellers.nakijken > 0 %}
   <form method="post" action="{{ url_for('admin.activiteiten_alles_nagekeken') }}" style="display:inline"
-        onsubmit="return confirm('Alle {{ tellers.nakijken }} fiches in één keer afvinken? Meldingen van gezinnen blijven je vangnet.')">
+        data-confirm="Alle {{ tellers.nakijken }} fiches in één keer afvinken? Meldingen van gezinnen blijven je vangnet.">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button class="filterchip" type="submit">⚡ Alles afvinken ({{ tellers.nakijken }})</button>
   </form>
@@ -17,7 +17,7 @@
 </div>
 {% if status == 'nakijken' and rijen %}
 <form method="post" action="{{ url_for('admin.activiteiten_bulk_nagekeken') }}"
-      style="margin:0 0 14px" onsubmit="return confirm('Alle fiches in de huidige selectie (bron/type) als nagekeken markeren?')">
+      style="margin:0 0 14px" data-confirm="Alle fiches in de huidige selectie (bron/type) als nagekeken markeren?">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="bron" value="{{ bron }}">
   <input type="hidden" name="soort" value="{{ soort }}">
@@ -66,7 +66,7 @@
     <td>{{ e.title }}</td>
     <td>{{ e.source }}</td>
     <td>{{ e.gemeente or '' }} {{ e.postcode or '' }}</td>
-    <td>{{ '📌 vast' if e.is_permanent else (e.start.strftime('%d/%m/%y') if e.start else '—') }}</td>
+    <td>{{ '📌 vast' if e.is_permanent else (e.start.strftime('%d/%m/%Y') if e.start else '—') }}</td>
     <td>
       {% set qd = e.quality if e.quality is not none else -1 %}
       {% if qd < 0 %}<span class="badge">—</span>

@@ -47,7 +47,7 @@
       <td>{{ f.last_result or '—' }}</td>
       <td>
         <form method="post" action="{{ url_for('admin.feed_verwijder', fid=f.id) }}"
-              onsubmit="return confirm('Feed verwijderen?');">
+              data-confirm="Feed verwijderen?">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn btn-klein btn-stil" type="submit">Verwijder</button>
         </form>

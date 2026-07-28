@@ -65,7 +65,7 @@
     <a class="btn btn-stil" href="{{ url_for('auth.logout') }}">Afmelden</a>
   </div>
 
-  <form method="post" action="{{ url_for('account.delete_account') }}" onsubmit="return confirm('Zeker? Dit verwijdert jullie profiel definitief. Reviews blijven anoniem bestaan.')" style="margin-top:10px">
+  <form method="post" action="{{ url_for('account.delete_account') }}" data-confirm="Zeker? Dit verwijdert jullie profiel definitief. Reviews blijven anoniem bestaan." style="margin-top:10px">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button class="btn btn-stil" type="submit" style="color:var(--rood);border-color:var(--rood)">Verwijder mijn account definitief</button>
   </form>
