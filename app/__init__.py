@@ -45,6 +45,31 @@ def create_app(config_object=Config):
     app.jinja_env.globals["toon_gemeente"] = (
         lambda e: _toon_gem(getattr(e, "gemeente", None),
                             getattr(e, "deelgemeente", None)))
+
+    def _leeftijd_badge(e):
+        """Menselijke leeftijdsaanduiding, of None als er geen zinvolle is.
+
+        De import vult bij ontbrekende data standaardwaarden in: 0-99 (UiT) en
+        0-12 (algemene default). Die zeggen niets — een restaurant is niet
+        '0-12 jaar'. Toon een leeftijd enkel als ze echt informatie draagt:
+        een ondergrens > 0, of een bovengrens die smaller is dan de default.
+        """
+        lo = getattr(e, "age_min", None)
+        hi = getattr(e, "age_max", None)
+        if lo is None or hi is None:
+            return None
+        # standaard-vulwaarden = 'geen echte leeftijd'
+        if (lo, hi) in ((0, 99), (0, 12), (0, 16), (0, 18)):
+            return None
+        if lo <= 0 and hi >= 99:
+            return None
+        # echte info
+        if lo <= 0:
+            return f"tot {hi} jaar"
+        if hi >= 99:
+            return f"vanaf {lo} jaar"
+        return f"{lo}\u2013{hi} jaar"
+    app.jinja_env.globals["leeftijd_badge"] = _leeftijd_badge
     from .services.label import label_info, kamp_thumb, kamp_fotos
     app.jinja_env.globals["label_info"] = label_info
     app.jinja_env.globals["kamp_thumb"] = kamp_thumb

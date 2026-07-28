@@ -1053,3 +1053,34 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 .help-subkop { margin: 10px 0 4px; font-weight: 700; font-size: .85rem;
   color: #8A7C5C; text-transform: uppercase; letter-spacing: .03em; }
 .help-status { font-weight: 400; opacity: .7; font-size: .88em; }
+
+/* ---- Opgeschoonde Vandaag-kop (punten 3-7) ---- */
+/* Titel + weer-chip samen, weer rechts of eronder */
+.vandaag-kop { display: flex; align-items: baseline; flex-wrap: wrap;
+  gap: 6px 12px; margin-bottom: 8px; }
+.vandaag-kop h1 { margin: 0; }
+.weer-chip { display: inline-flex; align-items: center; gap: 6px;
+  font-size: .9rem; color: #4a5850; background: #eef6ff; border-radius: 999px;
+  padding: 4px 12px; white-space: nowrap; }
+.weer-chip .weer-emoji { font-size: 1.15rem; }
+
+/* Compacte personaliseer-strook: tekst links, knoppen rechts, op één regel */
+.personaliseer-banner.compact { padding: 8px 14px; margin: 0 0 10px;
+  border-radius: 999px; gap: 10px; }
+.personaliseer-banner.compact .pers-tekst { font-size: .85rem; color: #4a5850;
+  flex: 1 1 auto; min-width: 0; }
+.personaliseer-banner .banner-acties { display: flex; gap: 6px; flex: 0 0 auto; }
+
+/* Subtiele vakantie-lijn i.p.v. grote gele banner */
+.vakantie-lijn { margin: 0 0 10px; font-size: .86rem; color: #7a6100;
+  background: #fdf6e3; border-radius: 10px; padding: 6px 12px; }
+
+/* Zoekveld met ingebouwde knop */
+.zoekveld-wrap { position: relative; display: flex; align-items: center; }
+.zoekveld-wrap .zoekveld { flex: 1; padding-right: 84px; }
+.zoek-knop { position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
+  border: none; background: var(--gras); color: #fff; border-radius: 999px;
+  padding: 8px 16px; font: 600 .9rem Nunito, sans-serif; cursor: pointer;
+  min-height: 38px; }
+.zoek-knop:hover { background: var(--gras-donker); }
+.zoek-knop:focus-visible { outline: 3px solid var(--zon); }

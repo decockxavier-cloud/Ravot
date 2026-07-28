@@ -12,15 +12,12 @@
   <a class="btn btn-zon" href="{{ url_for('public.proberen') }}">Personaliseer →</a>
 </div>
 {% elif gast_actief %}
-<div class="personaliseer-banner">
-  <div>
-    <strong>Gepersonaliseerd op maat van jullie gezin</strong>
-    <p>We sorteren op jullie postcode, leeftijden en afstand. Nog geen account? Je keuzes blijven in deze browser.</p>
-  </div>
-  <div class="banner-acties">
-    <a class="btn btn-stil" href="{{ url_for('public.proberen') }}">Aanpassen</a>
-    <a class="btn btn-stil" href="{{ url_for('public.opnieuw') }}">Wissen</a>
-  </div>
+<div class="personaliseer-banner compact">
+  <span class="pers-tekst">✨ Op maat van jullie gezin — gesorteerd op postcode, leeftijd en afstand.</span>
+  <span class="banner-acties">
+    <a class="btn btn-stil btn-klein" href="{{ url_for('public.proberen') }}">Aanpassen</a>
+    <a class="btn btn-stil btn-klein" href="{{ url_for('public.opnieuw') }}">Wissen</a>
+  </span>
 </div>
 {% endif %}
 

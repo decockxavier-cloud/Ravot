@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 {% block body_class %}met-sfeer{% endblock %}
 {% block content %}
-<h1>{{ title }}</h1>
+<div class="vandaag-kop">
+  <h1>{{ title }}</h1>
+  {% include "public/_weer.html" ignore missing %}
+</div>
 
   {% if has_profile is defined and not has_profile %}
   <div class="personaliseer-banner">
@@ -12,21 +15,17 @@
     <a class="btn btn-zon" href="{{ url_for('public.proberen') }}">Personaliseer →</a>
   </div>
   {% elif gast_actief is defined and gast_actief %}
-  <div class="personaliseer-banner">
-    <div>
-      <strong>Gepersonaliseerd op maat van jullie gezin</strong>
-      <p>We sorteren op jullie postcode, leeftijden en afstand. Nog geen account? Je keuzes blijven in deze browser.</p>
-    </div>
-    <div class="banner-acties">
-      <a class="btn btn-stil" href="{{ url_for('public.proberen') }}">Aanpassen</a>
-      <a class="btn btn-stil" href="{{ url_for('public.opnieuw') }}">Wissen</a>
-    </div>
+  <div class="personaliseer-banner compact">
+    <span class="pers-tekst">✨ Op maat van jullie gezin — gesorteerd op postcode, leeftijd en afstand.</span>
+    <span class="banner-acties">
+      <a class="btn btn-stil btn-klein" href="{{ url_for('public.proberen') }}">Aanpassen</a>
+      <a class="btn btn-stil btn-klein" href="{{ url_for('public.opnieuw') }}">Wissen</a>
+    </span>
   </div>
   {% endif %}
 
   {% include "account/_nakijk.html" ignore missing %}
-  {% if vakantie.banner %}<div class="vakantie-banner">{{ vakantie.banner }}</div>{% endif %}
-  {% include "public/_weer.html" ignore missing %}
+  {% if vakantie.banner %}<p class="vakantie-lijn">🎉 {{ vakantie.banner_kort or 'Zomervakantie — ook kampen en meerdaagse activiteiten staan hieronder.' }}</p>{% endif %}
   {% if (weer is not defined or not weer) and regen is defined and regen is not none and regen >= 50 %}
   <div class="weer-hint">🌧️ Kans op regen ({{ regen }}%) — we zetten binnen-activiteiten bovenaan.
     <span class="weer-uitleg" title="We halen de weersverwachting op voor de locatie en datum van elke activiteit (via Open-Meteo). Bij regen krijgen overdekte activiteiten voorrang.">ⓘ hoe werkt dit?</span></div>
@@ -48,9 +47,11 @@
   {% if rows %}
   <form method="get" action="{{ url_for('public.ontdek') }}" class="zoekrij">
     <input type="hidden" name="wanneer" value="{{ 'vandaag' if scope == 'vandaag' else ('weekend' if scope == 'weekend' else 'deze-week') }}">
-    <input type="search" id="zoek" name="q" class="zoekveld" placeholder="🔍 Zoek op naam, gemeente of postcode…"
-           aria-label="Zoek in activiteiten" autocomplete="off">
-    <button type="submit" class="btn btn-klein">Zoek</button>
+    <div class="zoekveld-wrap">
+      <input type="search" id="zoek" name="q" class="zoekveld" placeholder="🔍 Zoek op naam, gemeente of postcode…"
+             aria-label="Zoek in activiteiten" autocomplete="off">
+      <button type="submit" class="zoek-knop">Zoek</button>
+    </div>
   </form>
   <p class="hint zoek-hint">Tikken filtert wat hier staat; op <strong>Zoek</strong>
   drukken zoekt in heel Vlaanderen.</p>

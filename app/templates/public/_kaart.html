@@ -19,7 +19,7 @@
     {% set t = activiteit_type(e) %}
     <span class="badge badge-type">{{ t.emoji }} {{ t.label }}</span>
     {% if e.curated %}<span class="badge badge-waardig" title="Door Ravot goedgekeurd als échte gezinsuitstap">✓ Ravot-waardig</span>{% endif %}
-    <span class="badge">{{ e.age_min }}–{{ e.age_max }} jaar</span>
+    {% if leeftijd_badge(e) %}<span class="badge">{{ leeftijd_badge(e) }}</span>{% endif %}
     {% set ob = open_badge(e) %}
     {% if ob %}<span class="badge open-badge open-{{ ob.klasse }}">● {{ ob.tekst }}</span>{% endif %}
     {% if e.is_free %}<span class="badge badge-free">Gratis</span>{% endif %}

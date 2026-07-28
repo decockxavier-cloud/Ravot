@@ -48,7 +48,8 @@ def vakantiecontext(vandaag=None):
     if actief:
         return {"actief": True, "naam": actief,
                 "banner": f"Het is {actief}! 🎉 Extra tijd om te ravotten — "
-                          f"ook meerdaagse activiteiten en kampen staan hieronder."}
+                          f"ook meerdaagse activiteiten en kampen staan hieronder.",
+                "banner_kort": f"{actief[0].upper()}{actief[1:]} — ook kampen en meerdaagse activiteiten staan hieronder."}
     komt = komende_vakantie(vandaag)
     if komt:
         naam, dagen = komt

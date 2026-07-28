@@ -87,10 +87,24 @@ def meta_gemeente(gemeente, n, scope="dit weekend"):
     return title, desc
 
 
+def _leeftijd_zin(event):
+    """Leeftijdsfragment voor SEO-tekst, of '' bij standaard-vulwaarden."""
+    lo, hi = event.age_min, event.age_max
+    if lo is None or hi is None:
+        return ""
+    if (lo, hi) in ((0, 99), (0, 12), (0, 16), (0, 18)) or (lo <= 0 and hi >= 99):
+        return ""
+    if lo <= 0:
+        return f", tot {hi} jaar"
+    if hi >= 99:
+        return f", vanaf {lo} jaar"
+    return f", voor {lo}-{hi} jaar"
+
+
 def meta_event(event, family_total=None):
     prijs = "gratis" if event.is_free else (f"vanaf €{family_total}" if family_total else "")
     title = f"{event.title} — {event.gemeente or 'Vlaanderen'} · Ravot"
-    desc = (f"{event.title} in {event.gemeente}, voor {event.age_min}-{event.age_max} jaar"
+    desc = (f"{event.title} in {event.gemeente}{_leeftijd_zin(event)}"
             + (f", {prijs}" if prijs else "") + ". Bekijk Ravotscores en de echte kost.")
     return title, desc[:158]
 

@@ -27,7 +27,7 @@
 <div class="badges">
   {% set at = activiteit_type(ev) %}
   <span class="badge badge-type">{{ at.emoji }} {{ at.label }}</span>
-  <span class="badge">{{ ev.age_min }}–{{ ev.age_max }} jaar</span>
+  {% if leeftijd_badge(ev) %}<span class="badge">{{ leeftijd_badge(ev) }}</span>{% endif %}
   {% if ev.is_free %}<span class="badge badge-free">Gratis</span>
   {% elif family_total is not none %}<span class="badge">Voor jullie gezin: €{{ "%.0f"|format(family_total) }}</span>{% endif %}
   {% if ev.partner_until and ev.partner_until > nu_utc %}<span class="badge badge-partner" title="Deze zaak steunt Ravot als partner. De Ravotscore zelf komt altijd van gezinnen.">⭐ Partner</span>{% endif %}
@@ -74,7 +74,7 @@
 <div class="kamp-info card">
   <div class="kamp-info-rij">
     {% if ev.kamp_start %}<div><b>📅 Periode</b><br>{{ ev.kamp_start.strftime('%d/%m/%Y') }}{% if ev.kamp_eind and ev.kamp_eind != ev.kamp_start %} – {{ ev.kamp_eind.strftime('%d/%m/%Y') }}{% endif %}</div>{% endif %}
-    <div><b>👦 Leeftijd</b><br>{{ ev.age_min }}–{{ ev.age_max }} jaar</div>
+    <div><b>👦 Leeftijd</b><br>{{ leeftijd_badge(ev) or "alle leeftijden" }}</div>
     {% if ev.kamp_prijs %}<div><b>💶 Prijs</b><br>{{ ev.kamp_prijs }}</div>{% endif %}
     {% if ev.kamp_organisator %}<div><b>🏫 Organisator</b><br>{{ ev.kamp_organisator }}</div>{% endif %}
     {% if ev.kamp_thema and kamp_themas.get(ev.kamp_thema) %}<div><b>🎯 Thema</b><br>{{ kamp_themas[ev.kamp_thema] }}</div>{% endif %}

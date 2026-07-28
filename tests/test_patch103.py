@@ -1065,3 +1065,62 @@ def test_toon_gemeente_weergave(app):
         assert gemeenten.toon_gemeente("Roeselare", None) == "Roeselare"
         # deelgemeente gelijk aan gemeente → geen dubbeling
         assert gemeenten.toon_gemeente("Torhout", "Torhout") == "Torhout"
+
+
+# Kop van de Vandaag-pagina opgeschoond (punten 3-7).
+
+def test_vandaag_kop_opgeschoond(app):
+    """De opgeschoonde kop: weer-chip in de titelrij, compacte personaliseer-
+    strook, subtiele vakantie-lijn, en zoekknop ingebouwd in het zoekveld."""
+    from flask import render_template
+    from types import SimpleNamespace
+    with app.app_context(), app.test_request_context("/vandaag"):
+        ev = SimpleNamespace(id=1, slug="x", title="Test", is_free=True,
+                             indoor=False, gemeente="Roeselare", deelgemeente=None,
+                             postcode="8800", venue=None, start=None, age_min=0,
+                             age_max=12, uit_id=None, image_url=None,
+                             subtype="playground", is_permanent=True,
+                             speeltoestellen=None, categories=[])
+        html = render_template("public/lijst.html", rows=[{"event": ev, "agg": None,
+            "regen": None}], scope="vandaag", title="Wat gaan we vandaag doen?",
+            answer="Vandaag 6 activiteiten.",
+            weer={"emoji": "⛅", "label": "bewolkt", "tmax": 24, "regenkans": 10,
+                  "dag_label": "Vandaag", "plaats": "Roeselare"},
+            vakantie={"banner": "x", "banner_kort": "Zomervakantie — ook kampen."},
+            has_profile=True, gast_actief=True, regen=None)
+        assert "vandaag-kop" in html          # titel + weer samen
+        assert "weer-chip" in html            # weer als compacte chip
+        assert "personaliseer-banner compact" in html
+        assert "zoekveld-wrap" in html and "zoek-knop" in html  # knop ingebouwd
+        assert "vakantie-lijn" in html        # subtiele vakantie-melding
+        # geen losse "—" meer in het weerbericht
+        assert "regenkans —" not in html
+
+
+# Leeftijdsbadge: enkel tonen als de leeftijd echt iets zegt (punt 2).
+
+def test_leeftijd_badge_verbergt_defaults(app):
+    from types import SimpleNamespace
+    with app.app_context():
+        lb = app.jinja_env.globals["leeftijd_badge"]
+        # standaard-vulwaarden → geen badge
+        assert lb(SimpleNamespace(age_min=0, age_max=12)) is None   # restaurant
+        assert lb(SimpleNamespace(age_min=0, age_max=99)) is None   # UiT leeg
+        # echte leeftijden → wel een badge
+        assert lb(SimpleNamespace(age_min=0, age_max=3)) == "tot 3 jaar"
+        assert lb(SimpleNamespace(age_min=3, age_max=6)) == "3\u20136 jaar"
+        assert lb(SimpleNamespace(age_min=6, age_max=99)) == "vanaf 6 jaar"
+        assert lb(SimpleNamespace(age_min=1, age_max=12)) == "1\u201312 jaar"
+
+
+def test_leeftijd_badge_niet_op_fiche_bij_default(client, app):
+    from app.models import Event
+    with app.app_context():
+        e = Event(uit_id="lft1", slug="lft1", title="Restaurant", source="osm",
+                  subtype="horeca", is_permanent=True, gemeente="Gent",
+                  postcode="9000", lat=51.05, lng=3.72, age_min=0, age_max=12)
+        db.session.add(e); db.session.commit()
+    html = client.get("/e/lft1").data.decode()
+    # geen "0–12 jaar"-badge meer op een gewone fiche
+    assert "0–12 jaar" not in html
+    assert "0-12 jaar" not in html
