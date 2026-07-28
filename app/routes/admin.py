@@ -397,6 +397,8 @@ def instellingen_opslaan():
             gewijzigd.append(key)
         row.value = nieuw
     db.session.commit()
+    from ..models import wis_settings_cache
+    wis_settings_cache()   # request-cache verversen na wijziging
     if gewijzigd:
         audit("instellingen gewijzigd: " + ", ".join(gewijzigd))
     flash("Instellingen bewaard.", "ok")
@@ -422,10 +424,39 @@ def instellingen():
 @admin_required
 def facturatie():
     """Alles rond geld op één plek: abonnementsprijzen, btw en Odoo."""
+    from ..models import PartnerPayment
     groepen, waarden, defs = _instellingen_context("facturatie")
+    # Wettelijk verplicht: elke betaalde Partner-betaling hoort een factuur te
+    # krijgen. De Odoo-koppeling "faalt stil" (activatie mag nooit sneuvelen op
+    # een boekhoudfout) — dus maken we ontbrekende facturen hier zichtbaar.
+    zonder_factuur = (PartnerPayment.query
+                      .filter(PartnerPayment.status == "paid",
+                              PartnerPayment.odoo_invoice_id.is_(None))
+                      .order_by(PartnerPayment.paid_at.desc()).all())
     return render_template("admin/facturatie.html", defs=defs,
                            waarden=waarden, groepen=groepen,
+                           zonder_factuur=zonder_factuur,
                            title="Facturatie", family=None, active="facturatie")
+
+
+@bp.route("/facturatie/factureer/<int:pid>", methods=["POST"])
+@admin_required
+def facturatie_opnieuw(pid):
+    """Handmatig opnieuw proberen een Odoo-factuur te maken voor een betaling."""
+    from ..models import PartnerPayment
+    from ..odoo import factureer_betaling
+    p = db.session.get(PartnerPayment, pid) or abort(404)
+    if p.status != "paid":
+        flash("Deze betaling staat niet op 'paid' — geen factuur nodig.", "error")
+    elif p.odoo_invoice_id:
+        flash("Deze betaling heeft al een factuur.", "ok")
+    elif factureer_betaling(p):
+        audit(f"Odoo-factuur handmatig aangemaakt voor betaling {p.id}")
+        flash(f"Factuur aangemaakt in Odoo ({p.odoo_invoice_ref or p.odoo_invoice_id}).", "ok")
+    else:
+        flash("Factureren mislukte opnieuw — controleer de Odoo-koppeling op de "
+              "Status-pagina en de logs.", "error")
+    return redirect(url_for("admin.facturatie"))
 
 
 @bp.route("/verbindingen")

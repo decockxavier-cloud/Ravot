@@ -96,7 +96,11 @@ def verwerk_webhook(mollie_id, http_get=None):
     Idempotent: een al-verwerkte betaling wordt niet dubbel geteld."""
     from .extensions import db
     from .models import PartnerPayment
-    p = PartnerPayment.query.filter_by(mollie_id=mollie_id).first()
+    # Row-lock: Mollie stuurt webhooks soms dubbel/gelijktijdig. Zonder lock
+    # kunnen twee verwerkers allebei paid_at=None zien en de partnerperiode
+    # twee keer verlengen. Op SQLite (tests) is with_for_update een no-op.
+    p = (PartnerPayment.query.filter_by(mollie_id=mollie_id)
+         .with_for_update().first())
     if not p:
         return False               # onbekend id: negeren (niets aannemen)
     data = haal_status_op(mollie_id, http_get=http_get)

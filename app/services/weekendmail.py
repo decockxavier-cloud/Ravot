@@ -87,8 +87,21 @@ def send_weekend_mail(family, mailer):
 
 
 def send_all(mailer):
+    """Weekendmail naar alle opt-in-gezinnen. Idempotent per run: wie de
+    voorbije 3 dagen al een weekendmail kreeg (Interaction 'mail_sent'),
+    wordt overgeslagen — een dubbel gestarte cron mailt dus niemand dubbel."""
+    from datetime import datetime, timedelta
+    from ..models import Interaction
+    grens = datetime.utcnow() - timedelta(days=3)
+    al_gemaild = {fid for (fid,) in
+                  db.session.query(Interaction.family_id)
+                  .filter(Interaction.type == "mail_sent",
+                          Interaction.created_at >= grens,
+                          Interaction.family_id.isnot(None)).all()}
     n = 0
     for fam in Family.query.filter_by(newsletter_opt_in=True).all():
+        if fam.id in al_gemaild:
+            continue
         if send_weekend_mail(fam, mailer):
             n += 1
     return n

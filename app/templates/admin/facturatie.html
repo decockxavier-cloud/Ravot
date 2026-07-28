@@ -11,4 +11,28 @@ lidmaatschappen volg je op bij <a href="{{ url_for('admin.partners') }}">Partner
 en <code>ODOO_URL</code>, <code>ODOO_DB</code>, <code>ODOO_USER</code>,
 <code>ODOO_API_KEY</code> (facturatie).</p>
 {% include "admin/_instellingen_form.html" %}
+
+{% if zonder_factuur %}
+<div class="card" style="border:2px solid #C0392B;margin-top:16px">
+  <h2>⚠️ Betaald zonder factuur ({{ zonder_factuur | length }})</h2>
+  <p class="hint">Deze Partner-betalingen zijn binnen bij Mollie, maar de
+    Odoo-factuur kon niet aangemaakt worden. Een factuur is wettelijk
+    verplicht — probeer opnieuw of maak hem handmatig aan in Odoo.</p>
+  <table class="admin-tabel">
+    <tr><th>Betaald op</th><th>Zaak</th><th>Bedrag</th><th>Mollie-id</th><th></th></tr>
+    {% for p in zonder_factuur %}
+    <tr>
+      <td>{{ p.paid_at.strftime('%d/%m/%Y') if p.paid_at else '—' }}</td>
+      <td>{% if p.event %}<a href="{{ url_for('admin.activiteit_bewerk', event_id=p.event_id) }}">{{ p.event.title }}</a>{% else %}#{{ p.event_id }}{% endif %}</td>
+      <td>€ {{ p.amount }}</td>
+      <td><code>{{ p.mollie_id }}</code></td>
+      <td><form method="post" action="{{ url_for('admin.facturatie_opnieuw', pid=p.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-klein" type="submit">Factureer opnieuw</button>
+      </form></td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
 {% endblock %}

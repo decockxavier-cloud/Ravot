@@ -1,3 +1,4 @@
+import os
 import secrets
 
 import click
@@ -15,6 +16,27 @@ def create_app(config_object=Config):
     from werkzeug.middleware.proxy_fix import ProxyFix
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
     app.config.from_object(config_object)
+
+    # -- Productie-noodremmen (vóór alles) -----------------------------------
+    # 1) Zonder echte SECRET_KEY zijn sessies, magic-links en unsubscribe-
+    #    tokens smeedbaar (accountovername). Liever niet opstarten dan stil
+    #    onveilig draaien. Dev/tests (FLASK_ENV=development of TESTING) mogen wel.
+    productie = (not app.config.get("TESTING")
+                 and os.environ.get("FLASK_ENV") != "development")
+    if productie and app.config.get("SECRET_KEY") == "dev-only-verander-mij":
+        raise RuntimeError(
+            "SECRET_KEY ontbreekt in de omgeving (.env). De app weigert te "
+            "starten met de ontwikkelsleutel: daarmee zijn logins en "
+            "uitschrijflinks vervalsbaar. Zet SECRET_KEY in /srv/ravot/.env "
+            "(bv. via: python3 -c \"import secrets; print(secrets.token_hex(32))\").")
+    # 2) Rate limiter op memory:// telt per gunicorn-worker (limieten ×3) en
+    #    reset bij elke deploy. Op productie hoort dit op Redis te staan.
+    if productie and str(app.config.get("RATELIMIT_STORAGE_URI", "memory://")).startswith("memory"):
+        import logging
+        logging.getLogger(__name__).warning(
+            "RATELIMIT_STORAGE_URI staat op memory:// — brute-force-limieten "
+            "gelden dan per worker. Zet in .env: "
+            "RATELIMIT_STORAGE_URI=redis://redis:6379/0")
 
     db.init_app(app)
     csrf.init_app(app)
@@ -240,6 +262,13 @@ def create_app(config_object=Config):
 
     @app.errorhandler(500)
     def server_error(_):
+        # Eerst de db-sessie schoonvegen: zonder rollback blijft een mislukte
+        # transactie 'hangen' en kan hij volgende requests in dezelfde
+        # gunicorn-worker mee laten falen.
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
         # nooit interne details tonen (strategienota §8.2)
         return render_template("public/500.html", family=None, active=None,
                                title="Er ging iets mis"), 500

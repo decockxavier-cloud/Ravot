@@ -536,10 +536,53 @@ SETTING_DEFS = {
 }
 
 
+def _settings_cache():
+    """Alle settings één keer per request laden (de tabel is piepklein).
+    Zonder deze cache deed bv. /ontdek honderden losse settings-queries
+    (2 per event via aggregate_ravotscore). Buiten een app-context (los
+    script) is er geen cache en valt get_setting terug op een directe query."""
+    from flask import g, has_app_context
+    if not has_app_context():
+        return None
+    cache = getattr(g, "_ravot_settings", None)
+    if cache is None:
+        try:
+            cache = {r.key: r.value for r in Setting.query.all()}
+        except Exception:
+            return None      # tabel bestaat (nog) niet: niet cachen
+        g._ravot_settings = cache
+    return cache
+
+
+def wis_settings_cache():
+    """Cache weggooien; gebeurt automatisch bij elke wijziging aan Setting."""
+    from flask import g, has_app_context
+    if has_app_context() and hasattr(g, "_ravot_settings"):
+        del g._ravot_settings
+
+
+# Automatische invalidatie: wie dan ook een Setting schrijft (admin-route,
+# CLI, test), de cache van de actieve context gaat eraan. Zo kan de cache
+# nooit verouderde waarden serveren binnen dezelfde context.
+from sqlalchemy import event as _sa_event
+
+
+@_sa_event.listens_for(db.session, "after_flush")
+def _settings_gewijzigd(session, ctx):
+    for obj in list(session.new) + list(session.dirty) + list(session.deleted):
+        if isinstance(obj, Setting):
+            wis_settings_cache()
+            break
+
+
 def get_setting(key):
-    """Waarde uit DB, of de default. Nooit een exception."""
+    """Waarde uit DB (via request-cache), of de default. Nooit een exception."""
     default = SETTING_DEFS.get(key, ("", "", "text"))[0]
     try:
+        cache = _settings_cache()
+        if cache is not None:
+            waarde = cache.get(key)
+            return waarde if waarde is not None else default
         row = db.session.get(Setting, key)
         return row.value if row and row.value is not None else default
     except Exception:

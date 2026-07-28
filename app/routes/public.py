@@ -391,6 +391,35 @@ def event_agg(e, cache=None):
     return agg or None
 
 
+def vul_agg_cache(events, cache):
+    """Vul de agg-cache voor een hele kandidatenlijst in maximaal 2 queries
+    i.p.v. 1 query per event (op /ontdek en Vandaag/Weekend scheelt dat
+    honderden queries per paginaweergave). event_agg leest daarna enkel nog
+    uit de cache; events zonder reviews krijgen expliciet False zodat er
+    géén fallback-query meer volgt."""
+    serie_ids = {e.series_id for e in events if e.series_id}
+    los_ids = {e.id for e in events if not e.series_id}
+
+    per_serie = {sid: [] for sid in serie_ids}
+    if serie_ids:
+        rijen = (db.session.query(Review, Event.series_id)
+                 .join(Event, Review.event_id == Event.id)
+                 .filter(Event.series_id.in_(serie_ids)).all())
+        for rv, sid in rijen:
+            per_serie[sid].append(rv)
+
+    per_event = {eid: [] for eid in los_ids}
+    if los_ids:
+        for rv in Review.query.filter(Review.event_id.in_(los_ids)).all():
+            per_event[rv.event_id].append(rv)
+
+    for sid, revs in per_serie.items():
+        cache.setdefault(("s", sid), aggregate_ravotscore(revs) or False)
+    for eid, revs in per_event.items():
+        cache.setdefault(("e", eid), aggregate_ravotscore(revs) or False)
+    return cache
+
+
 def _weggeklikt_ids():
     """Events die dit gezin als 'niet voor ons' markeerde: die zakken hard
     achteraan (score × 0.02) maar verdwijnen niet — expliciet zoeken vindt
@@ -431,7 +460,7 @@ def scored_events(profile, scope, extra_filter=None, limit=40, weer=True):
             from ..weer import regenkans
             regen = regenkans(profile.lat, profile.lng, start.date() if start else None)
     weggeklikt = _weggeklikt_ids()
-    agg_cache = {}
+    agg_cache = vul_agg_cache(candidates, {})
     rows = []
     for e in candidates:
         agg = event_agg(e, agg_cache)
@@ -793,7 +822,7 @@ def ontdek():
 
     # Ravotscore ophalen (voor tonen + sorteren) — commercieel zonder Partner
     # toont geen badge en telt niet mee (afspraak 2c/3c).
-    rows, agg_cache = [], {}
+    rows, agg_cache = [], vul_agg_cache(candidates, {})
     for e in candidates:
         agg = event_agg(e, agg_cache)
         toon = score_zichtbaar(e)
