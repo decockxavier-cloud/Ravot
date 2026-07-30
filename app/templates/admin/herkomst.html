@@ -1,0 +1,97 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<h1>Herkomst 🧭</h1>
+<p class="hint">Waar komen bezoekers vandaan? Server-side gemeten (referrer +
+  UTM), zonder cookies van derden — max. één telling per bezoeker per dag.
+  Zoektermen uit Google zelf zie je in
+  <a href="https://search.google.com/search-console" target="_blank" rel="noopener">Search Console</a>;
+  hieronder staan de campagnetermen (utm_term).</p>
+
+<p class="acties">
+  {% for d in (7, 30, 90, 365) %}
+    <a class="btn btn-klein {{ '' if d != dagen else 'btn-actief' }}"
+       href="{{ url_for('admin.herkomst', dagen=d) }}">{{ d }} dagen</a>
+  {% endfor %}
+</p>
+
+<div class="card">
+  <h2>{{ r.totaal }} bezoeken in de voorbije {{ r.dagen }} dagen
+    <span class="hint">({{ r.ingelogd }} van ingelogde gezinnen)</span></h2>
+  {% if not r.totaal %}
+  <p class="hint">Nog geen metingen — dit vult zich vanzelf vanaf de eerste
+    bezoeker na deze update.</p>
+  {% endif %}
+</div>
+
+{% if r.totaal %}
+<div class="card">
+  <h2>Kanalen</h2>
+  <table class="admin-tabel">
+    {% for naam, n in r.kanalen %}
+    <tr>
+      <td style="width:130px">{{ naam }}</td>
+      <td><div style="background:#2E7D46;height:14px;border-radius:7px;width:{{ (100 * n / r.totaal) | round(1) }}%"></div></td>
+      <td style="width:90px;text-align:right">{{ n }} <span class="hint">({{ (100 * n / r.totaal) | round(1) }}%)</span></td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="card">
+  <h2>Bronnen</h2>
+  <table class="admin-tabel">
+    <tr><th>Bron</th><th style="text-align:right">Bezoeken</th></tr>
+    {% for naam, n in r.bronnen %}
+    <tr><td>{{ naam }}</td><td style="text-align:right">{{ n }}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+{% if r.campagnes %}
+<div class="card">
+  <h2>Campagnes (UTM)</h2>
+  <table class="admin-tabel">
+    <tr><th>Bron · campagne</th><th style="text-align:right">Bezoeken</th></tr>
+    {% for naam, n in r.campagnes %}
+    <tr><td>{{ naam }}</td><td style="text-align:right">{{ n }}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+{% if r.termen %}
+<div class="card">
+  <h2>Campagnetermen (utm_term)</h2>
+  <table class="admin-tabel">
+    {% for naam, n in r.termen %}
+    <tr><td>{{ naam }}</td><td style="text-align:right">{{ n }}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>Landingspagina's</h2>
+  <table class="admin-tabel">
+    <tr><th>Pagina</th><th style="text-align:right">Binnenkomers</th></tr>
+    {% for pad, n in r.paden %}
+    <tr><td><code>{{ pad }}</code></td><td style="text-align:right">{{ n }}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="card">
+  <h2>Trend per week</h2>
+  {% set piek = r.weken | map(attribute=1) | max if r.weken else 1 %}
+  <table class="admin-tabel">
+    {% for week, n in r.weken %}
+    <tr>
+      <td style="width:110px">{{ week }}</td>
+      <td><div style="background:#F2B705;height:14px;border-radius:7px;width:{{ (100 * n / piek) | round(1) }}%"></div></td>
+      <td style="width:70px;text-align:right">{{ n }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% endblock %}

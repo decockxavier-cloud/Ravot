@@ -1089,3 +1089,7 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
   min-height: 38px; }
 .zoek-knop:hover { background: var(--gras-donker); }
 .zoek-knop:focus-visible { outline: 3px solid var(--zon); }
+
+/* Blogartikels */
+.artikel-inhoud img { max-width: 100%; height: auto; border-radius: 10px; }
+.artikel-inhoud h2 { margin-top: 22px; }

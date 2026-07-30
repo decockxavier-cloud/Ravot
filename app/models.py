@@ -458,6 +458,7 @@ class Setting(db.Model):
 # (key: (default, label, type)) — type: 'bool' | 'int' | 'text' | 'choice:a,b,c'
 SETTING_DEFS = {
     "uit_query": ("typicalAgeRange:[0 TO 12]", "UiT-zoekquery (Search API q-parameter)", "text"),
+    "uit_zichtbaar": ("1", "UiT-events publiek tonen (uit = laag verborgen; data en verrijking blijven bewaard)", "bool"),
     "sync_max_pages": ("200", "Max. pagina's per sync (×50 events)", "int"),
     "weekendmail_aan": ("1", "Weekendmail (donderdag) versturen", "bool"),
     "maandagmail_aan": ("1", "Maandagvraag-mail versturen", "bool"),
@@ -607,6 +608,21 @@ class ContentPage(db.Model):
     slug = db.Column(db.String(40), primary_key=True)   # 'privacy', 'over', ...
     titel = db.Column(db.String(120), nullable=False)
     inhoud_md = db.Column(db.Text, default="")          # Markdown
+    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
+
+
+class Artikel(db.Model):
+    """Blogartikel voor SEO en inspiratie ("Ravot vertelt"). Inhoud als
+    Markdown via dezelfde veilige renderer als de inhoudspagina's.
+    Concept blijft onzichtbaar tot 'gepubliceerd' aan staat."""
+    __tablename__ = "artikels"
+    id = db.Column(db.Integer, primary_key=True)
+    slug = db.Column(db.String(160), unique=True, nullable=False, index=True)
+    titel = db.Column(db.String(160), nullable=False)
+    samenvatting = db.Column(db.String(200), default="")   # meta description
+    inhoud_md = db.Column(db.Text, default="")
+    gepubliceerd = db.Column(db.Boolean, default=False, index=True)
+    publicatie_datum = db.Column(db.DateTime, index=True)  # gezet bij publicatie
     updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
 
 

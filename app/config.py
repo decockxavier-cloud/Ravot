@@ -52,6 +52,9 @@ class Config:
     # Rate-limit-opslag: Redis in productie (persistent, gedeeld over workers);
     # memory:// als fallback voor lokaal en tests.
     RATELIMIT_STORAGE_URI = os.environ.get("RATELIMIT_STORAGE_URI", "memory://")
+    # Globale rem per IP: royaal voor mensen (een pagina = 20-40 requests),
+    # maar stopt scrapers die duizenden fiches per minuut leegtrekken.
+    RATELIMIT_DEFAULT = os.environ.get("RATELIMIT_DEFAULT", "300 per minute")
     # Optionele cloud-backend voor verrijking (leeg = uit).
     # Cloud-AI-key: ENRICH_CLOUD_KEY, met ANTHROPIC_API_KEY als terugval
     # (de gangbare naam — zo werkt een key uit een ander project meteen).

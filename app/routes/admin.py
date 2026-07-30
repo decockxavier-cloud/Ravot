@@ -318,7 +318,7 @@ def delete_review(review_id):
 INSTELLING_PAGINAS = {
     "kern": [
         ("Weergave & gedrag", ["default_radius", "toon_maanden_vooruit",
-                               "ontdek_per_pagina", "onderhoud_aan"]),
+                               "ontdek_per_pagina", "onderhoud_aan", "uit_zichtbaar"]),
         ("Team & toegang", ["medewerker_ziet_gezinnen"]),
         ("Ranking & kwaliteit", ["kwaliteit_min_lijst", "kwaliteit_hoog",
                                  "enkel_gecureerd", "verborgen_types",
@@ -681,6 +681,18 @@ def test_smtp():
         flash(f"Mail versturen mislukte: {str(exc)[:120]}", "error")
     audit("SMTP-testmail verstuurd")
     return redirect(url_for("admin.verbindingen"))
+
+
+@bp.route("/herkomst")
+@medewerker_required
+def herkomst():
+    """Waar komen bezoekers vandaan? Kanalen, bronnen, campagnes, trends."""
+    from ..herkomst import rapport
+    dagen = request.args.get("dagen", type=int) or 30
+    dagen = dagen if dagen in (7, 30, 90, 365) else 30
+    r = rapport(dagen)
+    return render_template("admin/herkomst.html", r=r, dagen=dagen,
+                           title="Herkomst", family=None, active="herkomst")
 
 
 @bp.route("/families")
@@ -2162,3 +2174,143 @@ def feestprospecten_export():
     return Response(buf.getvalue(), mimetype="text/csv",
                     headers={"Content-Disposition":
                              "attachment; filename=ravot-feestpartners.csv"})
+
+
+# ---------------------------------------------------------------------------
+# Artikels (blog) — patch 134
+# ---------------------------------------------------------------------------
+
+def _artikel_slug(titel, artikel_id=None):
+    """Nette, unieke slug uit de titel (kleine letters, koppeltekens)."""
+    import re as _re
+    from ..models import Artikel
+    basis = _re.sub(r"[^a-z0-9]+", "-", (titel or "artikel").lower()).strip("-")[:140] or "artikel"
+    slug, n = basis, 2
+    while True:
+        bestaand = Artikel.query.filter_by(slug=slug).first()
+        if not bestaand or bestaand.id == artikel_id:
+            return slug
+        slug, n = f"{basis}-{n}", n + 1
+
+
+@bp.route("/artikels")
+@medewerker_required
+def artikels():
+    from ..models import Artikel
+    rijen = Artikel.query.order_by(
+        Artikel.gepubliceerd.asc(), Artikel.updated_at.desc()).all()
+    return render_template("admin/artikels.html", rijen=rijen,
+                           title="Artikels", family=None, active="artikels")
+
+
+@bp.route("/artikels/nieuw", methods=["GET", "POST"])
+@bp.route("/artikels/<int:artikel_id>", methods=["GET", "POST"])
+@medewerker_required
+def artikel_bewerk(artikel_id=None):
+    from datetime import datetime
+    from ..models import Artikel
+    a = db.session.get(Artikel, artikel_id) if artikel_id else None
+    if artikel_id and not a:
+        abort(404)
+    if request.method == "POST":
+        titel = (request.form.get("titel") or "").strip()[:160]
+        if not titel:
+            flash("Een titel is verplicht.", "error")
+            return redirect(request.url)
+        if a is None:
+            a = Artikel(titel=titel)
+            db.session.add(a)
+            db.session.flush()
+        a.titel = titel
+        a.slug = _artikel_slug(titel, a.id)
+        a.samenvatting = (request.form.get("samenvatting") or "").strip()[:200]
+        a.inhoud_md = request.form.get("inhoud_md") or ""
+        wil_publiek = request.form.get("gepubliceerd") == "1"
+        if wil_publiek and not a.gepubliceerd:
+            a.publicatie_datum = a.publicatie_datum or datetime.utcnow()
+        a.gepubliceerd = wil_publiek
+        db.session.commit()
+        audit(f"artikel bewaard: {a.slug} ({'publiek' if a.gepubliceerd else 'concept'})")
+        flash("Artikel bewaard." + ("" if a.gepubliceerd else " (concept — nog niet publiek)"), "ok")
+        return redirect(url_for("admin.artikel_bewerk", artikel_id=a.id))
+    return render_template("admin/artikel_bewerk.html", a=a,
+                           title="Artikel", family=None, active="artikels")
+
+
+@bp.route("/artikels/<int:artikel_id>/verwijder", methods=["POST"])
+@admin_required
+def artikel_verwijder(artikel_id):
+    from ..models import Artikel
+    a = db.session.get(Artikel, artikel_id) or abort(404)
+    db.session.delete(a)
+    db.session.commit()
+    audit(f"artikel verwijderd: {a.slug}")
+    flash("Artikel verwijderd.", "ok")
+    return redirect(url_for("admin.artikels"))
+
+
+# ---------------------------------------------------------------------------
+# Redactie: nieuwsbrief-preview + artikelsuggesties + AI-concept — patch 135
+# ---------------------------------------------------------------------------
+
+@bp.route("/redactie")
+@medewerker_required
+def redactie():
+    from ..services.redactie import voorbeeldgezin, artikel_suggesties
+    from ..services.weekendmail import bouw_weekendmail
+    from ..models import get_setting
+    fam = voorbeeldgezin()
+    mail_html, picks = None, []
+    if fam:
+        mail_html, _, picks = bouw_weekendmail(fam)
+    return render_template("admin/redactie.html",
+                           fam=fam, mail_html=mail_html, picks=picks,
+                           suggesties=artikel_suggesties(),
+                           ai_backend=(get_setting("verrijk_backend") or "ollama"),
+                           title="Redactie", family=None, active="redactie")
+
+
+@bp.route("/redactie/testmail", methods=["POST"])
+@medewerker_required
+@limiter.limit("10/hour")
+def redactie_testmail():
+    """Stuur de weekendmail-preview naar het e-mailadres van de ingelogde
+    beheerder — zo zie je hem exact zoals in een echte mailbox."""
+    from ..models import Admin
+    from ..services.redactie import voorbeeldgezin
+    from ..services.weekendmail import bouw_weekendmail
+    from ..services.magic import send_mail
+    admin = db.session.get(Admin, session.get("admin_id")) or abort(403)
+    fam = voorbeeldgezin()
+    if not fam:
+        flash("Nog geen gezin met nieuwsbrief-opt-in om mee te previewen.", "error")
+        return redirect(url_for("admin.redactie"))
+    html, text, picks = bouw_weekendmail(fam)
+    if not picks:
+        flash("Geen weekend-tips gevonden voor het voorbeeldgezin.", "error")
+        return redirect(url_for("admin.redactie"))
+    send_mail(admin.email, "PREVIEW — weekendmail (test, niet verstuurd aan gezinnen)",
+              html, text)
+    audit("redactie: testmail weekendmail verstuurd")
+    flash(f"Testmail verstuurd naar {admin.email}.", "ok")
+    return redirect(url_for("admin.redactie"))
+
+
+@bp.route("/redactie/ai-concept", methods=["POST"])
+@medewerker_required
+@limiter.limit("20/hour")
+def redactie_ai_concept():
+    from ..services.redactie import ai_concept
+    onderwerp = (request.form.get("onderwerp") or "").strip()[:200]
+    hoek = (request.form.get("hoek") or "").strip()[:300]
+    if not onderwerp:
+        flash("Kies of typ eerst een onderwerp.", "error")
+        return redirect(url_for("admin.redactie"))
+    a = ai_concept(onderwerp, hoek)
+    if not a:
+        flash("De AI-backend gaf geen bruikbaar resultaat — controleer de "
+              "verrijk-instellingen op de Status-pagina.", "error")
+        return redirect(url_for("admin.redactie"))
+    audit(f"redactie: AI-concept aangemaakt ({a.slug})")
+    flash("Conceptartikel klaargezet — lees na, pas aan en publiceer bewust.", "ok")
+    return redirect(url_for("admin.artikel_bewerk", artikel_id=a.id))

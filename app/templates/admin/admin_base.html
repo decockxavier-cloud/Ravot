@@ -13,18 +13,21 @@
         <a href="{{ url_for('admin.nazicht') }}" class="{{ 'on' if active=='nazicht' }}">Nazicht</a>
       {% else %}
         {% set sectie = {
-          'content': ['activiteiten', 'nazicht', 'types'],
+          'content': ['activiteiten', 'nazicht', 'types', 'artikels'],
           'bronnen': ['horeca-import', 'verbindingen', 'feeds', 'verrijk'],
           'gezinnen': ['families', 'partners', 'feestjes', 'feestprospecten', 'beloningen'],
           'beheer': ['facturatie', 'paginas', 'mails', 'instellingen', 'status', 'partner-log', 'team'],
         } %}
         <a href="{{ url_for('admin.dashboard') }}" class="{{ 'on' if active=='dashboard' }}">Dashboard</a>
+        <a href="{{ url_for('admin.herkomst') }}" class="{{ 'on' if active=='herkomst' }}">Herkomst</a>
+        <a href="{{ url_for('admin.redactie') }}" class="{{ 'on' if active=='redactie' }}">Redactie</a>
 
         <details class="admin-groep" {{ 'open' if active in sectie.content }}>
           <summary>Content</summary>
           <a href="{{ url_for('admin.activiteiten') }}" class="{{ 'on' if active=='activiteiten' }}">Zaken &amp; fiches</a>
           <a href="{{ url_for('admin.nazicht') }}" class="{{ 'on' if active=='nazicht' }}">Nazicht</a>
           <a href="{{ url_for('admin.types_beheer') }}" class="{{ 'on' if active=='types' }}">Types</a>
+          <a href="{{ url_for('admin.artikels') }}" class="{{ 'on' if active=='artikels' }}">Artikels</a>
         </details>
 
         <details class="admin-groep" {{ 'open' if active in sectie.bronnen }}>

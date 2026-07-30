@@ -5,4 +5,4 @@ from flask_limiter.util import get_remote_address
 
 db = SQLAlchemy()
 csrf = CSRFProtect()
-limiter = Limiter(key_func=get_remote_address, default_limits=[])
+limiter = Limiter(key_func=get_remote_address)  # default via RATELIMIT_DEFAULT

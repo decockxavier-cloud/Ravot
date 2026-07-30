@@ -46,10 +46,26 @@ def top_events_for(family, limit=5):
         budget_pref=family.budget_pref,
         interest_weights={i.category: i.weight for i in family.interests},
     )
-    candidates = Event.query.filter(Event.start >= sat, Event.start < end).all()
+    from ..routes.public import bron_filter
+    candidates = bron_filter(Event.query).filter(
+        Event.start >= sat, Event.start < end,
+        Event.hidden.is_(False), Event.pending.is_(False)).all()
     scored = [(score_event(e, profile), e) for e in candidates]
     scored = [t for t in scored if t[0] > 0]
     scored.sort(key=lambda t: t[0], reverse=True)
+    # Te weinig gedateerde weekend-events (bv. zolang de UiT-laag verborgen
+    # is)? Vul aan met de beste permanente plekken in de buurt — zelfde
+    # terugval als de Vandaag/Weekend-feed, zodat de mail nooit leeg is.
+    if len(scored) < limit:
+        al = {e.id for _, e in scored}
+        perm = bron_filter(Event.query).filter(
+            Event.is_permanent.is_(True), Event.hidden.is_(False),
+            Event.pending.is_(False)).limit(2000).all()
+        perm_scored = [(score_event(e, profile), e) for e in perm
+                       if e.id not in al]
+        perm_scored = [t for t in perm_scored if t[0] > 0]
+        perm_scored.sort(key=lambda t: t[0], reverse=True)
+        scored += perm_scored[:limit - len(scored)]
     out = []
     for _, e in scored[:limit]:
         total, _free = family_price(e.price_info, profile.child_ages)
@@ -57,17 +73,34 @@ def top_events_for(family, limit=5):
     return out
 
 
-def send_weekend_mail(family, mailer):
+def bouw_weekendmail(family):
+    """Bouw de weekendmail voor één gezin: (html, text, picks) of (None, None, []).
+    Gedeeld door de echte verzending én de redactie-preview, zodat wat je in
+    de preview ziet exact is wat er vertrekt."""
     picks = top_events_for(family)
     if not picks:
-        return False
+        return None, None, []
     token = unsubscribe_token(family.id)
     unsub_url = current_app.config["SITE_URL"] + url_for("auth.unsubscribe", token=token)
+    # Vers van de blog: het recentste artikel meesturen (blog ↔ nieuwsbrief).
+    from ..models import Artikel
+    blogartikel = (Artikel.query.filter_by(gepubliceerd=True)
+                   .order_by(Artikel.publicatie_datum.desc()).first())
     html = render_template("mail/weekendmail.html", family=family, picks=picks,
+                           blogartikel=blogartikel,
                            unsub_url=unsub_url, site=current_app.config["SITE_URL"])
     text = "\n".join(
         f"- {p['event'].title} ({p['event'].gemeente})" for p in picks
     ) + f"\n\nUitschrijven (account blijft bestaan): {unsub_url}"
+    return html, text, picks
+
+
+def send_weekend_mail(family, mailer):
+    html, text, picks = bouw_weekendmail(family)
+    if not picks:
+        return False
+    token = unsubscribe_token(family.id)
+    unsub_url = current_app.config["SITE_URL"] + url_for("auth.unsubscribe", token=token)
     # Hoofdadres + bevestigde gezinsleden die de mails aan hebben staan.
     adressen = [family.email] + [m.email for m in family.members
                                  if m.bevestigd and m.mail_aan]

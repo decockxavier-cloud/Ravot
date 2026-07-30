@@ -6,7 +6,7 @@ Hoe was het? Eén tik en jullie helpen andere gezinnen kiezen — helemaal anoni
 {% for e in events %}
 <div style="border:1px solid #E5E0D4;border-radius:14px;padding:14px;margin:10px 0;text-align:center">
   <p style="margin:0 0 8px;font-weight:700">{{ e.title }}</p>
-  <a href="{{ site }}{{ url_for('account.review', event_id=e.id) }}"
+  <a href="{{ site }}{{ url_for('account.review', event_id=e.id) }}?utm_source=ravot&utm_medium=email&utm_campaign=maandagmail"
      style="background:#F2B705;color:#1F3A2A;text-decoration:none;padding:10px 20px;border-radius:999px;font-weight:700;display:inline-block">
      😄 Geef een Ravotscore</a>
 </div>

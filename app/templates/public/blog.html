@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Ravot vertelt 📖</h1>
+<p class="hint">Tips en inspiratie voor uitstappen met kinderen in Vlaanderen.</p>
+
+{% for a in artikels %}
+<article class="card" style="margin-bottom:14px">
+  <h2 style="margin:0 0 6px"><a href="{{ url_for('public.blog_artikel', slug=a.slug) }}">{{ a.titel }}</a></h2>
+  {% if a.samenvatting %}<p style="margin:0 0 6px">{{ a.samenvatting }}</p>{% endif %}
+  <p class="hint" style="margin:0">{{ a.publicatie_datum.strftime('%d/%m/%Y') if a.publicatie_datum }}</p>
+</article>
+{% else %}
+<div class="card"><p>Nog even geduld — de eerste artikels staan in de steigers! 🦊</p></div>
+{% endfor %}
+{% endblock %}

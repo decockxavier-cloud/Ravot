@@ -191,3 +191,6 @@
 .partner-log-tabel .log-tijd { white-space: nowrap; color: #77836f; font-size: .85rem; }
 .partner-log-tabel .log-wie { font-size: .85rem; color: #4a5568; }
 .partner-log-tabel td { padding: 6px 10px; border-bottom: 1px solid #f0f0ec; }
+
+/* Actieve periode-knop (Herkomst-dashboard) */
+.admin-body .btn-actief { background: #2E7D46; color: #fff; }

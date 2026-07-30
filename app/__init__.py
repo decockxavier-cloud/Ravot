@@ -42,6 +42,14 @@ def create_app(config_object=Config):
     csrf.init_app(app)
     limiter.init_app(app)
 
+    @limiter.request_filter
+    def _limiet_uitzonderingen():
+        # Statische bestanden en de healthcheck nooit meetellen: één
+        # paginaweergave laadt tientallen assets en monitoring pingt vaak.
+        from flask import request
+        return (request.path.startswith("/static/")
+                or request.path in ("/health", "/sw.js", "/manifest.json"))
+
     from .media import poi_image, has_echte_foto
     import os as _os
     from flask import url_for as _url_for
@@ -238,6 +246,13 @@ def create_app(config_object=Config):
             resp.headers["Cache-Control"] = "no-store"
             return resp
         return None
+
+    @app.before_request
+    def herkomst_bezoek():
+        # Server-side herkomst-tracking (referrer + UTM), zie app/herkomst.py.
+        # Bewust NA de onderhoudsmodus geregistreerd: tijdens onderhoud niets loggen.
+        from .herkomst import registreer_bezoek
+        registreer_bezoek()
 
     @app.errorhandler(429)
     def te_veel(_):
@@ -1193,6 +1208,36 @@ def register_cli(app):
         click.echo(f"\n✓ {gewist} testevents gewist, {wees} verweesde organisatoren/locaties/reeksen opgeruimd.")
         click.echo("Goedgekeurde, gebruikers- en OSM/Wikidata-fiches bleven behouden.")
 
+    @app.cli.command("redactie-preview")
+    def redactie_preview():
+        """Mail de weekendmail-preview naar alle beheerders (cron: woensdag
+        17:00, daags voor de donderdagverzending — tijd om bij te sturen)."""
+        from .models import get_bool, Admin
+        if not get_bool("weekendmail_aan"):
+            click.echo("Weekendmail staat uit — geen preview nodig.")
+            return
+        from .services.magic import send_mail
+        from .services.redactie import voorbeeldgezin
+        from .services.weekendmail import bouw_weekendmail
+        fam = voorbeeldgezin()
+        if not fam:
+            click.echo("Geen gezin met opt-in om mee te previewen.")
+            return
+        with app.test_request_context(base_url=app.config["SITE_URL"]):
+            html, text, picks = bouw_weekendmail(fam)
+        if not picks:
+            click.echo("Geen weekend-tips voor het voorbeeldgezin.")
+            return
+        kop = ("<p style='background:#F2B705;padding:10px 14px;border-radius:8px;"
+               "font-weight:700'>PREVIEW — dit is hoe de weekendmail er morgen "
+               "uitziet. Bijsturen kan in /beheer/redactie.</p>")
+        n = 0
+        for a in Admin.query.all():
+            send_mail(a.email, "PREVIEW — weekendmail van morgen",
+                      kop + html, text)
+            n += 1
+        click.echo(f"Preview verstuurd naar {n} beheerder(s).")
+
     @app.cli.command("send-weekendmail")
     def send_weekendmail():
         """Donderdagmail (cron: donderdag 17:00)."""
@@ -1203,7 +1248,10 @@ def register_cli(app):
         from .services.magic import send_mail
         from .services.weekendmail import send_all
         try:
-            n = send_all(send_mail)
+            # url_for (uitschrijflinks) vereist een request-context; buiten
+            # het web bouwen we er één op met de echte site-URL.
+            with app.test_request_context(base_url=app.config["SITE_URL"]):
+                n = send_all(send_mail)
             db.session.add(MailLog(soort="weekendmail", aantal=n, ok=True,
                                    detail=f"verstuurd naar {n} gezinnen"))
             db.session.commit()
@@ -1224,7 +1272,8 @@ def register_cli(app):
         from .services.magic import send_mail
         from .services.maandagmail import send_all
         try:
-            n = send_all(send_mail)
+            with app.test_request_context(base_url=app.config["SITE_URL"]):
+                n = send_all(send_mail)
             db.session.add(MailLog(soort="maandagmail", aantal=n, ok=True,
                                    detail=f"verstuurd naar {n} gezinnen"))
             db.session.commit()

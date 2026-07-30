@@ -11,6 +11,7 @@ SEO-architectuur (SEO/GEO-plan):
   /sitemap.xml /robots.txt /llms.txt
 """
 import re
+import json
 from datetime import datetime, timedelta
 
 from flask import (Blueprint, abort, current_app, g, jsonify, redirect,
@@ -121,6 +122,18 @@ def geldig_venster(now=None):
     return now - timedelta(hours=6), now + timedelta(days=maanden * 31)
 
 
+def bron_filter(q):
+    """Bronnen die de beheerder publiek onzichtbaar zette wegfilteren.
+    Nu enkel de UiT-laag (schakelaar 'uit_zichtbaar'): uitzetten verbergt de
+    events publiek, maar data én verrijking blijven volledig bewaard —
+    aanzetten maakt alles in één klik weer zichtbaar. Het beheer ziet altijd
+    alles (dit filter zit enkel op de publieke routes)."""
+    from ..models import get_bool
+    if not get_bool("uit_zichtbaar"):
+        q = q.filter(Event.source != "uit")
+    return q
+
+
 def geldige_events(query, now=None):
     """Beperk een Event-query tot het geldige venster (niet voorbij, niet absurd ver).
     Een event is 'voorbij' als zijn EINDE achter de ondergrens ligt — zo blijven
@@ -130,6 +143,7 @@ def geldige_events(query, now=None):
     # altijd geldig; gedateerde events moeten binnen het venster vallen.
     # Kampen horen NIET in de gewone lijsten/kaart — die hebben hun eigen
     # onderdeel (/kampen), net als feestjes.
+    query = bron_filter(query)
     return query.filter(
         Event.hidden.is_(False), Event.pending.is_(False),      # verborgen dubbels nooit tonen
         db.or_(Event.is_kamp.is_(False), Event.is_kamp.is_(None)),
@@ -348,7 +362,7 @@ MIN_FEED = 6
 def permanente_pois(profile, limit=24):
     """Gescoorde permanente plekken (speeltuinen, musea, attracties) in de buurt.
     Fallback zodat Vandaag/Weekend niet leeg zijn als er weinig gedateerde events zijn."""
-    candidates = Event.query.filter(Event.is_permanent.is_(True),
+    candidates = bron_filter(Event.query).filter(Event.is_permanent.is_(True),
                                     Event.hidden.is_(False), Event.pending.is_(False)).limit(3000).all()
     weggeklikt = _weggeklikt_ids()
     rows = []
@@ -442,7 +456,7 @@ def scored_events(profile, scope, extra_filter=None, limit=40, weer=True):
     onder, boven = geldig_venster(now)
     # Harde grenzen: nooit afgelopen events, nooit absurd ver in de toekomst.
     # 'Afgelopen' = het EINDE ligt achter de ondergrens (lopende events tellen mee).
-    q = Event.query.filter(
+    q = bron_filter(Event.query).filter(
         Event.hidden.is_(False), Event.pending.is_(False),
         Event.start <= end,
         (Event.end >= start) | (Event.start >= start),
@@ -498,7 +512,7 @@ def scored_events(profile, scope, extra_filter=None, limit=40, weer=True):
 def event_ics(slug):
     """Agenda-export (fase 3): 'zet in agenda' voor één activiteit."""
     from ..models import Event
-    ev = Event.query.filter_by(slug=slug).first_or_404()
+    ev = bron_filter(Event.query).filter_by(slug=slug).first_or_404()
 
     def esc(t):
         return (t or "").replace("\\", "\\\\").replace(",", "\\,").replace(";", "\\;").replace("\n", "\\n")
@@ -938,7 +952,7 @@ def verkennen():
     # nieuwe types zoals horeca buiten de limiet). Horeca krijgt een eigen
     # gegarandeerd deel, zodat kindvriendelijke restaurants altijd op de
     # kaart staan, hoeveel speeltuinen er ook zijn.
-    perm_basis = Event.query.filter(
+    perm_basis = bron_filter(Event.query).filter(
         Event.lat.isnot(None), Event.is_permanent.is_(True),
         Event.hidden.is_(False), Event.pending.is_(False))
     # Expliciete soort-keuze? Dan het contingent daarop vernauwen — anders kan
@@ -1169,7 +1183,7 @@ def api_kaart():
 @bp.route("/e/<slug>")
 @limiter.limit("60/minute;1000/hour")  # fiches: 15k stuks leegtrekken duurt zo dagen per IP
 def event(slug):
-    ev = Event.query.filter_by(slug=slug).first_or_404()
+    ev = bron_filter(Event.query).filter_by(slug=slug).first_or_404()
     # Nog niet gemodereerde gebruikersbijdrage: niet publiek tonen.
     # (Enkel de indiener zelf mag meekijken; geen indiener bekend => niemand.)
     if ev.pending and (ev.submitted_by is None
@@ -1317,7 +1331,7 @@ def _gemeente_events(gemeente, facet=None):
     scope = "vandaag" if facet == "vandaag" else "weekend" if facet in (None, "dit-weekend") else "maand"
     start, end = window(scope)
     onder, boven = geldig_venster()
-    q = Event.query.filter(
+    q = bron_filter(Event.query).filter(
         db.func.lower(Event.gemeente) == gemeente.lower(),
         Event.hidden.is_(False), Event.pending.is_(False),
         db.or_(
@@ -1362,7 +1376,7 @@ def gemeente_page(gemeente, facet=None):
     faq = seo.faq_jsonld([(f"Wat is er {scope} te doen in {naam} met kinderen?", answer)])
     # Partnerblok: max. 2 betalende partners in deze gemeente, duidelijk gelabeld.
     # Bewust een APART blok — partners krijgen nooit een betere plek in de lijst.
-    partners = Event.query.filter(
+    partners = bron_filter(Event.query).filter(
         db.func.lower(Event.gemeente) == gemeente.lower(),
         Event.partner_until.isnot(None), Event.partner_until > datetime.utcnow(),
         Event.hidden.is_(False), Event.pending.is_(False),
@@ -1403,7 +1417,15 @@ def sitemap():
     urls = [f"{site}/", f"{site}/weekend", f"{site}/verkennen"]
     # Enkel publiek zichtbare fiches: geen pending (detail geeft 404, dus
     # Google zou dode links crawlen) en geen hidden dubbels (duplicate content).
-    publiek = (Event.hidden.is_(False), Event.pending.is_(False))
+    from ..models import Artikel
+    urls.append(f"{site}/blog")
+    for a in Artikel.query.filter_by(gepubliceerd=True).all():
+        urls.append(f"{site}/blog/{a.slug}")
+    publiek = [Event.hidden.is_(False), Event.pending.is_(False)]
+    from ..models import get_bool
+    if not get_bool("uit_zichtbaar"):
+        publiek.append(Event.source != "uit")
+    publiek = tuple(publiek)
     gemeenten = db.session.query(Event.gemeente, db.func.count(Event.id)) \
         .filter(Event.gemeente.isnot(None), *publiek) \
         .group_by(Event.gemeente).all()
@@ -1601,7 +1623,7 @@ def kampen():
     if not get_bool("kampen_aan"):
         abort(404)
     _, fam = build_profile()
-    q = Event.query.filter(Event.is_kamp.is_(True), Event.hidden.is_(False),
+    q = bron_filter(Event.query).filter(Event.is_kamp.is_(True), Event.hidden.is_(False),
                            Event.pending.is_(False))
     # Datumfilter met speling: een kamp dat een paar dagen buiten de gezochte
     # periode valt, is meestal nog relevant ("de week van..."). Standaardmarge
@@ -1665,3 +1687,47 @@ def kampen():
                            thema=thema, themas=KAMP_THEMAS, marge=marge,
                            std_marge=std_marge, actief_prakt=actief_prakt,
                            leeftijden=LEEFTIJDEN, active="kampen")
+
+
+# ---------------------------------------------------------------------------
+# Blog ("Ravot vertelt") — patch 134
+# ---------------------------------------------------------------------------
+
+@bp.route("/blog")
+def blog():
+    from ..models import Artikel
+    artikels = (Artikel.query.filter_by(gepubliceerd=True)
+                .order_by(Artikel.publicatie_datum.desc()).limit(50).all())
+    return render_template("public/blog.html", artikels=artikels,
+                           meta_title="Blog — tips en inspiratie voor gezinsuitstappen | Ravot",
+                           meta_desc="Praktische artikels over uitstappen met kinderen in "
+                                     "Vlaanderen: van regenweer-tips tot de leukste speeltuinen.",
+                           family=current_family(), active=None, title="Blog")
+
+
+@bp.route("/blog/<slug>")
+def blog_artikel(slug):
+    from ..models import Artikel
+    from ..content import render_markdown
+    a = Artikel.query.filter_by(slug=slug, gepubliceerd=True).first_or_404()
+    site = current_app.config["SITE_URL"]
+    jsonld = json.dumps({
+        "@context": "https://schema.org", "@type": "BlogPosting",
+        "headline": a.titel,
+        "description": a.samenvatting or None,
+        "datePublished": a.publicatie_datum.isoformat() if a.publicatie_datum else None,
+        "dateModified": a.updated_at.isoformat() if a.updated_at else None,
+        "mainEntityOfPage": f"{site}/blog/{a.slug}",
+        "author": {"@type": "Organization", "name": "Ravot"},
+        "publisher": {"@type": "Organization", "name": "Ravot",
+                      "url": site},
+    }, ensure_ascii=False)
+    # Recente andere artikels als leesverder-blok (interne links).
+    meer = (Artikel.query.filter(Artikel.gepubliceerd.is_(True), Artikel.id != a.id)
+            .order_by(Artikel.publicatie_datum.desc()).limit(3).all())
+    return render_template("public/blog_artikel.html", a=a, meer=meer,
+                           inhoud_html=render_markdown(a.inhoud_md),
+                           meta_title=f"{a.titel} | Ravot",
+                           meta_desc=(a.samenvatting or a.titel)[:160],
+                           jsonld=[jsonld],
+                           family=current_family(), active=None, title=a.titel)

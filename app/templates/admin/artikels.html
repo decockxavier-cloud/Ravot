@@ -1,0 +1,23 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<h1>Artikels ✍️</h1>
+<p class="hint">Blogartikels voor SEO en inspiratie. Concepten zijn enkel hier
+  zichtbaar; gepubliceerde artikels staan op <a href="/blog" target="_blank">/blog</a>
+  en in de sitemap.</p>
+<p class="acties"><a class="btn" href="{{ url_for('admin.artikel_bewerk') }}">+ Nieuw artikel</a></p>
+
+<table class="admin-tabel">
+  <tr><th>Titel</th><th>Status</th><th>Gepubliceerd op</th><th>Laatst bewerkt</th></tr>
+  {% for a in rijen %}
+  <tr>
+    <td><a href="{{ url_for('admin.artikel_bewerk', artikel_id=a.id) }}">{{ a.titel }}</a></td>
+    <td>{% if a.gepubliceerd %}<span class="badge open">publiek</span>
+        {% else %}<span class="badge">concept</span>{% endif %}</td>
+    <td>{{ a.publicatie_datum.strftime('%d/%m/%Y') if a.publicatie_datum else '—' }}</td>
+    <td>{{ a.updated_at.strftime('%d/%m/%Y') if a.updated_at else '—' }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="4" class="hint">Nog geen artikels — schrijf je eerste met de knop hierboven.</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

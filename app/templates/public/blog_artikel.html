@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<p><a href="{{ url_for('public.blog') }}">← Alle artikels</a></p>
+<article class="card">
+  <h1 style="margin-top:0">{{ a.titel }}</h1>
+  <p class="hint">{{ a.publicatie_datum.strftime('%d/%m/%Y') if a.publicatie_datum }}</p>
+  <div class="artikel-inhoud">{{ inhoud_html | safe }}</div>
+</article>
+
+{% if meer %}
+<div class="card" style="margin-top:14px">
+  <h2>Lees verder</h2>
+  <ul>
+    {% for m in meer %}
+    <li><a href="{{ url_for('public.blog_artikel', slug=m.slug) }}">{{ m.titel }}</a></li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<p style="margin-top:16px"><a class="btn" href="{{ url_for('public.ontdek') }}">Ontdek uitstappen in jouw buurt →</a></p>
+{% endblock %}

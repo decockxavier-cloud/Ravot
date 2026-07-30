@@ -1,0 +1,41 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<h1>{{ 'Artikel bewerken' if a else 'Nieuw artikel' }} ✍️</h1>
+<p><a href="{{ url_for('admin.artikels') }}">← Alle artikels</a>
+  {% if a and a.gepubliceerd %} · <a href="/blog/{{ a.slug }}" target="_blank">Bekijk publiek →</a>{% endif %}</p>
+
+<form method="post" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <p><label>Titel<br>
+    <input type="text" name="titel" value="{{ a.titel if a else '' }}" required
+           maxlength="160" style="width:100%"></label>
+  <span class="hint">Wordt ook de paginatitel in Google. Zet het belangrijkste
+    zoekwoord vooraan, bv. "Regenweer in Gent: 7 uitjes met kinderen".</span></p>
+
+  <p><label>Samenvatting (max. 200 tekens)<br>
+    <input type="text" name="samenvatting" value="{{ a.samenvatting if a else '' }}"
+           maxlength="200" style="width:100%"></label>
+  <span class="hint">Dit is de beschrijving die Google onder de titel toont —
+    schrijf hem als uitnodiging om te klikken.</span></p>
+
+  {% with inhoud = a.inhoud_md if a else '' %}{% include "admin/_md_editor.html" %}{% endwith %}
+  <p class="hint">Tip: link in je tekst naar Ravot-pagina's
+    (bv. <code>[speeltuinen in Gent](/gent)</code>) — interne links helpen
+    zowel de lezer als je vindbaarheid.</p>
+
+  <p><label><input type="checkbox" name="gepubliceerd" value="1"
+    {{ 'checked' if a and a.gepubliceerd }}> Gepubliceerd (zichtbaar op /blog en in de sitemap)</label></p>
+
+  <div class="acties">
+    <button class="btn" type="submit">Bewaren</button>
+  </div>
+</form>
+
+{% if a %}
+<form method="post" action="{{ url_for('admin.artikel_verwijder', artikel_id=a.id) }}"
+      data-confirm="Artikel '{{ a.titel }}' definitief verwijderen?" style="margin-top:14px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button class="btn btn-klein" type="submit">Verwijderen</button>
+</form>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,71 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<h1>Redactie 🗞️</h1>
+<p class="hint">Pagina's, blog, nieuwsbrieven en zoekdata als één geheel:
+  bekijk hier de nieuwsbrief vóór hij vertrekt, en haal schrijfonderwerpen
+  rechtstreeks uit wat bezoekers zoeken en bekijken. De preview-mail komt
+  ook automatisch daags voor verzending in je mailbox (zie LEESMIJ).</p>
+
+<div class="card">
+  <h2>Weekendmail — preview van de eerstvolgende editie</h2>
+  {% if not fam %}
+  <p class="hint">Nog geen gezin met nieuwsbrief-opt-in; zodra dat er is,
+    verschijnt hier de exacte mail.</p>
+  {% elif not picks %}
+  <p class="hint">Voorbeeldgezin: <strong>{{ fam.email }}</strong> — geen
+    weekend-tips gevonden (te weinig activiteiten in hun buurt?).</p>
+  {% else %}
+  <p class="hint">Opgebouwd voor voorbeeldgezin <strong>{{ fam.email }}</strong>
+    ({{ fam.postcode or 'geen postcode' }}) met exact dezelfde code als de echte
+    verzending. Intro of vaste teksten bijsturen? Dat kan bij
+    <a href="{{ url_for('admin.mails') }}">Mailteksten</a>; het blogblok volgt
+    automatisch je recentste <a href="{{ url_for('admin.artikels') }}">artikel</a>.</p>
+  <form method="post" action="{{ url_for('admin.redactie_testmail') }}" class="acties">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-klein" type="submit">📬 Stuur testmail naar mijn adres</button>
+  </form>
+  <div style="border:1px solid #e3e6ea;border-radius:10px;margin-top:12px;padding:10px;background:#fff;max-height:520px;overflow:auto">
+    {{ mail_html | safe }}
+  </div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Schrijfonderwerpen uit je data</h2>
+  {% if suggesties %}
+  <table class="admin-tabel">
+    <tr><th>Signaal</th><th>Onderwerp &amp; invalshoek</th><th></th></tr>
+    {% for s in suggesties %}
+    <tr>
+      <td style="white-space:nowrap">{{ s.bron }}{% if s.n %} <span class="hint">({{ s.n }})</span>{% endif %}</td>
+      <td><strong>{{ s.onderwerp }}</strong><br><span class="hint">{{ s.hoek }}</span></td>
+      <td><form method="post" action="{{ url_for('admin.redactie_ai_concept') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="onderwerp" value="{{ s.onderwerp }}">
+        <input type="hidden" name="hoek" value="{{ s.hoek }}">
+        <button class="btn btn-klein" type="submit">✍️ AI-concept</button>
+      </form></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="hint">Nog te weinig data voor suggesties — dit vult zich vanzelf
+    naarmate bezoekers zoeken en fiches bekijken.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Zelf een onderwerp aan de AI geven</h2>
+  <p class="hint">Backend: <code>{{ ai_backend }}</code> (instelbaar bij
+    Instellingen → AI-verrijking). Het resultaat wordt een <strong>concept</strong>:
+    niets gaat online zonder jouw nazicht en publicatieklik.</p>
+  <form method="post" action="{{ url_for('admin.redactie_ai_concept') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <p><input type="text" name="onderwerp" maxlength="200" style="width:100%"
+              placeholder="Bv. Verjaardagsfeestje voor een 6-jarige: 10 ideeën in West-Vlaanderen" required></p>
+    <p><input type="text" name="hoek" maxlength="300" style="width:100%"
+              placeholder="Invalshoek (optioneel): praktisch, budget, regenweer, ..."></p>
+    <div class="acties"><button class="btn" type="submit">✍️ Schrijf conceptartikel</button></div>
+  </form>
+</div>
+{% endblock %}

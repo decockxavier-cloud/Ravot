@@ -8,8 +8,8 @@ import markdown as _md
 import bleach
 
 _TAGS = ["h1", "h2", "h3", "h4", "p", "strong", "em", "b", "i", "u",
-         "a", "ul", "ol", "li", "br", "blockquote", "hr", "code", "pre"]
-_ATTRS = {"a": ["href", "title"]}
+         "a", "ul", "ol", "li", "br", "blockquote", "hr", "code", "pre", "img"]
+_ATTRS = {"a": ["href", "title"], "img": ["src", "alt", "title"]}
 
 
 def render_markdown(tekst):
