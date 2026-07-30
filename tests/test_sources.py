@@ -388,18 +388,33 @@ def test_wikidata_regio_scopes_ontdubbeld(app):
     assert len(scopes) == 2                                              # België (1x) + NL
 
 
-def test_vandaag_toont_geen_permanente_pois(client, app):
-    """Permanente plekken (speeltuinen e.d.) horen op de kaart, niet in de
-    tijdgebonden feeds Vandaag/Weekend."""
+def test_vandaag_vult_aan_met_permanente_pois(client, app):
+    """Nieuw gedrag (patch 136): is de tijdgebonden feed dun (bv. UiT-laag
+    verborgen), dan vullen permanente plekken hem aan — vandaag kún je ook
+    naar een speeltuin of op restaurant. Bij voldoende gedateerd aanbod
+    (>= MIN_FEED) blijft de feed puur gedateerd."""
+    from datetime import datetime, timedelta
     from app.models import Event
     from app.extensions import db as _db
     _db.session.add(Event(source="osm", ext_id="node/9", slug="speeltuin-fallback",
         title="Speeltuin Fallback", is_permanent=True, gemeente="Gent", postcode="9000",
         lat=51.05, lng=3.72, age_min=1, age_max=12, categories=["buiten"], is_free=True))
     _db.session.commit()
+    # Dunne feed: de terugval toont de speeltuin.
     for pad in ("/vandaag", "/weekend"):
         html = client.get(pad).get_data(as_text=True)
-        assert "Speeltuin Fallback" not in html, pad
+        assert "Speeltuin Fallback" in html, pad
+    # Voldoende gedateerd aanbod: terugval blijft uit.
+    from app.routes.public import MIN_FEED
+    nu = datetime.utcnow().replace(hour=10)
+    for i in range(MIN_FEED + 2):
+        _db.session.add(Event(source="uit", ext_id=f"uit/{i}", slug=f"ev-{i}",
+            title=f"Gedateerd event {i}", is_permanent=False, gemeente="Gent",
+            postcode="9000", lat=51.05, lng=3.72, start=nu, end=nu + timedelta(hours=8),
+            age_min=1, age_max=12, categories=["buiten"], is_free=True))
+    _db.session.commit()
+    html = client.get("/vandaag").get_data(as_text=True)
+    assert "Speeltuin Fallback" not in html
 
 
 # --------------------------------------------------------------- dedup --

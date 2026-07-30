@@ -639,6 +639,9 @@ def vandaag():
         # Bezoeker zonder profiel: toon gewoon wat er vandaag te doen is.
         # (De landingspagina staat op "/" — de Vandaag-tab hoort de lijst te tonen.)
         rows = _gast_rows("vandaag")
+    # Weinig gedateerde events (bv. UiT-laag uit)? Vul aan met speeltuinen,
+    # musea en horeca in de buurt — vandaag kún je daar ook gewoon heen.
+    rows = vul_aan_met_permanente(rows, profile)
     if not rows:
         log("zero_result", scope="vandaag", postcode=guest_profile().get("postcode")
             or (fam.postcode if fam else None))
@@ -659,6 +662,7 @@ def deze_week():
     profile, fam = build_profile()
     has_profile = bool(fam or guest_profile().get("postcode"))
     rows = scored_events(profile, "deze-week") if has_profile else _gast_rows("deze-week")
+    rows = vul_aan_met_permanente(rows, profile)
     return render_template("public/lijst.html", rows=rows, scope="deze week",
                            title="Deze week", answer=None,
                            regen=rows[0].get("regen") if rows else None,
@@ -671,6 +675,7 @@ def weekend():
     profile, fam = build_profile()
     has_profile = bool(fam or guest_profile().get("postcode"))
     rows = scored_events(profile, "weekend") if has_profile else _gast_rows("weekend")
+    rows = vul_aan_met_permanente(rows, profile)
     return render_template("public/lijst.html", rows=rows, scope="dit weekend",
                            title="Dit weekend", answer=None,
                            regen=rows[0].get("regen") if rows else None,
