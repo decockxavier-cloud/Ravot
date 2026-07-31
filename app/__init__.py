@@ -1208,6 +1208,34 @@ def register_cli(app):
         click.echo(f"\n✓ {gewist} testevents gewist, {wees} verweesde organisatoren/locaties/reeksen opgeruimd.")
         click.echo("Goedgekeurde, gebruikers- en OSM/Wikidata-fiches bleven behouden.")
 
+    @app.cli.command("fix-deelgemeenten")
+    def fix_deelgemeenten():
+        """Herstelt foute deelgemeente-bijschriften (patch 137).
+        1) Zwaartepunt-namen → altijd de fusiegemeente (8800 stond op
+           'Rumbeke', waardoor elk adresloos punt dat bijschrift kreeg).
+        2) Events zonder adres van niet-UiT-bronnen: gemeente was daar per
+           definitie een coördinaten-gok → bijschrift wissen, fusie behouden."""
+        from .models import Event, PostcodeCentroid
+        from .gemeenten import fusiegemeente_van_postcode
+        gefixt = 0
+        for pc in PostcodeCentroid.query.all():
+            fusie = fusiegemeente_van_postcode(pc.postcode)
+            if fusie and pc.gemeente != fusie:
+                pc.gemeente = fusie
+                gefixt += 1
+        db.session.commit()
+        click.echo(f"Zwaartepunten hersteld: {gefixt}")
+        rijen = Event.query.filter(Event.source != "uit",
+                                   Event.adres.is_(None),
+                                   Event.deelgemeente.isnot(None)).all()
+        for ev in rijen:
+            fusie = fusiegemeente_van_postcode(ev.postcode)
+            if fusie:
+                ev.gemeente = fusie
+            ev.deelgemeente = None
+        db.session.commit()
+        click.echo(f"Bijschriften gewist bij {len(rijen)} adresloze fiches.")
+
     @app.cli.command("redactie-preview")
     def redactie_preview():
         """Mail de weekendmail-preview naar alle beheerders (cron: woensdag

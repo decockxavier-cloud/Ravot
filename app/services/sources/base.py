@@ -147,11 +147,13 @@ def upsert_event(data):
     """Generieke upsert op (source, ext_id). Werkt voor alle niet-UiT bronnen.
     UiT houdt zijn eigen gespecialiseerde upsert (met reeks-matching)."""
     source, ext_id = data["source"], data["ext_id"]
+    _gemeente_gegokt = False
     if (not data.get("gemeente")) and data.get("lat") and data.get("lng"):
         g, p = dichtste_gemeente(data["lat"], data["lng"])
         if g:
             data["gemeente"] = g
             data["postcode"] = data.get("postcode") or p
+            _gemeente_gegokt = True
     # Normaliseer deelgemeente → fusiegemeente op basis van de postcode.
     # OSM levert vaak de deelgemeente (Rumbeke); wij tonen de fusiegemeente
     # (Roeselare) met de deelgemeente als bijschrift.
@@ -159,7 +161,9 @@ def upsert_event(data):
     _fusie, _deel = normaliseer(data.get("postcode"), data.get("gemeente"))
     if _fusie:
         data["gemeente"] = _fusie
-    data["deelgemeente"] = _deel
+    # Een via-coördinaten GEGOKTE gemeente is nooit bewijs van een
+    # deelgemeente: beter geen bijschrift dan een fout bijschrift.
+    data["deelgemeente"] = None if _gemeente_gegokt else _deel
     # Venue eerst oplossen: dit doet een flush; het Event mag pas daarna in de
     # sessie, anders probeert autoflush een half-leeg Event weg te schrijven.
     venue = upsert_venue(source, data.get("venue_ext_id") or ext_id,

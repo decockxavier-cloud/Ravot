@@ -79,11 +79,12 @@ def test_gemeente_fallback_bij_upsert(app):
         db.session.commit()
         ev = Event.query.filter_by(ext_id="g1").first()
         # 9820 is sinds 2025 officieel "Merelbeke-Melle"; de dichtste_gemeente-
-        # fallback vult Merelbeke in, de normalisatie zet het om naar de
-        # fusiegemeente met Merelbeke als deelgemeente.
+        # fallback vult de fusiegemeente in. Sinds patch 137 levert zo'n
+        # coördinaten-GOK bewust géén deelgemeente-bijschrift meer op: het
+        # punt kan net zo goed in Melle liggen (zie het Rumbeke-probleem).
         assert ev.postcode == "9820"
         assert ev.gemeente == "Merelbeke-Melle"
-        assert ev.deelgemeente == "Merelbeke"
+        assert ev.deelgemeente is None
 
 
 def test_backfill_gemeenten_cli(app):

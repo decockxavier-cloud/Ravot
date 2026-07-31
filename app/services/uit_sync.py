@@ -271,9 +271,15 @@ def update_centroids():
         db.func.avg(Event.lat), db.func.avg(Event.lng), db.func.count(Event.id),
     ).filter(Event.postcode.isnot(None), Event.lat.isnot(None)) \
      .group_by(Event.postcode, Event.gemeente).all()
+    from ..gemeenten import fusiegemeente_van_postcode
     for postcode, gemeente, lat, lng, n in rows:
         pc = db.session.get(PostcodeCentroid, postcode) or PostcodeCentroid(postcode=postcode)
-        pc.gemeente, pc.lat, pc.lng, pc.n_events = gemeente, lat, lng, n
+        # Altijd de FUSIEgemeente als naam: één postcode dekt meerdere
+        # deelgemeenten (8800 = Roeselare/Rumbeke/Beveren/Oekene) en de
+        # laatste groep won hier vroeger — zo kreeg elk adresloos OSM-punt
+        # per ongeluk "(Rumbeke)" als deelgemeente-bijschrift.
+        pc.gemeente = fusiegemeente_van_postcode(postcode) or gemeente
+        pc.lat, pc.lng, pc.n_events = lat, lng, n
         db.session.add(pc)
 
 
