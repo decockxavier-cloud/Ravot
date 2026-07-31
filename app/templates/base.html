@@ -19,6 +19,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ static_v('css/ravot.css') }}">
   {% block head %}{% endblock %}
+  <script defer src="https://stats.ravot.be/script.js" data-website-id="de582671-ff0b-41bf-855b-bd085e337528"></script>
   {% for ld in jsonld or [] %}<script type="application/ld+json">{{ ld | safe }}</script>{% endfor %}
 </head>
 <body class="{% block body_class %}{% endblock %}">

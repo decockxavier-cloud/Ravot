@@ -211,7 +211,8 @@ def create_app(config_object=Config):
             "img-src 'self' https: data:; "
             "style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com; "
             "font-src https://fonts.gstatic.com; "
-            "script-src 'self' https://unpkg.com; "
+            "script-src 'self' https://unpkg.com https://stats.ravot.be; "
+            "connect-src 'self' https://stats.ravot.be; "
             "frame-ancestors 'none'",
         )
         if not app.debug and not app.testing:
