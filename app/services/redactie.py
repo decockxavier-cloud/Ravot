@@ -119,10 +119,11 @@ def ai_concept(onderwerp, hoek=""):
         else:
             body.append(regel)
     a = Artikel(titel=titel, samenvatting=samenvatting,
-                inhoud_md="\n".join(body).strip(), gepubliceerd=False)
+                inhoud_md="\n".join(body).strip(), gepubliceerd=False,
+                # Slug vóór het opslaan bepalen: de kolom is verplicht, dus
+                # een tussentijdse flush zonder slug crasht op Postgres.
+                slug=_artikel_slug(titel))
     db.session.add(a)
-    db.session.flush()
-    a.slug = _artikel_slug(titel, a.id)
     db.session.commit()
     return a
 
