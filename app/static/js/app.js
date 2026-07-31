@@ -311,3 +311,19 @@ document.addEventListener('click', function (e) {
     }
   });
 })();
+
+// data-kopieer op een knop: kopieert de inhoud van het element met dat id.
+(function () {
+  "use strict";
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-kopieer]");
+    if (!b) return;
+    var el = document.getElementById(b.dataset.kopieer);
+    if (!el) return;
+    navigator.clipboard.writeText(el.value || el.textContent).then(function () {
+      var oud = b.textContent;
+      b.textContent = "Gekopieerd ✓";
+      setTimeout(function () { b.textContent = oud; }, 1500);
+    });
+  });
+})();

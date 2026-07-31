@@ -55,6 +55,45 @@
 </div>
 
 <div class="card">
+  <h2>Socialposts — concepten voor deze week</h2>
+  <p class="hint">Wekelijks automatisch gegenereerd volgens het ritme
+    (weekendtip vrijdag, parel begin de week, doorplaatsing bij een vers
+    blogartikel). Nalezen, kopiëren en zelf inplannen via Meta Business Suite —
+    de UTM-links zitten er al in, dus Herkomst meet elk kanaal apart.</p>
+  {% if social %}
+  {% for p in social %}
+  <div style="border:1px solid #e3e6ea;border-radius:10px;padding:10px 12px;margin-bottom:10px">
+    <p style="margin:0 0 6px"><strong>{{ p.soort }}</strong> — {{ p.onderwerp }}
+      <span class="hint">richtdag {{ p.gepland_voor.strftime('%a %d/%m') if p.gepland_voor else '—' }}
+        · 📷 {{ p.beeld_tip }}</span></p>
+    <p style="margin:0 0 4px"><em>Instagram</em>
+      <button type="button" class="btn btn-klein" data-kopieer="ig-{{ p.id }}">Kopieer</button></p>
+    <textarea id="ig-{{ p.id }}" rows="3" readonly style="width:100%">{{ p.tekst_ig }}</textarea>
+    <p style="margin:8px 0 4px"><em>Facebook</em>
+      <button type="button" class="btn btn-klein" data-kopieer="fb-{{ p.id }}">Kopieer</button></p>
+    <textarea id="fb-{{ p.id }}" rows="4" readonly style="width:100%">{{ p.tekst_fb }}</textarea>
+    <div class="acties" style="margin-top:8px">
+      <form method="post" action="{{ url_for('admin.redactie_social_actie', post_id=p.id, actie='gebruikt') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-klein" type="submit">✔ Gebruikt</button>
+      </form>
+      <form method="post" action="{{ url_for('admin.redactie_social_actie', post_id=p.id, actie='verwijder') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-klein" type="submit">Verwijder</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+  {% else %}
+  <p class="hint">Nog geen concepten voor deze week.</p>
+  {% endif %}
+  <form method="post" action="{{ url_for('admin.redactie_social_nu') }}" class="acties">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-klein" type="submit">🔄 Genereer nu (blog + social)</button>
+  </form>
+</div>
+
+<div class="card">
   <h2>Zelf een onderwerp aan de AI geven</h2>
   <p class="hint">Backend: <code>{{ ai_backend }}</code> (instelbaar bij
     Instellingen → AI-verrijking). Het resultaat wordt een <strong>concept</strong>:

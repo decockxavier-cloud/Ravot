@@ -1241,6 +1241,18 @@ def register_cli(app):
         db.session.commit()
         click.echo(f"Bijschriften gewist bij {len(rijen)} adresloze fiches.")
 
+    @app.cli.command("redactie-concepten")
+    def redactie_concepten():
+        """Wekelijkse conceptgeneratie (cron: woensdag 16:00): één blogconcept
+        uit de beste datasuggestie + socialposts volgens het redactieritme.
+        Alles blijft concept — publiceren en inplannen doet een mens."""
+        from .services.redactie import maak_weekconcept_artikel, maak_socialconcepten
+        with app.test_request_context(base_url=app.config["SITE_URL"]):
+            a = maak_weekconcept_artikel()
+            posts = maak_socialconcepten()
+        click.echo(f"Blogconcept: {a.slug if a else 'overgeslagen (bestaat al of AI stil)'}")
+        click.echo(f"Socialconcepten: {len(posts)} ({', '.join(p.soort for p in posts) or 'geen nieuwe'})")
+
     @app.cli.command("redactie-preview")
     def redactie_preview():
         """Mail de weekendmail-preview naar alle beheerders (cron: woensdag
@@ -1264,6 +1276,23 @@ def register_cli(app):
         kop = ("<p style='background:#F2B705;padding:10px 14px;border-radius:8px;"
                "font-weight:700'>PREVIEW — dit is hoe de weekendmail er morgen "
                "uitziet. Bijsturen kan in /beheer/redactie.</p>")
+        # Socialconcepten van deze week onderaan meesturen (nalezen + inplannen).
+        from .models import SocialPost
+        from datetime import datetime, timedelta
+        posts = SocialPost.query.filter(
+            SocialPost.status == "concept",
+            SocialPost.created_at >= datetime.utcnow() - timedelta(days=6)).all()
+        if posts:
+            blok = ["<hr><h3>Socialposts voor deze week (concepten)</h3>"]
+            for p in posts:
+                blok.append(
+                    f"<p><strong>{p.soort} — {p.onderwerp}</strong> "
+                    f"(richtdag {p.gepland_voor.strftime('%d/%m') if p.gepland_voor else '—'})<br>"
+                    f"<em>Instagram:</em><br>{p.tekst_ig.replace(chr(10), '<br>')}<br>"
+                    f"<em>Facebook:</em><br>{p.tekst_fb.replace(chr(10), '<br>')}<br>"
+                    f"<em>Beeld:</em> {p.beeld_tip}</p>")
+            kop = kop  # weekendmail eerst, social onderaan
+            html = html + "".join(blok)
         n = 0
         for a in Admin.query.all():
             send_mail(a.email, "PREVIEW — weekendmail van morgen",

@@ -2259,12 +2259,15 @@ def redactie():
     from ..services.redactie import voorbeeldgezin, artikel_suggesties
     from ..services.weekendmail import bouw_weekendmail
     from ..models import get_setting
+    from ..models import SocialPost
     fam = voorbeeldgezin()
     mail_html, picks = None, []
     if fam:
         mail_html, _, picks = bouw_weekendmail(fam)
+    social = (SocialPost.query.filter_by(status="concept")
+              .order_by(SocialPost.gepland_voor.asc().nullslast()).limit(12).all())
     return render_template("admin/redactie.html",
-                           fam=fam, mail_html=mail_html, picks=picks,
+                           fam=fam, mail_html=mail_html, picks=picks, social=social,
                            suggesties=artikel_suggesties(),
                            ai_backend=(get_setting("verrijk_backend") or "ollama"),
                            title="Redactie", family=None, active="redactie")
@@ -2314,3 +2317,34 @@ def redactie_ai_concept():
     audit(f"redactie: AI-concept aangemaakt ({a.slug})")
     flash("Conceptartikel klaargezet — lees na, pas aan en publiceer bewust.", "ok")
     return redirect(url_for("admin.artikel_bewerk", artikel_id=a.id))
+
+
+@bp.route("/redactie/social/<int:post_id>/<actie>", methods=["POST"])
+@medewerker_required
+def redactie_social_actie(post_id, actie):
+    from ..models import SocialPost
+    p = db.session.get(SocialPost, post_id) or abort(404)
+    if actie == "gebruikt":
+        p.status = "gebruikt"
+        flash("Post gemarkeerd als gebruikt.", "ok")
+    elif actie == "verwijder":
+        db.session.delete(p)
+        flash("Conceptpost verwijderd.", "ok")
+    else:
+        abort(400)
+    db.session.commit()
+    return redirect(url_for("admin.redactie"))
+
+
+@bp.route("/redactie/social/nu", methods=["POST"])
+@medewerker_required
+@limiter.limit("6/hour")
+def redactie_social_nu():
+    """Handmatig de weekgeneratie draaien (zelfde code als de cron)."""
+    from ..services.redactie import maak_socialconcepten, maak_weekconcept_artikel
+    a = maak_weekconcept_artikel()
+    posts = maak_socialconcepten()
+    audit(f"redactie: concepten gegenereerd ({len(posts)} social, blog: {bool(a)})")
+    flash(f"Gegenereerd: {len(posts)} socialconcept(en)"
+          + (f" + blogconcept '{a.titel}'" if a else "") + ".", "ok")
+    return redirect(url_for("admin.redactie"))

@@ -626,6 +626,23 @@ class Artikel(db.Model):
     updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
 
 
+class SocialPost(db.Model):
+    """Conceptpost voor social media, wekelijks gegenereerd volgens het
+    redactieritme (weekendtip vrijdag, parel begin de week, blog-doorplaatsing).
+    Altijd een CONCEPT: Xavier leest na, schaaft bij en plant zelf in via
+    Meta Business Suite — er gaat nooit AI-tekst ongezien online."""
+    __tablename__ = "social_posts"
+    id = db.Column(db.Integer, primary_key=True)
+    soort = db.Column(db.String(24), nullable=False)      # weekendtip | parel | blog
+    onderwerp = db.Column(db.String(200), default="")
+    tekst_ig = db.Column(db.Text, default="")             # Instagram-variant
+    tekst_fb = db.Column(db.Text, default="")             # Facebook-variant
+    beeld_tip = db.Column(db.String(300), default="")     # advies welk beeld erbij
+    gepland_voor = db.Column(db.Date)                     # richtdag om te posten
+    status = db.Column(db.String(12), default="concept", index=True)  # concept | gebruikt
+    created_at = db.Column(db.DateTime, default=utcnow)
+
+
 # Standaardpagina's die in de admin verschijnen (slug: titel).
 CONTENT_PAGES = {
     "over": "Over Ravot",

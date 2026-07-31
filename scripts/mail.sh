@@ -1,6 +1,7 @@
 #!/bin/bash
-# Geplande Ravot-mails. Gebruik: mail.sh weekend | maandag | preview
+# Geplande Ravot-mails. Gebruik: mail.sh weekend | maandag | preview | concepten
 # Cron-voorbeeld:
+#   0 16 * * 3  /srv/ravot/scripts/mail.sh concepten >> /var/log/ravot-mail.log 2>&1
 #   0 17 * * 3  /srv/ravot/scripts/mail.sh preview  >> /var/log/ravot-mail.log 2>&1
 #   0 17 * * 4  /srv/ravot/scripts/mail.sh weekend  >> /var/log/ravot-mail.log 2>&1
 #   0 9  * * 1  /srv/ravot/scripts/mail.sh maandag  >> /var/log/ravot-mail.log 2>&1
@@ -13,6 +14,7 @@ cd /srv/ravot
 case "${1:-}" in
   weekend) docker compose exec -T web flask send-weekendmail ;;
   preview) docker compose exec -T web flask redactie-preview ;;
+  concepten) docker compose exec -T web flask redactie-concepten ;;
   maandag) docker compose exec -T web flask send-maandagmail ;;
   *) echo "Gebruik: $0 weekend|maandag" >&2; exit 1 ;;
 esac
