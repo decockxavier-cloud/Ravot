@@ -247,12 +247,16 @@ def create_app(config_object=Config):
             return resp
         return None
 
-    @app.before_request
-    def herkomst_bezoek():
+    @app.after_request
+    def herkomst_bezoek(response):
         # Server-side herkomst-tracking (referrer + UTM), zie app/herkomst.py.
-        # Bewust NA de onderhoudsmodus geregistreerd: tijdens onderhoud niets loggen.
-        from .herkomst import registreer_bezoek
-        registreer_bezoek()
+        # Als after_request met statuscheck: enkel geslaagde HTML-pagina's
+        # tellen mee — botscans naar /.env e.d. stranden op 404 en vervuilen
+        # het dashboard dus niet meer.
+        if response.status_code == 200 and response.mimetype == "text/html":
+            from .herkomst import registreer_bezoek
+            registreer_bezoek()
+        return response
 
     @app.errorhandler(429)
     def te_veel(_):
