@@ -429,12 +429,14 @@ def facturatie():
     # Wettelijk verplicht: elke betaalde Partner-betaling hoort een factuur te
     # krijgen. De Odoo-koppeling "faalt stil" (activatie mag nooit sneuvelen op
     # een boekhoudfout) — dus maken we ontbrekende facturen hier zichtbaar.
-    zonder_factuur = (PartnerPayment.query
-                      .filter(PartnerPayment.status == "paid",
-                              PartnerPayment.odoo_invoice_id.is_(None),
-                              # gratis/handmatige partners hebben geen factuur nodig
-                              PartnerPayment.amount > 0)
-                      .order_by(PartnerPayment.paid_at.desc()).all())
+    rijen = (PartnerPayment.query
+             .filter(PartnerPayment.status == "paid",
+                     PartnerPayment.odoo_invoice_id.is_(None))
+             .order_by(PartnerPayment.paid_at.desc()).all())
+    # gratis/handmatige partners (bedrag 0) hebben geen factuur nodig.
+    # LET OP: amount is een tekstkolom ("19.00") — daarom hier in Python
+    # filteren; een SQL-vergelijking met 0 crasht op Postgres.
+    zonder_factuur = [b for b in rijen if float(b.amount or 0) > 0]
     return render_template("admin/facturatie.html", defs=defs,
                            waarden=waarden, groepen=groepen,
                            zonder_factuur=zonder_factuur,
