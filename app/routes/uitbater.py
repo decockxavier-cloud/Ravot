@@ -237,13 +237,32 @@ def zaak_nieuw(op):
         if not titel:
             flash("Vul minstens de naam van je zaak in.", "error")
             return redirect(url_for("uitbater.zaak_nieuw"))
+        # Soort + ligging (patch 142): zonder soort valt de zaak buiten de
+        # filters, zonder ligging staat ze op geen enkele kaart.
+        from ..types import TYPES
+        soort = request.form.get("soort") or None
+        if soort not in TYPES:
+            soort = None
+        try:
+            p_lat = float(request.form.get("lat") or "")
+            p_lng = float(request.form.get("lng") or "")
+        except ValueError:
+            p_lat = p_lng = None
+        if p_lat is None and postcode:
+            from ..geo import postcode_coord
+            c = postcode_coord(postcode)
+            if c:
+                p_lat, p_lng = c
+                flash("We zetten je zaak voorlopig midden in je postcodegebied — "
+                      "verfijn de speld straks via 'Fiche bewerken'.", "ok")
         ev = Event(
             slug=f"{_slugify(titel)}-{secrets.token_hex(3)}",
             title=titel, source="user", is_permanent=True,
             pending=True, curated=False, hidden=False,
             adres=adres or None, gemeente=gemeente or None,
             postcode=postcode or None, source_url=website or None,
-            description=beschrijving or None,
+            description=beschrijving or None, subtype=soort,
+            lat=p_lat, lng=p_lng,
             age_min=0, age_max=12, categories=[])
         db.session.add(ev)
         db.session.flush()
@@ -262,8 +281,11 @@ def zaak_nieuw(op):
         flash("Je zaak is ingediend! Onze redactie kijkt ze na — je krijgt een "
               "mail zodra ze online staat.", "ok")
         return redirect(url_for("uitbater.dashboard"))
+    from ..types import TYPES
+    soorten = {k: v for k, v in TYPES.items()
+               if not k.startswith(("ev_", "uit_"))}
     return render_template("uitbater/zaak_nieuw.html", title="Zaak toevoegen",
-                           family=None, active=None)
+                           soorten=soorten, family=None, active=None)
 
 
 @bp.route("/fiche/<int:event_id>", methods=["GET", "POST"])
@@ -320,6 +342,36 @@ def fiche(op, event_id):
             nieuw = int(ruw) if ruw.isdigit() and 1 <= int(ruw) <= 200 else None
             if nieuw != getattr(ev, veld):
                 wijzigingen[veld] = nieuw
+        # Soort (patch 142): bepaalt filters en het juiste kaart-contingent.
+        from ..types import TYPES
+        soort = request.form.get("soort") or ""
+        if soort in TYPES and soort != (ev.subtype or ""):
+            wijzigingen["subtype"] = soort
+        # Openingsuren (patch 142): 7 tekstvelden, leeg = gesloten.
+        from ..services.openingsuren import DAGEN, parse_dagtekst, dag_tekst
+        uren, uren_fout, uren_anders = {}, False, False
+        for dag in DAGEN:
+            waarde, ok = parse_dagtekst(request.form.get(f"uren_{dag}"))
+            if not ok:
+                uren_fout = True
+            uren[dag] = waarde
+            if dag_tekst(waarde) != dag_tekst((ev.openingsuren or {}).get(dag)):
+                uren_anders = True
+        if uren_fout:
+            flash("Sommige openingsuren begreep ik niet — gebruik het formaat "
+                  "09:00-18:00 (of 09:00-12:00, 13:00-18:00). Die dagen liet ik leeg.",
+                  "error")
+        if uren_anders and any(v for v in uren.values()):
+            wijzigingen["openingsuren"] = uren
+        # Ligging (patch 142): de speld op de kaart.
+        try:
+            n_lat = float(request.form.get("lat") or "")
+            n_lng = float(request.form.get("lng") or "")
+        except ValueError:
+            n_lat = n_lng = None
+        if n_lat is not None and (ev.lat is None or
+                                  abs(n_lat - ev.lat) > 1e-6 or abs(n_lng - ev.lng) > 1e-6):
+            wijzigingen["lat"], wijzigingen["lng"] = n_lat, n_lng
         if not wijzigingen:
             flash("Geen wijzigingen gevonden.", "error")
             return redirect(url_for("uitbater.fiche", event_id=ev.id))
@@ -329,8 +381,15 @@ def fiche(op, event_id):
         flash("Wijziging ingediend! Ze verschijnt op de fiche zodra ze is nagekeken.", "ok")
         return redirect(url_for("uitbater.dashboard"))
     from .. import mollie
+    from ..types import TYPES
+    from ..services.openingsuren import DAGEN, DAG_LABELS, dag_tekst
+    uren_nu = {dag: dag_tekst((ev.openingsuren or {}).get(dag)) for dag in DAGEN}
+    soorten = {k: v for k, v in TYPES.items()
+               if not k.startswith(("ev_", "uit_"))}
     return render_template("uitbater/fiche.html", ev=ev, title=f"Fiche: {ev.title}",
                            is_partner=mollie.is_partner(ev),
+                           soorten=soorten, dagen=DAGEN, dag_labels=DAG_LABELS,
+                           uren_nu=uren_nu,
                            family=None, active=None)
 
 

@@ -1,6 +1,16 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Mijn zaken 🏪</h1>
+<div class="card" style="background:#f2f9f4">
+  <strong>Zo werkt het</strong>
+  <p class="meta" style="margin:4px 0 0">
+    1️⃣ Claim je zaak (of voeg ze toe) → wij kijken na ·
+    2️⃣ Vul je fiche aan: <strong>ligging op de kaart</strong>, openingsuren,
+    soort en voorzieningen ·
+    3️⃣ Voeg foto's toe ·
+    4️⃣ Word ⭐ Partner voor extra zichtbaarheid.
+    Elke wijziging wordt eerst nagekeken — je krijgt telkens een mail.</p>
+</div>
 <p><a class="btn" href="{{ url_for('uitbater.claim') }}">+ Claim een zaak</a>
 <a class="btn btn-stil" href="{{ url_for('uitbater.zaak_nieuw') }}">🏠 Zaak toevoegen</a>
 {% if kampen_aan %} <a class="btn btn-stil" href="{{ url_for('uitbater.kamp_nieuw') }}">⛺ Kamp toevoegen</a>{% endif %}
@@ -33,6 +43,14 @@
           {% else %}✕ afgewezen{% endif %}</p>
       </div>
       {% if c.status == 'approved' and c.event %}
+      {% set e = c.event %}
+      <p class="meta" style="margin:4px 0 0">
+        {{ '✅' if not e.pending else '⏳' }} online ·
+        {{ '✅' if e.lat else '⚠️' }} ligging{{ '' if e.lat else ' (niet op kaart!)' }} ·
+        {{ '✅' if e.openingsuren else '◻️' }} openingsuren ·
+        {{ '✅' if e.subtype else '◻️' }} soort ·
+        {{ '⭐' if is_partner(e) else '◻️' }} partner
+      </p>
       <div class="nazicht-acties">
         <a class="btn btn-klein" href="{{ url_for('uitbater.fiche', event_id=c.event_id) }}">Fiche bewerken</a>
         {% if is_partner(c.event) %}

@@ -22,6 +22,11 @@
     if (zoom) kaart.setView(ll, Math.max(kaart.getZoom(), 15));
   }
   kaart.on("click", function (e) { zet(e.latlng); });
+  // Bestaande ligging (fiche bewerken): speld meteen tonen en centreren.
+  if (el.dataset.lat && el.dataset.lng) {
+    zet(L.latLng(parseFloat(el.dataset.lat), parseFloat(el.dataset.lng)), true);
+    status.textContent = "huidige ligging — versleep of tik om te verbeteren";
+  }
   var knop = document.getElementById("prik-hier");
   if (knop) knop.addEventListener("click", function () {
     if (!navigator.geolocation) return;

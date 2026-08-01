@@ -11,6 +11,14 @@ je je fiche verder aanvullen met voorzieningen en foto's.</p>
   <label>Naam van je zaak *
     <input type="text" name="titel" required maxlength="200" placeholder="bv. Café De Speeltuin">
   </label>
+  <label>Soort zaak
+    <select name="soort" required>
+      <option value="">— kies —</option>
+      {% for k, (emoji, naam, _v) in soorten.items() %}
+      <option value="{{ k }}">{{ emoji }} {{ naam }}</option>
+      {% endfor %}
+    </select>
+  </label>
   <label>Adres
     <input type="text" name="adres" maxlength="200" placeholder="Straat en nummer">
   </label>
@@ -26,6 +34,17 @@ je je fiche verder aanvullen met voorzieningen en foto's.</p>
   <label>Korte beschrijving
     <textarea name="beschrijving" rows="4" maxlength="2000" placeholder="Wat maakt jouw zaak fijn voor gezinnen met kinderen?"></textarea>
   </label>
+  <label>Waar ligt je zaak? <span class="hint">(tik op de kaart — zonder speld
+    staat je zaak niet op de Ravot-kaart)</span>
+    <div id="prik-kaart" class="prik-kaart"></div>
+    <input type="hidden" name="lat" id="prik-lat">
+    <input type="hidden" name="lng" id="prik-lng">
+    <p class="hint"><button type="button" class="btn btn-klein" id="prik-hier">📍 Gebruik mijn locatie</button>
+      <span id="prik-status">nog geen speld gezet</span></p>
+  </label>
   <button class="btn btn-groen btn-groot" type="submit">Zaak indienen →</button>
 </form>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ static_v('js/prik.js') }}" defer></script>
 {% endblock %}

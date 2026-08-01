@@ -7,6 +7,15 @@
 
 <form method="post" action="{{ url_for('uitbater.fiche', event_id=ev.id) }}" class="kaart-form">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label>Soort zaak
+    <select name="soort">
+      <option value="">— kies —</option>
+      {% for k, (emoji, naam, _v) in soorten.items() %}
+      <option value="{{ k }}" {{ 'selected' if ev.subtype == k }}>{{ emoji }} {{ naam }}</option>
+      {% endfor %}
+    </select>
+    <span class="upload-hint">Bepaalt onder welke filter gezinnen je vinden.</span>
+  </label>
   <label>Beschrijving
     <textarea name="description" rows="4" maxlength="2000">{{ ev.description or '' }}</textarea>
   </label>
@@ -38,6 +47,28 @@
     <label class="check"><input type="checkbox" name="indoor" {{ 'checked' if ev.indoor }}> 🏠 Binnen</label>
     <label class="check"><input type="checkbox" name="is_free" {{ 'checked' if ev.is_free }}> 🆓 Gratis toegang</label>
   </div>
+  <h3>Openingsuren</h3>
+  <p class="hint">Formaat: <code>09:00-18:00</code>, met middagpauze
+    <code>09:00-12:00, 13:00-18:00</code>. Leeg = gesloten. Gezinnen zien zo
+    meteen "Nu open" op je fiche.</p>
+  <div class="veldrij" style="flex-wrap:wrap">
+    {% for dag in dagen %}
+    <label style="min-width:210px">{{ dag_labels[dag] }}
+      <input type="text" name="uren_{{ dag }}" value="{{ uren_nu[dag] }}"
+             placeholder="gesloten" maxlength="60">
+    </label>
+    {% endfor %}
+  </div>
+  <h3>Ligging op de kaart</h3>
+  <p class="hint">{% if not ev.lat %}⚠️ <strong>Er staat nog geen speld</strong> —
+    zonder speld verschijnt je zaak niet op de Ravot-kaart. Tik op de juiste plek.
+    {% else %}Klopt de speld niet helemaal? Versleep hem of tik op de juiste plek.{% endif %}</p>
+  <div id="prik-kaart" class="prik-kaart"
+       {% if ev.lat %}data-lat="{{ ev.lat }}" data-lng="{{ ev.lng }}"{% endif %}></div>
+  <input type="hidden" name="lat" id="prik-lat">
+  <input type="hidden" name="lng" id="prik-lng">
+  <p class="hint"><span id="prik-status">{{ 'huidige ligging getoond' if ev.lat else 'nog geen speld' }}</span></p>
+
   <h3>Kindvriendelijke voorzieningen</h3>
   <p class="hint">Dit zijn dé dingen waar gezinnen op filteren — vink aan wat
   jullie écht hebben.</p>
@@ -109,4 +140,7 @@
     <button class="btn" type="submit">Upload</button>
   </form>
 </div>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ static_v('js/prik.js') }}" defer></script>
 {% endblock %}

@@ -804,7 +804,13 @@ EDIT_VELDEN = ("description", "adres", "postcode", "gemeente", "source_url",
                "indoor", "is_free", "feest", "feest_soorten", "feest_contact",
                "feest_min_pers", "feest_max_pers",
                "terras", "overdekt_terras", "parking", "toegankelijk",
-               "allergievriendelijk", "babyvoeding", "huisdieren", "reservatie_url")
+               "allergievriendelijk", "babyvoeding", "huisdieren", "reservatie_url",
+               # patch 142: deze ontbraken — de fiche stuurde ze wel in, maar
+               # de goedkeuring negeerde ze stil (whitelist-mismatch).
+               "kinderstoel", "speelhoek", "kindermenu", "verzorgingstafel",
+               "buggy_ok", "omheind",
+               # patch 142: nieuw bewerkbaar voor uitbaters
+               "openingsuren", "subtype", "lat", "lng")
 
 
 class EditProposal(db.Model):

@@ -223,3 +223,29 @@ def uren_overzicht(ev):
         else:
             rijen.append((DAG_LABELS[d], "—"))
     return rijen
+
+
+def parse_dagtekst(tekst):
+    """Formuliertekst -> dagwaarde. "09:00-12:00, 13:00-18:00" wordt een
+    blokkenlijst; leeg of "gesloten" wordt None. Ongeldige blokken vallen weg.
+    Retourneert (waarde, ok): ok=False bij tekst die nergens op leek."""
+    tekst = (tekst or "").strip().lower()
+    if not tekst or tekst in ("gesloten", "dicht", "-", "/"):
+        return None, True
+    blokken = []
+    for stuk in tekst.replace(";", ",").split(","):
+        stuk = stuk.strip().replace(" ", "").replace("–", "-").replace("—", "-")
+        if not stuk:
+            continue
+        delen = stuk.split("-")
+        if len(delen) == 2 and _parse(delen[0]) and _parse(delen[1]):
+            blokken.append([delen[0], delen[1]])
+    return (blokken, True) if blokken else (None, False)
+
+
+def dag_tekst(v):
+    """Dagwaarde -> formuliertekst ("09:00-12:00, 13:00-18:00" of "")."""
+    blokken = dag_blokken(v)
+    if not blokken:
+        return ""
+    return ", ".join(f"{a}-{b}" for a, b in blokken)

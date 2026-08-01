@@ -8,7 +8,7 @@
     {% for e in wachtrij %}
     <div class="nazicht-item">
       <div>
-        <strong>{{ e.title }}</strong>
+        <strong>{{ e.title }}</strong>{% if e.is_permanent and not e.lat %} <span class="badge pil-uit">⚠️ geen ligging — komt niet op de kaart</span>{% endif %}
         <p class="meta">📍 {{ e.adres or '' }}{% if e.postcode %} · {{ e.postcode }}{% endif %}
           {{ e.gemeente or '' }} · {{ e.age_min }}–{{ e.age_max }} jaar
           · {{ e.categories|join(', ') }}{% if e.indoor %} · binnen{% endif %}{% if e.is_free %} · gratis{% endif %}</p>
