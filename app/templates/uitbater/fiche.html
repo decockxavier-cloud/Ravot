@@ -139,6 +139,27 @@
     <p class="upload-hint">📷 Enkel eigen beeld waarvan je de rechten hebt, zonder herkenbare personen zonder toestemming.</p>
     <button class="btn" type="submit">Upload</button>
   </form>
+  {% if eigen_fotos %}
+  <h3>Mijn foto's</h3>
+  <p class="hint">Vervangen = eerst verwijderen, dan een nieuwe uploaden.
+    De hoofdfoto van je fiche is de recentst goedgekeurde "zaak"-foto.</p>
+  <div class="foto-galerij">
+    {% for f in eigen_fotos %}
+    <figure>
+      <img src="{{ url_for('public.foto', pid=f.id) }}" alt="" loading="lazy">
+      <figcaption class="hint" style="margin-top:4px">
+        {{ {'zaak':'🏠 zaak','kindermenu':'🍟 kindermenu','kinderhoek':'🧸 speelhoek'}.get(f.soort, f.soort) }} ·
+        {% if f.status == 'approved' %}✅ online{% elif f.status == 'pending' %}⏳ wacht op nazicht{% else %}✕ afgewezen{% endif %}
+      </figcaption>
+      <form method="post" action="{{ url_for('uitbater.fiche_foto_verwijder', event_id=ev.id, pid=f.id) }}"
+            data-confirm="Deze foto definitief verwijderen?">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-klein" type="submit">Verwijder</button>
+      </form>
+    </figure>
+    {% endfor %}
+  </div>
+  {% endif %}
 </div>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

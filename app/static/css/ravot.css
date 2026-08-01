@@ -1093,3 +1093,11 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 /* Blogartikels */
 .artikel-inhoud img { max-width: 100%; height: auto; border-radius: 10px; }
 .artikel-inhoud h2 { margin-top: 22px; }
+
+/* Fotogalerijen op de fiche ("De zaak", "Foto's van gezinnen"): raster met
+   vaste hoogte i.p.v. beelden op volle 1600px-breedte. */
+.foto-galerij { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px; }
+.foto-galerij figure { margin: 0; }
+.foto-galerij img { width: 100%; height: 160px; object-fit: cover;
+  border-radius: 10px; display: block; }

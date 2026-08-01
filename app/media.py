@@ -17,6 +17,11 @@ def _veilige_afbeelding(url):
     if not url or not isinstance(url, str):
         return None
     u = url.strip()
+    # Eigen fotodienst: relatieve /foto/<id>-URL's zijn door ons heringecodeerde
+    # JPEG's — altijd veilig, en nodig voor kaartjes-thumbnails van eigen zaken.
+    import re as _re
+    if _re.fullmatch(r"/foto/\d+", u):
+        return u
     if u.startswith("//"):
         u = "https:" + u
     if u.startswith("http://"):

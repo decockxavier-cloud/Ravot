@@ -384,12 +384,16 @@ def fiche(op, event_id):
     from ..types import TYPES
     from ..services.openingsuren import DAGEN, DAG_LABELS, dag_tekst
     uren_nu = {dag: dag_tekst((ev.openingsuren or {}).get(dag)) for dag in DAGEN}
+    from ..models import Photo
+    eigen_fotos = (Photo.query.filter(Photo.event_id == ev.id,
+                                      Photo.family_id.is_(None))
+                   .order_by(Photo.created_at.desc()).all())
     soorten = {k: v for k, v in TYPES.items()
                if not k.startswith(("ev_", "uit_"))}
     return render_template("uitbater/fiche.html", ev=ev, title=f"Fiche: {ev.title}",
                            is_partner=mollie.is_partner(ev),
                            soorten=soorten, dagen=DAGEN, dag_labels=DAG_LABELS,
-                           uren_nu=uren_nu,
+                           uren_nu=uren_nu, eigen_fotos=eigen_fotos,
                            family=None, active=None)
 
 
@@ -667,3 +671,33 @@ def kamp_nieuw(op):
     return render_template("uitbater/kamp_nieuw.html", title="Kamp toevoegen",
                            themas=KAMP_THEMAS, talen=KAMP_TALEN,
                            family=None, active=None)
+
+
+@bp.route("/fiche/<int:event_id>/foto/<int:pid>/verwijder", methods=["POST"])
+@operator_required
+@limiter.limit("30/hour")
+def fiche_foto_verwijder(op, event_id, pid):
+    """Eigen foto verwijderen (patch 146). Enkel uploads zonder gezins-id —
+    gezinsfoto's zijn van de gezinnen; daarvoor is er de meldknop."""
+    from ..models import Photo
+    from .. import fotos
+    ev = db.session.get(Event, event_id)
+    if not ev or not _mijn_goedgekeurde_claim(op, event_id):
+        abort(403)
+    p = db.session.get(Photo, pid)
+    if not p or p.event_id != ev.id or p.family_id is not None:
+        abort(404)
+    was_hoofd = (ev.image_url == f"/foto/{p.id}")
+    fotos.verwijder(p.filename)
+    db.session.delete(p)
+    db.session.flush()
+    if was_hoofd:
+        # volgende goedgekeurde eigen foto wordt hoofdbeeld, anders leeg
+        volgende = (Photo.query.filter(Photo.event_id == ev.id,
+                                       Photo.status == "approved",
+                                       Photo.family_id.is_(None))
+                    .order_by(Photo.created_at.asc()).first())
+        ev.image_url = f"/foto/{volgende.id}" if volgende else None
+    db.session.commit()
+    flash("Foto verwijderd." + (" Het hoofdbeeld is bijgewerkt." if was_hoofd else ""), "ok")
+    return redirect(url_for("uitbater.fiche", event_id=ev.id))
