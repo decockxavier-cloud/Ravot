@@ -25,11 +25,11 @@ def gezin(app, client):
         db.session.add(Child(family_id=fam.id, birth_year=2019))
         nu = datetime.utcnow()
         a = Event(uit_id="95a", slug="ev-a", title="Natuurwandeling A",
-                  start=nu + timedelta(hours=3), end=nu + timedelta(hours=5),
+                  start=nu + timedelta(minutes=10), end=nu + timedelta(hours=2),
                   gemeente="Roeselare", postcode="8800", lat=50.946, lng=3.123,
                   categories=["natuur"], age_min=3, age_max=10)
         b = Event(uit_id="95b", slug="ev-b", title="Natuurwandeling B",
-                  start=nu + timedelta(hours=3), end=nu + timedelta(hours=5),
+                  start=nu + timedelta(minutes=10), end=nu + timedelta(hours=2),
                   gemeente="Roeselare", postcode="8800", lat=50.946, lng=3.123,
                   categories=["natuur"], age_min=3, age_max=10)
         db.session.add_all([a, b])

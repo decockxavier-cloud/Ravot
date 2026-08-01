@@ -21,7 +21,7 @@ def gezin_met_event(app, client):
         db.session.add(Child(family_id=fam.id, birth_year=2019))
         nu = datetime.utcnow()
         ev = Event(uit_id="p94", slug="p94-ev", title="Speelnamiddag",
-                   start=nu + timedelta(hours=3), end=nu + timedelta(hours=5),
+                   start=nu + timedelta(minutes=10), end=nu + timedelta(hours=2),
                    gemeente="Roeselare", postcode="8800")
         db.session.add(ev)
         db.session.commit()

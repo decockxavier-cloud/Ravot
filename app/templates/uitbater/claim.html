@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
+<p><a href="{{ url_for('uitbater.dashboard') }}" class="terug-link">← Terug naar mijn zaken</a></p>
 <h1>Claim je zaak 🔎</h1>
 <form method="get" action="{{ url_for('uitbater.claim') }}" class="zoekrij">
   <input type="search" name="q" value="{{ zoek }}" class="zoekveld"
