@@ -174,3 +174,18 @@ def detecteer_voorziening_conflicten(log=print, drempel=3):
     db.session.commit()
     log(f"Voorziening-conflicten: {gemeld} nieuwe melding(en) aangemaakt.")
     return gemeld
+
+
+def foto_focus(image_url):
+    """Verticale uitsnede-focus (0-100) van een eigen /foto/<id>-hoofdbeeld;
+    50 voor externe beelden of onbekend."""
+    if not image_url or not str(image_url).startswith("/foto/"):
+        return 50
+    try:
+        pid = int(str(image_url).rstrip("/").rsplit("/", 1)[-1])
+    except ValueError:
+        return 50
+    from ..models import Photo
+    from ..extensions import db
+    p = db.session.get(Photo, pid)
+    return p.focus_y if p and p.focus_y is not None else 50

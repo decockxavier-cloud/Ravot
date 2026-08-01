@@ -1101,3 +1101,22 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 .foto-galerij figure { margin: 0; }
 .foto-galerij img { width: 100%; height: 160px; object-fit: cover;
   border-radius: 10px; display: block; }
+
+/* Lightbox voor fichefoto's */
+.lightbox { position: fixed; inset: 0; z-index: 1000; background: rgba(20,25,20,.92);
+  display: flex; align-items: center; justify-content: center; }
+.lightbox[hidden] { display: none; }
+.lightbox .lb-houder { max-width: 92vw; max-height: 88vh; overflow: auto; }
+.lightbox img { max-width: 92vw; max-height: 84vh; display: block; margin: auto;
+  border-radius: 8px; cursor: zoom-in; }
+.lightbox.lb-zoom .lb-houder { cursor: grab; }
+.lightbox.lb-zoom img { max-width: none; max-height: none; width: 180vw; cursor: zoom-out; }
+.lightbox button { position: absolute; background: rgba(255,255,255,.12); color: #fff;
+  border: 0; font-size: 26px; border-radius: 50%; width: 44px; height: 44px;
+  cursor: pointer; }
+.lightbox .lb-sluit { top: 14px; right: 14px; }
+.lightbox .lb-vorige { left: 10px; top: 50%; transform: translateY(-50%); }
+.lightbox .lb-volgende { right: 10px; top: 50%; transform: translateY(-50%); }
+.lightbox .lb-hint { position: absolute; bottom: 10px; width: 100%;
+  text-align: center; color: #cfd8cf; font-size: 13px; margin: 0; }
+.foto-galerij img[data-lightbox] { cursor: zoom-in; }

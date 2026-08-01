@@ -146,7 +146,15 @@
   <div class="foto-galerij">
     {% for f in eigen_fotos %}
     <figure>
-      <img src="{{ url_for('public.foto', pid=f.id) }}" alt="" loading="lazy">
+      <img src="{{ url_for('public.foto', pid=f.id) }}" alt="" loading="lazy"
+           id="foto-{{ f.id }}" style="object-position:50% {{ f.focus_y or 50 }}%">
+      <form method="post" action="{{ url_for('uitbater.fiche_foto_focus', event_id=ev.id, pid=f.id) }}"
+            class="acties" style="margin:4px 0 0">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="range" name="focus_y" min="0" max="100" value="{{ f.focus_y or 50 }}"
+               data-focus-doel="foto-{{ f.id }}" title="Schuif om te kiezen welk deel zichtbaar blijft">
+        <button class="btn btn-klein" type="submit">Bewaar uitsnede</button>
+      </form>
       <figcaption class="hint" style="margin-top:4px">
         {{ {'zaak':'🏠 zaak','kindermenu':'🍟 kindermenu','kinderhoek':'🧸 speelhoek'}.get(f.soort, f.soort) }} ·
         {% if f.status == 'approved' %}✅ online{% elif f.status == 'pending' %}⏳ wacht op nazicht{% else %}✕ afgewezen{% endif %}

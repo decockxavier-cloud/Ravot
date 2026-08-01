@@ -66,3 +66,26 @@ def test_zaak_met_ligging_staat_op_de_kaart(client, app):
         db.session.commit()
     html = client.get("/verkennen").get_data(as_text=True)
     assert "Zaak Op De Kaart" in html
+
+
+def test_auto_ok_past_wijziging_meteen_toe(client, app):
+    """Patch 147: met 'uitbater_auto_ok' aan gaan fichewijzigingen van
+    goedgekeurde uitbaters meteen live, mét logboekregel."""
+    from app.models import Operator, OperatorClaim, Setting, EditProposal
+    with app.app_context():
+        op = Operator(email="a@t.be"); db.session.add(op)
+        ev = Event(title="Zaak Auto", slug="za", source="user", is_permanent=True,
+                   pending=False, hidden=False)
+        db.session.add(ev); db.session.flush()
+        db.session.add(OperatorClaim(operator_id=op.id, event_id=ev.id,
+                                     status="approved"))
+        db.session.add(Setting(key="uitbater_auto_ok", value="1"))
+        db.session.commit()
+        opid, evid = op.id, ev.id
+    with client.session_transaction() as s:
+        s["operator_id"] = opid
+    client.post(f"/uitbater/fiche/{evid}", data={"description": "Nieuw!"})
+    with app.app_context():
+        assert db.session.get(Event, evid).description == "Nieuw!"
+        assert EditProposal.query.filter_by(event_id=evid,
+                                            status="approved").count() == 1

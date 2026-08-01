@@ -104,6 +104,8 @@ def create_app(config_object=Config):
     app.jinja_env.globals["label_info"] = label_info
     app.jinja_env.globals["kamp_thumb"] = kamp_thumb
     app.jinja_env.globals["kamp_fotos"] = kamp_fotos
+    from .services.label import foto_focus
+    app.jinja_env.globals["foto_focus"] = foto_focus
     from .services.openingsuren import (status_badge, uren_overzicht,
                                         heeft_uren, dag_blokken)
     app.jinja_env.globals["open_badge"] = status_badge
@@ -595,6 +597,11 @@ def register_cli(app):
                 "ALTER TABLE magic_tokens ADD COLUMN attempts INTEGER DEFAULT 0 NOT NULL"))
             added.append("magic_tokens.attempts")
         # Karakter-schuifjes op reviews (nieuwe Ravotscore)
+        ph_cols = {c["name"] for c in insp.get_columns("photos")}
+        if "focus_y" not in ph_cols:
+            db.session.execute(text(
+                "ALTER TABLE photos ADD COLUMN IF NOT EXISTS focus_y INTEGER DEFAULT 50"))
+            added.append("photos.focus_y")
         rev_cols = {c["name"] for c in insp.get_columns("reviews")}
         for kol in ("sfeer_rustig_actief", "sfeer_prijs", "sfeer_leeftijd"):
             if kol not in rev_cols:

@@ -327,3 +327,72 @@ document.addEventListener('click', function (e) {
     });
   });
 })();
+
+// Lichtgewicht lightbox voor fichefoto's (data-lightbox): klik = groot bekijken,
+// pijltjes/knoppen = bladeren, klik op het beeld = zoom (menukaart leesbaar).
+(function () {
+  "use strict";
+  var lijst = [], index = 0, overlay = null, beeld = null, gezoomd = false;
+
+  function bouw() {
+    overlay = document.createElement("div");
+    overlay.className = "lightbox";
+    overlay.innerHTML =
+      '<button class="lb-sluit" aria-label="Sluiten">✕</button>' +
+      '<button class="lb-vorige" aria-label="Vorige">‹</button>' +
+      '<div class="lb-houder"><img alt=""></div>' +
+      '<button class="lb-volgende" aria-label="Volgende">›</button>' +
+      '<p class="lb-hint">Tik op de foto om in te zoomen</p>';
+    document.body.appendChild(overlay);
+    beeld = overlay.querySelector("img");
+    overlay.querySelector(".lb-sluit").addEventListener("click", sluit);
+    overlay.querySelector(".lb-vorige").addEventListener("click", function () { toon(index - 1); });
+    overlay.querySelector(".lb-volgende").addEventListener("click", function () { toon(index + 1); });
+    overlay.addEventListener("click", function (e) { if (e.target === overlay) sluit(); });
+    beeld.addEventListener("click", function () {
+      gezoomd = !gezoomd;
+      overlay.classList.toggle("lb-zoom", gezoomd);
+    });
+    document.addEventListener("keydown", function (e) {
+      if (!overlay || overlay.hidden) return;
+      if (e.key === "Escape") sluit();
+      if (e.key === "ArrowLeft") toon(index - 1);
+      if (e.key === "ArrowRight") toon(index + 1);
+    });
+  }
+  function toon(i) {
+    index = (i + lijst.length) % lijst.length;
+    gezoomd = false;
+    overlay.classList.remove("lb-zoom");
+    beeld.src = lijst[index];
+    overlay.querySelector(".lb-vorige").hidden = lijst.length < 2;
+    overlay.querySelector(".lb-volgende").hidden = lijst.length < 2;
+    overlay.hidden = false;
+    document.body.style.overflow = "hidden";
+  }
+  function sluit() {
+    overlay.hidden = true;
+    document.body.style.overflow = "";
+  }
+  document.addEventListener("click", function (e) {
+    var img = e.target.closest("img[data-lightbox]");
+    if (!img) return;
+    e.preventDefault();
+    lijst = Array.prototype.map.call(
+      document.querySelectorAll("img[data-lightbox]"),
+      function (el) { return el.src; });
+    if (!overlay) bouw();
+    toon(lijst.indexOf(img.src));
+  });
+})();
+
+// Uitsnede-schuifje op de uitbater-fiche: live voorbeeld bij het schuiven.
+(function () {
+  "use strict";
+  document.addEventListener("input", function (e) {
+    var s = e.target.closest("input[data-focus-doel]");
+    if (!s) return;
+    var img = document.getElementById(s.dataset.focusDoel);
+    if (img) img.style.objectPosition = "50% " + s.value + "%";
+  });
+})();

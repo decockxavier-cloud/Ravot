@@ -10,6 +10,7 @@
     <span class="thumb-emoji {{ pe.klasse }}">{{ pe.emoji }}</span>
     {% if has_echte_foto(e) %}
     <img class="thumb thumb-over" src="{{ poi_image(e) }}" alt="" loading="lazy"
+         style="object-position:50% {{ foto_focus(e.image_url) }}%"
          onerror="this.remove()">
     {% endif %}
   </a>

@@ -375,10 +375,25 @@ def fiche(op, event_id):
         if not wijzigingen:
             flash("Geen wijzigingen gevonden.", "error")
             return redirect(url_for("uitbater.fiche", event_id=ev.id))
-        db.session.add(EditProposal(operator_id=op.id, event_id=ev.id,
-                                    changes=wijzigingen))
-        db.session.commit()
-        flash("Wijziging ingediend! Ze verschijnt op de fiche zodra ze is nagekeken.", "ok")
+        from ..models import get_bool, EDIT_VELDEN
+        voorstel = EditProposal(operator_id=op.id, event_id=ev.id,
+                                changes=wijzigingen)
+        if get_bool("uitbater_auto_ok"):
+            # Vertrouwde uitbater (goedgekeurde claim): meteen toepassen.
+            # Het voorstel blijft als logboekregel bestaan (Partnerlog).
+            for veld, waarde in wijzigingen.items():
+                if veld in EDIT_VELDEN:
+                    setattr(ev, veld, waarde)
+            from ..kwaliteit import bereken_kwaliteit
+            ev.quality = bereken_kwaliteit(ev)
+            voorstel.status = "approved"
+            db.session.add(voorstel)
+            db.session.commit()
+            flash("Wijziging meteen doorgevoerd — bedankt om je fiche actueel te houden!", "ok")
+        else:
+            db.session.add(voorstel)
+            db.session.commit()
+            flash("Wijziging ingediend! Ze verschijnt op de fiche zodra ze is nagekeken.", "ok")
         return redirect(url_for("uitbater.dashboard"))
     from .. import mollie
     from ..types import TYPES
@@ -419,9 +434,20 @@ def fiche_foto(op, event_id):
     if not filename:
         flash("Dat lijkt geen geldige foto (jpg/png/webp).", "error")
         return redirect(url_for("uitbater.fiche", event_id=ev.id))
-    db.session.add(Photo(event_id=ev.id, filename=filename, soort=soort))
-    db.session.commit()
-    flash("Foto ontvangen! Ze verschijnt op de fiche zodra ze is nagekeken.", "ok")
+    from ..models import get_bool
+    p = Photo(event_id=ev.id, filename=filename, soort=soort)
+    if get_bool("uitbater_auto_ok"):
+        p.status = "approved"
+        db.session.add(p)
+        db.session.flush()
+        if soort == "zaak" or not ev.image_url:
+            ev.image_url = f"/foto/{p.id}"
+        db.session.commit()
+        flash("Foto staat meteen op je fiche. Bedankt!", "ok")
+    else:
+        db.session.add(p)
+        db.session.commit()
+        flash("Foto ontvangen! Ze verschijnt op de fiche zodra ze is nagekeken.", "ok")
     return redirect(url_for("uitbater.fiche", event_id=ev.id))
 
 
@@ -700,4 +726,26 @@ def fiche_foto_verwijder(op, event_id, pid):
         ev.image_url = f"/foto/{volgende.id}" if volgende else None
     db.session.commit()
     flash("Foto verwijderd." + (" Het hoofdbeeld is bijgewerkt." if was_hoofd else ""), "ok")
+    return redirect(url_for("uitbater.fiche", event_id=ev.id))
+
+
+@bp.route("/fiche/<int:event_id>/foto/<int:pid>/focus", methods=["POST"])
+@operator_required
+@limiter.limit("60/hour")
+def fiche_foto_focus(op, event_id, pid):
+    """Uitsnede-focus van een eigen foto bewaren (patch 147): welk deel van
+    het beeld zichtbaar blijft in hoofdbeeld en thumbnails."""
+    from ..models import Photo
+    ev = db.session.get(Event, event_id)
+    if not ev or not _mijn_goedgekeurde_claim(op, event_id):
+        abort(403)
+    p = db.session.get(Photo, pid)
+    if not p or p.event_id != ev.id or p.family_id is not None:
+        abort(404)
+    try:
+        p.focus_y = max(0, min(100, int(request.form.get("focus_y") or 50)))
+    except ValueError:
+        p.focus_y = 50
+    db.session.commit()
+    flash("Uitsnede bewaard — zo staat je foto meteen goed op fiche en kaartjes.", "ok")
     return redirect(url_for("uitbater.fiche", event_id=ev.id))

@@ -338,6 +338,7 @@ INSTELLING_PAGINAS = {
                                 "partner_btw_pct", "mollie_testmodus",
                                 "founding_aan", "founding_max"]),
         ("Facturatie (Odoo)", ["odoo_product_id", "odoo_journal_id", "odoo_factuur_auto"]),
+        ("Uitbaters", ["uitbater_auto_ok"]),
     ],
     "verbindingen": [
         ("UiTdatabank", ["bron_uit_aan", "uit_query", "sync_max_pages"]),

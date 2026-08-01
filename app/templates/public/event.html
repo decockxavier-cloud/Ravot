@@ -67,7 +67,8 @@
 {# Bovenaan enkel het officiële beeld van de organisatie (bron of uitbater).
    Gezinsfoto's staan onderaan in de fotogalerij. #}
 {% if ev.image_url %}
-<img src="{{ ev.image_url }}" alt="" class="fiche-beeld" loading="lazy">
+<img src="{{ ev.image_url }}" alt="" class="fiche-beeld" loading="lazy"
+     style="object-position:50% {{ foto_focus(ev.image_url) }}%">
 {% endif %}
 {% if ev.is_kamp %}
 <div class="kamp-info card">
@@ -95,7 +96,7 @@
 <div class="kamp-galerij">
   {% for f in fotos %}
   <a href="{{ url_for('public.foto', pid=f.id) }}" target="_blank" rel="noopener">
-    <img src="{{ url_for('public.foto', pid=f.id) }}" alt="Foto van {{ ev.title }}" loading="lazy">
+    <img src="{{ url_for('public.foto', pid=f.id) }}" alt="Foto van {{ ev.title }}" loading="lazy" data-lightbox>
   </a>
   {% endfor %}
 </div>
@@ -278,7 +279,9 @@
   <div class="foto-galerij">
     {% for f in zaakfotos %}
     <figure>
-      <img src="{{ url_for('public.foto', pid=f.id) }}" alt="" loading="lazy">
+      <img src="{{ url_for('public.foto', pid=f.id) }}" alt="Foto van {{ ev.title }}"
+           loading="lazy" data-lightbox
+           style="object-position:50% {{ f.focus_y or 50 }}%">
     </figure>
     {% endfor %}
   </div>

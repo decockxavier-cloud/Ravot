@@ -496,6 +496,7 @@ SETTING_DEFS = {
     "partner_btw_pct": ("21", "Ravot Partner: btw-percentage", "text"),
     "mollie_testmodus": ("0", "Mollie: testmodus gebruiken (1=test/geen echt geld, 0=live)", "bool"),
     "odoo_product_id": ("", "Odoo: product-id voor Partner-facturen (aanbevolen: product met 21% btw)", "text"),
+    "uitbater_auto_ok": ("0", "Uitbaters: fichewijzigingen en foto's van goedgekeurde uitbaters METEEN toepassen zonder nazicht (1). Alles blijft achteraf zichtbaar in het Partnerlog; de meldknop blijft het vangnet.", "bool"),
     "odoo_journal_id": ("", "Odoo: dagboek-id voor Partner-facturen (bv. 'Verkopen Ravot' — het nummer zie je in de Odoo-URL van het dagboek; leeg = Odoo-standaard)", "text"),
     "odoo_factuur_auto": ("0", "Odoo: factuur meteen valideren (1) of als concept klaarzetten (0)", "bool"),
     "founding_aan": ("1", "Founding partners: gratis eerste jaar aanbieden", "bool"),
@@ -742,6 +743,7 @@ class Photo(db.Model):
     # gezin (galerij) | kindermenu | kinderhoek — de laatste twee zijn
     # uitbater-uploads en krijgen een eigen blok op de fiche.
     soort = db.Column(db.String(12), default="gezin", nullable=False)
+    focus_y = db.Column(db.Integer, default=50)   # verticale uitsnede-focus (0=boven, 100=onder)
     status = db.Column(db.String(12), default="pending", nullable=False, index=True)  # pending|approved|rejected
     weiger_reden = db.Column(db.String(60))   # korte, neutrale reden bij afkeuring
     created_at = db.Column(db.DateTime, default=utcnow, index=True)
