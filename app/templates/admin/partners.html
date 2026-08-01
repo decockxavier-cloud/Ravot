@@ -28,6 +28,11 @@ zien de mail-terugval. Zie <a href="{{ url_for('admin.status') }}">Status</a>.</
 </div>
 
 <h2>Actieve lidmaatschappen</h2>
+<form method="post" action="{{ url_for('admin.partners_ververs_odoo') }}" class="acties" style="margin:6px 0 10px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button class="btn btn-klein" type="submit">🔄 Ververs factuurstatussen uit Odoo</button>
+  <span class="hint">Zet "CONCEPT" om naar het echte factuurnummer zodra je de factuur in Odoo geboekt hebt.</span>
+</form>
 <table class="tabel" style="margin-bottom:20px">
   <tr><th>Zaak</th><th>Uitbater</th><th>Plan</th><th>Partner tot</th><th>Laatste factuur</th></tr>
   {% for l in leden %}

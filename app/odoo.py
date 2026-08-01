@@ -164,3 +164,29 @@ def factureer_betaling(payment, http_post=None):
                                    payment.id, str(exc)[:200])
         db.session.rollback()
         return False
+
+
+def ververs_refs(betalingen, http_post=None):
+    """Haal voor betalingen met een Odoo-factuur de actuele status op.
+    Geboekt in Odoo? Dan vervangt het echte factuurnummer (bv.
+    Ravot/25-26/0001) het bewaarde 'CONCEPT'. Geeft het aantal bijgewerkte
+    rijen terug. Leest alleen — wijzigt niets in Odoo."""
+    from .extensions import db
+    te_doen = [b for b in betalingen
+               if b.odoo_invoice_id and (b.odoo_invoice_ref or "") == "CONCEPT"]
+    if not te_doen:
+        return 0
+    uid = _login(http_post)
+    ids = [int(b.odoo_invoice_id) for b in te_doen]
+    rijen = _execute(uid, "account.move", "read",
+                     [ids, ["name", "state"]], None, http_post) or []
+    per_id = {r["id"]: r for r in rijen}
+    n = 0
+    for b in te_doen:
+        r = per_id.get(int(b.odoo_invoice_id))
+        if r and r.get("state") == "posted" and r.get("name"):
+            b.odoo_invoice_ref = r["name"]
+            n += 1
+    if n:
+        db.session.commit()
+    return n

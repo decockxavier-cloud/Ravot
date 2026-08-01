@@ -2357,3 +2357,29 @@ def redactie_social_nu():
     flash(f"Gegenereerd: {len(posts)} socialconcept(en)"
           + (f" + blogconcept '{a.titel}'" if a else "") + ".", "ok")
     return redirect(url_for("admin.redactie"))
+
+
+@bp.route("/partners/ververs-odoo", methods=["POST"])
+@admin_required
+@limiter.limit("12/hour")
+def partners_ververs_odoo():
+    """Haal de actuele factuurnummers op uit Odoo (patch 148): facturen die
+    Xavier daar intussen inboekte, wisselen hun 'CONCEPT'-label voor het
+    echte nummer."""
+    from ..models import PartnerPayment
+    from .. import odoo
+    if not odoo.actief():
+        flash("Odoo-koppeling is niet geconfigureerd.", "error")
+        return redirect(url_for("admin.partners"))
+    betalingen = PartnerPayment.query.filter(
+        PartnerPayment.odoo_invoice_id.isnot(None)).all()
+    try:
+        n = odoo.ververs_refs(betalingen)
+    except Exception:
+        current_app.logger.exception("ververs uit Odoo mislukt")
+        flash("Kon Odoo niet bereiken — probeer later opnieuw.", "error")
+        return redirect(url_for("admin.partners"))
+    audit(f"factuurstatussen ververst uit Odoo ({n} bijgewerkt)")
+    flash(f"{n} factuurnummer(s) bijgewerkt uit Odoo." if n
+          else "Alles was al actueel — geen concept-facturen meer in Odoo geboekt.", "ok")
+    return redirect(url_for("admin.partners"))
