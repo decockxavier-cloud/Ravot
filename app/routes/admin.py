@@ -1079,10 +1079,13 @@ def nazicht_foto(pid, actie):
         from .. import punten as pas
         if p.family_id:
             pas.ken_toe(p.family_id, "foto", p.event_id)
-        # als de plek nog geen foto had, wordt deze de hoofdafbeelding
-        if p.event and not p.event.image_url:
+        # Een 'zaak'-foto (sfeerbeeld van de uitbater) wordt áltijd het
+        # hoofdbeeld — dat is precies waarvoor hij bedoeld is. Andere soorten
+        # enkel als er nog geen hoofdbeeld was.
+        if p.event and (p.soort == "zaak" or not p.event.image_url):
+            eerste = not p.event.image_url
             p.event.image_url = _url("public.foto", pid=p.id)
-            if p.family_id:
+            if p.family_id and eerste:
                 pas.ken_toe(p.family_id, "eerste_foto", p.event_id)
         audit(f"foto goedgekeurd: #{p.id} (event {p.event_id})")
         flash("Foto goedgekeurd en zichtbaar.", "ok")

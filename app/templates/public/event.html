@@ -66,9 +66,8 @@
 
 {# Bovenaan enkel het officiële beeld van de organisatie (bron of uitbater).
    Gezinsfoto's staan onderaan in de fotogalerij. #}
-{% if ev.image_url and not ev.image_url.startswith('/foto/') %}
-<img src="{{ ev.image_url }}" alt="" class="fiche-beeld" loading="lazy"
-     onerror="this.remove()">
+{% if ev.image_url %}
+<img src="{{ ev.image_url }}" alt="" class="fiche-beeld" loading="lazy">
 {% endif %}
 {% if ev.is_kamp %}
 <div class="kamp-info card">
