@@ -60,12 +60,28 @@ def _norm_btw(btw):
 
 
 def _vind_of_maak_klant(uid, operator, http_post=None):
-    """Zoek de klant op btw-nummer (dé sleutel voor B2B/Peppol); anders aanmaken."""
+    """Zoek de klant op btw-nummer (dé sleutel voor B2B/Peppol); anders aanmaken.
+    Geeft (klant_id, naam_waarschuwing) terug: wijkt de bestaande Odoo-naam af
+    van wat de partner opgaf, dan waarschuwen we — nooit stil een bestaande
+    boekhoudklant hergebruiken die eigenlijk iemand anders is (het
+    'Dronedepot'-geval: verkeerd btw-nummer op een oude klant)."""
     vat = _norm_btw(operator.btw_nummer)
     ids = _execute(uid, "res.partner", "search",
                    [[["vat", "=", vat]]], {"limit": 1}, http_post)
     if ids:
-        return ids[0]
+        waarschuwing = None
+        try:
+            rij = _execute(uid, "res.partner", "read",
+                           [ids, ["name"]], None, http_post)
+            odoo_naam = (rij[0].get("name") or "").strip() if rij else ""
+            opgegeven = (operator.bedrijfsnaam or "").strip()
+            if odoo_naam and opgegeven and odoo_naam.lower() != opgegeven.lower():
+                waarschuwing = (f"Odoo-klant heet '{odoo_naam}', partner gaf "
+                                f"'{opgegeven}' op — controleer of dit btw-nummer "
+                                f"bij de juiste klant staat")
+        except Exception:
+            pass
+        return ids[0], waarschuwing
     return _execute(uid, "res.partner", "create", [{
         "name": operator.bedrijfsnaam or operator.email,
         "vat": vat,
@@ -75,7 +91,7 @@ def _vind_of_maak_klant(uid, operator, http_post=None):
         "zip": operator.postcode or "",
         "city": operator.gemeente or "",
         "is_company": True,
-    }], None, http_post)
+    }], None, http_post), None
 
 
 def maak_factuur(payment, http_post=None):
@@ -85,7 +101,7 @@ def maak_factuur(payment, http_post=None):
     from .models import get_setting, get_bool
     from .mollie import prijs, btw_pct
     uid = _login(http_post)
-    klant_id = _vind_of_maak_klant(uid, payment.operator, http_post)
+    klant_id, naam_waarschuwing = _vind_of_maak_klant(uid, payment.operator, http_post)
 
     plan_label = "jaar" if payment.plan == "jaar" else "maand"
     zaak = payment.event.title if payment.event else f"fiche #{payment.event_id}"
@@ -101,12 +117,25 @@ def maak_factuur(payment, http_post=None):
     if product_id:
         regel["product_id"] = product_id            # product draagt de 21%-btw-config
 
-    invoice_id = _execute(uid, "account.move", "create", [{
+    move = {
         "move_type": "out_invoice",
         "partner_id": klant_id,
         "invoice_origin": f"Ravot betaling #{payment.id} ({payment.mollie_id})",
         "invoice_line_ids": [(0, 0, regel)],
-    }], None, http_post)
+    }
+    # Vast dagboek (bv. "Verkopen Ravot"): zonder dit pakt Odoo zijn
+    # standaard-verkoopdagboek — dat van K'Bouter, dus verkeerd geboekt.
+    try:
+        journal_id = int(get_setting("odoo_journal_id") or 0)
+    except ValueError:
+        journal_id = 0
+    if journal_id:
+        move["journal_id"] = journal_id
+    if naam_waarschuwing:
+        from flask import current_app
+        current_app.logger.warning("Odoo-facturatie: %s", naam_waarschuwing)
+        move["narration"] = f"⚠️ {naam_waarschuwing}"
+    invoice_id = _execute(uid, "account.move", "create", [move], None, http_post)
 
     ref = "CONCEPT"
     if get_bool("odoo_factuur_auto"):

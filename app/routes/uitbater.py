@@ -470,11 +470,27 @@ def partner(op, event_id):
 
 
 @bp.route("/partner/klaar/<int:pid>")
-@operator_required
-def partner_klaar(op, pid):
-    """Terug van de Mollie-checkout: status tonen (webhook doet het echte werk)."""
-    from ..models import PartnerPayment
+def partner_klaar(pid):
+    """Terug van de Mollie-checkout: status tonen (webhook doet het echte werk).
+    Bewust ZONDER operator_required: raakte de sessie onderweg kwijt, dan
+    herstelt het ondertekende token uit de terugkeer-URL de login — anders
+    belandde de uitbater na het betalen op het loginscherm en leek de
+    betaling mislukt."""
+    from ..models import PartnerPayment, Operator
     from .. import mollie
+    op = None
+    if session.get("operator_id"):
+        op = db.session.get(Operator, session["operator_id"])
+    if op is None:
+        op_id = mollie.lees_terugkeer_token(request.args.get("t", ""), pid)
+        if op_id:
+            op = db.session.get(Operator, op_id)
+            if op:
+                session["operator_id"] = op.id
+                session.permanent = True
+    if op is None:
+        flash("Log even opnieuw in om je betaalstatus te zien.", "error")
+        return redirect(url_for("uitbater.login"))
     p = db.session.get(PartnerPayment, pid)
     if not p or p.operator_id != op.id:
         abort(404)

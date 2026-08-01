@@ -71,8 +71,15 @@ def start_betaling(payment, http_post=None):
              json={
                  "amount": {"currency": "EUR", "value": payment.amount},
                  "description": f"Ravot Partner ({payment.plan}) — fiche #{payment.event_id}",
+                 # Herstel-token in de terugkeer-URL: verliest de browser de
+                 # sessie tijdens de Mollie-checkout (extern domein, soms een
+                 # andere webview), dan logt de terugkeerpagina de uitbater
+                 # veilig opnieuw in i.p.v. hem naar het loginscherm te gooien
+                 # — dat oogde als een mislukte betaling.
                  "redirectUrl": url_for("uitbater.partner_klaar",
-                                        pid=payment.id, _external=True),
+                                        pid=payment.id,
+                                        t=_terugkeer_token(payment),
+                                        _external=True),
                  "webhookUrl": url_for("uitbater.mollie_webhook", _external=True),
                  "metadata": {"partner_payment_id": payment.id},
              }, timeout=20)
@@ -89,6 +96,25 @@ def haal_status_op(mollie_id, http_get=None):
             headers={"Authorization": f"Bearer {_key()}"}, timeout=20)
     r.raise_for_status()
     return r.json()
+
+
+def _terugkeer_token(payment):
+    from itsdangerous import URLSafeTimedSerializer
+    from flask import current_app
+    s = URLSafeTimedSerializer(current_app.config["SECRET_KEY"], salt="mollie-terug")
+    return s.dumps({"op": payment.operator_id, "pid": payment.id})
+
+
+def lees_terugkeer_token(token, pid):
+    """Operator-id uit een geldig terugkeer-token (max 2 uur oud), of None."""
+    from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+    from flask import current_app
+    s = URLSafeTimedSerializer(current_app.config["SECRET_KEY"], salt="mollie-terug")
+    try:
+        data = s.loads(token, max_age=7200)
+    except (BadSignature, SignatureExpired):
+        return None
+    return data.get("op") if data.get("pid") == pid else None
 
 
 def verwerk_webhook(mollie_id, http_get=None):

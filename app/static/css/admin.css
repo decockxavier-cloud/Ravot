@@ -194,3 +194,10 @@
 
 /* Actieve periode-knop (Herkomst-dashboard) */
 .admin-body .btn-actief { background: #2E7D46; color: #fff; }
+
+/* Foto's in de nazicht-wachtrij: nooit op volle 1600px-grootte tonen. */
+.admin-body .nazicht-item img {
+  max-width: 320px; max-height: 240px;
+  width: auto; height: auto;
+  object-fit: cover; border-radius: 8px; display: block;
+}

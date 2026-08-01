@@ -337,7 +337,7 @@ INSTELLING_PAGINAS = {
         ("Partner-abonnement", ["partner_prijs_jaar",
                                 "partner_btw_pct", "mollie_testmodus",
                                 "founding_aan", "founding_max"]),
-        ("Facturatie (Odoo)", ["odoo_product_id", "odoo_factuur_auto"]),
+        ("Facturatie (Odoo)", ["odoo_product_id", "odoo_journal_id", "odoo_factuur_auto"]),
     ],
     "verbindingen": [
         ("UiTdatabank", ["bron_uit_aan", "uit_query", "sync_max_pages"]),
@@ -431,7 +431,9 @@ def facturatie():
     # een boekhoudfout) — dus maken we ontbrekende facturen hier zichtbaar.
     zonder_factuur = (PartnerPayment.query
                       .filter(PartnerPayment.status == "paid",
-                              PartnerPayment.odoo_invoice_id.is_(None))
+                              PartnerPayment.odoo_invoice_id.is_(None),
+                              # gratis/handmatige partners hebben geen factuur nodig
+                              PartnerPayment.amount > 0)
                       .order_by(PartnerPayment.paid_at.desc()).all())
     return render_template("admin/facturatie.html", defs=defs,
                            waarden=waarden, groepen=groepen,
@@ -1246,7 +1248,8 @@ def partners():
     omzet_jaar = sum(float(b.amount) for b in betalingen
                      if b.status == "paid" and b.paid_at and b.paid_at >= jaar_start)
     zonder_factuur = [b for b in betalingen
-                      if b.status == "paid" and not b.odoo_invoice_ref]
+                      if b.status == "paid" and not b.odoo_invoice_ref
+                      and float(b.amount or 0) > 0]
     # Feestpartner-evaluatie: wie krijgt aanvragen, en wie maakt ze waar?
     from ..models import FeestjeAanvraag
     feest_stats = db.session.query(

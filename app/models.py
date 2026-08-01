@@ -496,6 +496,7 @@ SETTING_DEFS = {
     "partner_btw_pct": ("21", "Ravot Partner: btw-percentage", "text"),
     "mollie_testmodus": ("0", "Mollie: testmodus gebruiken (1=test/geen echt geld, 0=live)", "bool"),
     "odoo_product_id": ("", "Odoo: product-id voor Partner-facturen (aanbevolen: product met 21% btw)", "text"),
+    "odoo_journal_id": ("", "Odoo: dagboek-id voor Partner-facturen (bv. 'Verkopen Ravot' — het nummer zie je in de Odoo-URL van het dagboek; leeg = Odoo-standaard)", "text"),
     "odoo_factuur_auto": ("0", "Odoo: factuur meteen valideren (1) of als concept klaarzetten (0)", "bool"),
     "founding_aan": ("1", "Founding partners: gratis eerste jaar aanbieden", "bool"),
     "founding_max": ("20", "Founding partners: maximum aantal plaatsen", "int"),
