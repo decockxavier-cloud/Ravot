@@ -31,7 +31,7 @@ def gezin(app, client):
 def test_logo_zonder_punt_met_vosje(client):
     html = client.get("/vandaag").data.decode()
     assert "logo-dot" not in html
-    assert "img/vosje.svg" in html
+    assert "img/vosje.png" in html
     kop = re.search(r'<a class="logo".*?</a>', html, re.S).group(0)
     assert ">Ravot" in kop and "Ravot." not in kop
 

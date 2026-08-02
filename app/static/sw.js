@@ -2,8 +2,8 @@
 // Strategie: NETWERK EERST voor alles (zodat updates na een deploy meteen
 // zichtbaar zijn), met de cache enkel als offline-terugval. Zo kan de
 // geinstalleerde PWA nooit meer op een verouderde CSS/JS blijven hangen.
-const CACHE = "ravot-v3";
-const STATICS = ["/static/css/ravot.css", "/static/js/app.js", "/static/img/icon.svg"];
+const CACHE = "ravot-v4";
+const STATICS = ["/static/css/ravot.css", "/static/js/app.js", "/static/img/vosje.png"];
 
 self.addEventListener("install", (e) => {
   self.skipWaiting();                       // nieuwe versie meteen actief maken
