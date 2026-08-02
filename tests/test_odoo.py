@@ -147,7 +147,9 @@ def test_btw_validatie(client, app):
 
 def test_prijs_incl_btw(app):
     with app.app_context():
-        # Enkel jaarabonnement: 100 excl -> 121.00 incl (21% btw).
-        assert mollie.prijs_incl("jaar") == "121.00"    # 100.00 * 1.21
+        # Prijskaart patch 153: Partner 200 excl -> 242.00 incl (21% btw).
+        assert mollie.prijs_incl("jaar") == "242.00"    # 200.00 * 1.21
+        assert mollie.prijs_incl("feest") == "302.50"   # 250.00 * 1.21
+        assert mollie.prijs_incl("combi") == "435.60"   # 360.00 * 1.21
         # 'maand' bestaat niet meer als apart plan: valt terug op de jaarprijs.
-        assert mollie.prijs_incl("maand") == "121.00"
+        assert mollie.prijs_incl("maand") == "242.00"  # valt terug op jaarprijs

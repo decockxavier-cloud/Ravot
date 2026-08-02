@@ -57,7 +57,7 @@ zien de mail-terugval. Zie <a href="{{ url_for('admin.status') }}">Status</a>.</
 {% endif %}
 <section class="card">
   <table class="tabel">
-    <tr><th>Datum</th><th>Zaak</th><th>Uitbater</th><th>Plan</th><th>Bedrag (incl.)</th>
+    <tr><th>Datum</th><th>Zaak</th><th>Uitbater</th><th>Plan</th><th>Bedrag (incl.)</th><th>Via</th>
         <th>Status</th><th>Factuur</th></tr>
     {% for b in betalingen %}
     <tr>
@@ -66,6 +66,7 @@ zien de mail-terugval. Zie <a href="{{ url_for('admin.status') }}">Status</a>.</
       <td>{{ b.operator.bedrijfsnaam or b.operator.email if b.operator else '—' }}</td>
       <td>{{ b.plan }}</td>
       <td>€{{ b.amount }}</td>
+      <td>{% if b.verkoper %}🤝 {{ b.verkoper.naam }}<br><span class="hint">uitgebreid pakket</span>{% else %}zelf<br><span class="hint">basispakket</span>{% endif %}</td>
       <td>{{ '✅ betaald' if b.status == 'paid' else b.status }}</td>
       <td>{% if b.odoo_invoice_ref %}{{ b.odoo_invoice_ref }}
           <span class="hint">(Odoo #{{ b.odoo_invoice_id }})</span>

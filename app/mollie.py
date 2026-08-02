@@ -13,7 +13,8 @@ from flask import current_app, url_for
 
 MOLLIE_API = "https://api.mollie.com/v2"
 
-PLAN_DAGEN = {"maand": 31, "jaar": 366, "founding": 366}
+PLAN_DAGEN = {"maand": 31, "jaar": 366, "founding": 366,
+              "partner": 366, "feest": 366, "combi": 366}
 
 
 def modus():
@@ -41,11 +42,23 @@ def actief():
     return bool(_key())
 
 
+# Formules (patch 153). Legacy-plannen (jaar/founding/handmatig) behouden
+# ALLE rechten — bestaande partners verliezen nooit iets.
+PLANNEN = ("partner", "feest", "combi")
+ZICHTBAAR_PLANNEN = ("partner", "combi", "jaar", "founding", "handmatig")
+FEEST_PLANNEN = ("feest", "combi", "jaar", "founding", "handmatig")
+_PRIJS_SETTING = {"partner": "partner_prijs_jaar", "jaar": "partner_prijs_jaar",
+                  "feest": "feest_prijs_jaar", "combi": "combi_prijs_jaar"}
+_PRIJS_DEFAULT = {"partner": "200.00", "jaar": "200.00",
+                  "feest": "250.00", "combi": "360.00"}
+PLAN_NAAM = {"partner": "Ravot Partner", "feest": "Feestpartner",
+             "combi": "Combi (Partner + Feest)", "jaar": "Ravot Partner"}
+
+
 def prijs(plan):
     from .models import get_setting
-    # Enkel jaarabonnement. 'maand' bestaat historisch nog in oude records maar
-    # wordt niet meer aangeboden; alles valt terug op de jaarprijs.
-    return (get_setting("partner_prijs_jaar") or "100.00").strip()
+    sleutel = _PRIJS_SETTING.get(plan, "partner_prijs_jaar")
+    return (get_setting(sleutel) or _PRIJS_DEFAULT.get(plan, "200.00")).strip()
 
 
 def btw_pct():
@@ -70,7 +83,7 @@ def start_betaling(payment, http_post=None):
              headers={"Authorization": f"Bearer {_key()}"},
              json={
                  "amount": {"currency": "EUR", "value": payment.amount},
-                 "description": f"Ravot Partner ({payment.plan}) — fiche #{payment.event_id}",
+                 "description": f"{PLAN_NAAM.get(payment.plan, 'Ravot Partner')} (jaar) — fiche #{payment.event_id}",
                  # Herstel-token in de terugkeer-URL: verliest de browser de
                  # sessie tijdens de Mollie-checkout (extern domein, soms een
                  # andere webview), dan logt de terugkeerpagina de uitbater
@@ -139,7 +152,8 @@ def verwerk_webhook(mollie_id, http_get=None):
             basis = p.event.partner_until or datetime.utcnow()
             if basis < datetime.utcnow():
                 basis = datetime.utcnow()
-            p.event.partner_until = basis + timedelta(days=PLAN_DAGEN.get(p.plan, 31))
+            p.event.partner_until = basis + timedelta(days=PLAN_DAGEN.get(p.plan, 365))
+            p.event.partner_plan = p.plan
     db.session.commit()
     if net_betaald:
         # Peppol-conforme factuur klaarzetten in Odoo (faalt stil; activatie
@@ -152,3 +166,29 @@ def verwerk_webhook(mollie_id, http_get=None):
 def is_partner(event, now=None):
     now = now or datetime.utcnow()
     return bool(event and event.partner_until and event.partner_until > now)
+
+
+def _plan_van(event):
+    # Actieve partner zonder geregistreerd plan = legacy → alle rechten.
+    return (event.partner_plan or "jaar") if event else ""
+
+
+def is_zichtbaar_partner(event, now=None):
+    """⭐-rechten: badge, partnerblok, grote kaartpin, reserveerknop."""
+    return is_partner(event, now) and _plan_van(event) in ZICHTBAAR_PLANNEN
+
+
+def is_feestpartner(event, now=None):
+    """Feestrechten: exclusieve offerteaanvragen + feestgids-vermelding."""
+    return is_partner(event, now) and _plan_van(event) in FEEST_PLANNEN
+
+
+def plekken_bezet(gemeente, soort, now=None):
+    """Aantal bezette partnerplekken in een gemeente (voor de caps).
+    soort: 'zichtbaar' of 'feest'."""
+    from .models import Event as _Ev
+    now = now or datetime.utcnow()
+    plannen = ZICHTBAAR_PLANNEN if soort == "zichtbaar" else FEEST_PLANNEN
+    q = _Ev.query.filter(_Ev.gemeente == gemeente,
+                         _Ev.partner_until.isnot(None), _Ev.partner_until > now)
+    return sum(1 for e in q.all() if _plan_van(e) in plannen)

@@ -33,8 +33,9 @@ def contact_email(event):
 
 
 def partner_actief(event, now=None):
-    now = now or datetime.utcnow()
-    return bool(event.partner_until and event.partner_until > now)
+    """Feestrechten volgens het plan (feest/combi/legacy)."""
+    from ..mollie import is_feestpartner
+    return is_feestpartner(event, now)
 
 
 def zoek_partners(postcode, straal_km=None, soorten=None, aantal=None):

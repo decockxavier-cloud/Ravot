@@ -42,6 +42,32 @@
 {% endif %}
 
 <form method="post" action="{{ url_for('uitbater.partner', event_id=ev.id) }}" class="kaart-form">
+  <div class="formule-raster">
+    {% for f in formules %}
+    {% set vol = (f.pool == 'zichtbaar' and vrij.get('zichtbaar', 1) == 0)
+              or (f.pool == 'feest' and vrij.get('feest', 1) == 0)
+              or (f.pool == 'beide' and (vrij.get('zichtbaar', 1) == 0 or vrij.get('feest', 1) == 0)) %}
+    <label class="formule-kaart {{ 'formule-vol' if vol }}">
+      <input type="radio" name="plan" value="{{ f.plan }}"
+             {{ 'disabled' if vol }} {{ 'checked' if f.plan == 'combi' and not vol }}>
+      <strong>{{ f.naam }}</strong>
+      <div class="prijs-groot">€{{ f.prijs }} <span class="prijs-per">/jaar</span></div>
+      <p class="hint" style="margin:0">excl. btw (€{{ f.incl }} incl.)</p>
+      <ul class="formule-punten">
+        {% for p in f.punten %}<li>{{ p }}</li>{% endfor %}
+      </ul>
+      {% if vol %}<p class="hint">🔒 Volzet in {{ ev.gemeente }} — mail ons voor de wachtlijst</p>
+      {% elif f.pool == 'zichtbaar' and vrij.get('zichtbaar') %}<p class="hint">Nog {{ vrij['zichtbaar'] }} plek(ken) in {{ ev.gemeente }}</p>
+      {% elif f.pool == 'feest' and vrij.get('feest') %}<p class="hint">Nog {{ vrij['feest'] }} plek(ken) in {{ ev.gemeente }}</p>{% endif %}
+    </label>
+    {% endfor %}
+  </div>
+  <label style="display:block;margin:10px 0">Verkoperscode <span class="hint">(optioneel)</span>
+    <input type="text" name="verkoperscode" maxlength="12" placeholder="bv. RAV-XXXX"
+           style="text-transform:uppercase">
+    <span class="upload-hint">Sloot je af via een Ravot-verkoper? Met zijn code krijg je
+      het <strong>uitgebreide welkomstpakket</strong> voor je zaak.</span>
+  </label>
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   {% if not heeft_facturatie %}
   <p class="hint">⚠️ Vul eerst je <a href="{{ url_for('uitbater.facturatie', volgende=ev.id) }}">facturatiegegevens</a>

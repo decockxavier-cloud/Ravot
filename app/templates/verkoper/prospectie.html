@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<p><a href="{{ url_for('verkoper.start') }}">← Mijn dashboard</a></p>
+<h1>Prospectie 🔎</h1>
+<p class="hint">Zoek een gemeente en zie welke horecazaken al op Ravot staan,
+  wie al partner is, en hoeveel plekken er nog vrij zijn — jouw
+  schaarste-argument aan de toog.</p>
+<form method="get" class="zoekrij">
+  <input type="search" name="gemeente" value="{{ gemeente }}" class="zoekveld"
+         placeholder="Gemeente, bv. Roeselare" aria-label="Gemeente">
+  <button class="btn btn-klein" type="submit">Zoek</button>
+</form>
+
+{% if vrij %}
+<div class="card" style="margin-top:10px">
+  <strong>{{ gemeente }}</strong> — nog
+  <strong>{{ vrij['zichtbaar'] }}</strong> zichtbaarheidsplek(ken) en
+  <strong>{{ vrij['feest'] }}</strong> feestplek(ken) vrij.
+  {% if vrij['zichtbaar'] <= 2 or vrij['feest'] <= 1 %}
+  <span class="badge open">bijna volzet — nu verkopen 🔥</span>{% endif %}
+</div>
+{% endif %}
+
+{% if zaken %}
+<table class="admin-tabel" style="margin-top:10px">
+  <tr><th>Zaak</th><th>Adres</th><th>Website</th><th>Status</th></tr>
+  {% for z in zaken %}
+  <tr>
+    <td><a href="{{ url_for('public.event', slug=z.slug) }}" target="_blank">{{ z.title }}</a></td>
+    <td>{{ z.adres or '' }}{% if z.postcode %} · {{ z.postcode }}{% endif %}</td>
+    <td>{% if z.source_url %}<a href="{{ z.source_url }}" target="_blank" rel="noopener">site</a>{% endif %}</td>
+    <td>{% if is_partner(z) %}<span class="badge badge-partner">⭐ al partner</span>
+        {% else %}<span class="badge">prospect</span>{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% elif gemeente %}
+<p class="hint" style="margin-top:10px">Geen horecazaken gevonden in "{{ gemeente }}" —
+  check de schrijfwijze.</p>
+{% endif %}
+{% endblock %}

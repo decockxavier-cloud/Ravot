@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Verkopersportaal 🤝</h1>
+<p class="hint">Log in met het e-mailadres dat Ravot voor jou registreerde.
+  Je ontvangt een eenmalige code per mail.</p>
+<form method="post" class="card" style="max-width:420px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label>E-mailadres <input type="email" name="email" required></label>
+  <div class="acties"><button class="btn" type="submit">Stuur inlogcode</button></div>
+</form>
+{% endblock %}

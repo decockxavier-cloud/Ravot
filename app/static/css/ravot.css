@@ -1130,3 +1130,13 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
   padding: 9px 12px; border: 0; background: none; border-radius: 8px;
   font: inherit; color: #1F3A2A; text-decoration: none; cursor: pointer; }
 .deelpaneel a:hover, .deelpaneel button:hover { background: #f2f7f3; }
+
+/* Formulekiezer (patch 153) */
+.formule-raster { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px; margin: 12px 0; }
+.formule-kaart { border: 2px solid #e3e6ea; border-radius: 14px; padding: 14px;
+  cursor: pointer; display: block; background: #fff; }
+.formule-kaart:has(input:checked) { border-color: #EE8035; box-shadow: 0 4px 14px rgba(238,128,53,.18); }
+.formule-kaart input { margin-right: 6px; }
+.formule-punten { margin: 8px 0 0; padding-left: 18px; font-size: 14px; }
+.formule-vol { opacity: .55; cursor: not-allowed; }

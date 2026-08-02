@@ -1,0 +1,57 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<h1>Verkopers 🤝</h1>
+<p class="hint">Elke verkoper heeft een persoonlijke code. Klanten die ze bij het
+  afsluiten ingeven, krijgen het uitgebreide welkomstpakket — en de deal telt
+  automatisch mee voor zijn commissie. Het maandoverzicht hieronder is je
+  gespreksbasis: de verkoper maakt op basis daarvan zijn factuur op.</p>
+
+<div class="card">
+  <h2>Nieuwe verkoper</h2>
+  <form method="post" class="veldrij" style="flex-wrap:wrap;align-items:end">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Naam <input type="text" name="naam" required maxlength="120"></label>
+    <label>E-mail <input type="email" name="email" required maxlength="255"></label>
+    <label>Commissie % <input type="number" name="commissie_pct" value="15" min="0" max="50" style="width:80px"></label>
+    <button class="btn" type="submit">Aanmaken</button>
+  </form>
+</div>
+
+<h2>Verkopers</h2>
+<table class="admin-tabel">
+  <tr><th>Naam</th><th>E-mail</th><th>Code</th><th>Commissie</th><th>Status</th><th></th></tr>
+  {% for v in rijen %}
+  <tr>
+    <td>{{ v.naam }}</td><td>{{ v.email }}</td>
+    <td><code>{{ v.code }}</code></td><td>{{ v.commissie_pct }}%</td>
+    <td>{% if v.actief %}<span class="badge open">actief</span>{% else %}<span class="badge">inactief</span>{% endif %}</td>
+    <td><form method="post" action="{{ url_for('admin.verkoper_toggle', vid=v.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-klein" type="submit">{{ 'Deactiveer' if v.actief else 'Activeer' }}</button>
+    </form></td>
+  </tr>
+  {% else %}
+  <tr><td colspan="6" class="hint">Nog geen verkopers.</td></tr>
+  {% endfor %}
+</table>
+
+<h2>Commissies per maand</h2>
+{% if overzicht %}
+<table class="admin-tabel">
+  <tr><th>Maand</th><th>Verkoper</th><th>Deals</th><th>Omzet excl. btw</th><th>Commissie</th></tr>
+  {% for r in overzicht %}
+  <tr>
+    <td>{{ r.maand }}</td>
+    <td>{{ per_id[r.verkoper_id].naam if r.verkoper_id in per_id else '—' }}</td>
+    <td>{{ r.n }}</td>
+    <td>€{{ '%.2f'|format(r.excl) }}</td>
+    <td><strong>€{{ '%.2f'|format(r.commissie) }}</strong></td>
+  </tr>
+  {% endfor %}
+</table>
+<p class="hint">Commissie = omzet excl. btw × het percentage van de verkoper,
+  enkel over betaalde deals met zijn code. Verlengingen zonder code tellen niet mee.</p>
+{% else %}
+<p class="hint">Nog geen betaalde deals via een verkoperscode.</p>
+{% endif %}
+{% endblock %}

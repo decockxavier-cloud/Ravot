@@ -157,6 +157,7 @@ class Event(db.Model):
     # niet met eigen ogen zijn nagekeken (beschrijving, foto, voorzieningen).
     nagekeken = db.Column(db.Boolean, default=False, nullable=False)
     partner_until = db.Column(db.DateTime, index=True)   # Ravot Partner actief tot (betaald, nooit invloed op score)
+    partner_plan = db.Column(db.String(16))   # partner | feest | combi | legacy (jaar/founding/handmatig = alles)
     quality = db.Column(db.Integer, index=True)         # 0-100 volledigheid van de fiche (app/kwaliteit.py)
     subtype = db.Column(db.String(40), index=True)      # fijn OSM-type: playground, park, zoo, museum…
     curated = db.Column(db.Boolean, default=False, nullable=False, index=True)  # 'Ravot-waardig': mens keurde deze fiche goed
@@ -492,10 +493,14 @@ SETTING_DEFS = {
     "verrijk_backend": ("ollama", "AI-verrijking: backend (ollama | cloud)", "text"),
     "ollama_model": ("qwen2.5:7b", "AI-verrijking: lokaal model (Ollama)", "text"),
     "cloud_model": ("claude-haiku-4-5-20251001", "AI-verrijking: cloud-model (indien backend=cloud)", "text"),
-    "partner_prijs_jaar": ("100.00", "Ravot Partner: prijs per jaar (EUR, excl. btw)", "text"),
+    "partner_prijs_jaar": ("200.00", "Ravot Partner: prijs per jaar (EUR, excl. btw)", "text"),
     "partner_btw_pct": ("21", "Ravot Partner: btw-percentage", "text"),
     "mollie_testmodus": ("0", "Mollie: testmodus gebruiken (1=test/geen echt geld, 0=live)", "bool"),
     "odoo_product_id": ("", "Odoo: product-id voor Partner-facturen (aanbevolen: product met 21% btw)", "text"),
+    "feest_prijs_jaar": ("250.00", "Feestpartner: prijs per jaar (EUR, excl. btw)", "text"),
+    "combi_prijs_jaar": ("360.00", "Combi (Partner + Feest): prijs per jaar (EUR, excl. btw)", "text"),
+    "cap_zichtbaar_gemeente": ("5", "Exclusiviteit: max. zichtbaarheidspartners (⭐) per gemeente", "text"),
+    "cap_feest_gemeente": ("3", "Exclusiviteit: max. feestpartners per gemeente", "text"),
     "uitbater_auto_ok": ("0", "Uitbaters: fichewijzigingen en foto's van goedgekeurde uitbaters METEEN toepassen zonder nazicht (1). Alles blijft achteraf zichtbaar in het Partnerlog; de meldknop blijft het vangnet.", "bool"),
     "odoo_journal_id": ("", "Odoo: dagboek-id voor Partner-facturen (bv. 'Verkopen Ravot' — het nummer zie je in de Odoo-URL van het dagboek; leeg = Odoo-standaard)", "text"),
     "odoo_factuur_auto": ("0", "Odoo: factuur meteen valideren (1) of als concept klaarzetten (0)", "bool"),
@@ -829,6 +834,20 @@ class EditProposal(db.Model):
     event = db.relationship("Event")
 
 
+class Verkoper(db.Model):
+    """Zelfstandige verkoper (patch 153). Zijn persoonlijke code koppelt
+    verkopen aan hem: klant geeft de code in bij het afsluiten, krijgt het
+    uitgebreide welkomstpakket, en de commissie is automatisch traceerbaar."""
+    __tablename__ = "verkopers"
+    id = db.Column(db.Integer, primary_key=True)
+    naam = db.Column(db.String(120), nullable=False)
+    email = db.Column(db.String(255), unique=True, nullable=False, index=True)
+    code = db.Column(db.String(12), unique=True, nullable=False, index=True)
+    commissie_pct = db.Column(db.Integer, default=15)   # % van dealwaarde excl. btw
+    actief = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=utcnow)
+
+
 class PartnerPayment(db.Model):
     """Mollie-betaling voor het Ravot Partner-niveau van één zaak.
     Status wordt UITSLUITEND gezet na verificatie bij Mollie zelf (nooit op
@@ -845,6 +864,8 @@ class PartnerPayment(db.Model):
     paid_at = db.Column(db.DateTime)
     odoo_invoice_id = db.Column(db.Integer)          # account.move-id in Odoo
     odoo_invoice_ref = db.Column(db.String(40))      # bv. INV/2026/0042 of DRAFT
+    verkoper_id = db.Column(db.Integer, db.ForeignKey("verkopers.id"), index=True)
+    verkoper = db.relationship("Verkoper")
     operator = db.relationship("Operator")
     event = db.relationship("Event")
 

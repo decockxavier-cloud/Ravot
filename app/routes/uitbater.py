@@ -468,13 +468,40 @@ def partner(op, event_id):
             flash("Vul eerst je facturatiegegevens in (bedrijfsnaam en btw-nummer) — "
                   "verplicht voor een correcte factuur.", "error")
             return redirect(url_for("uitbater.facturatie", volgende=ev.id))
+        # Formulekeuze (patch 153) + exclusiviteitscap per gemeente.
+        from ..models import get_int, Verkoper
+        plan = request.form.get("plan") or "partner"
+        if plan not in mollie.PLANNEN:
+            plan = "partner"
+        if ev.gemeente:
+            if plan in ("partner", "combi"):
+                cap = get_int("cap_zichtbaar_gemeente", 5)
+                if mollie.plekken_bezet(ev.gemeente, "zichtbaar") >= cap:
+                    flash(f"De zichtbaarheidsplekken in {ev.gemeente} zijn volzet "
+                          f"({cap}/{cap}). Mail info@ravot.be voor de wachtlijst.", "error")
+                    return redirect(url_for("uitbater.partner", event_id=ev.id))
+            if plan in ("feest", "combi"):
+                cap = get_int("cap_feest_gemeente", 3)
+                if mollie.plekken_bezet(ev.gemeente, "feest") >= cap:
+                    flash(f"De feestpartnerplekken in {ev.gemeente} zijn volzet "
+                          f"({cap}/{cap}). Mail info@ravot.be voor de wachtlijst.", "error")
+                    return redirect(url_for("uitbater.partner", event_id=ev.id))
+        # Verkoperscode: koppelt de deal aan de verkoper (commissie) en geeft
+        # de klant het uitgebreide welkomstpakket.
+        verkoper = None
+        code = (request.form.get("verkoperscode") or "").strip().upper()
+        if code:
+            verkoper = Verkoper.query.filter_by(code=code, actief=True).first()
+            if not verkoper:
+                flash("Die verkoperscode kennen we niet — check de schrijfwijze "
+                      "of laat het veld leeg.", "error")
+                return redirect(url_for("uitbater.partner", event_id=ev.id))
         if not mollie.actief():
             flash("Online betalen is nog niet geconfigureerd. Mail info@ravot.be "
                   "om Partner te worden.", "error")
             return redirect(url_for("uitbater.partner", event_id=ev.id))
-        # Enkel jaarabonnement — het plan staat vast.
-        plan = "jaar"
         betaling = PartnerPayment(operator_id=op.id, event_id=ev.id, plan=plan,
+                                  verkoper_id=verkoper.id if verkoper else None,
                                   amount=mollie.prijs_incl(plan))   # incl. btw innen
         db.session.add(betaling)
         db.session.commit()
@@ -488,9 +515,30 @@ def partner(op, event_id):
         return redirect(checkout)
     f_aan, f_bezet, f_max = _founding_status()
     al_founding = PartnerPayment.query.filter_by(event_id=ev.id, plan="founding").first() is not None
+    from ..models import get_int
+    vrij = {}
+    if ev.gemeente:
+        vrij = {"zichtbaar": max(0, get_int("cap_zichtbaar_gemeente", 5)
+                                 - mollie.plekken_bezet(ev.gemeente, "zichtbaar")),
+                "feest": max(0, get_int("cap_feest_gemeente", 3)
+                             - mollie.plekken_bezet(ev.gemeente, "feest"))}
+    formules = [
+        {"plan": "partner", "naam": "⭐ Ravot Partner", "prijs": mollie.prijs("partner"),
+         "incl": mollie.prijs_incl("partner"), "pool": "zichtbaar",
+         "punten": ["Partner-badge en uitgelicht blok", "Grotere kaartspeld",
+                    "Reserveerknop op je fiche"]},
+        {"plan": "feest", "naam": "🎉 Feestpartner", "prijs": mollie.prijs("feest"),
+         "incl": mollie.prijs_incl("feest"), "pool": "feest",
+         "punten": ["Exclusieve verjaardagsfeest-aanvragen", "Vermelding in de feestgids",
+                    "Rechtstreeks contact met gezinnen"]},
+        {"plan": "combi", "naam": "🤝 Combi", "prijs": mollie.prijs("combi"),
+         "incl": mollie.prijs_incl("combi"), "pool": "beide",
+         "punten": ["Alles van Partner én Feestpartner",
+                    "Bespaar t.o.v. twee losse formules", "Uitgebreid welkomstpakket"]},
+    ]
     return render_template("uitbater/partner.html", ev=ev,
                            founding_aan=f_aan, founding_over=max(0, f_max - f_bezet),
-                           al_founding=al_founding,
+                           al_founding=al_founding, formules=formules, vrij=vrij,
                            prijs_jaar=mollie.prijs("jaar"),
                            prijs_jaar_incl=mollie.prijs_incl("jaar"),
                            heeft_facturatie=bool(op.bedrijfsnaam and op.btw_nummer),

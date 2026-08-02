@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+  <h1>Hallo {{ v.naam.split(' ')[0] }} 🤝</h1>
+  <form method="post" action="{{ url_for('verkoper.uitloggen') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-klein" type="submit">Uitloggen</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Jouw verkoperscode</h2>
+  <p class="prijs-groot" style="letter-spacing:2px">{{ v.code }}</p>
+  <p class="hint">Laat de klant deze code ingeven bij het afsluiten — dan krijgt
+    hij het <strong>uitgebreide welkomstpakket</strong> voor zijn zaak, en telt
+    de deal automatisch mee voor jouw commissie ({{ v.commissie_pct }}% van de
+    prijs excl. btw).</p>
+  <p class="hint">Formules: ⭐ Partner €{{ prijzen['partner'] }} ·
+    🎉 Feestpartner €{{ prijzen['feest'] }} ·
+    🤝 Combi €{{ prijzen['combi'] }} — alles per jaar, excl. btw.
+    De combi levert jou het meest op.</p>
+  <p><a class="btn btn-klein" href="{{ url_for('verkoper.prospectie') }}">🔎 Prospectielijst per gemeente →</a></p>
+</div>
+
+<div class="card">
+  <h2>Jouw commissie per maand</h2>
+  {% if overzicht %}
+  <table class="admin-tabel">
+    <tr><th>Maand</th><th>Deals</th><th>Omzet excl. btw</th><th>Jouw commissie</th></tr>
+    {% for m, r in overzicht %}
+    <tr><td>{{ m }}</td><td>{{ r.n }}</td>
+        <td>€{{ '%.2f'|format(r.excl) }}</td>
+        <td><strong>€{{ '%.2f'|format(r.commissie) }}</strong></td></tr>
+    {% endfor %}
+  </table>
+  <p class="hint">Maak je maandfactuur op basis van deze bedragen; Ravot ziet
+    exact dezelfde cijfers.</p>
+  {% else %}
+  <p class="hint">Nog geen betaalde deals met jouw code — de eerste komt eraan! 💪</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Recente verkopen</h2>
+  {% if betalingen %}
+  <table class="admin-tabel">
+    <tr><th>Datum</th><th>Zaak</th><th>Formule</th><th>Bedrag incl.</th></tr>
+    {% for b in betalingen[:15] %}
+    <tr><td>{{ b.paid_at.strftime('%d/%m/%Y') if b.paid_at }}</td>
+        <td>{{ b.event.title if b.event }}</td>
+        <td>{{ b.plan }}</td><td>€{{ b.amount }}</td></tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="hint">Nog geen verkopen geregistreerd.</p>{% endif %}
+</div>
+{% endblock %}

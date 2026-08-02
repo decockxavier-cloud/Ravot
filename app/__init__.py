@@ -106,6 +106,9 @@ def create_app(config_object=Config):
     app.jinja_env.globals["kamp_fotos"] = kamp_fotos
     from .services.label import foto_focus
     app.jinja_env.globals["foto_focus"] = foto_focus
+    from .mollie import is_zichtbaar_partner, is_feestpartner
+    app.jinja_env.globals["partner_zichtbaar"] = is_zichtbaar_partner
+    app.jinja_env.globals["feestpartner"] = is_feestpartner
     from .services.openingsuren import (status_badge, uren_overzicht,
                                         heeft_uren, dag_blokken)
     app.jinja_env.globals["open_badge"] = status_badge
@@ -147,6 +150,8 @@ def create_app(config_object=Config):
     app.register_blueprint(account_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(uitbater_bp)
+    from .routes.verkoper import bp as verkoper_bp
+    app.register_blueprint(verkoper_bp)
     app.register_blueprint(public_bp)
 
     # Welke bronnen zijn actief? Stuurt de publieke bronvermeldingen. Publiq
@@ -597,6 +602,16 @@ def register_cli(app):
                 "ALTER TABLE magic_tokens ADD COLUMN attempts INTEGER DEFAULT 0 NOT NULL"))
             added.append("magic_tokens.attempts")
         # Karakter-schuifjes op reviews (nieuwe Ravotscore)
+        ev_cols2 = {c["name"] for c in insp.get_columns("events")}
+        if "partner_plan" not in ev_cols2:
+            db.session.execute(text(
+                "ALTER TABLE events ADD COLUMN IF NOT EXISTS partner_plan VARCHAR(16)"))
+            added.append("events.partner_plan")
+        pp_cols = {c["name"] for c in insp.get_columns("partner_payments")}
+        if "verkoper_id" not in pp_cols:
+            db.session.execute(text(
+                "ALTER TABLE partner_payments ADD COLUMN IF NOT EXISTS verkoper_id INTEGER"))
+            added.append("partner_payments.verkoper_id")
         ph_cols = {c["name"] for c in insp.get_columns("photos")}
         if "focus_y" not in ph_cols:
             db.session.execute(text(

@@ -44,6 +44,12 @@ def _factor(key, fallback):
         return fallback
 
 
+def partner_zichtbaar(ev, now=None):
+    """⭐-rechten volgens het plan (partner/combi/legacy)."""
+    from ..mollie import is_zichtbaar_partner
+    return is_zichtbaar_partner(ev, now)
+
+
 def partner_actief(ev, now=None):
     now = now or datetime.utcnow()
     return bool(ev.partner_until and ev.partner_until > now)
@@ -810,8 +816,11 @@ def ontdek():
     # type-/zoekfilters toe die de gebruiker koos, zodat een partner niet
     # opduikt bij een niet-passende filter.
     partner_q = geldige_events(Event.query, now)
+    from ..mollie import ZICHTBAAR_PLANNEN
     partner_q = partner_q.filter(Event.partner_until.isnot(None),
-                                 Event.partner_until > now)
+                                 Event.partner_until > now,
+                                 db.or_(Event.partner_plan.is_(None),
+                                        Event.partner_plan.in_(ZICHTBAAR_PLANNEN)))
     if wanneer in ("vandaag", "deze-week", "weekend"):
         _ws, _we = window(wanneer)
         partner_q = partner_q.filter(db.or_(
@@ -866,7 +875,7 @@ def ontdek():
     # "verdwenen". We trekken ze uit de volledige lijst en tonen ze enkel op
     # pagina 1; in de gewone (gepagineerde) stroom laten we ze weg.
     partner_rows = [r for r in rows
-                    if r["event"].partner_until and r["event"].partner_until > now]
+                    if partner_zichtbaar(r["event"], now)]
     partner_ids = {r["event"].id for r in partner_rows}
     gewone_rows = [r for r in rows if r["event"].id not in partner_ids]
 
@@ -1105,7 +1114,7 @@ def _kaart_marker(e):
         "indoor": bool(e.indoor), "img": poi_image(e),
         "emoji": activiteit_type(e)["emoji"], "type": activiteit_type(e)["label"],
         "permanent": bool(e.is_permanent), "eet": e.subtype == "horeca",
-        "partner": partner_actief(e),
+        "partner": partner_zichtbaar(e),
         "score": None, "count": None,
     }
 

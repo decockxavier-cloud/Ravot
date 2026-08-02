@@ -2418,3 +2418,74 @@ def partners_ververs_odoo():
     flash(f"{n} factuurnummer(s) bijgewerkt uit Odoo." if n
           else "Alles was al actueel — geen concept-facturen meer in Odoo geboekt.", "ok")
     return redirect(url_for("admin.partners"))
+
+
+# ---------------------------------------------------------------------------
+# Verkopers & commissies (patch 153)
+# ---------------------------------------------------------------------------
+
+@bp.route("/verkopers", methods=["GET", "POST"])
+@admin_required
+def verkopers():
+    from ..models import Verkoper, PartnerPayment
+    from .. import mollie
+    if request.method == "POST":
+        naam = (request.form.get("naam") or "").strip()[:120]
+        email = (request.form.get("email") or "").strip().lower()[:255]
+        try:
+            pct = max(0, min(50, int(request.form.get("commissie_pct") or 15)))
+        except ValueError:
+            pct = 15
+        if not naam or "@" not in email:
+            flash("Naam en een geldig e-mailadres zijn verplicht.", "error")
+        elif Verkoper.query.filter_by(email=email).first():
+            flash("Er bestaat al een verkoper met dat e-mailadres.", "error")
+        else:
+            import secrets as _sec
+            code = "RAV-" + _sec.token_hex(2).upper()
+            while Verkoper.query.filter_by(code=code).first():
+                code = "RAV-" + _sec.token_hex(2).upper()
+            db.session.add(Verkoper(naam=naam, email=email, code=code,
+                                    commissie_pct=pct))
+            db.session.commit()
+            audit(f"verkoper aangemaakt: {naam} ({code})")
+            flash(f"Verkoper {naam} aangemaakt — code {code}.", "ok")
+        return redirect(url_for("admin.verkopers"))
+
+    rijen = Verkoper.query.order_by(Verkoper.actief.desc(), Verkoper.naam).all()
+    # Commissie per verkoper per maand (betaald, excl. btw), laatste 12 maanden.
+    btw = 1 + mollie.btw_pct() / 100
+    betalingen = (PartnerPayment.query
+                  .filter(PartnerPayment.status == "paid",
+                          PartnerPayment.verkoper_id.isnot(None))
+                  .order_by(PartnerPayment.paid_at.desc()).limit(500).all())
+    maanden = {}
+    for b in betalingen:
+        if not b.paid_at:
+            continue
+        sleutel = (b.verkoper_id, b.paid_at.strftime("%Y-%m"))
+        r = maanden.setdefault(sleutel, {"n": 0, "excl": 0.0, "commissie": 0.0})
+        excl = float(b.amount or 0) / btw
+        pct = (b.verkoper.commissie_pct if b.verkoper else 15) / 100
+        r["n"] += 1
+        r["excl"] += excl
+        r["commissie"] += excl * pct
+    overzicht = sorted(
+        [{"verkoper_id": vid, "maand": m, **r} for (vid, m), r in maanden.items()],
+        key=lambda x: x["maand"], reverse=True)[:36]
+    per_id = {v.id: v for v in rijen}
+    return render_template("admin/verkopers.html", rijen=rijen,
+                           overzicht=overzicht, per_id=per_id,
+                           title="Verkopers", family=None, active="verkopers")
+
+
+@bp.route("/verkopers/<int:vid>/toggle", methods=["POST"])
+@admin_required
+def verkoper_toggle(vid):
+    from ..models import Verkoper
+    v = db.session.get(Verkoper, vid) or abort(404)
+    v.actief = not v.actief
+    db.session.commit()
+    audit(f"verkoper {'geactiveerd' if v.actief else 'gedeactiveerd'}: {v.naam}")
+    flash(f"Verkoper {v.naam} {'actief' if v.actief else 'inactief'}.", "ok")
+    return redirect(url_for("admin.verkopers"))

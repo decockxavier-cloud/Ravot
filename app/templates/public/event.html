@@ -30,7 +30,7 @@
   {% if leeftijd_badge(ev) %}<span class="badge">{{ leeftijd_badge(ev) }}</span>{% endif %}
   {% if ev.is_free %}<span class="badge badge-free">Gratis</span>
   {% elif family_total is not none %}<span class="badge">Voor jullie gezin: €{{ "%.0f"|format(family_total) }}</span>{% endif %}
-  {% if ev.partner_until and ev.partner_until > nu_utc %}<span class="badge badge-partner" title="Deze zaak steunt Ravot als partner. De Ravotscore zelf komt altijd van gezinnen.">⭐ Partner</span>{% endif %}
+  {% if partner_zichtbaar(ev) %}<span class="badge badge-partner" title="Deze zaak steunt Ravot als partner. De Ravotscore zelf komt altijd van gezinnen.">⭐ Partner</span>{% endif %}
   {% if euro and not ev.is_free %}<span class="badge">{{ euro }}</span>{% endif %}
   {% if ev.indoor %}<span class="badge">🌧️ binnen</span>{% endif %}
   {% if ev.is_permanent %}<span class="badge">📍 vaste plek — altijd te bezoeken</span>{% endif %}
@@ -122,7 +122,7 @@
   {% if ev.telefoon %}<a class="btn btn-stil" href="tel:{{ ev.telefoon|replace(" ", "")|replace("/", "") }}">📞 Bel {{ ev.telefoon }}</a>{% endif %}
   {% if ev.email %}<a class="btn btn-stil" href="mailto:{{ ev.email }}">✉️ Mail</a>{% endif %}
   {% for s in ev.socials or [] %}<a class="btn btn-stil btn-klein" href="{{ s }}" rel="noopener nofollow" target="_blank">{{ "📘 Facebook" if "facebook" in s else ("📸 Instagram" if "instagram" in s else "🔗 Social") }}</a>{% endfor %}
-  {% if ev.reservatie_url and ev.partner_until and ev.partner_until > nu_utc %}<a class="btn btn-zon" href="{{ ev.reservatie_url }}" rel="noopener nofollow" target="_blank">🍽️ Menu &amp; reserveren</a>{% endif %}
+  {% if ev.reservatie_url and partner_zichtbaar(ev) %}<a class="btn btn-zon" href="{{ ev.reservatie_url }}" rel="noopener nofollow" target="_blank">🍽️ Menu &amp; reserveren</a>{% endif %}
 </div>
 {% if ev.uitbater_naam %}<p class="hint">Uitgebaat door {{ ev.uitbater_naam }}</p>{% endif %}
 {% if ev.attribution %}<p class="hint">Bron: {{ ev.attribution }}</p>{% endif %}
