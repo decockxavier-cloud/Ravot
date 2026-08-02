@@ -68,6 +68,12 @@
     <span class="upload-hint">Sloot je af via een Ravot-verkoper? Met zijn code krijg je
       het <strong>uitgebreide welkomstpakket</strong> voor je zaak.</span>
   </label>
+  <label class="check" style="display:block;margin:0 0 10px">
+    <input type="checkbox" name="invulhulp" value="1">
+    Mijn verkoper mag de komende <strong>30 dagen</strong> mijn fiche mee
+    invullen (openingsuren, foto's van tekst voorzien, ligging, voorzieningen).
+    Ik kan dit altijd intrekken; elke wijziging wordt op zijn naam gelogd.
+  </label>
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   {% if not heeft_facturatie %}
   <p class="hint">⚠️ Vul eerst je <a href="{{ url_for('uitbater.facturatie', volgende=ev.id) }}">facturatiegegevens</a>

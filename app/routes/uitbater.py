@@ -167,7 +167,12 @@ def dashboard(op):
             stats[c.event_id] = {"views": per.get("view", 0),
                                  "saves": per.get("save", 0) + per.get("like", 0),
                                  "clicks": per.get("click", 0)}
-    return render_template("uitbater/dashboard.html", op=op, claims=claims,
+    from datetime import datetime as _dt
+    from ..models import VerkoperMachtiging
+    machtigingen = (VerkoperMachtiging.query
+                    .filter(VerkoperMachtiging.operator_id == op.id,
+                            VerkoperMachtiging.tot > _dt.utcnow()).all())
+    return render_template("uitbater/dashboard.html", machtigingen=machtigingen, op=op, claims=claims,
                            voorstellen=voorstellen, stats=stats,
                            is_partner=mollie.is_partner, title="Mijn zaken",
                            family=None, active=None)
@@ -496,6 +501,19 @@ def partner(op, event_id):
                 flash("Die verkoperscode kennen we niet — check de schrijfwijze "
                       "of laat het veld leeg.", "error")
                 return redirect(url_for("uitbater.partner", event_id=ev.id))
+        # Invulhulp-machtiging (patch 155): expliciete opt-in, 30 dagen,
+        # altijd intrekbaar via het dashboard.
+        if verkoper and request.form.get("invulhulp") == "1":
+            from datetime import datetime as _dt, timedelta as _td
+            from ..models import VerkoperMachtiging
+            m = (VerkoperMachtiging.query
+                 .filter_by(verkoper_id=verkoper.id, event_id=ev.id).first())
+            if not m:
+                m = VerkoperMachtiging(verkoper_id=verkoper.id, event_id=ev.id,
+                                       operator_id=op.id)
+                db.session.add(m)
+            m.tot = _dt.utcnow() + _td(days=30)
+            db.session.commit()
         if not mollie.actief():
             flash("Online betalen is nog niet geconfigureerd. Mail info@ravot.be "
                   "om Partner te worden.", "error")
@@ -797,3 +815,17 @@ def fiche_foto_focus(op, event_id, pid):
     db.session.commit()
     flash("Uitsnede bewaard — zo staat je foto meteen goed op fiche en kaartjes.", "ok")
     return redirect(url_for("uitbater.fiche", event_id=ev.id))
+
+
+@bp.route("/machtiging/<int:mid>/intrek", methods=["POST"])
+@operator_required
+def machtiging_intrek(op, mid):
+    from ..models import VerkoperMachtiging
+    from datetime import datetime
+    m = db.session.get(VerkoperMachtiging, mid)
+    if not m or m.operator_id != op.id:
+        abort(404)
+    m.tot = datetime.utcnow()
+    db.session.commit()
+    flash("Invulhulp ingetrokken.", "ok")
+    return redirect(url_for("uitbater.dashboard"))

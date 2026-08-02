@@ -607,6 +607,11 @@ def register_cli(app):
             db.session.execute(text(
                 "ALTER TABLE events ADD COLUMN IF NOT EXISTS partner_plan VARCHAR(16)"))
             added.append("events.partner_plan")
+        ep_cols = {c["name"] for c in insp.get_columns("edit_proposals")}
+        if "verkoper_id" not in ep_cols:
+            db.session.execute(text(
+                "ALTER TABLE edit_proposals ADD COLUMN IF NOT EXISTS verkoper_id INTEGER"))
+            added.append("edit_proposals.verkoper_id")
         pp_cols = {c["name"] for c in insp.get_columns("partner_payments")}
         if "verkoper_id" not in pp_cols:
             db.session.execute(text(

@@ -23,17 +23,22 @@
 
 {% if zaken %}
 <table class="admin-tabel" style="margin-top:10px">
-  <tr><th>Zaak</th><th>Adres</th><th>Website</th><th>Status</th></tr>
+  <tr><th>Zaak</th><th>Adres</th><th>Telefoon</th><th>E-mail</th><th>Website</th><th>Status</th></tr>
   {% for z in zaken %}
   <tr>
     <td><a href="{{ url_for('public.event', slug=z.slug) }}" target="_blank">{{ z.title }}</a></td>
     <td>{{ z.adres or '' }}{% if z.postcode %} · {{ z.postcode }}{% endif %}</td>
+    <td>{% if z.telefoon %}<a href="tel:{{ z.telefoon }}">{{ z.telefoon }}</a>{% endif %}</td>
+    <td>{% if z.email %}<a href="mailto:{{ z.email }}">{{ z.email }}</a>{% endif %}</td>
     <td>{% if z.source_url %}<a href="{{ z.source_url }}" target="_blank" rel="noopener">site</a>{% endif %}</td>
     <td>{% if is_partner(z) %}<span class="badge badge-partner">⭐ al partner</span>
         {% else %}<span class="badge">prospect</span>{% endif %}</td>
   </tr>
   {% endfor %}
 </table>
+<p class="hint">Contactgegevens komen uit openbare bronnen (OSM/Overture) —
+  niet elke zaak heeft ze gepubliceerd. Ontbreekt een nummer, kijk op de
+  website van de zaak.</p>
 {% elif gemeente %}
 <p class="hint" style="margin-top:10px">Geen horecazaken gevonden in "{{ gemeente }}" —
   check de schrijfwijze.</p>

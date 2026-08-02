@@ -54,7 +54,13 @@ def start():
         r["excl"] += excl
         r["commissie"] += excl * (v.commissie_pct / 100)
     overzicht = sorted(maanden.items(), reverse=True)
+    from datetime import datetime as _dt
+    from ..models import VerkoperMachtiging
+    machtigingen = (VerkoperMachtiging.query
+                    .filter(VerkoperMachtiging.verkoper_id == v.id,
+                            VerkoperMachtiging.tot > _dt.utcnow()).all())
     return render_template("verkoper/dashboard.html", v=v,
+                           machtigingen=machtigingen,
                            betalingen=betalingen, overzicht=overzicht,
                            prijzen={p: mollie.prijs(p) for p in mollie.PLANNEN},
                            title="Verkopersportaal", family=None, active=None)
@@ -135,3 +141,82 @@ def uitloggen():
     session.pop("verkoper_id", None)
     flash("Je bent uitgelogd.", "ok")
     return redirect(url_for("verkoper.login"))
+
+
+def _machtiging(v, event_id):
+    from datetime import datetime
+    from ..models import VerkoperMachtiging
+    return (VerkoperMachtiging.query
+            .filter(VerkoperMachtiging.verkoper_id == v.id,
+                    VerkoperMachtiging.event_id == event_id,
+                    VerkoperMachtiging.tot > datetime.utcnow()).first())
+
+
+@bp.route("/fiche/<int:event_id>", methods=["GET", "POST"])
+@limiter.limit("60/hour")
+def fiche(event_id):
+    """Invulhulp (patch 155): de gemachtigde verkoper vult de kernvelden van
+    de fiche mee in. Wijzigingen volgen exact dezelfde weg als die van de
+    uitbater zelf (wachtrij of auto-toepassen), mét verkoper-label."""
+    v = _huidige()
+    if not v:
+        return redirect(url_for("verkoper.login"))
+    m = _machtiging(v, event_id)
+    if not m:
+        abort(403)
+    ev = db.session.get(Event, event_id) or abort(404)
+    from ..models import EditProposal, EDIT_VELDEN, get_bool
+    from ..types import TYPES
+    from ..services.openingsuren import DAGEN, DAG_LABELS, parse_dagtekst, dag_tekst
+
+    if request.method == "POST":
+        wijzigingen = {}
+        besch = (request.form.get("beschrijving") or "").strip()[:2000]
+        if besch and besch != (ev.description or ""):
+            wijzigingen["description"] = besch
+        soort = request.form.get("soort") or ""
+        if soort in TYPES and soort != (ev.subtype or ""):
+            wijzigingen["subtype"] = soort
+        uren, anders = {}, False
+        for dag in DAGEN:
+            w, _ok = parse_dagtekst(request.form.get(f"uren_{dag}"))
+            uren[dag] = w
+            if dag_tekst(w) != dag_tekst((ev.openingsuren or {}).get(dag)):
+                anders = True
+        if anders and any(uren.values()):
+            wijzigingen["openingsuren"] = uren
+        for veld in ("kinderstoel", "speelhoek", "kindermenu", "verzorgingstafel",
+                     "buggy_ok", "omheind", "terras", "parking", "toegankelijk"):
+            nieuw = request.form.get(veld) == "1"
+            if nieuw != bool(getattr(ev, veld)):
+                wijzigingen[veld] = nieuw
+        try:
+            n_lat = float(request.form.get("lat") or "")
+            n_lng = float(request.form.get("lng") or "")
+        except ValueError:
+            n_lat = None
+        if n_lat is not None and (ev.lat is None or abs(n_lat - ev.lat) > 1e-6):
+            wijzigingen["lat"], wijzigingen["lng"] = n_lat, n_lng
+        if not wijzigingen:
+            flash("Geen wijzigingen gevonden.", "error")
+            return redirect(url_for("verkoper.fiche", event_id=ev.id))
+        voorstel = EditProposal(operator_id=m.operator_id, event_id=ev.id,
+                                verkoper_id=v.id, changes=wijzigingen)
+        if get_bool("uitbater_auto_ok"):
+            for veld, waarde in wijzigingen.items():
+                if veld in EDIT_VELDEN:
+                    setattr(ev, veld, waarde)
+            from ..kwaliteit import bereken_kwaliteit
+            ev.quality = bereken_kwaliteit(ev)
+            voorstel.status = "approved"
+        db.session.add(voorstel)
+        db.session.commit()
+        flash("Bewaard — bedankt om de fiche mee op punt te zetten!", "ok")
+        return redirect(url_for("verkoper.fiche", event_id=ev.id))
+
+    uren_nu = {dag: dag_tekst((ev.openingsuren or {}).get(dag)) for dag in DAGEN}
+    soorten = {k: t for k, t in TYPES.items() if not k.startswith(("ev_", "uit_"))}
+    return render_template("verkoper/fiche.html", v=v, ev=ev, m=m,
+                           soorten=soorten, dagen=DAGEN, dag_labels=DAG_LABELS,
+                           uren_nu=uren_nu, title=f"Invulhulp: {ev.title}",
+                           family=None, active=None)

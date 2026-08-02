@@ -826,6 +826,7 @@ class EditProposal(db.Model):
     __tablename__ = "edit_proposals"
     id = db.Column(db.Integer, primary_key=True)
     operator_id = db.Column(db.Integer, db.ForeignKey("operators.id"), nullable=False, index=True)
+    verkoper_id = db.Column(db.Integer, db.ForeignKey("verkopers.id"))  # ingevuld via invulhulp
     event_id = db.Column(db.Integer, db.ForeignKey("events.id"), nullable=False, index=True)
     changes = db.Column(db.JSON, default=dict)   # {veld: nieuwe waarde} (enkel EDIT_VELDEN)
     status = db.Column(db.String(12), default="pending", nullable=False, index=True)
@@ -846,6 +847,24 @@ class Verkoper(db.Model):
     commissie_pct = db.Column(db.Integer, default=15)   # % van dealwaarde excl. btw
     actief = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=utcnow)
+
+
+class VerkoperMachtiging(db.Model):
+    """Expliciete invulhulp-machtiging (patch 155): de uitbater geeft zijn
+    verkoper tijdelijk het recht om de fiche van één zaak mee in te vullen.
+    Altijd intrekbaar; elke wijziging blijft herleidbaar tot de verkoper."""
+    __tablename__ = "verkoper_machtigingen"
+    id = db.Column(db.Integer, primary_key=True)
+    verkoper_id = db.Column(db.Integer, db.ForeignKey("verkopers.id"),
+                            nullable=False, index=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("events.id"),
+                         nullable=False, index=True)
+    operator_id = db.Column(db.Integer, db.ForeignKey("operators.id"),
+                            nullable=False)   # wie de machtiging gaf
+    tot = db.Column(db.DateTime, nullable=False)
+    created_at = db.Column(db.DateTime, default=utcnow)
+    verkoper = db.relationship("Verkoper")
+    event = db.relationship("Event")
 
 
 class PartnerPayment(db.Model):

@@ -22,6 +22,18 @@
   <p><a class="btn btn-klein" href="{{ url_for('verkoper.prospectie') }}">🔎 Prospectielijst per gemeente →</a></p>
 </div>
 
+{% if machtigingen %}
+<div class="card">
+  <h2>Invulhulp — fiches die je mag meebouwen</h2>
+  <ul>
+    {% for m in machtigingen %}
+    <li><a href="{{ url_for('verkoper.fiche', event_id=m.event_id) }}">✍️ {{ m.event.title }}</a>
+      <span class="hint">tot {{ m.tot.strftime('%d/%m') }}</span></li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
 <div class="card">
   <h2>Jouw commissie per maand</h2>
   {% if overzicht %}

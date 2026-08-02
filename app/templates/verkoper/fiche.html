@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block content %}
+<p><a href="{{ url_for('verkoper.start') }}">← Mijn dashboard</a></p>
+<h1>Invulhulp: {{ ev.title }} ✍️</h1>
+<p class="hint">Gemachtigd door de uitbater tot
+  <strong>{{ m.tot.strftime('%d/%m/%Y') }}</strong>. Elke wijziging wordt op
+  jouw naam gelogd{% if not ev.lat %} — <strong>zet zeker de speld</strong>,
+  anders staat de zaak niet op de kaart{% endif %}.</p>
+
+<form method="post" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label>Soort zaak
+    <select name="soort">
+      <option value="">— kies —</option>
+      {% for k, (emoji, naam, _v) in soorten.items() %}
+      <option value="{{ k }}" {{ 'selected' if ev.subtype == k }}>{{ emoji }} {{ naam }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Beschrijving
+    <textarea name="beschrijving" rows="4" maxlength="2000">{{ ev.description or '' }}</textarea>
+  </label>
+
+  <h3>Openingsuren</h3>
+  <p class="hint">Formaat <code>09:00-18:00</code>, middagpauze met komma. Leeg = gesloten.</p>
+  <div class="veldrij" style="flex-wrap:wrap">
+    {% for dag in dagen %}
+    <label style="min-width:200px">{{ dag_labels[dag] }}
+      <input type="text" name="uren_{{ dag }}" value="{{ uren_nu[dag] }}" placeholder="gesloten"></label>
+    {% endfor %}
+  </div>
+
+  <h3>Voorzieningen</h3>
+  <div class="checkrij" style="flex-wrap:wrap">
+    {% for veld, lbl in [("kinderstoel","🪑 Kinderstoelen"),("speelhoek","🧸 Speelhoek"),
+                          ("kindermenu","🍟 Kindermenu"),("verzorgingstafel","🚼 Verschoontafel"),
+                          ("buggy_ok","👶 Buggy-vriendelijk"),("omheind","🚧 Omheind"),
+                          ("terras","☀️ Terras"),("parking","🅿️ Parking"),
+                          ("toegankelijk","♿ Toegankelijk")] %}
+    <label class="check"><input type="checkbox" name="{{ veld }}" value="1"
+      {{ 'checked' if ev[veld] }}> {{ lbl }}</label>
+    {% endfor %}
+  </div>
+
+  <h3>Ligging</h3>
+  <div id="prik-kaart" class="prik-kaart"
+       {% if ev.lat %}data-lat="{{ ev.lat }}" data-lng="{{ ev.lng }}"{% endif %}></div>
+  <input type="hidden" name="lat" id="prik-lat">
+  <input type="hidden" name="lng" id="prik-lng">
+  <p class="hint"><span id="prik-status">{{ 'huidige ligging' if ev.lat else 'nog geen speld' }}</span></p>
+
+  <div class="acties"><button class="btn" type="submit">Bewaren</button></div>
+</form>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ static_v('js/prik.js') }}" defer></script>
+{% endblock %}
