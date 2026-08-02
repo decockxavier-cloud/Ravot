@@ -2491,3 +2491,21 @@ def verkoper_toggle(vid):
     audit(f"verkoper {'geactiveerd' if v.actief else 'gedeactiveerd'}: {v.naam}")
     flash(f"Verkoper {v.naam} {'actief' if v.actief else 'inactief'}.", "ok")
     return redirect(url_for("admin.verkopers"))
+
+
+@bp.route("/simulator")
+@admin_required
+def simulator():
+    """Prijssimulator (patch 158): speel met prijzen, caps, commissie en
+    bezetting. Start vanaf de échte instellingen van dit moment."""
+    from ..models import get_setting, get_int
+    from .. import mollie
+    start = {
+        "prijsP": float(mollie.prijs("partner")),
+        "prijsF": float(mollie.prijs("feest")),
+        "prijsC": float(mollie.prijs("combi")),
+        "capZ": get_int("cap_zichtbaar_gemeente", 4),
+        "capF": get_int("cap_feest_gemeente", 0),
+    }
+    return render_template("admin/simulator.html", start=start,
+                           title="Prijssimulator", family=None, active="simulator")

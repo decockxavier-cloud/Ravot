@@ -42,7 +42,8 @@
           <summary>Gezinnen &amp; partners</summary>
           {% if mag_gezinnen %}<a href="{{ url_for('admin.families') }}" class="{{ 'on' if active=='families' }}">Gezinnen</a>{% endif %}
           {% if admin_rol == 'admin' %}<a href="{{ url_for('admin.partners') }}" class="{{ 'on' if active=='partners' }}">Partners</a>{% endif %}
-        {% if admin_rol == 'admin' %}<a href="{{ url_for('admin.verkopers') }}" class="{{ 'on' if active=='verkopers' }}">Verkopers</a>{% endif %}
+        {% if admin_rol == 'admin' %}<a href="{{ url_for('admin.verkopers') }}" class="{{ 'on' if active=='verkopers' }}">Verkopers</a>
+        <a href="{{ url_for('admin.simulator') }}" class="{{ 'on' if active=='simulator' }}">Simulator</a>{% endif %}
           <a href="{{ url_for('admin.feestjes') }}" class="{{ 'on' if active=='feestjes' }}">Feestjes &amp; kampen</a>
           <a href="{{ url_for('admin.feestprospecten') }}" class="{{ 'on' if active=='feestprospecten' }}">Feestpartners</a>
           <a href="{{ url_for('admin.beloningen') }}" class="{{ 'on' if active=='beloningen' }}">Beloningen</a>

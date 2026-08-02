@@ -1,0 +1,95 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<h1>Prijssimulator 🎛️</h1>
+<p class="hint">Draai aan de knoppen en zie meteen omzet, verkoperskost en netto.
+  De startwaarden komen uit je huidige instellingen (Facturatie); dit is een
+  rekenblad — er wordt niets opgeslagen. Alle bedragen excl. btw.</p>
+
+<div class="sim-raster" id="sim"
+     data-prijs-p="{{ start.prijsP }}" data-prijs-f="{{ start.prijsF }}"
+     data-prijs-c="{{ start.prijsC }}" data-cap-z="{{ start.capZ }}"
+     data-cap-f="{{ start.capF }}">
+  <div>
+    <div class="card">
+      <h2>Prijzen per jaar</h2>
+      <label>⭐ Ravot Partner <output data-uit="prijsP"></output>
+        <input type="range" data-in="prijsP" min="100" max="600" step="10"></label>
+      <label>🎉 Feestpartner <output data-uit="prijsF"></output>
+        <input type="range" data-in="prijsF" min="100" max="800" step="10"></label>
+      <label>Combivoordeel <output data-uit="korting"></output>
+        <input type="range" data-in="korting" min="0" max="40" value="20"></label>
+      <div class="acties" style="gap:6px">
+        <button type="button" class="btn btn-klein sim-vorm on" data-vorm="prijs">€ korting</button>
+        <button type="button" class="btn btn-klein sim-vorm" data-vorm="looptijd">extra maanden</button>
+      </div>
+      <p class="hint" data-uit="combiUitleg"></p>
+    </div>
+
+    <div class="card">
+      <h2>Markt &amp; exclusiviteit</h2>
+      <label>Actieve gemeenten <output data-uit="gemeenten"></output>
+        <input type="range" data-in="gemeenten" min="1" max="300" value="20"></label>
+      <label>⭐-plekken per gemeente <output data-uit="capZ"></output>
+        <input type="range" data-in="capZ" min="1" max="10"></label>
+      <label>Feestplekken per gemeente (0 = onbeperkt) <output data-uit="capF"></output>
+        <input type="range" data-in="capF" min="0" max="10"></label>
+      <label>Bezetting zichtbaarheid <output data-uit="bezZ"></output>
+        <input type="range" data-in="bezZ" min="0" max="100" value="30"></label>
+      <label>Feestpartners per gemeente (gemiddeld) <output data-uit="feestPerGem"></output>
+        <input type="range" data-in="feestPerGem" min="0" max="10" value="2"></label>
+      <label>Aandeel dat combi kiest <output data-uit="combiDeel"></output>
+        <input type="range" data-in="combiDeel" min="0" max="100" value="30"></label>
+    </div>
+
+    <div class="card">
+      <h2>Verkoper &amp; verlenging</h2>
+      <label>Commissie verkoper <output data-uit="commissie"></output>
+        <input type="range" data-in="commissie" min="0" max="50" value="15"></label>
+      <p class="hint" data-uit="commissiePerDeal"></p>
+      <label>Verlenging na jaar 1 <output data-uit="retentie"></output>
+        <input type="range" data-in="retentie" min="0" max="100" value="80"></label>
+    </div>
+  </div>
+
+  <div>
+    <div class="sim-kaarten">
+      <div class="card"><div class="hint">⭐ Partner</div>
+        <div class="sim-groot" data-uit="nP"></div><div class="hint" data-uit="omzetP"></div></div>
+      <div class="card"><div class="hint">🎉 Feest</div>
+        <div class="sim-groot" data-uit="nF"></div><div class="hint" data-uit="omzetF"></div></div>
+      <div class="card"><div class="hint">🤝 Combi</div>
+        <div class="sim-groot" data-uit="nC"></div><div class="hint" data-uit="omzetC"></div></div>
+    </div>
+
+    <div class="card">
+      <h2>Jaar 1</h2>
+      <p style="display:flex;justify-content:space-between;margin:4px 0">
+        <span>Omzet (<span data-uit="deals"></span> deals)</span><strong data-uit="omzet"></strong></p>
+      <p style="display:flex;justify-content:space-between;margin:4px 0">
+        <span>Verkoper</span><strong data-uit="verkoper"></strong></p>
+      <p style="display:flex;justify-content:space-between;margin:6px 0 2px;border-top:1px dashed #ddd;padding-top:6px">
+        <span><strong>Netto voor Ravot</strong></span><strong data-uit="netto"></strong></p>
+      <p class="hint" style="display:flex;justify-content:space-between;margin:0">
+        <span>Gemiddeld per gemeente</span><span data-uit="perGemeente"></span></p>
+    </div>
+
+    <div class="card">
+      <h2>Verlengingsjaar</h2>
+      <p style="display:flex;justify-content:space-between;margin:4px 0">
+        <span data-uit="retentieTekst"></span><strong data-uit="omzet2"></strong></p>
+      <p class="hint" data-uit="looptijdNoot"></p>
+    </div>
+
+    <div class="card">
+      <h2>Eén gemeente onder de loep</h2>
+      <p class="hint" data-uit="loepZTekst"></p>
+      <div data-uit="loepZ"></div>
+      <p class="hint" data-uit="loepFTekst"></p>
+      <div data-uit="loepF"></div>
+      <p class="hint">Vol = "uitverkocht in jouw gemeente" — je sterkste
+        verkoopargument én je garantie aan bestaande ⭐-partners.</p>
+    </div>
+  </div>
+</div>
+<script src="{{ static_v('js/simulator.js') }}" defer></script>
+{% endblock %}

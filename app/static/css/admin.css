@@ -201,3 +201,15 @@
   width: auto; height: auto;
   object-fit: cover; border-radius: 8px; display: block;
 }
+
+/* Prijssimulator (patch 158) */
+.sim-raster { display: grid; grid-template-columns: 1fr 1.3fr; gap: 14px; }
+@media (max-width: 900px) { .sim-raster { grid-template-columns: 1fr; } }
+.sim-raster label { display: block; margin: 10px 0; font-weight: 600; }
+.sim-raster label output { float: right; color: #EE8035; font-variant-numeric: tabular-nums; }
+.sim-raster input[type=range] { width: 100%; accent-color: #4CA362; }
+.sim-kaarten { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.sim-groot { font-size: 26px; font-weight: 800; }
+.sim-vorm.on { background: #EE8035; color: #fff; }
+.sim-stip { display: inline-block; width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid #ddd; margin: 0 5px 5px 0; }
