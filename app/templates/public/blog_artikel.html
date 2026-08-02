@@ -2,7 +2,12 @@
 {% block content %}
 <p><a href="{{ url_for('public.blog') }}">← Alle artikels</a></p>
 <article class="card">
-  <h1 style="margin-top:0">{{ a.titel }}</h1>
+  <div style="display:flex;justify-content:space-between;align-items:start;gap:8px">
+    <h1 style="margin-top:0">{{ a.titel }}</h1>
+    <button type="button" class="deel-knop btn btn-klein"
+            data-titel="{{ a.titel }}" data-url="{{ request.url }}"
+            aria-label="Deel dit artikel">📤 Deel</button>
+  </div>
   <p class="hint">{{ a.publicatie_datum.strftime('%d/%m/%Y') if a.publicatie_datum }}</p>
   <div class="artikel-inhoud">{{ inhoud_html | safe }}</div>
 </article>

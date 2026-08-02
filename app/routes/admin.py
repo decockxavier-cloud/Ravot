@@ -1424,7 +1424,14 @@ def feed_verwijder(fid):
 ADMIN_EVENT_VELDEN = ("title", "description", "adres", "postcode", "gemeente",
                       "source_url", "image_url", "indoor", "is_free",
                       "age_min", "age_max", "omheind", "verzorgingstafel",
-                      "buggy_ok", "feest", "feest_contact")
+                      "buggy_ok", "feest", "feest_contact",
+                      # patch 150: pariteit met de uitbater-fiche — het beheer
+                      # hoort mínstens te kunnen wat een uitbater kan.
+                      "subtype", "reservatie_url", "kinderstoel", "speelhoek",
+                      "kindermenu", "terras", "overdekt_terras", "parking",
+                      "toegankelijk", "allergievriendelijk", "babyvoeding",
+                      "hidden", "deelgemeente",
+                      "huisdieren", "feest_min_pers", "feest_max_pers")
 
 
 @bp.route("/activiteiten")
@@ -1534,6 +1541,8 @@ def _parse_openingsuren(f):
 def activiteit_bewerk(event_id):
     from ..models import Event, CATEGORIES
     ev = db.session.get(Event, event_id) or abort(404)
+    from ..types import TYPES as _TYPES
+    from ..services.openingsuren import DAGEN as _DAGEN, DAG_LABELS as _DLBL, dag_tekst as _dtxt
     voorstel = None
     if request.method == "POST":
         f = request.form
@@ -1550,7 +1559,9 @@ def activiteit_bewerk(event_id):
             from ..models import FEEST_SOORTEN as _FS
             return render_template("admin/activiteit_bewerk.html", ev=ev,
                                    categories=CATEGORIES, voorstel=voorstel,
-                                   feest_soorten=_FS,
+                                   feest_soorten=_FS, soorten=_TYPES,
+                                   dagen=_DAGEN, dag_labels=_DLBL,
+                                   uren_nu={d: _dtxt((ev.openingsuren or {}).get(d)) for d in _DAGEN},
                                    title=f"Bewerk: {ev.title}", family=None,
                                    active="activiteiten")
         # --- Opslaan ---
@@ -1559,11 +1570,16 @@ def activiteit_bewerk(event_id):
             if veld not in f:
                 continue
             waarde = (f.get(veld) or "").strip()
-            if veld in ("indoor", "is_free", "feest"):
+            if veld in ("indoor", "is_free", "feest", "hidden"):
                 setattr(ev, veld, f.get(veld) == "1")
-            elif veld in ("omheind", "verzorgingstafel", "buggy_ok"):
+            elif veld in ("omheind", "verzorgingstafel", "buggy_ok",
+                          "kinderstoel", "speelhoek", "kindermenu", "terras",
+                          "overdekt_terras", "parking", "toegankelijk",
+                          "allergievriendelijk", "babyvoeding", "huisdieren"):
                 # tri-state: '' = onbekend (None), '1' = ja, '0' = nee
                 setattr(ev, veld, None if waarde == "" else waarde == "1")
+            elif veld in ("feest_min_pers", "feest_max_pers"):
+                setattr(ev, veld, int(waarde) if waarde.isdigit() else None)
             elif veld in ("age_min", "age_max"):
                 if waarde.isdigit():
                     setattr(ev, veld, int(waarde))
@@ -1571,6 +1587,21 @@ def activiteit_bewerk(event_id):
                 ev.postcode = _re.sub(r"\D", "", waarde)[:8] or None
             else:
                 setattr(ev, veld, waarde or None)
+        # Ligging rechtstreeks aanpasbaar (patch 150): tot nu kon de beheerder
+        # een speld-loze zaak niet zelf op de kaart zetten.
+        try:
+            if (f.get("lat") or "").strip():
+                ev.lat = float(f["lat"]); ev.lng = float(f.get("lng") or ev.lng)
+        except (TypeError, ValueError):
+            flash("Coördinaten niet begrepen — gebruik punten (51.05).", "error")
+        # Openingsuren, zelfde formaat als op de uitbater-fiche.
+        from ..services.openingsuren import DAGEN as _DGN, parse_dagtekst
+        if any(f"uren_{d}" in f for d in _DGN):
+            uren = {}
+            for d in _DGN:
+                w, _ok = parse_dagtekst(f.get(f"uren_{d}"))
+                uren[d] = w
+            ev.openingsuren = uren if any(v for v in uren.values()) else None
         from ..models import FEEST_SOORTEN
         if "feest" in f:
             ev.feest_soorten = [s for s in f.getlist("feest_soorten")
@@ -1578,8 +1609,10 @@ def activiteit_bewerk(event_id):
         cat = (f.get("categorie") or "").strip()
         if cat:
             ev.categories = [cat]
-        # Openingsuren: per dag open/sluit uit het formulier -> JSON.
-        ev.openingsuren = _parse_openingsuren(f)
+        # Openingsuren via het OUDE open_/sluit_-formaat: enkel toepassen als
+        # die velden meekomen — anders wist dit de zonet geparste uren_-waarden.
+        if any(k.startswith(("open_", "sluit_")) for k in f.keys()):
+            ev.openingsuren = _parse_openingsuren(f)
         if "pending" in f:
             ev.pending = f.get("pending") == "1"
         if f.get("herbereken_geo") and ev.postcode:
@@ -1599,7 +1632,9 @@ def activiteit_bewerk(event_id):
         OperatorClaim.event_id == ev.id,
         OperatorClaim.status.in_(("pending", "approved"))).all()
     return render_template("admin/activiteit_bewerk.html", ev=ev,
-                           categories=CATEGORIES, voorstel=voorstel,
+                           categories=CATEGORIES, soorten=_TYPES,
+                           dagen=_DAGEN, dag_labels=_DLBL,
+                           uren_nu={d: _dtxt((ev.openingsuren or {}).get(d)) for d in _DAGEN}, voorstel=voorstel,
                            feest_soorten=_FS2, actieve_claims=actieve_claims,
                            title=f"Bewerk: {ev.title}", family=None,
                            active="activiteiten")

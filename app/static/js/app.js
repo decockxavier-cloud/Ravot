@@ -142,21 +142,67 @@ document.addEventListener("click", function (e) {
   if (document.getElementById("filterbalk")) pasToe();
 })();
 
-// Deelknop op eventpagina (native share, met kopieer-fallback)
+// Deelknop: kanalenpaneel (WhatsApp, Facebook, Messenger, sms, e-mail) met
+// UTM per kanaal, plus het native deelmenu voor de rest (o.a. Instagram —
+// dat kent bewust geen web-deellink). Werkt op fiche én lijstkaartjes.
 document.addEventListener("click", function (e) {
+  var open = document.querySelector(".deelpaneel");
   var btn = e.target.closest("#deel, .deel-knop");
+  if (open && !open.contains(e.target)) open.remove();
   if (!btn) return;
-  var data = { title: btn.dataset.titel, text: "Leuk voor het gezin: " + btn.dataset.titel, url: btn.dataset.url };
-  if (navigator.share) {
-    navigator.share(data).catch(function () {});
-  } else if (navigator.clipboard) {
-    navigator.clipboard.writeText(btn.dataset.url).then(function () {
-      btn.textContent = "✓ Link gekopieerd";
-      setTimeout(function () { btn.textContent = "📤 Deel"; }, 2000);
-    });
-  } else {
-    window.open("https://wa.me/?text=" + encodeURIComponent(data.text + " " + data.url), "_blank");
+  if (open) return;                       // tweede klik = sluiten
+  var titel = btn.dataset.titel || document.title;
+  var kaal = btn.dataset.url;
+  var tekst = "Leuk voor het gezin: " + titel;
+  function metUtm(bron) {
+    return kaal + (kaal.indexOf("?") > -1 ? "&" : "?") +
+      "utm_source=" + bron + "&utm_medium=social&utm_campaign=deel";
   }
+  var mobiel = /Android|iPhone|iPad/i.test(navigator.userAgent);
+  var p = document.createElement("div");
+  p.className = "deelpaneel";
+  var kanalen = [
+    ["💬 WhatsApp", "https://wa.me/?text=" + encodeURIComponent(tekst + " " + metUtm("whatsapp"))],
+    ["📘 Facebook", "https://www.facebook.com/sharer/sharer.php?u=" + encodeURIComponent(metUtm("facebook"))]
+  ];
+  if (mobiel) {
+    kanalen.push(["✉️ Messenger", "fb-messenger://share/?link=" + encodeURIComponent(metUtm("messenger"))]);
+    kanalen.push(["📱 Sms", "sms:?&body=" + encodeURIComponent(tekst + " " + metUtm("sms"))]);
+  }
+  kanalen.push(["📧 E-mail", "mailto:?subject=" + encodeURIComponent(titel) +
+                "&body=" + encodeURIComponent(tekst + "\n" + metUtm("email"))]);
+  kanalen.forEach(function (k) {
+    var a = document.createElement("a");
+    a.href = k[1]; a.textContent = k[0];
+    if (k[1].indexOf("https://") === 0) { a.target = "_blank"; a.rel = "noopener"; }
+    p.appendChild(a);
+  });
+  if (navigator.share) {
+    var meer = document.createElement("button");
+    meer.type = "button";
+    meer.textContent = "➕ Meer… (o.a. Instagram)";
+    meer.addEventListener("click", function () {
+      navigator.share({ title: titel, text: tekst, url: metUtm("share") }).catch(function () {});
+      p.remove();
+    });
+    p.appendChild(meer);
+  }
+  if (navigator.clipboard) {
+    var kop = document.createElement("button");
+    kop.type = "button";
+    kop.textContent = "🔗 Kopieer link";
+    kop.addEventListener("click", function () {
+      navigator.clipboard.writeText(kaal).then(function () {
+        kop.textContent = "✓ Gekopieerd";
+        setTimeout(function () { p.remove(); }, 900);
+      });
+    });
+    p.appendChild(kop);
+  }
+  btn.parentNode.style.position = "relative";
+  p.style.top = (btn.offsetTop + btn.offsetHeight + 6) + "px";
+  btn.parentNode.appendChild(p);
+  e.stopPropagation();
 });
 
 // Hamburger-menu (mobiel)

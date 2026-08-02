@@ -71,8 +71,10 @@ def test_markerdata_kent_eet_en_permanent(client, app):
         _plek(uit_id="98d", slug="frietje", title="Frietje", subtype="horeca")
         nu = datetime.utcnow()
         db.session.add(Event(uit_id="98e", slug="voorstelling", title="Show",
-                             start=nu + timedelta(days=1),
-                             end=nu + timedelta(days=1, hours=2),
+                             # straks vandaag (niet +1 dag: op zondag valt
+                             # 'morgen' buiten het deze-week-venster — flake)
+                             start=nu + timedelta(minutes=30),
+                             end=nu + timedelta(hours=2),
                              gemeente="Merelbeke", postcode="9820",
                              lat=50.99, lng=3.75))
         db.session.commit()

@@ -103,15 +103,20 @@
   <h2 class="sectie-kop">Locatie &amp; contact</h2>
   <div class="veldrij">
     <label>Gemeente <input type="text" name="gemeente" value="{{ ev.gemeente or '' }}"></label>
+    <label>Deelgemeente <span class="hint">(bijschrift, bv. Rumbeke — leeg = geen)</span>
+      <input type="text" name="deelgemeente" value="{{ ev.deelgemeente or '' }}"></label>
     <label>Postcode <input type="text" name="postcode" value="{{ ev.postcode or '' }}" maxlength="8"></label>
   </div>
   <label>Adres <input type="text" name="adres" value="{{ ev.adres or '' }}"></label>
   <label>Website <input type="url" name="source_url" value="{{ ev.source_url or '' }}"></label>
   <label>Foto-URL <input type="url" name="image_url" value="{{ ev.image_url or '' }}"></label>
   <div class="veldrij">
+    <input type="hidden" name="indoor" value="0"><input type="hidden" name="is_free" value="0">
     <label class="check"><input type="checkbox" name="indoor" value="1" {{ 'checked' if v_indoor }}> Binnen</label>
     <label class="check"><input type="checkbox" name="is_free" value="1" {{ 'checked' if v_gratis }}> Gratis</label>
     <label class="check"><input type="checkbox" name="pending" value="1" {{ 'checked' if ev.pending }}> In wachtrij (niet publiek)</label>
+  <label class="check"><input type="checkbox" name="hidden" value="1"
+    {{ 'checked' if ev.hidden }}> 🙈 Verborgen (nergens publiek zichtbaar)</label>
     <label class="check"><input type="checkbox" name="herbereken_geo" value="1"> Coördinaten opnieuw uit postcode</label>
   </div>
 
@@ -165,6 +170,47 @@
     {% endfor %}
   </table>
 
+  <h2 class="sectie-kop">Soort &amp; ligging</h2>
+  <div class="veldrij">
+    <label>Soort
+      <select name="subtype">
+        <option value="">— geen —</option>
+        {% for k, (emoji, naam, _v) in soorten.items() %}
+        <option value="{{ k }}" {{ 'selected' if ev.subtype == k }}>{{ emoji }} {{ naam }}</option>
+        {% endfor %}
+      </select></label>
+    <label>Breedtegraad (lat) <input type="text" name="lat" value="{{ ev.lat or '' }}" placeholder="51.05"></label>
+    <label>Lengtegraad (lng) <input type="text" name="lng" value="{{ ev.lng or '' }}" placeholder="3.72"></label>
+  </div>
+  <label>Menu- of reservatielink <input type="url" name="reservatie_url" value="{{ ev.reservatie_url or '' }}" placeholder="https://..."></label>
+
+  <h2 class="sectie-kop">Openingsuren</h2>
+  <p class="hint">Formaat <code>09:00-18:00</code> of <code>09:00-12:00, 13:00-18:00</code>; leeg = gesloten.</p>
+  <div class="veldrij" style="flex-wrap:wrap">
+    {% for dag in dagen %}
+    <label style="min-width:180px">{{ dag_labels[dag] }}
+      <input type="text" name="uren_{{ dag }}" value="{{ uren_nu[dag] }}" placeholder="gesloten"></label>
+    {% endfor %}
+  </div>
+
+  <h2 class="sectie-kop">Kindvriendelijke voorzieningen</h2>
+  <div class="veldrij" style="flex-wrap:wrap">
+    {% for veld, lbl in [("kinderstoel","🪑 Kinderstoelen"),("speelhoek","🧸 Speelhoek"),
+                         ("kindermenu","🍟 Kindermenu"),("verzorgingstafel","🍼 Verschoontafel"),
+                         ("buggy_ok","👶 Buggy-vriendelijk"),("omheind","🚧 Omheind terrein"),
+                         ("terras","☀️ Terras"),("overdekt_terras","⛱️ Overdekt terras"),
+                         ("parking","🅿️ Parking"),("toegankelijk","♿ Toegankelijk"),
+                         ("allergievriendelijk","🌾 Allergievriendelijk"),
+                         ("babyvoeding","🍼 Babyvoeding opwarmen"),("huisdieren","🐕 Huisdieren")] %}
+    <label style="min-width:210px">{{ lbl }}
+      <select name="{{ veld }}">
+        <option value="" {{ 'selected' if ev[veld] is none }}>onbekend</option>
+        <option value="1" {{ 'selected' if ev[veld] == true }}>ja</option>
+        <option value="0" {{ 'selected' if ev[veld] == false }}>nee</option>
+      </select></label>
+    {% endfor %}
+  </div>
+
   <h2 class="sectie-kop">Feestjes</h2>
   <div class="veldrij" style="align-items:end">
     <label>🎂 Verjaardagsfeestjes
@@ -174,6 +220,8 @@
       </select></label>
     <label>Offerte-e-mail <small class="hint">(leeg = e-mail van de geclaimde uitbater)</small>
       <input type="email" name="feest_contact" value="{{ ev.feest_contact or '' }}" placeholder="feest@zaak.be"></label>
+    <label>Min. personen <input type="number" name="feest_min_pers" min="1" max="200" value="{{ ev.feest_min_pers or '' }}"></label>
+    <label>Max. personen <input type="number" name="feest_max_pers" min="1" max="200" value="{{ ev.feest_max_pers or '' }}"></label>
   </div>
   <div class="veldrij">
     {% set fs = ev.feest_soorten or [] %}
