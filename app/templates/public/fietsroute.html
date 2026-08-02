@@ -7,7 +7,9 @@
     <h1 style="margin:4px 0 2px">{{ r.titel }}</h1>
     <p class="meta">📍 {{ r.gemeente or '' }}{% if r.regio %} · {{ r.regio }}{% endif %}
       &nbsp; {{ r.afstand_km }} km · ±{{ (r.duur_min or 0) // 60 }}u{{ '%02d' % ((r.duur_min or 0) % 60) }}
-      · {{ r.moeilijkheid }} · {{ 'lus' if r.is_lus else 'van A naar B' }}</p>
+      · {{ r.moeilijkheid }} · {{ 'lus' if r.is_lus else 'van A naar B' }}
+      {% if score %} · <strong>{{ "😞😕😐😄🤩"[(score.kid | round | int) - 1] }} {{ score.kid }}</strong>
+      <span class="hint">({{ score.n }} gezin{{ 'nen' if score.n != 1 }})</span>{% endif %}</p>
   </div>
   <button type="button" class="deel-knop btn" data-titel="{{ r.titel }}"
           data-url="{{ request.url }}">📤 Deel</button>
@@ -36,6 +38,9 @@
     <a class="btn btn-klein" target="_blank" rel="noopener"
        href="https://www.google.com/maps/dir/?api=1&destination={{ r.start_lat }},{{ r.start_lng }}">🧭 Naar het startpunt</a>
     {% endif %}
+    {% if family and not mijn_review %}
+    <a class="btn btn-klein" href="{{ url_for('account.route_review', route_id=r.id) }}">😄 Geef een Ravotscore</a>
+    {% endif %}
   </div>
 </div>
 
@@ -61,7 +66,7 @@
 
 {% if buurt %}
 <h2>Leuk onderweg 🎒</h2>
-{% for b in buurt %}
+{% macro buurt_kaartje(b) %}
 <div class="card" style="display:flex;gap:10px;align-items:center;{% if partner_zichtbaar(b.event) %}border-color:#F4B233{% endif %}">
   <strong style="min-width:56px">km {{ b.route_km }}</strong>
   <div>
@@ -70,7 +75,15 @@
     <span class="hint">op {{ b.afstand_m }} m van het pad · {{ toon_gemeente(b.event) }}</span>
   </div>
 </div>
-{% endfor %}
+{% endmacro %}
+{% for b in buurt[:6] %}{{ buurt_kaartje(b) }}{% endfor %}
+{% if buurt | length > 6 %}
+<details class="meer-onderweg">
+  <summary class="btn btn-klein" style="display:inline-block;cursor:pointer">
+    ▾ Toon alle {{ buurt | length }} plekken onderweg</summary>
+  {% for b in buurt[6:] %}{{ buurt_kaartje(b) }}{% endfor %}
+</details>
+{% endif %}
 {% endif %}
 
 {% if vandaag %}

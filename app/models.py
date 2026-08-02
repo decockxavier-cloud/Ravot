@@ -791,6 +791,22 @@ class RouteBuurt(db.Model):
     event = db.relationship("Event")
 
 
+class RouteReview(db.Model):
+    """Ravotscore van een gezin voor een fietsroute (patch 161) — dezelfde
+    scoretaal als bij plekken: kindsmileys (1-5) + ouder-gemak (1-3)."""
+    __tablename__ = "route_reviews"
+    id = db.Column(db.Integer, primary_key=True)
+    family_id = db.Column(db.Integer, db.ForeignKey("families.id"),
+                          nullable=True, index=True)   # NULL na accountverwijdering
+    route_id = db.Column(db.Integer, db.ForeignKey("fietsroutes.id"),
+                         nullable=False, index=True)
+    kid_score = db.Column(db.Integer, nullable=False)      # 1..5 (smileys)
+    parent_score = db.Column(db.Integer, nullable=False)   # 1=gedoe 2=oké 3=vlot
+    created_at = db.Column(db.DateTime, default=utcnow)
+    __table_args__ = (db.UniqueConstraint("family_id", "route_id",
+                                          name="uq_routereview_gezin"),)
+
+
 class Photo(db.Model):
     """Door een gebruiker geuploade foto van een plek. Staat standaard in de
     moderatiewachtrij (pending) en is pas publiek zichtbaar na goedkeuring."""

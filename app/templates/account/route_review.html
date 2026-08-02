@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<p><a href="{{ url_for('public.fietsroute', slug=r.slug) }}" class="terug-link">← {{ r.titel }}</a></p>
+<h1>Hoe was de route? 🚲</h1>
+{% if existing %}
+<div class="card"><p>Jullie gaven deze route al een Ravotscore. Bedankt!</p></div>
+{% else %}
+<form method="post" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="score-blok">
+    <label class="score-vraag">Wat vonden de kinderen ervan?</label>
+    <div class="emoji-rij" role="radiogroup" aria-label="Kinderscore">
+      {% for waarde, emo, woord in [(1,'😖','niet zo'),(2,'😕','matig'),(3,'😐','oké'),(4,'😄','leuk'),(5,'🤩','super')] %}
+      <label class="emoji-keuze">
+        <input type="radio" name="kid_score" value="{{ waarde }}" required {{ 'checked' if waarde==4 }}>
+        <span class="emoji-bol">{{ emo }}</span><span class="emoji-woord">{{ woord }}</span>
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="score-blok">
+    <label class="score-vraag">En voor jou als ouder?</label>
+    <div class="keuze-rij" role="radiogroup" aria-label="Ouderscore">
+      {% for waarde, woord in [(3,'Vlot 👌'),(2,'Oké'),(1,'Gedoe')] %}
+      <label class="chip-keuze">
+        <input type="radio" name="parent_score" value="{{ waarde }}" required {{ 'checked' if waarde==3 }}>
+        <span>{{ woord }}</span>
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="acties"><button class="btn" type="submit">Ravotscore geven</button></div>
+</form>
+{% endif %}
+{% endblock %}

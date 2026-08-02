@@ -51,7 +51,7 @@ def test_zoekbalk_tekst_niet_gekaapt_door_plaatsprefix(client, app):
     now = datetime.utcnow()
     with app.app_context():
         db.session.add(Event(source="uit", ext_id="p", slug="poptheater",
-            title="Poppentheater Pinokkio", start=now + timedelta(hours=4),
+            title="Poppentheater Pinokkio", start=now + timedelta(minutes=10),
             gemeente="Brugge", postcode="8000", lat=51.209, lng=3.224,
             age_min=0, age_max=12, categories=["cultuur"], quality=70))
         db.session.commit()

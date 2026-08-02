@@ -317,6 +317,8 @@ def delete_review(review_id):
 # nieuwe, nog niet ingedeelde keys op.
 INSTELLING_PAGINAS = {
     "kern": [
+        ("Fietsroutes", ["route_buurt_meter", "route_partner_meter",
+                         "route_tempo_kmu", "routes_in_menu"]),
         ("Weergave & gedrag", ["default_radius", "toon_maanden_vooruit",
                                "ontdek_per_pagina", "onderhoud_aan", "uit_zichtbaar"]),
         ("Team & toegang", ["medewerker_ziet_gezinnen"]),
@@ -341,8 +343,6 @@ INSTELLING_PAGINAS = {
                                         "cap_feest_gemeente"]),
         ("Facturatie (Odoo)", ["odoo_product_id", "odoo_journal_id", "odoo_factuur_auto"]),
         ("Uitbaters", ["uitbater_auto_ok"]),
-        ("Fietsroutes", ["route_buurt_meter", "route_partner_meter",
-                         "route_tempo_kmu", "routes_in_menu"]),
     ],
     "verbindingen": [
         ("UiTdatabank", ["bron_uit_aan", "uit_query", "sync_max_pages"]),

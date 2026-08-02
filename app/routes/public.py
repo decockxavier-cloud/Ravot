@@ -1795,6 +1795,18 @@ def fietsroute(slug):
     buurt = (RouteBuurt.query.filter_by(route_id=r.id)
              .order_by(RouteBuurt.route_km.asc()).all())
     partners = [b for b in buurt if partner_zichtbaar(b.event)]
+    from ..models import RouteReview
+    revs = RouteReview.query.filter_by(route_id=r.id).all()
+    score = None
+    if revs:
+        score = {"kid": round(sum(x.kid_score for x in revs) / len(revs), 1),
+                 "n": len(revs)}
+    mijn_review = None
+    fam_ = current_family()
+    if fam_:
+        mijn_review = RouteReview.query.filter_by(route_id=r.id,
+                                                  family_id=fam_.id).first()
+
     # Evenementen vandaag langs de route (live, klein kandidatenveld)
     vandaag = []
     if r.bbox_n is not None:
@@ -1825,10 +1837,16 @@ def fietsroute(slug):
                               "partner": partner_zichtbaar(b.event),
                               "km": b.route_km}
                              for b in buurt if b.event.lat is not None]}
+    route_ld = seo.route_jsonld(r, cover)
+    if score:
+        route_ld["aggregateRating"] = {"@type": "AggregateRating",
+                                       "ratingValue": score["kid"],
+                                       "bestRating": 5,
+                                       "ratingCount": score["n"]}
     jsonld = [seo.breadcrumb_jsonld([("Ravot", "/"),
                                      ("Fietsroutes", "/fietsroutes"),
                                      (r.titel, f"/fietsroutes/{r.slug}")]),
-              seo.route_jsonld(r, cover)]
+              route_ld]
     from ..content import render_markdown
     beschrijving_html = render_markdown(r.beschrijving) if r.beschrijving else None
     routebeschrijving_html = (render_markdown(r.routebeschrijving)
@@ -1838,6 +1856,7 @@ def fietsroute(slug):
                            routebeschrijving_html=routebeschrijving_html,
                            partners=partners, vandaag=vandaag, fotos=fotos,
                            cover=cover, kaartdata=kaartdata, jsonld=jsonld,
+                           score=score, mijn_review=mijn_review,
                            title=f"{r.titel} — gezinsfietsroute",
                            family=current_family(), active="routes")
 

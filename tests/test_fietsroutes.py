@@ -86,3 +86,59 @@ def test_pending_route_publiek_onzichtbaar(client, app):
         db.session.commit()
     assert client.get("/fietsroutes/concept").status_code == 404
     assert "concept" not in client.get("/fietsroutes").get_data(as_text=True)
+
+
+def test_ravotscore_op_route(client, app):
+    from app.models import Family, RouteReview
+    with app.app_context():
+        f1 = Family(email="s1@t.be", postcode="8800")
+        f2 = Family(email="s2@t.be", postcode="8800")
+        r = FietsRoute(titel="Scorelus", slug="scorelus", pending=False,
+                       afstand_km=10, duur_min=60)
+        db.session.add_all([f1, f2, r])
+        db.session.commit()
+        f1id, f2id, rid = f1.id, f2.id, r.id
+    with client.session_transaction() as s:
+        s["family_id"] = f1id
+    rv = client.post(f"/mijn/route-review/{rid}",
+                     data={"kid_score": "5", "parent_score": "3"},
+                     follow_redirects=True)
+    assert "Bedankt" in rv.get_data(as_text=True)
+    # tweede poging van hetzelfde gezin wijzigt niets
+    client.post(f"/mijn/route-review/{rid}",
+                data={"kid_score": "1", "parent_score": "1"})
+    with client.session_transaction() as s:
+        s["family_id"] = f2id
+    client.post(f"/mijn/route-review/{rid}",
+                data={"kid_score": "4", "parent_score": "2"})
+    with app.app_context():
+        revs = RouteReview.query.filter_by(route_id=rid).all()
+        assert len(revs) == 2
+        assert {x.kid_score for x in revs} == {5, 4}
+    h = client.get("/fietsroutes/scorelus").get_data(as_text=True)
+    assert "4.5" in h and "2 gezinnen" in h
+    assert "aggregateRating" in h
+
+
+def test_leuk_onderweg_inklap(client, app):
+    import math
+    with app.app_context():
+        from app.services.routes_gis import koppel_route
+        geom = [[50.95 + 0.02 * math.sin(2 * math.pi * i / 40),
+                 3.12 + 0.03 * math.cos(2 * math.pi * i / 40)] for i in range(40)]
+        r = FietsRoute(titel="Vollus", slug="vollus", pending=False,
+                       geometrie=geom, bbox_n=50.97, bbox_z=50.93,
+                       bbox_o=3.15, bbox_w=3.09, start_lat=50.95,
+                       start_lng=3.15, eind_lat=50.95, eind_lng=3.15)
+        db.session.add(r)
+        for i in range(9):
+            db.session.add(Event(title=f"P{i}", slug=f"kp{i}", source="osm",
+                                 ext_id=f"k{i}", is_permanent=True,
+                                 pending=False, hidden=False, lat=50.9699,
+                                 lng=3.112 + i * 0.002, subtype="speeltuin"))
+        db.session.commit()
+        n = koppel_route(r)
+        assert n > 6
+    h = client.get("/fietsroutes/vollus").get_data(as_text=True)
+    assert "meer-onderweg" in h              # details-element aanwezig
+    assert f"Toon alle {n} plekken" in h

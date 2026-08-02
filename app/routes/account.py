@@ -1285,3 +1285,34 @@ def gezinslid_mail_toggle(lid_id):
     flash(("Gezinsmails aangezet voor " if lid.mail_aan else
            "Gezinsmails uitgezet voor ") + lid.email, "ok")
     return redirect(url_for("account.instellingen") + "#gezinsleden")
+
+
+@bp.route("/route-review/<int:route_id>", methods=["GET", "POST"])
+@login_required
+@limiter.limit("30/hour", methods=["POST"])
+def route_review(route_id):
+    """Ravotscore voor een fietsroute (patch 161): zelfde scoretaal als bij
+    plekken (kindsmileys + ouder-gemak), één score per gezin per route."""
+    from ..models import FietsRoute, RouteReview
+    fam = me()
+    r = db.session.get(FietsRoute, route_id)
+    if not r or r.pending or r.hidden:
+        abort(404)
+    existing = RouteReview.query.filter_by(family_id=fam.id,
+                                           route_id=route_id).first()
+    if request.method == "POST":
+        if existing:
+            flash("Jullie gaven deze route al een Ravotscore. Bedankt!", "ok")
+            return redirect(url_for("public.fietsroute", slug=r.slug))
+        kid = int(request.form.get("kid_score", 0))
+        parent = int(request.form.get("parent_score", 0))
+        if not (1 <= kid <= 5 and 1 <= parent <= 3):
+            abort(400)
+        db.session.add(RouteReview(family_id=fam.id, route_id=route_id,
+                                   kid_score=kid, parent_score=parent))
+        db.session.commit()
+        flash("Bedankt voor jullie Ravotscore! 🚲", "ok")
+        return redirect(url_for("public.fietsroute", slug=r.slug))
+    return render_template("account/route_review.html", r=r, family=fam,
+                           existing=existing,
+                           title=f"Ravotscore voor {r.titel}", active=None)
