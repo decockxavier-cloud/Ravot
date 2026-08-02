@@ -84,10 +84,12 @@ def prospectie():
                  .order_by(Event.quality.desc().nullslast()).limit(60).all())
         if zaken:
             gemeente = zaken[0].gemeente        # nette hoofdletters
-        vrij = {"zichtbaar": max(0, get_int("cap_zichtbaar_gemeente", 5)
-                                 - mollie.plekken_bezet(gemeente, "zichtbaar")),
-                "feest": max(0, get_int("cap_feest_gemeente", 3)
-                             - mollie.plekken_bezet(gemeente, "feest"))}
+        cap_z = get_int("cap_zichtbaar_gemeente", 4)
+        cap_f = get_int("cap_feest_gemeente", 0)
+        vrij = {"zichtbaar": max(0, cap_z - mollie.plekken_bezet(gemeente, "zichtbaar"))
+                             if cap_z else None,
+                "feest": max(0, cap_f - mollie.plekken_bezet(gemeente, "feest"))
+                         if cap_f else None}
     return render_template("verkoper/prospectie.html", v=v, gemeente=gemeente,
                            zaken=zaken, vrij=vrij, is_partner=mollie.is_partner,
                            title="Prospectie", family=None, active=None)

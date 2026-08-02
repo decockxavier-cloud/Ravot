@@ -14,10 +14,12 @@
 {% if vrij %}
 <div class="card" style="margin-top:10px">
   <strong>{{ gemeente }}</strong> — nog
-  <strong>{{ vrij['zichtbaar'] }}</strong> zichtbaarheidsplek(ken) en
-  <strong>{{ vrij['feest'] }}</strong> feestplek(ken) vrij.
-  {% if vrij['zichtbaar'] <= 2 or vrij['feest'] <= 1 %}
-  <span class="badge open">bijna volzet — nu verkopen 🔥</span>{% endif %}
+  <strong>{{ vrij['zichtbaar'] if vrij['zichtbaar'] is not none else '∞' }}</strong>
+  zichtbaarheidsplek(ken) vrij; feestplekken
+  {% if vrij['feest'] is none %}<strong>onbeperkt</strong> (zalen, traiteurs,
+  animatie — elke categorie welkom){% else %}<strong>{{ vrij['feest'] }}</strong> vrij{% endif %}.
+  {% if vrij['zichtbaar'] is not none and vrij['zichtbaar'] <= 2 %}
+  <span class="badge open">⭐ bijna volzet — nu verkopen 🔥</span>{% endif %}
 </div>
 {% endif %}
 

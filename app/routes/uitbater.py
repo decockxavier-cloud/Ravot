@@ -480,14 +480,14 @@ def partner(op, event_id):
             plan = "partner"
         if ev.gemeente:
             if plan in ("partner", "combi"):
-                cap = get_int("cap_zichtbaar_gemeente", 5)
-                if mollie.plekken_bezet(ev.gemeente, "zichtbaar") >= cap:
+                cap = get_int("cap_zichtbaar_gemeente", 4)
+                if cap and mollie.plekken_bezet(ev.gemeente, "zichtbaar") >= cap:
                     flash(f"De zichtbaarheidsplekken in {ev.gemeente} zijn volzet "
                           f"({cap}/{cap}). Mail info@ravot.be voor de wachtlijst.", "error")
                     return redirect(url_for("uitbater.partner", event_id=ev.id))
             if plan in ("feest", "combi"):
-                cap = get_int("cap_feest_gemeente", 3)
-                if mollie.plekken_bezet(ev.gemeente, "feest") >= cap:
+                cap = get_int("cap_feest_gemeente", 0)
+                if cap and mollie.plekken_bezet(ev.gemeente, "feest") >= cap:
                     flash(f"De feestpartnerplekken in {ev.gemeente} zijn volzet "
                           f"({cap}/{cap}). Mail info@ravot.be voor de wachtlijst.", "error")
                     return redirect(url_for("uitbater.partner", event_id=ev.id))
@@ -536,10 +536,12 @@ def partner(op, event_id):
     from ..models import get_int
     vrij = {}
     if ev.gemeente:
-        vrij = {"zichtbaar": max(0, get_int("cap_zichtbaar_gemeente", 5)
-                                 - mollie.plekken_bezet(ev.gemeente, "zichtbaar")),
-                "feest": max(0, get_int("cap_feest_gemeente", 3)
-                             - mollie.plekken_bezet(ev.gemeente, "feest"))}
+        cap_z = get_int("cap_zichtbaar_gemeente", 4)
+        cap_f = get_int("cap_feest_gemeente", 0)
+        vrij = {"zichtbaar": max(0, cap_z - mollie.plekken_bezet(ev.gemeente, "zichtbaar"))
+                             if cap_z else None,
+                "feest": max(0, cap_f - mollie.plekken_bezet(ev.gemeente, "feest"))
+                         if cap_f else None}
     formules = [
         {"plan": "partner", "naam": "⭐ Ravot Partner", "prijs": mollie.prijs("partner"),
          "incl": mollie.prijs_incl("partner"), "pool": "zichtbaar",

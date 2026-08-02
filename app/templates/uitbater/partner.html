@@ -44,9 +44,10 @@
 <form method="post" action="{{ url_for('uitbater.partner', event_id=ev.id) }}" class="kaart-form">
   <div class="formule-raster">
     {% for f in formules %}
-    {% set vol = (f.pool == 'zichtbaar' and vrij.get('zichtbaar', 1) == 0)
-              or (f.pool == 'feest' and vrij.get('feest', 1) == 0)
-              or (f.pool == 'beide' and (vrij.get('zichtbaar', 1) == 0 or vrij.get('feest', 1) == 0)) %}
+    {% set z_vol = vrij.get('zichtbaar') is not none and vrij.get('zichtbaar') == 0 %}
+    {% set f_vol = vrij.get('feest') is not none and vrij.get('feest') == 0 %}
+    {% set vol = (f.pool == 'zichtbaar' and z_vol) or (f.pool == 'feest' and f_vol)
+              or (f.pool == 'beide' and (z_vol or f_vol)) %}
     <label class="formule-kaart {{ 'formule-vol' if vol }}">
       <input type="radio" name="plan" value="{{ f.plan }}"
              {{ 'disabled' if vol }} {{ 'checked' if f.plan == 'combi' and not vol }}>
