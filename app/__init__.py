@@ -108,6 +108,8 @@ def create_app(config_object=Config):
     app.jinja_env.globals["foto_focus"] = foto_focus
     from .mollie import is_zichtbaar_partner, is_feestpartner
     app.jinja_env.globals["partner_zichtbaar"] = is_zichtbaar_partner
+    from .models import get_bool as _gb
+    app.jinja_env.globals["setting_bool"] = _gb
     app.jinja_env.globals["feestpartner"] = is_feestpartner
     from .services.openingsuren import (status_badge, uren_overzicht,
                                         heeft_uren, dag_blokken)
@@ -617,6 +619,13 @@ def register_cli(app):
             db.session.execute(text(
                 "ALTER TABLE partner_payments ADD COLUMN IF NOT EXISTS verkoper_id INTEGER"))
             added.append("partner_payments.verkoper_id")
+        ph_cols0 = {c["name"] for c in insp.get_columns("photos")}
+        if "route_id" not in ph_cols0:
+            db.session.execute(text(
+                "ALTER TABLE photos ADD COLUMN IF NOT EXISTS route_id INTEGER"))
+            db.session.execute(text(
+                "ALTER TABLE photos ALTER COLUMN event_id DROP NOT NULL"))
+            added.append("photos.route_id (+event_id nullable)")
         ph_cols = {c["name"] for c in insp.get_columns("photos")}
         if "focus_y" not in ph_cols:
             db.session.execute(text(

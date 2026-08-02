@@ -1,0 +1,24 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<h1>Fietsroutes 🚲</h1>
+<p class="hint">Kant-en-klare gezinslussen invoeren: GPX uploaden (uit een
+  knooppuntenplanner of van een bestaande route) en de rest — afstand, lus,
+  kaart, "leuk onderweg" — wordt automatisch berekend.
+  <a class="btn btn-klein" href="{{ url_for('admin.route_bewerk') }}">+ Nieuwe route</a></p>
+<table class="admin-tabel">
+  <tr><th>Route</th><th>Regio</th><th>Afstand</th><th>Onderweg</th><th>Status</th></tr>
+  {% for r in rijen %}
+  <tr>
+    <td><a href="{{ url_for('admin.route_bewerk', rid=r.id) }}">{{ r.titel }}</a></td>
+    <td>{{ r.regio or '—' }}</td>
+    <td>{{ r.afstand_km or '?' }} km</td>
+    <td>{{ tellers.get(r.id, 0) }} plekken</td>
+    <td>{% if r.pending %}<span class="badge">⏳ concept</span>
+        {% elif r.hidden %}<span class="badge">🙈 verborgen</span>
+        {% else %}<span class="badge open">✅ live</span>{% endif %}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="5" class="hint">Nog geen routes — begin met een West-Vlaamse gezinslus.</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

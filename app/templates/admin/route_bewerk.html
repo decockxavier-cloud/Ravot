@@ -1,0 +1,100 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<p><a href="{{ url_for('admin.routes') }}">← Alle routes</a></p>
+<h1>{{ r.titel if r else "Nieuwe fietsroute" }} 🚲</h1>
+
+<form method="post" enctype="multipart/form-data" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label>Titel <input type="text" name="titel" required maxlength="200"
+         value="{{ r.titel if r else '' }}"></label>
+  <label>Regio <span class="hint">(bv. Westhoek, Leiestreek)</span>
+    <input type="text" name="regio" maxlength="80" value="{{ r.regio if r else '' }}"></label>
+  <label>Inspiratietekst
+    <textarea name="beschrijving" rows="4">{{ r.beschrijving if r else '' }}</textarea></label>
+  <label>Routebeschrijving <span class="hint">(optioneel, stap voor stap)</span>
+    <textarea name="routebeschrijving" rows="4">{{ r.routebeschrijving if r else '' }}</textarea></label>
+
+  <div class="veldrij" style="flex-wrap:wrap;align-items:end">
+    <label>Leeftijd van <input type="number" name="age_min" min="0" max="12" style="width:70px"
+           value="{{ r.age_min if r else 4 }}"></label>
+    <label>tot <input type="number" name="age_max" min="0" max="16" style="width:70px"
+           value="{{ r.age_max if r else 12 }}"></label>
+    <label>Moeilijkheid
+      <select name="moeilijkheid">
+        {% for m in ("vlak", "licht", "pittig") %}
+        <option value="{{ m }}" {{ 'selected' if r and r.moeilijkheid == m }}>{{ m }}</option>
+        {% endfor %}
+      </select></label>
+    <label>Duur (min) <span class="hint">leeg = auto</span>
+      <input type="number" name="duur_min" style="width:90px"
+             value="{{ r.duur_min if r and r.duur_min else '' }}"></label>
+    <label>Verhard % <input type="number" name="verhard_pct" min="0" max="100" style="width:80px"
+           value="{{ r.verhard_pct if r and r.verhard_pct is not none else '' }}"></label>
+    <label>Autovrij % <input type="number" name="autovrij_pct" min="0" max="100" style="width:80px"
+           value="{{ r.autovrij_pct if r and r.autovrij_pct is not none else '' }}"></label>
+  </div>
+  <label class="check"><input type="checkbox" name="buggyvriendelijk" value="1"
+    {{ 'checked' if r and r.buggyvriendelijk }}> 👶 Buggyvriendelijk (fietskar/breed pad)</label>
+  <label class="check"><input type="checkbox" name="pending" value="1"
+    {{ 'checked' if (r.pending if r else True) }}> ⏳ Concept (nog niet publiek)</label>
+  <label class="check"><input type="checkbox" name="hidden" value="1"
+    {{ 'checked' if r and r.hidden }}> 🙈 Verborgen</label>
+
+  <h3>GPX-bestand</h3>
+  {% if r and r.gpx_bestand %}
+  <p class="hint">Huidig: <code>{{ r.gpx_bestand }}</code> —
+    {{ r.afstand_km }} km · {{ r.hoogte_m }} hoogtemeters ·
+    {{ 'lus' if r.is_lus else 'lijn' }} · start in {{ r.gemeente or '?' }}.
+    Nieuwe upload = alle automatische velden herberekend.</p>
+  {% else %}
+  <p class="hint">Upload de GPX van een bestaande gezinslus (of exporteer je
+    knooppuntenreeks als GPX uit een gratis planner). Afstand, hoogtemeters,
+    lus-detectie, startgemeente, kaartlijn én de "leuk onderweg"-koppeling
+    worden automatisch berekend.</p>
+  {% endif %}
+  <label>GPX <input type="file" name="gpx" accept=".gpx,application/gpx+xml"></label>
+
+  {% if fotos %}
+  <h3>Foto's</h3>
+  <div class="foto-galerij">
+    {% for f in fotos %}
+    <figure>
+      <img src="{{ url_for('public.foto', pid=f.id) }}" alt="" loading="lazy">
+      <figcaption class="hint">
+        <label class="check"><input type="radio" name="cover_photo_id" value="{{ f.id }}"
+          {{ 'checked' if r.cover_photo_id == f.id }}> coverfoto</label>
+      </figcaption>
+    </figure>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="acties"><button class="btn" type="submit">Bewaren</button></div>
+</form>
+
+{% if r %}
+<div class="card">
+  <h3>Foto toevoegen</h3>
+  <form method="post" action="{{ url_for('admin.route_foto', rid=r.id) }}"
+        enctype="multipart/form-data" class="acties" style="align-items:end">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Foto <input type="file" name="foto" accept="image/*" required></label>
+    <button class="btn btn-klein" type="submit">Upload</button>
+  </form>
+</div>
+<div class="card acties">
+  <form method="post" action="{{ url_for('admin.route_koppel', rid=r.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-klein" type="submit">🔄 Koppeling "leuk onderweg" verversen</button>
+  </form>
+  {% if not r.pending and not r.hidden %}
+  <a class="btn btn-klein" href="{{ url_for('public.fietsroute', slug=r.slug) }}" target="_blank">👁 Bekijk publiek</a>
+  {% endif %}
+  <form method="post" action="{{ url_for('admin.route_verwijder', rid=r.id) }}"
+        data-confirm="Route '{{ r.titel }}' definitief verwijderen?">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-klein" type="submit">🗑 Verwijderen</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

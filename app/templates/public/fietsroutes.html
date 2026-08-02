@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Gezinsfietsroutes 🚲</h1>
+<p class="hint">Fietsen mét een beloning onderweg: elke route passeert
+  speeltuinen, ijsjes of een kasteel. Bestaande, bewegwijzerde lussen —
+  door Ravot gekozen en aangekleed voor gezinnen.</p>
+
+{% if regios %}
+<div class="acties" style="flex-wrap:wrap;gap:6px;margin:8px 0">
+  <a class="btn btn-klein {{ '' if regio else 'btn-zon' }}"
+     href="{{ url_for('public.fietsroutes') }}">Alle regio's</a>
+  {% for reg in regios %}
+  <a class="btn btn-klein {{ 'btn-zon' if regio|lower == reg|lower }}"
+     href="{{ url_for('public.fietsroutes', regio=reg) }}">{{ reg }}</a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% for r in rijen %}
+<div class="card" style="display:flex;gap:12px;align-items:center">
+  <div style="width:76px;height:76px;border-radius:12px;background:#dce8d2;
+              display:flex;align-items:center;justify-content:center;
+              font-size:32px;flex:none;overflow:hidden">
+    {% if r.cover_photo_id %}<img src="/foto/{{ r.cover_photo_id }}" alt=""
+      style="width:100%;height:100%;object-fit:cover">{% else %}🚲{% endif %}
+  </div>
+  <div>
+    <h3 style="margin:0 0 2px">
+      <a href="{{ url_for('public.fietsroute', slug=r.slug) }}">{{ r.titel }}</a></h3>
+    <span class="badge">{{ r.afstand_km }} km · ±{{ (r.duur_min or 0) // 60 }}u{{ '%02d' % ((r.duur_min or 0) % 60) }}</span>
+    <span class="badge">{{ 'lus' if r.is_lus else 'lijn' }}</span>
+    <span class="badge">{{ r.moeilijkheid }}</span>
+    <span class="badge">{{ r.age_min }}-{{ r.age_max }} j</span>
+    {% if r.buggyvriendelijk %}<span class="badge">buggy ✓</span>{% endif %}
+    {% if afstanden.get(r.id) is not none %}
+    <span class="badge badge-groen" style="background:#4CA362;color:#fff">start op {{ afstanden[r.id] }} km van jou</span>
+    {% endif %}
+  </div>
+</div>
+{% else %}
+<p class="hint">Nog geen routes in deze selectie.</p>
+{% endfor %}
+{% endblock %}

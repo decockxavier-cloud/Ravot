@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block content %}
+<p><a href="{{ url_for('public.fietsroutes') }}" class="terug-link">← Fietsroutes</a></p>
+<div style="display:flex;justify-content:space-between;align-items:start;gap:8px;flex-wrap:wrap">
+  <div>
+    <span class="badge" style="background:#F4B233">🚲 gezinsfietsroute</span>
+    <h1 style="margin:4px 0 2px">{{ r.titel }}</h1>
+    <p class="meta">📍 {{ r.gemeente or '' }}{% if r.regio %} · {{ r.regio }}{% endif %}
+      &nbsp; {{ r.afstand_km }} km · ±{{ (r.duur_min or 0) // 60 }}u{{ '%02d' % ((r.duur_min or 0) % 60) }}
+      · {{ r.moeilijkheid }} · {{ 'lus' if r.is_lus else 'van A naar B' }}</p>
+  </div>
+  <button type="button" class="deel-knop btn" data-titel="{{ r.titel }}"
+          data-url="{{ request.url }}">📤 Deel</button>
+</div>
+
+{% if cover %}
+<img src="/foto/{{ cover.id }}" alt="" class="fiche-beeld" loading="lazy"
+     style="object-position:50% {{ cover.focus_y or 50 }}%">
+{% endif %}
+
+<div id="route-kaart" class="prik-kaart" style="height:340px"></div>
+<script type="application/json" id="route-data">{{ kaartdata|tojson|safe }}</script>
+
+<div class="card">
+  <h2 style="margin-top:0">Praktisch</h2>
+  <span class="badge">{{ r.age_min }}-{{ r.age_max }} jaar</span>
+  {% if r.buggyvriendelijk %}<span class="badge">👶 buggy ✓</span>{% endif %}
+  {% if r.autovrij_pct is not none %}<span class="badge">{{ r.autovrij_pct }}% autovrij</span>{% endif %}
+  {% if r.verhard_pct is not none %}<span class="badge">{{ r.verhard_pct }}% verhard</span>{% endif %}
+  {% if r.hoogte_m %}<span class="badge">{{ r.hoogte_m }} hoogtemeters</span>{% endif %}
+  <div class="acties" style="margin-top:10px">
+    {% if r.gpx_bestand %}
+    <a class="btn" href="{{ url_for('public.fietsroute_gpx', slug=r.slug) }}">⬇ GPX downloaden</a>
+    {% endif %}
+    {% if r.start_lat %}
+    <a class="btn btn-klein" target="_blank" rel="noopener"
+       href="https://www.google.com/maps/dir/?api=1&destination={{ r.start_lat }},{{ r.start_lng }}">🧭 Naar het startpunt</a>
+    {% endif %}
+  </div>
+</div>
+
+{% if beschrijving_html %}
+<div class="card">{{ beschrijving_html|safe }}</div>
+{% endif %}
+
+{% if routebeschrijving_html %}
+<details class="card"><summary><strong>Routebeschrijving</strong></summary>
+  {{ routebeschrijving_html|safe }}</details>
+{% endif %}
+
+{% if partners %}
+<div class="card" style="border-color:#F4B233;background:#fffdf4">
+  <strong>⭐ Partners op deze route:</strong>
+  {% for b in partners %}
+  <a href="{{ url_for('public.event', slug=b.event.slug) }}">{{ b.event.title }}</a>
+  (km {{ b.route_km }}){{ "," if not loop.last }}
+  {% endfor %}
+  <div class="hint">Betalende partners · authentieke gezinsscore</div>
+</div>
+{% endif %}
+
+{% if buurt %}
+<h2>Leuk onderweg 🎒</h2>
+{% for b in buurt %}
+<div class="card" style="display:flex;gap:10px;align-items:center;{% if partner_zichtbaar(b.event) %}border-color:#F4B233{% endif %}">
+  <strong style="min-width:56px">km {{ b.route_km }}</strong>
+  <div>
+    <a href="{{ url_for('public.event', slug=b.event.slug) }}">{{ b.event.title }}</a>
+    {% if partner_zichtbaar(b.event) %}<span class="badge" style="background:#F4B233">⭐ Partner</span>{% endif %}
+    <span class="hint">op {{ b.afstand_m }} m van het pad · {{ toon_gemeente(b.event) }}</span>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+{% if vandaag %}
+<h2>Vandaag langs de route 🎪</h2>
+{% for ev in vandaag %}
+<div class="card">
+  <a href="{{ url_for('public.event', slug=ev.slug) }}">{{ ev.title }}</a>
+  <span class="hint">{{ ev.start.strftime('%H:%M') if ev.start }} · {{ toon_gemeente(ev) }}</span>
+</div>
+{% endfor %}
+{% endif %}
+
+{% if fotos %}
+<h2>Foto's 📷</h2>
+<div class="foto-galerij">
+  {% for f in fotos %}
+  <figure><img src="/foto/{{ f.id }}" alt="Foto van {{ r.titel }}"
+               loading="lazy" data-lightbox></figure>
+  {% endfor %}
+</div>
+{% endif %}
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ static_v('js/route-kaart.js') }}" defer></script>
+{% endblock %}

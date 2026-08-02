@@ -1431,8 +1431,11 @@ def sitemap():
     urls = [f"{site}/", f"{site}/weekend", f"{site}/verkennen"]
     # Enkel publiek zichtbare fiches: geen pending (detail geeft 404, dus
     # Google zou dode links crawlen) en geen hidden dubbels (duplicate content).
-    from ..models import Artikel
+    from ..models import Artikel, FietsRoute
     urls.append(f"{site}/blog")
+    urls.append(f"{site}/fietsroutes")
+    for r in FietsRoute.query.filter_by(pending=False, hidden=False).all():
+        urls.append(f"{site}/fietsroutes/{r.slug}")
     for a in Artikel.query.filter_by(gepubliceerd=True).all():
         urls.append(f"{site}/blog/{a.slug}")
     publiek = [Event.hidden.is_(False), Event.pending.is_(False)]
@@ -1744,3 +1747,108 @@ def blog_artikel(slug):
                            meta_desc=(a.samenvatting or a.titel)[:160],
                            jsonld=[jsonld],
                            family=current_family(), active=None, title=a.titel)
+
+
+# ---------------------------------------------------------------------------
+# Gezinsfietsroutes (patch 160)
+# ---------------------------------------------------------------------------
+
+@bp.route("/fietsroutes")
+def fietsroutes():
+    from ..models import FietsRoute
+    regio = (request.args.get("regio") or "").strip()
+    q = FietsRoute.query.filter(FietsRoute.pending.is_(False),
+                                FietsRoute.hidden.is_(False))
+    regios = sorted({r[0] for r in db.session.query(FietsRoute.regio)
+                     .filter(FietsRoute.regio.isnot(None),
+                             FietsRoute.pending.is_(False),
+                             FietsRoute.hidden.is_(False)).all()})
+    if regio:
+        q = q.filter(FietsRoute.regio.ilike(regio))
+    rijen = q.order_by(FietsRoute.titel).all()
+    # Gezinspersonalisatie: routes met startpunt binnen de straal eerst
+    fam = current_family()
+    afstanden = {}
+    if fam and fam.postcode:
+        from ..services.feestjes import postcode_coord
+        from ..scoring import haversine_km
+        centrum = postcode_coord(fam.postcode)
+        if centrum:
+            for r in rijen:
+                if r.start_lat is not None:
+                    afstanden[r.id] = round(haversine_km(
+                        centrum[0], centrum[1], r.start_lat, r.start_lng))
+            rijen.sort(key=lambda r: afstanden.get(r.id, 9999))
+    return render_template("public/fietsroutes.html", rijen=rijen, regios=regios,
+                           regio=regio, afstanden=afstanden,
+                           title="Gezinsfietsroutes", family=fam, active="routes")
+
+
+@bp.route("/fietsroutes/<slug>")
+def fietsroute(slug):
+    from ..models import FietsRoute, RouteBuurt, Event
+    from ..services.routes_gis import sample
+    from .. import seo
+    r = FietsRoute.query.filter_by(slug=slug).first_or_404()
+    if (r.pending or r.hidden) and not session.get("admin_id"):
+        abort(404)
+    buurt = (RouteBuurt.query.filter_by(route_id=r.id)
+             .order_by(RouteBuurt.route_km.asc()).all())
+    partners = [b for b in buurt if partner_zichtbaar(b.event)]
+    # Evenementen vandaag langs de route (live, klein kandidatenveld)
+    vandaag = []
+    if r.bbox_n is not None:
+        w_start, w_end = window("vandaag")
+        marge = 0.006
+        kandidaten = (bron_filter(geldige_events(Event.query, datetime.utcnow()))
+                      .filter(Event.is_permanent.is_(False),
+                              Event.lat.between(r.bbox_z - marge, r.bbox_n + marge),
+                              Event.lng.between(r.bbox_w - marge, r.bbox_o + marge),
+                              Event.start <= w_end,
+                              db.or_(Event.end >= w_start, Event.start >= w_start))
+                      .limit(40).all())
+        if kandidaten and r.geometrie:
+            from ..scoring import haversine_km
+            lijn = sample([(p[0], p[1], None) for p in r.geometrie])
+            for ev in kandidaten:
+                if min(haversine_km(ev.lat, ev.lng, la, ln)
+                       for la, ln, _ in lijn) * 1000 <= 600:
+                    vandaag.append(ev)
+    from ..models import Photo
+    fotos = Photo.query.filter_by(route_id=r.id, status="approved").all()
+    cover = db.session.get(Photo, r.cover_photo_id) if r.cover_photo_id else None
+    kaartdata = {"route": r.geometrie or [],
+                 "start": [r.start_lat, r.start_lng] if r.start_lat else None,
+                 "lus": bool(r.is_lus),
+                 "markers": [{"lat": b.event.lat, "lng": b.event.lng,
+                              "title": b.event.title, "slug": b.event.slug,
+                              "partner": partner_zichtbaar(b.event),
+                              "km": b.route_km}
+                             for b in buurt if b.event.lat is not None]}
+    jsonld = [seo.breadcrumb_jsonld([("Ravot", "/"),
+                                     ("Fietsroutes", "/fietsroutes"),
+                                     (r.titel, f"/fietsroutes/{r.slug}")]),
+              seo.route_jsonld(r, cover)]
+    from ..content import render_markdown
+    beschrijving_html = render_markdown(r.beschrijving) if r.beschrijving else None
+    routebeschrijving_html = (render_markdown(r.routebeschrijving)
+                              if r.routebeschrijving else None)
+    return render_template("public/fietsroute.html", r=r, buurt=buurt,
+                           beschrijving_html=beschrijving_html,
+                           routebeschrijving_html=routebeschrijving_html,
+                           partners=partners, vandaag=vandaag, fotos=fotos,
+                           cover=cover, kaartdata=kaartdata, jsonld=jsonld,
+                           title=f"{r.titel} — gezinsfietsroute",
+                           family=current_family(), active="routes")
+
+
+@bp.route("/fietsroutes/<slug>/gpx")
+def fietsroute_gpx(slug):
+    from ..models import FietsRoute
+    from flask import send_file
+    r = FietsRoute.query.filter_by(slug=slug).first_or_404()
+    if r.pending or r.hidden or not r.gpx_bestand:
+        abort(404)
+    return send_file(f"/data/uploads/gpx/{r.gpx_bestand}",
+                     mimetype="application/gpx+xml", as_attachment=True,
+                     download_name=f"ravot-{r.slug}.gpx", max_age=86400)

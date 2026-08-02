@@ -28,6 +28,7 @@
           <a href="{{ url_for('admin.nazicht') }}" class="{{ 'on' if active=='nazicht' }}">Nazicht</a>
           <a href="{{ url_for('admin.types_beheer') }}" class="{{ 'on' if active=='types' }}">Types</a>
           <a href="{{ url_for('admin.artikels') }}" class="{{ 'on' if active=='artikels' }}">Artikels</a>
+        <a href="{{ url_for('admin.routes') }}" class="{{ 'on' if active=='routes' }}">Fietsroutes</a>
         </details>
 
         <details class="admin-groep" {{ 'open' if active in sectie.bronnen }}>

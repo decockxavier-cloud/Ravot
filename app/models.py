@@ -501,6 +501,10 @@ SETTING_DEFS = {
     "combi_prijs_jaar": ("360.00", "Combi (Partner + Feest): prijs per jaar (EUR, excl. btw)", "text"),
     "cap_zichtbaar_gemeente": ("4", "Exclusiviteit: max. zichtbaarheidspartners (⭐) per gemeente", "text"),
     "cap_feest_gemeente": ("0", "Max. feestpartners per gemeente (0 = onbeperkt — feest is een leadproduct: hoe meer aanbieders, hoe beter gezinnen kunnen vergelijken)", "text"),
+    "route_buurt_meter": ("400", "Fietsroutes: koppelafstand 'leuk onderweg' in meter", "text"),
+    "route_partner_meter": ("800", "Fietsroutes: ruimere afstand waarop ⭐-partners nog uitgelicht worden (m)", "text"),
+    "route_tempo_kmu": ("10", "Fietsroutes: gezinstempo voor de duur-suggestie (km/u)", "text"),
+    "routes_in_menu": ("0", "Fietsroutes: toon 'Routes' in de hoofdnavigatie (aanzetten vanaf ±8 routes)", "bool"),
     "uitbater_auto_ok": ("0", "Uitbaters: fichewijzigingen en foto's van goedgekeurde uitbaters METEEN toepassen zonder nazicht (1). Alles blijft achteraf zichtbaar in het Partnerlog; de meldknop blijft het vangnet.", "bool"),
     "odoo_journal_id": ("", "Odoo: dagboek-id voor Partner-facturen (bv. 'Verkopen Ravot' — het nummer zie je in de Odoo-URL van het dagboek; leeg = Odoo-standaard)", "text"),
     "odoo_factuur_auto": ("0", "Odoo: factuur meteen valideren (1) of als concept klaarzetten (0)", "bool"),
@@ -737,12 +741,63 @@ REPORT_REASONS = {
 }
 
 
+class FietsRoute(db.Model):
+    """Gezinsfietsroute (patch 160, ontwerpdoc fase 1): een gecureerde,
+    bestaande lus met een geometrie-lint en de automatische koppeling
+    'leuk onderweg'. Bewust GEEN Event: geen uren, geen partner_until."""
+    __tablename__ = "fietsroutes"
+    id = db.Column(db.Integer, primary_key=True)
+    titel = db.Column(db.String(200), nullable=False)
+    slug = db.Column(db.String(220), unique=True, nullable=False, index=True)
+    beschrijving = db.Column(db.Text)
+    routebeschrijving = db.Column(db.Text)
+    regio = db.Column(db.String(80), index=True)
+    gemeente = db.Column(db.String(80))
+    postcode = db.Column(db.String(4))
+    afstand_km = db.Column(db.Float)
+    duur_min = db.Column(db.Integer)
+    age_min = db.Column(db.Integer, default=4)
+    age_max = db.Column(db.Integer, default=12)
+    moeilijkheid = db.Column(db.String(12), default="vlak")
+    gpx_bestand = db.Column(db.String(120))
+    geometrie = db.Column(db.JSON)
+    hoogte_m = db.Column(db.Integer)
+    start_lat = db.Column(db.Float); start_lng = db.Column(db.Float)
+    eind_lat = db.Column(db.Float); eind_lng = db.Column(db.Float)
+    is_lus = db.Column(db.Boolean, default=True)
+    bbox_n = db.Column(db.Float); bbox_z = db.Column(db.Float, index=True)
+    bbox_o = db.Column(db.Float); bbox_w = db.Column(db.Float, index=True)
+    buggyvriendelijk = db.Column(db.Boolean, default=False)
+    verhard_pct = db.Column(db.Integer)
+    autovrij_pct = db.Column(db.Integer)
+    cover_photo_id = db.Column(db.Integer)
+    pending = db.Column(db.Boolean, default=True, nullable=False)
+    hidden = db.Column(db.Boolean, default=False, nullable=False)
+    bron = db.Column(db.String(16), default="eigen")
+    ext_id = db.Column(db.String(64))
+    created_at = db.Column(db.DateTime, default=utcnow)
+    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
+
+
+class RouteBuurt(db.Model):
+    """Berekende cache: welke Ravot-plekken liggen langs welke route."""
+    __tablename__ = "route_buurt"
+    route_id = db.Column(db.Integer, db.ForeignKey("fietsroutes.id"),
+                         primary_key=True, index=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("events.id"),
+                         primary_key=True, index=True)
+    afstand_m = db.Column(db.Integer, nullable=False)
+    route_km = db.Column(db.Float, nullable=False)
+    event = db.relationship("Event")
+
+
 class Photo(db.Model):
     """Door een gebruiker geuploade foto van een plek. Staat standaard in de
     moderatiewachtrij (pending) en is pas publiek zichtbaar na goedkeuring."""
     __tablename__ = "photos"
     id = db.Column(db.Integer, primary_key=True)
-    event_id = db.Column(db.Integer, db.ForeignKey("events.id"), nullable=False, index=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("events.id"), nullable=True, index=True)
+    route_id = db.Column(db.Integer, db.ForeignKey("fietsroutes.id"), index=True)  # patch 160
     family_id = db.Column(db.Integer, db.ForeignKey("families.id"))   # uploader
     filename = db.Column(db.String(120), nullable=False)   # veilige, zelfgekozen bestandsnaam
     # gezin (galerij) | kindermenu | kinderhoek — de laatste twee zijn

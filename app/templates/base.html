@@ -35,6 +35,7 @@
     <nav class="desktop-nav" aria-label="Hoofdnavigatie">
       <a href="{{ url_for('public.ontdek') }}" class="{{ 'on' if active=='ontdek' }}">Ontdek</a>
       <a href="{{ url_for('public.verkennen') }}" class="{{ 'on' if active=='verkennen' }}">Kaart</a>
+      {% if setting_bool('routes_in_menu') %}<a href="{{ url_for('public.fietsroutes') }}" class="{{ 'on' if active=='routes' }}">Routes</a>{% endif %}
       {% if feestjes_aan %}<a href="{{ url_for('public.feestjes_info') }}" class="{{ 'on' if active=='feestjes' }}">Feestjes</a>{% endif %}
       {% if kampen_aan %}<a href="{{ url_for('public.kampen') }}" class="{{ 'on' if active=='kampen' }}">Kampen</a>{% endif %}
       {% if family %}

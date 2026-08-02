@@ -125,3 +125,22 @@ def answer_block(gemeente, scope, events, top=None):
         if agg:
             txt += f" Topscore: {ev.title} (Ravotscore {agg['avg']} bij {agg['count']} gezinnen)."
     return txt
+
+
+def route_jsonld(r, cover=None):
+    """TouristTrip-schema voor een gezinsfietsroute (patch 160)."""
+    uit = {"@context": "https://schema.org", "@type": "TouristTrip",
+           "name": r.titel,
+           "description": (r.beschrijving or "")[:300],
+           "touristType": "families with children"}
+    if r.afstand_km:
+        uit["distance"] = f"{r.afstand_km} km"
+    if r.start_lat:
+        uit["itinerary"] = {"@type": "Place",
+                            "geo": {"@type": "GeoCoordinates",
+                                    "latitude": r.start_lat,
+                                    "longitude": r.start_lng},
+                            "name": f"Start in {r.gemeente or 'Vlaanderen'}"}
+    if cover:
+        uit["image"] = f"/foto/{cover.id}"
+    return uit

@@ -341,6 +341,8 @@ INSTELLING_PAGINAS = {
                                         "cap_feest_gemeente"]),
         ("Facturatie (Odoo)", ["odoo_product_id", "odoo_journal_id", "odoo_factuur_auto"]),
         ("Uitbaters", ["uitbater_auto_ok"]),
+        ("Fietsroutes", ["route_buurt_meter", "route_partner_meter",
+                         "route_tempo_kmu", "routes_in_menu"]),
     ],
     "verbindingen": [
         ("UiTdatabank", ["bron_uit_aan", "uit_query", "sync_max_pages"]),
@@ -2509,3 +2511,150 @@ def simulator():
     }
     return render_template("admin/simulator.html", start=start,
                            title="Prijssimulator", family=None, active="simulator")
+
+
+# ---------------------------------------------------------------------------
+# Fietsroutes (patch 160)
+# ---------------------------------------------------------------------------
+
+@bp.route("/routes")
+@medewerker_required
+def routes():
+    from ..models import FietsRoute, RouteBuurt
+    rijen = FietsRoute.query.order_by(FietsRoute.pending.desc(),
+                                      FietsRoute.titel).all()
+    tellers = dict(db.session.query(RouteBuurt.route_id,
+                                    db.func.count(RouteBuurt.event_id))
+                   .group_by(RouteBuurt.route_id).all())
+    return render_template("admin/routes.html", rijen=rijen, tellers=tellers,
+                           title="Fietsroutes", family=None, active="routes")
+
+
+def _route_form_opslaan(r, f):
+    """Redactionele velden uit het formulier (auto-velden komen uit de GPX)."""
+    r.titel = (f.get("titel") or r.titel or "").strip()[:200]
+    r.beschrijving = (f.get("beschrijving") or "").strip() or None
+    r.routebeschrijving = (f.get("routebeschrijving") or "").strip() or None
+    r.regio = (f.get("regio") or "").strip()[:80] or None
+    r.moeilijkheid = f.get("moeilijkheid") if f.get("moeilijkheid") in (
+        "vlak", "licht", "pittig") else r.moeilijkheid
+    for veld in ("age_min", "age_max", "duur_min", "verhard_pct", "autovrij_pct"):
+        w = f.get(veld)
+        if w and w.strip().isdigit():
+            setattr(r, veld, int(w))
+    r.buggyvriendelijk = f.get("buggyvriendelijk") == "1"
+    r.pending = f.get("pending") == "1"
+    r.hidden = f.get("hidden") == "1"
+    if f.get("cover_photo_id", "").isdigit():
+        r.cover_photo_id = int(f["cover_photo_id"])
+
+
+@bp.route("/routes/nieuw", methods=["GET", "POST"])
+@bp.route("/routes/<int:rid>", methods=["GET", "POST"])
+@medewerker_required
+def route_bewerk(rid=None):
+    from ..models import FietsRoute, Photo
+    from ..services import routes_gis
+    from ..services.sources.base import slugify
+    import os, secrets as _sec
+    r = db.session.get(FietsRoute, rid) if rid else None
+    if rid and not r:
+        abort(404)
+    if request.method == "POST":
+        nieuw = r is None
+        if nieuw:
+            r = FietsRoute(titel=(request.form.get("titel") or "Route").strip()[:200])
+            r.slug = f"{slugify(r.titel)}-{_sec.token_hex(2)}"[:220]
+            db.session.add(r)
+        _route_form_opslaan(r, request.form)
+        # GPX: het automatische pad — alle afgeleide velden in één keer
+        bestand = request.files.get("gpx")
+        if bestand and bestand.filename:
+            try:
+                punten = routes_gis.parse_gpx(bestand.read())
+            except ValueError as e:
+                flash(str(e), "error")
+                return redirect(url_for("admin.route_bewerk", rid=r.id) if r.id
+                                else url_for("admin.routes"))
+            st = routes_gis.route_stats(punten)
+            for veld, waarde in st.items():
+                setattr(r, veld, waarde)
+            r.geometrie = routes_gis.vereenvoudig(punten)
+            if not request.form.get("duur_min"):
+                r.duur_min = routes_gis.duur_suggestie(st["afstand_km"])
+            r.moeilijkheid = request.form.get("moeilijkheid") or \
+                routes_gis.moeilijkheid_suggestie(st["afstand_km"], st["hoogte_m"])
+            os.makedirs("/data/uploads/gpx", exist_ok=True)
+            naam = f"route-{r.slug}.gpx"
+            bestand.seek(0)
+            bestand.save(f"/data/uploads/gpx/{naam}")
+            r.gpx_bestand = naam
+            # gemeente van het startpunt via de bestaande buurtafleiding
+            from ..services.sources.base import dichtste_gemeente
+            gem, pc = dichtste_gemeente(r.start_lat, r.start_lng)
+            if gem:
+                r.gemeente, r.postcode = gem, pc
+        db.session.commit()
+        if r.geometrie:
+            n = routes_gis.koppel_route(r)
+            flash(f"Route bewaard — {n} plekken 'leuk onderweg' gekoppeld.", "ok")
+        else:
+            flash("Route bewaard. Upload een GPX om de kaart en de koppeling "
+                  "te activeren.", "ok")
+        audit(f"fietsroute {'aangemaakt' if nieuw else 'bewerkt'}: {r.titel}")
+        return redirect(url_for("admin.route_bewerk", rid=r.id))
+
+    fotos = Photo.query.filter_by(route_id=r.id).all() if r else []
+    return render_template("admin/route_bewerk.html", r=r, fotos=fotos,
+                           title=r.titel if r else "Nieuwe route",
+                           family=None, active="routes")
+
+
+@bp.route("/routes/<int:rid>/foto", methods=["POST"])
+@medewerker_required
+def route_foto(rid):
+    from ..models import FietsRoute, Photo
+    from .. import fotos as fotodienst
+    r = db.session.get(FietsRoute, rid) or abort(404)
+    bestand = request.files.get("foto")
+    if not bestand or not bestand.filename:
+        flash("Geen bestand gekozen.", "error")
+        return redirect(url_for("admin.route_bewerk", rid=rid))
+    naam = fotodienst.verwerk_upload(bestand)
+    if not naam:
+        flash("Dat lijkt geen geldige foto (jpeg/png/webp).", "error")
+        return redirect(url_for("admin.route_bewerk", rid=rid))
+    p = Photo(route_id=r.id, filename=naam, soort="zaak", status="approved")
+    db.session.add(p)
+    db.session.flush()
+    if not r.cover_photo_id:
+        r.cover_photo_id = p.id
+    db.session.commit()
+    flash("Foto toegevoegd.", "ok")
+    return redirect(url_for("admin.route_bewerk", rid=rid))
+
+
+@bp.route("/routes/<int:rid>/koppel", methods=["POST"])
+@medewerker_required
+def route_koppel(rid):
+    from ..models import FietsRoute
+    from ..services import routes_gis
+    r = db.session.get(FietsRoute, rid) or abort(404)
+    n = routes_gis.koppel_route(r)
+    flash(f"Koppeling ververst: {n} plekken langs de route.", "ok")
+    return redirect(url_for("admin.route_bewerk", rid=rid))
+
+
+@bp.route("/routes/<int:rid>/verwijder", methods=["POST"])
+@medewerker_required
+def route_verwijder(rid):
+    from ..models import FietsRoute, RouteBuurt, Photo
+    r = db.session.get(FietsRoute, rid) or abort(404)
+    RouteBuurt.query.filter_by(route_id=rid).delete()
+    Photo.query.filter_by(route_id=rid).delete()
+    naam = r.titel
+    db.session.delete(r)
+    db.session.commit()
+    audit(f"fietsroute verwijderd: {naam}")
+    flash(f"Route '{naam}' verwijderd.", "ok")
+    return redirect(url_for("admin.routes"))
