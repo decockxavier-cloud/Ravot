@@ -1,5 +1,5 @@
-// Routekaart (patch 160): tekent de gezinslus in Ravot-oranje met start/eind
-// en de "leuk onderweg"-markers; partners krijgen de grotere ster.
+// Routekaart (patch 160+162): routelijn + "leuk onderweg"-markers met het
+// eigen type-emoji, filterbaar via de gekende groepen Beleven/Ravotten/Smullen.
 (function () {
   "use strict";
   var el = document.getElementById("route-kaart");
@@ -29,16 +29,34 @@
     }).addTo(kaart);
   }
 
+  // Eén Leaflet-laag per groep, zodat de filters gewoon lagen tonen/verbergen.
+  var lagen = { beleven: L.layerGroup(), ravotten: L.layerGroup(),
+                smullen: L.layerGroup() };
   (data.markers || []).forEach(function (m) {
-    var icoon = L.divIcon({
-      className: "",
-      html: m.partner ? "<span style='font-size:22px'>⭐</span>"
-                      : "<span style='font-size:17px'>📍</span>",
-      iconSize: [24, 24],
-    });
-    L.marker([m.lat, m.lng], { icon: icoon, title: m.title })
-      .addTo(kaart)
-      .bindPopup("<strong>" + m.title + "</strong><br>km " + m.km +
+    var emoji = m.emoji || "📍";
+    var html = m.partner
+      ? "<span style='font-size:22px'>⭐</span><span style='font-size:13px;" +
+        "position:relative;left:-8px;top:6px'>" + emoji + "</span>"
+      : "<span style='font-size:18px'>" + emoji + "</span>";
+    var marker = L.marker([m.lat, m.lng], {
+      icon: L.divIcon({ className: "", html: html, iconSize: [26, 26] }),
+      title: m.title,
+    }).bindPopup("<strong>" + m.title + "</strong><br>km " + m.km +
                  " · <a href='/e/" + m.slug + "'>bekijk de fiche</a>");
+    (lagen[m.groep] || lagen.ravotten).addLayer(marker);
+  });
+  Object.keys(lagen).forEach(function (g) { lagen[g].addTo(kaart); });
+
+  // Filterknoppen: "Alles" of exact één groep.
+  var knoppen = document.querySelectorAll(".kaart-filter");
+  knoppen.forEach(function (b) {
+    b.addEventListener("click", function () {
+      knoppen.forEach(function (x) { x.classList.toggle("aan", x === b); });
+      var keuze = b.dataset.groep;
+      Object.keys(lagen).forEach(function (g) {
+        if (keuze === "alles" || keuze === g) kaart.addLayer(lagen[g]);
+        else kaart.removeLayer(lagen[g]);
+      });
+    });
   });
 })();

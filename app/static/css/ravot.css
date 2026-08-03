@@ -1140,3 +1140,6 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 .formule-kaart input { margin-right: 6px; }
 .formule-punten { margin: 8px 0 0; padding-left: 18px; font-size: 14px; }
 .formule-vol { opacity: .55; cursor: not-allowed; }
+
+/* Kaartfilters op de routepagina (patch 162) */
+.kaart-filter.aan { background: #EE8035; color: #fff; border-color: #EE8035; }

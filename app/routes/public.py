@@ -1787,6 +1787,7 @@ def fietsroutes():
 @bp.route("/fietsroutes/<slug>")
 def fietsroute(slug):
     from ..models import FietsRoute, RouteBuurt, Event
+    from ..types import groep_van, type_code, TYPES
     from ..services.routes_gis import sample
     from .. import seo
     r = FietsRoute.query.filter_by(slug=slug).first_or_404()
@@ -1835,14 +1836,11 @@ def fietsroute(slug):
                  "markers": [{"lat": b.event.lat, "lng": b.event.lng,
                               "title": b.event.title, "slug": b.event.slug,
                               "partner": partner_zichtbaar(b.event),
+                              "groep": groep_van(b.event),
+                              "emoji": TYPES.get(type_code(b.event), ("📍",))[0],
                               "km": b.route_km}
                              for b in buurt if b.event.lat is not None]}
-    route_ld = seo.route_jsonld(r, cover)
-    if score:
-        route_ld["aggregateRating"] = {"@type": "AggregateRating",
-                                       "ratingValue": score["kid"],
-                                       "bestRating": 5,
-                                       "ratingCount": score["n"]}
+    route_ld = seo.route_jsonld(r, cover, score)
     jsonld = [seo.breadcrumb_jsonld([("Ravot", "/"),
                                      ("Fietsroutes", "/fietsroutes"),
                                      (r.titel, f"/fietsroutes/{r.slug}")]),

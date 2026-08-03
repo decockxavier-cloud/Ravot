@@ -619,6 +619,14 @@ def register_cli(app):
             db.session.execute(text(
                 "ALTER TABLE partner_payments ADD COLUMN IF NOT EXISTS verkoper_id INTEGER"))
             added.append("partner_payments.verkoper_id")
+        if "fietsroutes" in insp.get_table_names():
+            fr_cols = {c["name"] for c in insp.get_columns("fietsroutes")}
+            if "bron_naam" not in fr_cols:
+                db.session.execute(text(
+                    "ALTER TABLE fietsroutes ADD COLUMN IF NOT EXISTS bron_naam VARCHAR(120)"))
+                db.session.execute(text(
+                    "ALTER TABLE fietsroutes ADD COLUMN IF NOT EXISTS bron_url VARCHAR(300)"))
+                added.append("fietsroutes.bron_naam/bron_url")
         ph_cols0 = {c["name"] for c in insp.get_columns("photos")}
         if "route_id" not in ph_cols0:
             db.session.execute(text(

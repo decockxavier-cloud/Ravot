@@ -2542,6 +2542,10 @@ def _route_form_opslaan(r, f):
         w = f.get(veld)
         if w and w.strip().isdigit():
             setattr(r, veld, int(w))
+    r.bron_naam = (f.get("bron_naam") or "").strip()[:120] or None
+    r.bron_url = (f.get("bron_url") or "").strip()[:300] or None
+    if r.bron_url and not r.bron_url.startswith(("http://", "https://")):
+        r.bron_url = "https://" + r.bron_url
     r.buggyvriendelijk = f.get("buggyvriendelijk") == "1"
     r.pending = f.get("pending") == "1"
     r.hidden = f.get("hidden") == "1"

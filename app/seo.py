@@ -127,8 +127,8 @@ def answer_block(gemeente, scope, events, top=None):
     return txt
 
 
-def route_jsonld(r, cover=None):
-    """TouristTrip-schema voor een gezinsfietsroute (patch 160)."""
+def route_jsonld(r, cover=None, score=None):
+    """TouristTrip-schema voor een gezinsfietsroute (patch 160/162)."""
     uit = {"@context": "https://schema.org", "@type": "TouristTrip",
            "name": r.titel,
            "description": (r.beschrijving or "")[:300],
@@ -143,4 +143,13 @@ def route_jsonld(r, cover=None):
                             "name": f"Start in {r.gemeente or 'Vlaanderen'}"}
     if cover:
         uit["image"] = f"/foto/{cover.id}"
-    return uit
+    if getattr(r, "bron_naam", None):
+        uit["publisher"] = {"@type": "Organization", "name": r.bron_naam}
+        if getattr(r, "bron_url", None):
+            uit["isBasedOn"] = r.bron_url
+    if score:
+        uit["aggregateRating"] = {"@type": "AggregateRating",
+                                  "ratingValue": score["kid"],
+                                  "bestRating": 5,
+                                  "ratingCount": score["n"]}
+    return json.dumps(uit, ensure_ascii=False)

@@ -20,6 +20,12 @@
      style="object-position:50% {{ cover.focus_y or 50 }}%">
 {% endif %}
 
+<div class="acties" id="kaart-filters" style="flex-wrap:wrap;gap:6px;margin-bottom:6px">
+  <button type="button" class="btn btn-klein kaart-filter aan" data-groep="alles">Alles</button>
+  <button type="button" class="btn btn-klein kaart-filter" data-groep="beleven">🎭 Beleven</button>
+  <button type="button" class="btn btn-klein kaart-filter" data-groep="ravotten">🛝 Ravotten</button>
+  <button type="button" class="btn btn-klein kaart-filter" data-groep="smullen">🍦 Smullen</button>
+</div>
 <div id="route-kaart" class="prik-kaart" style="height:340px"></div>
 <script type="application/json" id="route-data">{{ kaartdata|tojson|safe }}</script>
 
@@ -30,6 +36,12 @@
   {% if r.autovrij_pct is not none %}<span class="badge">{{ r.autovrij_pct }}% autovrij</span>{% endif %}
   {% if r.verhard_pct is not none %}<span class="badge">{{ r.verhard_pct }}% verhard</span>{% endif %}
   {% if r.hoogte_m %}<span class="badge">{{ r.hoogte_m }} hoogtemeters</span>{% endif %}
+  {% if r.bron_naam %}
+  <p class="hint" style="margin:8px 0 0">🧭 Route van
+    {% if r.bron_url %}<a href="{{ r.bron_url }}" target="_blank"
+       rel="noopener">{{ r.bron_naam }}</a>{% else %}{{ r.bron_naam }}{% endif %}
+    — daar vind je ook de originele routekaart.</p>
+  {% endif %}
   <div class="acties" style="margin-top:10px">
     {% if r.gpx_bestand %}
     <a class="btn" href="{{ url_for('public.fietsroute_gpx', slug=r.slug) }}">⬇ GPX downloaden</a>

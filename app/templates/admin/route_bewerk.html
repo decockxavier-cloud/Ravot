@@ -33,6 +33,14 @@
     <label>Autovrij % <input type="number" name="autovrij_pct" min="0" max="100" style="width:80px"
            value="{{ r.autovrij_pct if r and r.autovrij_pct is not none else '' }}"></label>
   </div>
+  <div class="veldrij" style="flex-wrap:wrap">
+    <label>Bron / organisator <span class="hint">(bv. Toerisme Westhoek)</span>
+      <input type="text" name="bron_naam" maxlength="120"
+             value="{{ r.bron_naam if r and r.bron_naam else '' }}"></label>
+    <label>Link naar hun routepagina
+      <input type="url" name="bron_url" maxlength="300"
+             value="{{ r.bron_url if r and r.bron_url else '' }}"></label>
+  </div>
   <label class="check"><input type="checkbox" name="buggyvriendelijk" value="1"
     {{ 'checked' if r and r.buggyvriendelijk }}> 👶 Buggyvriendelijk (fietskar/breed pad)</label>
   <label class="check"><input type="checkbox" name="pending" value="1"

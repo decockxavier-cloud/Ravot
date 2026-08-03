@@ -774,6 +774,8 @@ class FietsRoute(db.Model):
     pending = db.Column(db.Boolean, default=True, nullable=False)
     hidden = db.Column(db.Boolean, default=False, nullable=False)
     bron = db.Column(db.String(16), default="eigen")
+    bron_naam = db.Column(db.String(120))   # bv. "Toerisme Westhoek" (patch 162)
+    bron_url = db.Column(db.String(300))    # link naar hun routepagina
     ext_id = db.Column(db.String(64))
     created_at = db.Column(db.DateTime, default=utcnow)
     updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
