@@ -110,6 +110,7 @@
   <label>Adres <input type="text" name="adres" value="{{ ev.adres or '' }}"></label>
   <label>Website <input type="url" name="source_url" value="{{ ev.source_url or '' }}"></label>
   <label>Foto-URL <input type="url" name="image_url" value="{{ ev.image_url or '' }}"></label>
+  <p><a class="btn btn-klein" href="{{ url_for('admin.vrije_fotos', eid=ev.id) }}">🖼 Zoek vrije foto's (Wikimedia)</a></p>
   <div class="veldrij">
     <input type="hidden" name="indoor" value="0"><input type="hidden" name="is_free" value="0">
     <label class="check"><input type="checkbox" name="indoor" value="1" {{ 'checked' if v_indoor }}> Binnen</label>

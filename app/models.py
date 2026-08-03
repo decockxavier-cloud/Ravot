@@ -824,6 +824,10 @@ class Photo(db.Model):
     focus_y = db.Column(db.Integer, default=50)   # verticale uitsnede-focus (0=boven, 100=onder)
     status = db.Column(db.String(12), default="pending", nullable=False, index=True)  # pending|approved|rejected
     weiger_reden = db.Column(db.String(60))   # korte, neutrale reden bij afkeuring
+    bron = db.Column(db.String(20))           # bv. "commons" (patch 163)
+    fotograaf = db.Column(db.String(120))     # naamsvermelding (CC-BY-plicht)
+    licentie = db.Column(db.String(40))       # bv. "CC BY-SA 4.0"
+    bron_url = db.Column(db.String(300))      # link naar de bronpagina
     created_at = db.Column(db.DateTime, default=utcnow, index=True)
     event = db.relationship("Event")
 

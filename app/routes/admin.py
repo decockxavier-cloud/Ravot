@@ -2662,3 +2662,47 @@ def route_verwijder(rid):
     audit(f"fietsroute verwijderd: {naam}")
     flash(f"Route '{naam}' verwijderd.", "ok")
     return redirect(url_for("admin.routes"))
+
+
+# ---------------------------------------------------------------------------
+# Vrije foto's van Wikimedia Commons (patch 163)
+# ---------------------------------------------------------------------------
+
+@bp.route("/activiteit/<int:eid>/vrije-fotos")
+@medewerker_required
+def vrije_fotos(eid):
+    ev = db.session.get(Event, eid) or abort(404)
+    kandidaten = []
+    if ev.lat is not None:
+        from ..services.verrijking import commons_zoek
+        kandidaten = commons_zoek(ev.lat, ev.lng)
+    return render_template("admin/vrije_fotos.html", ev=ev,
+                           kandidaten=kandidaten, title="Vrije foto's",
+                           family=None, active="activiteiten")
+
+
+@bp.route("/activiteit/<int:eid>/vrije-fotos/import", methods=["POST"])
+@medewerker_required
+def vrije_foto_import(eid):
+    from ..models import Photo
+    from ..services.verrijking import commons_import, _Upload
+    from .. import fotos as fotodienst
+    ev = db.session.get(Event, eid) or abort(404)
+    data, fout = commons_import(request.form.get("url", ""))
+    if fout:
+        flash(fout, "error")
+        return redirect(url_for("admin.vrije_fotos", eid=eid))
+    naam = fotodienst.verwerk_upload(_Upload(data, "commons.jpg"))
+    if not naam:
+        flash("De afbeelding kon niet verwerkt worden.", "error")
+        return redirect(url_for("admin.vrije_fotos", eid=eid))
+    p = Photo(event_id=ev.id, filename=naam, soort="zaak", status="approved",
+              bron="commons",
+              fotograaf=(request.form.get("fotograaf") or "")[:120] or None,
+              licentie=(request.form.get("licentie") or "")[:40] or None,
+              bron_url=(request.form.get("pagina") or "")[:300] or None)
+    db.session.add(p)
+    db.session.commit()
+    audit(f"vrije foto (Commons) geïmporteerd op fiche {ev.id}")
+    flash("Foto geïmporteerd, mét bronvermelding op de fiche.", "ok")
+    return redirect(url_for("admin.vrije_fotos", eid=eid))

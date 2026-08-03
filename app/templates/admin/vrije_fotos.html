@@ -1,0 +1,32 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<p><a href="{{ url_for('admin.activiteit_bewerk', event_id=ev.id) }}">← {{ ev.title }}</a></p>
+<h1>Vrije foto's 🖼</h1>
+<p class="hint">Foto's van Wikimedia Commons binnen ±250 m van deze plek,
+  alleen met een vrije licentie (CC0 / CC BY / CC BY-SA / publiek domein).
+  Import gebeurt via de gewone fotopijplijn en zet de verplichte
+  naamsvermelding automatisch op de fiche. Kies alleen beelden die de plek
+  écht tonen — een verkeerde foto schaadt meer dan geen foto.</p>
+{% if not kandidaten %}
+<p class="hint">Geen vrije foto's gevonden rond deze locatie.</p>
+{% endif %}
+<div class="foto-galerij">
+  {% for k in kandidaten %}
+  <figure>
+    <img src="{{ k.thumb }}" alt="" loading="lazy">
+    <figcaption class="hint">
+      {{ k.licentie }}{% if k.fotograaf %} · {{ k.fotograaf }}{% endif %}
+      {% if k.pagina %}· <a href="{{ k.pagina }}" target="_blank" rel="noopener">bron</a>{% endif %}
+      <form method="post" action="{{ url_for('admin.vrije_foto_import', eid=ev.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="url" value="{{ k.url }}">
+        <input type="hidden" name="fotograaf" value="{{ k.fotograaf }}">
+        <input type="hidden" name="licentie" value="{{ k.licentie }}">
+        <input type="hidden" name="pagina" value="{{ k.pagina }}">
+        <button class="btn btn-klein" type="submit">📥 Importeer</button>
+      </form>
+    </figcaption>
+  </figure>
+  {% endfor %}
+</div>
+{% endblock %}

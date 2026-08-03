@@ -407,6 +407,14 @@ def register_cli(app):
         print(f"Klaar: {weg} plekken verwijderd · {len(vuil)} vervuilde "
               "postcode-zwaartepunten opgeruimd.")
 
+    @app.cli.command("straatnamen")
+    def straatnamen_cmd():
+        """Naamloze OSM-plekken (Speeltuin, Park, ...) een straatnaam geven
+        via Nominatim (max ±150 per run, 1 verzoek/s)."""
+        from .services.verrijking import vul_straatnamen
+        n, kandidaten = vul_straatnamen()
+        print(f"{n} van {kandidaten} kandidaten een straat gegeven.")
+
     @app.cli.command("backfill-gemeenten")
     def backfill_gemeenten():
         """Vul gemeente/postcode aan voor plekken zonder adres (OSM-punten),
@@ -635,6 +643,12 @@ def register_cli(app):
                 "ALTER TABLE photos ALTER COLUMN event_id DROP NOT NULL"))
             added.append("photos.route_id (+event_id nullable)")
         ph_cols = {c["name"] for c in insp.get_columns("photos")}
+        if "fotograaf" not in ph_cols:
+            for kol, typ in (("bron", "VARCHAR(20)"), ("fotograaf", "VARCHAR(120)"),
+                             ("licentie", "VARCHAR(40)"), ("bron_url", "VARCHAR(300)")):
+                db.session.execute(text(
+                    f"ALTER TABLE photos ADD COLUMN IF NOT EXISTS {kol} {typ}"))
+            added.append("photos.bron/fotograaf/licentie/bron_url")
         if "focus_y" not in ph_cols:
             db.session.execute(text(
                 "ALTER TABLE photos ADD COLUMN IF NOT EXISTS focus_y INTEGER DEFAULT 50"))

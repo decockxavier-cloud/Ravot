@@ -282,6 +282,11 @@
       <img src="{{ url_for('public.foto', pid=f.id) }}" alt="Foto van {{ ev.title }}"
            loading="lazy" data-lightbox
            style="object-position:50% {{ f.focus_y or 50 }}%">
+      {% if f.fotograaf or f.licentie %}
+      <figcaption class="hint">📷 {% if f.bron_url %}<a href="{{ f.bron_url }}"
+        target="_blank" rel="noopener">{{ f.fotograaf or 'Wikimedia' }}</a>
+        {% else %}{{ f.fotograaf }}{% endif %}{% if f.licentie %} · {{ f.licentie }}{% endif %}</figcaption>
+      {% endif %}
     </figure>
     {% endfor %}
   </div>
