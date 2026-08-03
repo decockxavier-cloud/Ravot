@@ -56,6 +56,7 @@ def vul_straatnamen(limiet=150):
             kandidaten.append((ev, kale))
         if len(kandidaten) >= limiet:
             break
+    from ..kwaliteit import bereken_kwaliteit
     n = 0
     for ev, kale in kandidaten:
         straat = straat_bij(ev.lat, ev.lng)
@@ -64,6 +65,7 @@ def vul_straatnamen(limiet=150):
         ev.adres = straat
         label = ev.title.split(" — ")[0]
         ev.title = f"{label} — {straat}"
+        ev.quality = bereken_kwaliteit(ev)   # score meteen mee (adres = +10)
         n += 1
     db.session.commit()
     return n, len(kandidaten)

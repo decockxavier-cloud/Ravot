@@ -23,7 +23,9 @@ case "$WAT" in
   osm)       docker compose exec -T web flask sync-osm ;;
   overture)  docker compose exec -T web flask overture-maandelijks ;;
   onderhoud) docker compose exec -T web flask detecteer-conflicten
-             docker compose exec -T web flask herbereken-labels ;;
+             docker compose exec -T web flask herbereken-labels
+             docker compose exec -T web flask straatnamen
+             docker compose exec -T web flask herbereken-kwaliteit ;;
   *) echo "onbekend: $WAT (kies uit|osm|overture|onderhoud)"; exit 1 ;;
 esac
 echo "=== klaar $(date '+%F %T') ==="
