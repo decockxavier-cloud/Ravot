@@ -138,3 +138,61 @@ def test_verrijking_overleeft_hersync(app):
         db.session.commit()
         assert Event.query.filter_by(ext_id="node/9").first().title == \
             "Speelplein De Warande"
+
+
+def test_osm_commons_tag_naar_auto_import(app):
+    """Patch 165: OSM-mapper koppelde zelf een Commons-foto -> volautomatische
+    import met attributie; vreemde hosts worden genegeerd."""
+    import io
+    from PIL import Image
+    from app.services.sources.osm import _commons_bestand
+    assert _commons_bestand({"wikimedia_commons": "File:X.jpg"}) == "File:X.jpg"
+    assert _commons_bestand({"image": "https://mijnsite.be/f.jpg"}) is None
+    jpg = io.BytesIO()
+    Image.new("RGB", (900, 700), (80, 140, 60)).save(jpg, "JPEG")
+
+    def nep(url, **kw):
+        if "commons.wikimedia.org" in url:
+            return _Resp({"query": {"pages": {"1": {"imageinfo": [{
+                "thumburl": "https://upload.wikimedia.org/x/k.jpg",
+                "url": "https://upload.wikimedia.org/x/k_full.jpg",
+                "descriptionshorturl": "https://commons.wikimedia.org/p/9",
+                "extmetadata": {"LicenseShortName": {"value": "CC BY 4.0"},
+                                "Artist": {"value": "An Fotograve"}}}]}}}})
+        return _Resp({}, jpg.getvalue())
+
+    with app.app_context():
+        from app.services.sources.base import upsert_event
+        upsert_event({"source": "osm", "ext_id": "way/70", "title": "Kasteel",
+                      "is_permanent": True, "lat": 50.98, "lng": 3.55,
+                      "subtype": "castle", "pending": False,
+                      "commons_file": "File:X.jpg"})
+        db.session.commit()
+        with patch("app.services.verrijking.requests.get", side_effect=nep), \
+             patch("app.services.verrijking.time.sleep"):
+            from app.services.verrijking import importeer_osm_fotos
+            n, gep = importeer_osm_fotos()
+        assert (n, gep) == (1, 1)
+        p = Photo.query.filter_by(bron="commons").first()
+        assert p.fotograaf == "An Fotograve" and p.status == "approved"
+        # tweede run: niets meer te doen
+        with patch("app.services.verrijking.requests.get", side_effect=nep), \
+             patch("app.services.verrijking.time.sleep"):
+            assert importeer_osm_fotos() == (0, 0)
+
+
+def test_illustratie_fallback_op_fiche(client, app):
+    with app.app_context():
+        db.session.add(Event(title="Frituur Kaal", slug="frk", source="osm",
+                             ext_id="frk", is_permanent=True, pending=False,
+                             hidden=False, lat=51.0, lng=3.7,
+                             subtype="horeca"))
+        db.session.add(Event(title="Zwembad Kaal", slug="zwk", source="osm",
+                             ext_id="zwk", is_permanent=True, pending=False,
+                             hidden=False, lat=51.0, lng=3.7,
+                             subtype="zwembad"))
+        db.session.commit()
+    h = client.get("/e/frk").get_data(as_text=True)
+    assert "cat-smullen.svg" in h and "fiche-beeld-illustratie" in h
+    h = client.get("/e/zwk").get_data(as_text=True)
+    assert "cat-zwem.svg" in h

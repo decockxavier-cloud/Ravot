@@ -69,6 +69,8 @@
 {% if ev.image_url %}
 <img src="{{ ev.image_url }}" alt="" class="fiche-beeld" loading="lazy"
      style="object-position:50% {{ foto_focus(ev.image_url) }}%">
+{% elif not fotos %}
+<img src="{{ poi_image(ev) }}" alt="" class="fiche-beeld fiche-beeld-illustratie" loading="lazy">
 {% endif %}
 {% if ev.is_kamp %}
 <div class="kamp-info card">

@@ -2,6 +2,13 @@
 categorie-illustratie zodat kaartjes nooit leeg/saai ogen (vooral OSM-POI's)."""
 from flask import url_for
 
+_SUBTYPE_IMG = {
+    "horeca": "cat-smullen.svg", "zomerbar": "cat-smullen.svg",
+    "winterbar": "cat-smullen.svg", "ijssalon": "cat-smullen.svg",
+    "zwembad": "cat-zwem.svg", "zwemvijver": "cat-zwem.svg",
+    "farm": "cat-boerderij.svg", "kinderboerderij": "cat-boerderij.svg",
+}
+
 _CAT_IMG = {
     "buiten": "cat-buiten.svg", "natuur": "cat-natuur.svg", "sport": "cat-sport.svg",
     "cultuur": "cat-cultuur.svg", "creatief": "cat-creatief.svg", "leren": "cat-leren.svg",
@@ -44,11 +51,13 @@ def poi_image(event):
     echt = _veilige_afbeelding(getattr(event, "image_url", None))
     if echt:
         return echt
-    if getattr(event, "indoor", False):
-        naam = "cat-binnen.svg"
-    else:
-        cats = getattr(event, "categories", None) or []
-        naam = _CAT_IMG.get(cats[0] if cats else "buiten", "cat-buiten.svg")
+    naam = _SUBTYPE_IMG.get(getattr(event, "subtype", None))
+    if not naam:
+        if getattr(event, "indoor", False):
+            naam = "cat-binnen.svg"
+        else:
+            cats = getattr(event, "categories", None) or []
+            naam = _CAT_IMG.get(cats[0] if cats else "buiten", "cat-buiten.svg")
     return url_for("static", filename=f"img/{naam}")
 
 

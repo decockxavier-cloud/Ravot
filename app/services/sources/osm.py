@@ -121,6 +121,20 @@ OSM_KEY = {
     "museum": "tourism", "viewpoint": "tourism", "attraction": "tourism",
     "castle": "historic",
 }
+def _commons_bestand(tags):
+    """OSM-tag -> Commons-bestandsnaam ('File:...'), of None. De mapper heeft
+    de foto zelf aan de plek gekoppeld — betrouwbaarder dan zoeken op afstand.
+    Alleen Wikimedia (vrije licenties, attributie opvraagbaar); andere
+    image-hosts bewust genegeerd (licentie onbekend)."""
+    w = (tags.get("wikimedia_commons") or "").strip()
+    if w.startswith("File:"):
+        return w[:200]
+    img = (tags.get("image") or "").strip()
+    if "commons.wikimedia.org" in img and "File:" in img:
+        return ("File:" + img.split("File:")[-1].split("?")[0].split("#")[0])[:200]
+    return None
+
+
 LABELS = {"playground": "Speeltuin", "theme_park": "Pretpark",
           "water_park": "Waterpretpark", "zoo": "Dierenpark", "museum": "Museum",
           "aquarium": "Aquarium", "park": "Park", "nature_reserve": "Natuurgebied",
@@ -315,6 +329,7 @@ def normalise(el):
         "postcode": clean_postcode(tags.get("addr:postcode")),
         "adres": " ".join(p for p in (tags.get("addr:street"),
                                        tags.get("addr:housenumber")) if p) or None,
+        "commons_file": _commons_bestand(tags),
         "lat": float(lat), "lng": float(lng),
         "age_min": age_min, "age_max": age_max,
         "categories": [cat],

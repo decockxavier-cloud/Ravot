@@ -145,3 +145,90 @@ class _Upload:
 
     def seek(self, *a):
         return self._b.seek(*a)
+
+
+def commons_info(bestand):
+    """Metadata van één Commons-bestand ('File:...'): url, fotograaf, licentie.
+    None als het bestand niet bestaat of geen vrije licentie draagt."""
+    try:
+        antw = requests.get(COMMONS, params={
+            "action": "query", "format": "json", "titles": bestand,
+            "prop": "imageinfo", "iiprop": "url|extmetadata",
+            "iiurlwidth": 1200}, headers=UA, timeout=12).json()
+    except Exception:
+        return None
+    for p in (antw.get("query", {}).get("pages", {}) or {}).values():
+        info = (p.get("imageinfo") or [{}])[0]
+        meta = info.get("extmetadata", {}) or {}
+        licentie = (meta.get("LicenseShortName", {}) or {}).get("value", "")
+        url = info.get("thumburl") or info.get("url") or ""
+        if not _licentie_vrij(licentie):
+            return None
+        if not url.lower().split("?")[0].endswith((".jpg", ".jpeg", ".png")):
+            return None
+        return {"url": url,
+                "fotograaf": _strip_html((meta.get("Artist", {}) or {})
+                                         .get("value", ""))[:120],
+                "licentie": licentie[:40],
+                "pagina": info.get("descriptionshorturl")
+                          or info.get("descriptionurl") or ""}
+    return None
+
+
+def importeer_osm_fotos(limiet=100, wacht=1.0):
+    """Automatische fotoimport voor plekken waar de OSM-mapper zélf een
+    Commons-foto aan koppelde (Event.commons_file). Betrouwbare 1-op-1-match,
+    dus geen menselijk nazicht nodig; attributie gaat mee de fiche op."""
+    from ..models import Event, Photo
+    from .. import fotos as fotodienst
+    klaar = {p.event_id for p in Photo.query.filter_by(bron="commons")
+             .filter(Photo.event_id.isnot(None)).all()}
+    q = (Event.query.filter(Event.commons_file.isnot(None),
+                            Event.is_permanent.is_(True))
+         .order_by(Event.id).limit(limiet * 3).all())
+    n = geprobeerd = 0
+    for ev in q:
+        if ev.id in klaar:
+            continue
+        if geprobeerd >= limiet:
+            break
+        geprobeerd += 1
+        info = commons_info(ev.commons_file)
+        time.sleep(wacht)
+        if not info:
+            ev.commons_file = None     # onbruikbaar (weg/onvrij): niet blijven proberen
+            continue
+        data, fout = commons_import(info["url"])
+        if fout:
+            continue
+        naam = fotodienst.verwerk_upload(_Upload(data, "commons.jpg"))
+        if not naam:
+            ev.commons_file = None
+            continue
+        db.session.add(Photo(event_id=ev.id, filename=naam, soort="zaak",
+                             status="approved", bron="commons",
+                             fotograaf=info["fotograaf"] or None,
+                             licentie=info["licentie"] or None,
+                             bron_url=info["pagina"] or None))
+        n += 1
+    db.session.commit()
+    return n, geprobeerd
+
+
+def foto_dekking():
+    """Teloverzicht voor de hoeveel-is-er-nog-kaal-vraag."""
+    from ..models import Event, Photo
+    met_foto_ids = {p.event_id for p in Photo.query.filter(
+        Photo.event_id.isnot(None), Photo.status == "approved").all()}
+    totaal = echte = wachtrij = 0
+    for ev in Event.query.filter(Event.is_permanent.is_(True),
+                                 Event.hidden.is_(False),
+                                 Event.pending.is_(False)).all():
+        totaal += 1
+        if ev.image_url or ev.id in met_foto_ids:
+            echte += 1
+        elif ev.commons_file:
+            wachtrij += 1
+    return {"totaal": totaal, "met_echte_foto": echte,
+            "commons_wachtrij": wachtrij,
+            "enkel_illustratie": totaal - echte - wachtrij}

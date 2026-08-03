@@ -1143,3 +1143,8 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 
 /* Kaartfilters op de routepagina (patch 162) */
 .kaart-filter.aan { background: #EE8035; color: #fff; border-color: #EE8035; }
+
+/* Type-illustratie als fiche-hero (patch 165): iets lager en zachter dan een
+   echte foto, zodat het eerlijk als illustratie leest. */
+.fiche-beeld-illustratie { max-height: 220px; object-fit: contain;
+  background: #FDF9F0; border-radius: 14px; }

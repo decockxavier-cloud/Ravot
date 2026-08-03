@@ -176,6 +176,7 @@ def upsert_event(data):
     for f in ("title", "description", "start", "end", "is_permanent",
               "gemeente", "deelgemeente", "postcode", "adres", "lat", "lng", "age_min", "age_max",
               "categories", "subtype", "indoor", "is_free", "price_info", "image_url",
+              "commons_file",
               "source_url", "attribution", "pending"):
         if f in data:
             if f == "image_url" and not data[f] and ev.image_url:

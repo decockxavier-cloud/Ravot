@@ -415,6 +415,24 @@ def register_cli(app):
         n, kandidaten = vul_straatnamen()
         print(f"{n} van {kandidaten} kandidaten een straat gegeven.")
 
+    @app.cli.command("osm-fotos")
+    def osm_fotos_cmd():
+        """Foto's importeren voor plekken met een OSM-Commons-koppeling."""
+        from .services.verrijking import importeer_osm_fotos
+        n, gep = importeer_osm_fotos()
+        print(f"{n} foto's geïmporteerd ({gep} geprobeerd).")
+
+    @app.cli.command("foto-dekking")
+    def foto_dekking_cmd():
+        """Hoeveel fiches hebben een echte foto, en hoeveel zijn nog kaal?"""
+        from .services.verrijking import foto_dekking
+        d = foto_dekking()
+        pct = round(100 * d["met_echte_foto"] / d["totaal"]) if d["totaal"] else 0
+        print(f"Vaste plekken: {d['totaal']}")
+        print(f"  met echte foto:      {d['met_echte_foto']} ({pct}%)")
+        print(f"  Commons-wachtrij:    {d['commons_wachtrij']} (worden 's nachts geïmporteerd)")
+        print(f"  enkel illustratie:   {d['enkel_illustratie']}")
+
     @app.cli.command("backfill-gemeenten")
     def backfill_gemeenten():
         """Vul gemeente/postcode aan voor plekken zonder adres (OSM-punten),
@@ -643,6 +661,11 @@ def register_cli(app):
                 "ALTER TABLE photos ALTER COLUMN event_id DROP NOT NULL"))
             added.append("photos.route_id (+event_id nullable)")
         ph_cols = {c["name"] for c in insp.get_columns("photos")}
+        ev_cols = {c["name"] for c in insp.get_columns("events")}
+        if "commons_file" not in ev_cols:
+            db.session.execute(text(
+                "ALTER TABLE events ADD COLUMN IF NOT EXISTS commons_file VARCHAR(200)"))
+            added.append("events.commons_file")
         if "fotograaf" not in ph_cols:
             for kol, typ in (("bron", "VARCHAR(20)"), ("fotograaf", "VARCHAR(120)"),
                              ("licentie", "VARCHAR(40)"), ("bron_url", "VARCHAR(300)")):

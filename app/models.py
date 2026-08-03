@@ -173,6 +173,7 @@ class Event(db.Model):
     deelgemeente = db.Column(db.String(80))   # bv. "Rumbeke" bij gemeente "Roeselare"
     postcode = db.Column(db.String(4), index=True)
     adres = db.Column(db.String(255))   # straat + huisnummer (bv. uit OSM addr:*)
+    commons_file = db.Column(db.String(200))  # OSM-tag wikimedia_commons (patch 165)
     lat = db.Column(db.Float)
     lng = db.Column(db.Float)
     age_min = db.Column(db.Integer, default=0)

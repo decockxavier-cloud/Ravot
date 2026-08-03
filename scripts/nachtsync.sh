@@ -25,6 +25,7 @@ case "$WAT" in
   onderhoud) docker compose exec -T web flask detecteer-conflicten
              docker compose exec -T web flask herbereken-labels
              docker compose exec -T web flask straatnamen
+             docker compose exec -T web flask osm-fotos
              docker compose exec -T web flask herbereken-kwaliteit ;;
   *) echo "onbekend: $WAT (kies uit|osm|overture|onderhoud)"; exit 1 ;;
 esac
