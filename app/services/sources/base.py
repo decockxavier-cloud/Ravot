@@ -180,6 +180,15 @@ def upsert_event(data):
         if f in data:
             if f == "image_url" and not data[f] and ev.image_url:
                 continue   # een bestaande (bv. gezins)foto nooit wissen bij hersync
+            if f == "adres" and not data[f] and ev.adres:
+                continue   # verrijkt adres (Nominatim, patch 164) nooit wissen
+            if f == "title" and ev.adres and not data.get("adres"):
+                # Kale bron-titel ("Speeltuin" / "Speeltuin — gemeente") mag een
+                # verrijkte straat-titel niet terugzetten. Krijgt de POI ooit een
+                # échte naam of eigen adres in OSM, dan wint de bron gewoon weer.
+                label = (data[f] or "").split(" — ")[0]
+                if ev.title == f"{label} — {ev.adres}":
+                    continue
             setattr(ev, f, data[f])
     # Openingsuren uit de bron verversen bij elke sync, TENZIJ een mens ze
     # zelf instelde: de beheerder (marker "_handmatig" in de JSON) of een

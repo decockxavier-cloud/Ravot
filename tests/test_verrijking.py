@@ -109,3 +109,32 @@ def test_commons_import_alleen_wikimedia_domein(admin_client, app):
         assert p is not None and p.fotograaf == "Jan" and p.status == "approved"
     h = admin_client.get("/e/ci1").get_data(as_text=True)
     assert "Jan" in h and "CC BY 4.0" in h
+
+
+def test_verrijking_overleeft_hersync(app):
+    """De continu draaiende OSM-sync mag straat-titel en adres niet terugzetten
+    (de bug waardoor 'flask straatnamen' telkens dezelfde records verrijkte)."""
+    with app.app_context():
+        from app.services.sources.base import upsert_event
+        data = {"source": "osm", "ext_id": "node/9", "title": "Speeltuin",
+                "is_permanent": True, "lat": 51.0, "lng": 3.7, "adres": None,
+                "gemeente": "Gent", "postcode": "9000",
+                "subtype": "playground", "pending": False}
+        upsert_event(dict(data))
+        db.session.commit()
+        with patch("app.services.verrijking.requests.get",
+                   return_value=_Resp({"address": {"road": "Kerkstraat"}})), \
+             patch("app.services.verrijking.time.sleep"):
+            from app.services.verrijking import vul_straatnamen
+            vul_straatnamen()
+        upsert_event(dict(data))          # hersync met kale data
+        db.session.commit()
+        ev = Event.query.filter_by(ext_id="node/9").first()
+        assert ev.title == "Speeltuin — Kerkstraat"
+        assert ev.adres == "Kerkstraat"
+        # echte naam uit de bron wint wél
+        data["title"] = "Speelplein De Warande"
+        upsert_event(dict(data))
+        db.session.commit()
+        assert Event.query.filter_by(ext_id="node/9").first().title == \
+            "Speelplein De Warande"
