@@ -4,6 +4,7 @@
 - feitelijke antwoordblokken bovenaan elke pagina (AI-citeerbaar)
 """
 import json
+from datetime import timedelta
 from flask import current_app
 
 
@@ -11,37 +12,120 @@ def _abs(path):
     return current_app.config["SITE_URL"].rstrip("/") + path
 
 
+# Permanente plekken zijn géén Event (Google eist dan startDate en meldt een
+# kritiek probleem). Ze krijgen het passende Place-subtype; horeca wordt
+# LocalBusiness, de rest TouristAttraction.
+_PLEK_TYPE = {
+    "horeca": "Restaurant", "zomerbar": "Restaurant", "winterbar": "Restaurant",
+    "ijssalon": "Restaurant", "museum": "Museum", "zwembad": "SportsActivityLocation",
+    "zwemvijver": "SportsActivityLocation", "playground": "Playground",
+    "park": "Park", "speelbos": "Park", "farm": "TouristAttraction",
+    "kinderboerderij": "TouristAttraction",
+}
+
+
+def _beeld(event):
+    """Absolute beeld-URL: echte foto (extern of eigen) — nooit een placeholder,
+    want een illustratie is geen afbeelding van de plek zelf."""
+    if getattr(event, "image_url", None):
+        u = event.image_url
+        return _abs(u) if u.startswith("/") else u
+    from .models import Photo
+    p = (Photo.query.filter_by(event_id=event.id, status="approved")
+         .order_by(Photo.id).first())
+    return _abs(f"/foto/{p.id}") if p else None
+
+
+def _adres_blok(event):
+    return {"@type": "PostalAddress",
+            "streetAddress": getattr(event, "adres", None),
+            "addressLocality": event.gemeente,
+            "postalCode": event.postcode, "addressCountry": "BE"}
+
+
+def plek_jsonld(event, agg=None):
+    """Structured data voor een permanente plek (speeltuin, museum, horeca)."""
+    subtype = getattr(event, "subtype", None)
+    data = {
+        "@context": "https://schema.org",
+        "@type": _PLEK_TYPE.get(subtype, "TouristAttraction"),
+        "name": event.title,
+        "url": _abs(f"/e/{event.slug}"),
+        "description": (event.description or "")[:300] or None,
+        "image": _beeld(event),
+        "address": {k: v for k, v in _adres_blok(event).items() if v},
+        "isAccessibleForFree": bool(event.is_free),
+    }
+    if event.lat and event.lng:
+        data["geo"] = {"@type": "GeoCoordinates", "latitude": event.lat,
+                       "longitude": event.lng}
+    if getattr(event, "telefoon", None):
+        data["telephone"] = event.telefoon
+    if getattr(event, "source_url", None):
+        data["sameAs"] = event.source_url
+    if agg and agg["count"] >= 1:
+        data["aggregateRating"] = {
+            "@type": "AggregateRating", "ratingValue": agg["avg"],
+            "reviewCount": agg["count"], "bestRating": 5, "worstRating": 1,
+        }
+    return json.dumps({k: v for k, v in data.items() if v is not None},
+                      ensure_ascii=False)
+
+
 def event_jsonld(event, agg=None, family_total=None):
+    # Zonder startDate is Event ongeldig voor Google -> permanente plek-schema.
+    if getattr(event, "is_permanent", False) or not event.start:
+        return plek_jsonld(event, agg)
+    eind = event.end or (event.start + timedelta(hours=2))
     data = {
         "@context": "https://schema.org",
         "@type": "Event",
         "name": event.title,
-        "startDate": event.start.isoformat() if event.start else None,
-        "endDate": event.end.isoformat() if event.end else None,
+        "startDate": event.start.isoformat(),
+        "endDate": eind.isoformat(),
         "eventStatus": "https://schema.org/EventScheduled",
         "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
         "url": _abs(f"/e/{event.slug}"),
-        "description": (event.description or "")[:300],
-        "image": event.image_url,
+        "description": (event.description or "")[:300]
+                       or f"Activiteit voor gezinnen in {event.gemeente or 'Vlaanderen'}.",
+        "image": _beeld(event),
         "typicalAgeRange": f"{event.age_min}-{event.age_max}",
         "isAccessibleForFree": bool(event.is_free),
     }
+    if event.organizer:
+        data["performer"] = {"@type": "Organization", "name": event.organizer.name}
     if event.venue and event.venue.lat:
         data["location"] = {
             "@type": "Place",
             "name": event.venue.name,
-            "address": {"@type": "PostalAddress", "addressLocality": event.gemeente,
-                        "postalCode": event.postcode, "addressCountry": "BE"},
+            "address": {k: v for k, v in _adres_blok(event).items() if v},
             "geo": {"@type": "GeoCoordinates", "latitude": event.venue.lat,
                     "longitude": event.venue.lng},
         }
+    elif event.lat and event.lng:
+        # Zonder venue-record tóch een location: Google vereist die.
+        data["location"] = {
+            "@type": "Place", "name": event.gemeente or event.title,
+            "address": {k: v for k, v in _adres_blok(event).items() if v},
+            "geo": {"@type": "GeoCoordinates", "latitude": event.lat,
+                    "longitude": event.lng},
+        }
+    elif event.gemeente:
+        data["location"] = {"@type": "Place", "name": event.gemeente,
+                            "address": {k: v for k, v in _adres_blok(event).items() if v}}
     if event.organizer:
         data["organizer"] = {"@type": "Organization", "name": event.organizer.name}
     if event.price_info:
         data["offers"] = [{
             "@type": "Offer", "name": t.get("name"),
             "price": t.get("price"), "priceCurrency": "EUR",
+            "availability": "https://schema.org/InStock",
+            "url": _abs(f"/e/{event.slug}"),
         } for t in event.price_info]
+    elif event.is_free:
+        data["offers"] = [{"@type": "Offer", "price": "0", "priceCurrency": "EUR",
+                           "availability": "https://schema.org/InStock",
+                           "url": _abs(f"/e/{event.slug}")}]
     if agg and agg["count"] >= 1:
         data["aggregateRating"] = {
             "@type": "AggregateRating", "ratingValue": agg["avg"],

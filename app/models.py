@@ -502,6 +502,8 @@ SETTING_DEFS = {
     "combi_prijs_jaar": ("360.00", "Combi (Partner + Feest): prijs per jaar (EUR, excl. btw)", "text"),
     "cap_zichtbaar_gemeente": ("4", "Exclusiviteit: max. zichtbaarheidspartners (⭐) per gemeente", "text"),
     "cap_feest_gemeente": ("0", "Max. feestpartners per gemeente (0 = onbeperkt — feest is een leadproduct: hoe meer aanbieders, hoe beter gezinnen kunnen vergelijken)", "text"),
+    "social_facebook": ("", "Facebook-pagina van Ravot (volledige URL, leeg = geen knop)", "text"),
+    "social_instagram": ("", "Instagram-pagina van Ravot (volledige URL, leeg = geen knop)", "text"),
     "route_buurt_meter": ("400", "Fietsroutes: koppelafstand 'leuk onderweg' in meter", "text"),
     "route_partner_meter": ("800", "Fietsroutes: ruimere afstand waarop ⭐-partners nog uitgelicht worden (m)", "text"),
     "route_tempo_kmu": ("10", "Fietsroutes: gezinstempo voor de duur-suggestie (km/u)", "text"),

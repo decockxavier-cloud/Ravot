@@ -56,6 +56,7 @@
           <a href="{{ url_for('admin.paginas') }}" class="{{ 'on' if active=='paginas' }}">Pagina's</a>
           <a href="{{ url_for('admin.mails') }}" class="{{ 'on' if active=='mails' }}">Mailteksten</a>
           <a href="{{ url_for('admin.instellingen') }}" class="{{ 'on' if active=='instellingen' }}">Instellingen</a>
+        {% if admin_rol == 'admin' %}<a href="{{ url_for('admin.illustraties') }}" class="{{ 'on' if active=='illustraties' }}">Illustraties</a>{% endif %}
           <a href="{{ url_for('admin.status') }}" class="{{ 'on' if active=='status' }}">Status</a>
           <a href="{{ url_for('admin.partner_log') }}" class="{{ 'on' if active=='partner-log' }}">Partnerlog</a>
           {% if admin_rol == 'admin' %}<a href="{{ url_for('admin.team') }}" class="{{ 'on' if active=='team' }}">Team</a>{% endif %}

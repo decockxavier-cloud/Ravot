@@ -2,17 +2,55 @@
 categorie-illustratie zodat kaartjes nooit leeg/saai ogen (vooral OSM-POI's)."""
 from flask import url_for
 
-_SUBTYPE_IMG = {
-    "horeca": "cat-smullen.svg", "zomerbar": "cat-smullen.svg",
-    "winterbar": "cat-smullen.svg", "ijssalon": "cat-smullen.svg",
-    "zwembad": "cat-zwem.svg", "zwemvijver": "cat-zwem.svg",
-    "farm": "cat-boerderij.svg", "kinderboerderij": "cat-boerderij.svg",
+# Illustratie-sleutels: per sleutel bestaat een ingebouwde SVG
+# (static/img/cat-<sleutel>.svg) die de beheerder kan overschrijven met een
+# eigen afbeelding (patch 167, /beheer/illustraties -> /data/uploads/typen/).
+ILLUSTRATIES = {
+    "buiten": "Buiten / speeltuin", "binnen": "Binnen",
+    "natuur": "Natuur", "sport": "Sport & beweging",
+    "cultuur": "Cultuur & musea", "creatief": "Creatief",
+    "leren": "Leren", "smullen": "Smullen (horeca)",
+    "zwem": "Zwemmen", "boerderij": "Kinderboerderij",
+}
+EIGEN_ILLUSTRATIE_MAP = "/data/uploads/typen"
+
+_SUBTYPE_KEY = {
+    "horeca": "smullen", "zomerbar": "smullen", "winterbar": "smullen",
+    "ijssalon": "smullen", "zwembad": "zwem", "zwemvijver": "zwem",
+    "farm": "boerderij", "kinderboerderij": "boerderij",
 }
 
-_CAT_IMG = {
-    "buiten": "cat-buiten.svg", "natuur": "cat-natuur.svg", "sport": "cat-sport.svg",
-    "cultuur": "cat-cultuur.svg", "creatief": "cat-creatief.svg", "leren": "cat-leren.svg",
-}
+_CAT_KEY = {"buiten": "buiten", "natuur": "natuur", "sport": "sport",
+            "cultuur": "cultuur", "creatief": "creatief", "leren": "leren"}
+
+
+def beeld_sleutel(event):
+    """Welke illustratie-sleutel hoort bij deze plek."""
+    k = _SUBTYPE_KEY.get(getattr(event, "subtype", None))
+    if k:
+        return k
+    if getattr(event, "indoor", False):
+        return "binnen"
+    cats = getattr(event, "categories", None) or []
+    return _CAT_KEY.get(cats[0] if cats else "buiten", "buiten")
+
+
+def eigen_illustratie_pad(sleutel):
+    """Pad van de door de beheerder geüploade afbeelding, of None."""
+    import os
+    pad = f"{EIGEN_ILLUSTRATIE_MAP}/{sleutel}.jpg"
+    return pad if sleutel in ILLUSTRATIES and os.path.exists(pad) else None
+
+
+def illustratie_url(sleutel):
+    """URL van de illustratie voor een sleutel: eigen upload wint van de
+    ingebouwde SVG. Cache-busting via bestandstijd."""
+    import os
+    pad = eigen_illustratie_pad(sleutel)
+    if pad:
+        return url_for("public.typebeeld", sleutel=sleutel,
+                       v=int(os.path.getmtime(pad)))
+    return url_for("static", filename=f"img/cat-{sleutel}.svg")
 
 
 def _veilige_afbeelding(url):
@@ -51,14 +89,7 @@ def poi_image(event):
     echt = _veilige_afbeelding(getattr(event, "image_url", None))
     if echt:
         return echt
-    naam = _SUBTYPE_IMG.get(getattr(event, "subtype", None))
-    if not naam:
-        if getattr(event, "indoor", False):
-            naam = "cat-binnen.svg"
-        else:
-            cats = getattr(event, "categories", None) or []
-            naam = _CAT_IMG.get(cats[0] if cats else "buiten", "cat-buiten.svg")
-    return url_for("static", filename=f"img/{naam}")
+    return illustratie_url(beeld_sleutel(event))
 
 
 def has_echte_foto(event):

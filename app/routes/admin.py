@@ -317,6 +317,7 @@ def delete_review(review_id):
 # nieuwe, nog niet ingedeelde keys op.
 INSTELLING_PAGINAS = {
     "kern": [
+        ("Sociale media", ["social_facebook", "social_instagram"]),
         ("Fietsroutes", ["route_buurt_meter", "route_partner_meter",
                          "route_tempo_kmu", "routes_in_menu"]),
         ("Weergave & gedrag", ["default_radius", "toon_maanden_vooruit",
@@ -2706,3 +2707,60 @@ def vrije_foto_import(eid):
     audit(f"vrije foto (Commons) geïmporteerd op fiche {ev.id}")
     flash("Foto geïmporteerd, mét bronvermelding op de fiche.", "ok")
     return redirect(url_for("admin.vrije_fotos", eid=eid))
+
+
+# ---------------------------------------------------------------------------
+# Type-illustraties zelf instellen (patch 167)
+# ---------------------------------------------------------------------------
+
+@bp.route("/illustraties")
+@admin_required
+def illustraties():
+    from ..media import ILLUSTRATIES, eigen_illustratie_pad
+    rijen = [(k, label, eigen_illustratie_pad(k) is not None)
+             for k, label in ILLUSTRATIES.items()]
+    return render_template("admin/illustraties.html", rijen=rijen,
+                           title="Illustraties", family=None,
+                           active="illustraties")
+
+
+@bp.route("/illustraties/<sleutel>", methods=["POST"])
+@admin_required
+def illustratie_upload(sleutel):
+    from ..media import ILLUSTRATIES, EIGEN_ILLUSTRATIE_MAP
+    if sleutel not in ILLUSTRATIES:
+        abort(404)
+    import os
+    if request.form.get("actie") == "terugzetten":
+        pad = f"{EIGEN_ILLUSTRATIE_MAP}/{sleutel}.jpg"
+        if os.path.exists(pad):
+            os.remove(pad)
+        flash(f"'{ILLUSTRATIES[sleutel]}' terug naar de ingebouwde illustratie.", "ok")
+        return redirect(url_for("admin.illustraties"))
+    bestand = request.files.get("beeld")
+    if not bestand or not bestand.filename:
+        flash("Geen bestand gekozen.", "error")
+        return redirect(url_for("admin.illustraties"))
+    try:
+        from PIL import Image
+        import io
+        beeld = Image.open(io.BytesIO(bestand.read()))
+        beeld = beeld.convert("RGB")
+        # Uitsnijden naar 2:1 (800x400): eerst schalen tot de kleinste zijde
+        # past, dan gecentreerd croppen — elke upload wordt zo netjes uniform.
+        doel_w, doel_h = 800, 400
+        schaal = max(doel_w / beeld.width, doel_h / beeld.height)
+        beeld = beeld.resize((round(beeld.width * schaal),
+                              round(beeld.height * schaal)), Image.LANCZOS)
+        x = (beeld.width - doel_w) // 2
+        y = (beeld.height - doel_h) // 2
+        beeld = beeld.crop((x, y, x + doel_w, y + doel_h))
+    except Exception:
+        flash("Dat lijkt geen geldige afbeelding (jpeg/png/webp).", "error")
+        return redirect(url_for("admin.illustraties"))
+    os.makedirs(EIGEN_ILLUSTRATIE_MAP, exist_ok=True)
+    beeld.save(f"{EIGEN_ILLUSTRATIE_MAP}/{sleutel}.jpg", quality=88, optimize=True)
+    audit(f"type-illustratie vervangen: {sleutel}")
+    flash(f"Illustratie '{ILLUSTRATIES[sleutel]}' vervangen — geldt meteen "
+          "op alle kaartjes en fiches van dat type.", "ok")
+    return redirect(url_for("admin.illustraties"))

@@ -196,3 +196,38 @@ def test_illustratie_fallback_op_fiche(client, app):
     assert "cat-smullen.svg" in h and "fiche-beeld-illustratie" in h
     h = client.get("/e/zwk").get_data(as_text=True)
     assert "cat-zwem.svg" in h
+
+
+def test_eigen_type_illustratie(admin_client, app):
+    """Patch 167: beheerder vervangt een type-illustratie; die geldt meteen
+    in lijst en fiche, wordt genormaliseerd naar 800x400 en is terugzetbaar."""
+    import io as _io
+    import os
+    import shutil
+    from PIL import Image as _Im
+    shutil.rmtree("/data/uploads/typen", ignore_errors=True)
+    with app.app_context():
+        db.session.add(Event(title="Frituur", slug="il1", source="osm",
+                             ext_id="il1", is_permanent=True, pending=False,
+                             hidden=False, lat=50.95, lng=3.12,
+                             subtype="horeca", indoor=True))
+        db.session.commit()
+    groot = _io.BytesIO()
+    _Im.new("RGB", (1600, 1000), (240, 130, 50)).save(groot, "PNG")
+    groot.seek(0)
+    r = admin_client.post("/beheer/illustraties/smullen",
+                          data={"beeld": (groot, "eigen.png")},
+                          content_type="multipart/form-data",
+                          follow_redirects=True)
+    assert "vervangen" in r.get_data(as_text=True)
+    with _Im.open("/data/uploads/typen/smullen.jpg") as im:
+        assert im.size == (800, 400)
+    h = admin_client.get("/e/il1").get_data(as_text=True)
+    assert "/typebeeld/smullen" in h
+    assert admin_client.get("/typebeeld/smullen").status_code == 200
+    assert admin_client.get("/typebeeld/xx").status_code == 404
+    admin_client.post("/beheer/illustraties/smullen",
+                      data={"actie": "terugzetten"}, follow_redirects=True)
+    h = admin_client.get("/e/il1").get_data(as_text=True)
+    assert "cat-smullen.svg" in h
+    assert not os.path.exists("/data/uploads/typen/smullen.jpg")

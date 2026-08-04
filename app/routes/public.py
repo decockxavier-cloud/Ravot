@@ -1869,3 +1869,14 @@ def fietsroute_gpx(slug):
     return send_file(f"/data/uploads/gpx/{r.gpx_bestand}",
                      mimetype="application/gpx+xml", as_attachment=True,
                      download_name=f"ravot-{r.slug}.gpx", max_age=86400)
+
+
+@bp.route("/typebeeld/<sleutel>")
+def typebeeld(sleutel):
+    """Door de beheerder geüploade type-illustratie (patch 167)."""
+    from flask import send_file
+    from ..media import eigen_illustratie_pad
+    pad = eigen_illustratie_pad(sleutel)
+    if not pad:
+        abort(404)
+    return send_file(pad, mimetype="image/jpeg", max_age=86400)

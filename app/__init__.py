@@ -110,6 +110,10 @@ def create_app(config_object=Config):
     app.jinja_env.globals["partner_zichtbaar"] = is_zichtbaar_partner
     from .models import get_bool as _gb
     app.jinja_env.globals["setting_bool"] = _gb
+    from .models import get_setting as _gs
+    app.jinja_env.globals["setting"] = _gs
+    from .media import illustratie_url
+    app.jinja_env.globals["illustratie_url"] = illustratie_url
     app.jinja_env.globals["feestpartner"] = is_feestpartner
     from .services.openingsuren import (status_badge, uren_overzicht,
                                         heeft_uren, dag_blokken)
