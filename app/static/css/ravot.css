@@ -1150,12 +1150,17 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
   background: #FDF9F0; border-radius: 14px; }
 
 /* Volgknoppen sociale media (patch 168) */
-.sociaal-knoppen { display: inline-flex; gap: 6px; margin-left: 10px;
+.sociaal-knoppen { display: inline-flex; gap: 8px; margin-left: 12px;
   vertical-align: middle; }
 .sociaal-knop { display: inline-flex; align-items: center; justify-content: center;
-  width: 34px; height: 34px; border-radius: 50%; color: var(--inkt);
-  background: rgba(0, 0, 0, .05); transition: background .15s, color .15s; }
-.sociaal-knop:hover { background: var(--oranje); color: #fff; }
+  width: 42px; height: 42px; border-radius: 50%; color: #fff;
+  background: var(--groen); transition: transform .15s, background .15s; }
+.sociaal-knop:hover { background: var(--oranje); transform: translateY(-1px); }
+.sociaal-knop svg { width: 26px; height: 26px; }
+@media (max-width: 720px) {
+  .sociaal-knop { width: 46px; height: 46px; }
+  .sociaal-knop svg { width: 28px; height: 28px; }
+}
 .foot-sociaal { margin: 6px 0; font-size: .92rem; }
 .mobiel-sociaal { display: flex; align-items: center; gap: 4px; padding: 10px 14px;
   border-top: 1px solid var(--lijn); font-size: .92rem; color: var(--inkt); }
