@@ -198,14 +198,17 @@ def test_illustratie_fallback_op_fiche(client, app):
     assert "cat-zwem.svg" in h
 
 
-def test_eigen_type_illustratie(admin_client, app):
+def test_eigen_type_illustratie(admin_client, app, tmp_path, monkeypatch):
     """Patch 167: beheerder vervangt een type-illustratie; die geldt meteen
-    in lijst en fiche, wordt genormaliseerd naar 800x400 en is terugzetbaar."""
+    in lijst en fiche, wordt genormaliseerd naar 800x400 en is terugzetbaar.
+    De uploadmap wordt omgelegd naar tmp_path: de CI-runner mag niet in /data
+    schrijven (en een test hoort sowieso geen echte volumes te raken)."""
     import io as _io
     import os
-    import shutil
     from PIL import Image as _Im
-    shutil.rmtree("/data/uploads/typen", ignore_errors=True)
+    from app import media
+    map_pad = str(tmp_path / "typen")
+    monkeypatch.setattr(media, "EIGEN_ILLUSTRATIE_MAP", map_pad)
     with app.app_context():
         db.session.add(Event(title="Frituur", slug="il1", source="osm",
                              ext_id="il1", is_permanent=True, pending=False,
@@ -220,7 +223,7 @@ def test_eigen_type_illustratie(admin_client, app):
                           content_type="multipart/form-data",
                           follow_redirects=True)
     assert "vervangen" in r.get_data(as_text=True)
-    with _Im.open("/data/uploads/typen/smullen.jpg") as im:
+    with _Im.open(f"{map_pad}/smullen.jpg") as im:
         assert im.size == (800, 400)
     h = admin_client.get("/e/il1").get_data(as_text=True)
     assert "/typebeeld/smullen" in h
@@ -230,4 +233,4 @@ def test_eigen_type_illustratie(admin_client, app):
                       data={"actie": "terugzetten"}, follow_redirects=True)
     h = admin_client.get("/e/il1").get_data(as_text=True)
     assert "cat-smullen.svg" in h
-    assert not os.path.exists("/data/uploads/typen/smullen.jpg")
+    assert not os.path.exists(f"{map_pad}/smullen.jpg")
