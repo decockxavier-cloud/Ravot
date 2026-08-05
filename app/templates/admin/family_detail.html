@@ -43,21 +43,48 @@
 <h2>🦊 Ravotpas</h2>
 <div class="card">
   <p><strong>{{ pas_niveau.emoji }} {{ pas_niveau.naam }}</strong> ·
-  {{ pas_totaal }} punten verdiend · {{ pas_saldo }} te besteden</p>
+  {{ pas_totaal }} punten verdiend · {{ pas_saldo }} te besteden
+  <span class="hint">(niveau volgt het hoogste totaal ooit — zakt niet door
+  inwisselen)</span></p>
   <form method="post" class="acties" style="align-items:end">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="actie" value="punten">
     <label>Correctie (±)<input type="number" name="aantal" style="width:100px" required></label>
     <label style="flex:1;min-width:200px">Reden<input type="text" name="reden" maxlength="100" required
       placeholder="bv. wedstrijdbonus of rechtzetting misbruik"></label>
+    <label class="check" style="flex-basis:100%"><input type="checkbox" name="niveau_mee" value="1">
+      Ook het vosjes-niveau meeverlagen <span class="hint">(enkel bij misbruik —
+      normaal blijft een behaald niveau voor altijd staan)</span></label>
     <button class="btn btn-stil" type="submit">Ken toe</button>
   </form>
   {% if puntlog %}
+  {% set labels = {"review": "😄 Ravotscore gegeven",
+                   "eerste_score": "🥇 Allereerste score van die plek",
+                   "foto": "📷 Foto goedgekeurd",
+                   "eerste_foto": "🥇 Allereerste foto van die plek",
+                   "geweest": "✅ Bezoek bevestigd",
+                   "daguitstap": "🗺️ Daguitstap samengesteld",
+                   "feestje": "🎂 Feestje georganiseerd",
+                   "plek": "📍 Nieuwe plek toegevoegd",
+                   "veld_stem": "🔎 Voorziening bevestigd",
+                   "admin": "⚙️ Correctie door beheer"} %}
+  <p class="hint">Volledige opbouw van de punten van dit gezin — handig als er
+    ooit een vraag over komt. Nieuwste eerst, max. 200 regels.</p>
   <table class="tabel">
-    <tr><th>Datum</th><th>Reden</th><th>Punten</th></tr>
+    <tr><th>Datum</th><th>Waarvoor</th><th>Waar</th><th>Punten</th></tr>
     {% for p in puntlog %}
-    <tr><td>{{ p.created_at.strftime('%d/%m %H:%M') }}</td>
-        <td>{{ p.reden }}</td><td>{{ '%+d' | format(p.punten) }}</td></tr>
+    <tr>
+      <td>{{ p.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+      <td>{{ labels.get(p.reden, p.reden) }}</td>
+      <td class="hint">
+        {%- if p.reden == 'admin' and p.notitie -%}{{ p.notitie }}
+        {%- elif punt_bron.get(p.id) -%}
+          <a href="{{ url_for('public.event', slug=punt_bron[p.id][1]) }}"
+             target="_blank">{{ punt_bron[p.id][0] }}</a>
+        {%- else -%}—{%- endif -%}
+      </td>
+      <td><strong>{{ '%+d' | format(p.punten) }}</strong></td>
+    </tr>
     {% endfor %}
   </table>
   {% endif %}

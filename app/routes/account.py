@@ -153,7 +153,7 @@ def profiel():
     return render_template("account/mijn_ravot.html", family=fam,
                            weggeklikt=weggeklikt,
                            pas_totaal=pas_totaal,
-                           pas_niveau=pas.niveau(pas_totaal),
+                           pas_niveau=pas.niveau(pas.niveau_punten(fam.id)),
                            pas_saldo=pas.saldo(fam.id),
                            bewaard_komend=bewaard_komend, bewaard_voorbij=bewaard_voorbij,
                            te_reviewen=te_reviewen, mijn_reviews=mijn_reviews,
@@ -1092,7 +1092,7 @@ def ravotpas():
     return render_template("account/ravotpas.html", family=fam,
                            saldo=pas.saldo(fam.id),
                            vervalt=pas.vervalt_binnenkort(fam.id),
-                           niveau=pas.niveau(punten_totaal),
+                           niveau=pas.niveau(pas.niveau_punten(fam.id)),
                            stempels=pas.stempelkaart(fam.id),
                            badges=pas.badges(fam.id),
                            title="Onze Ravotpas", active=None)

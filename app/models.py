@@ -24,6 +24,9 @@ class Family(db.Model):
     postcode = db.Column(db.String(4), nullable=False)
     radius_km = db.Column(db.Integer, default=25, nullable=False)
     budget_pref = db.Column(db.String(10), default="all")  # all|free|low
+    # Hoogste punten-totaal ooit: bepaalt het vosjes-niveau, zodat dat nooit
+    # zakt door inwisselen of een correctie (patch 179).
+    niveau_hoogste = db.Column(db.Integer, default=0, nullable=False)
     newsletter_opt_in = db.Column(db.Boolean, default=False, nullable=False)
     monday_opt_in = db.Column(db.Boolean, default=True, nullable=False)
     active = db.Column(db.Boolean, default=True, nullable=False)  # admin kan deactiveren
@@ -1097,6 +1100,7 @@ class RavotPunt(db.Model):
     # Generieke referentie: event-id, daguitstap-id of feestje-id — bewust geen
     # FK, zodat de dedupe-sleutel voor alle soorten acties werkt.
     ref_id = db.Column(db.Integer, default=0, nullable=False)
+    notitie = db.Column(db.String(120))   # reden bij admincorrecties (patch 178)
     created_at = db.Column(db.DateTime, default=utcnow, index=True)
     __table_args__ = (db.UniqueConstraint("family_id", "reden", "ref_id",
                                           name="uq_punt_family_reden_ref"),)

@@ -76,9 +76,35 @@ def ken_toe(family_id, reden, ref_id=None):
 
 
 def totaal(family_id):
-    """Alles wat ooit verdiend werd — bepaalt het niveau (zakt nooit)."""
+    """Alles wat ooit verdiend werd (som van het grootboek)."""
     return int(db.session.query(db.func.coalesce(db.func.sum(RavotPunt.punten), 0))
                .filter(RavotPunt.family_id == family_id).scalar() or 0)
+
+
+def niveau_punten(family_id):
+    """Basis voor het vosjes-niveau: het hóógste totaal dat dit gezin ooit
+    bereikte. Zo houdt Ravot zijn belofte 'je niveau en badges blijven voor
+    altijd' — ook na inwisselen of na een correctie door het beheer. Enkel
+    een expliciete niveaucorrectie (bij misbruik) kan het verlagen."""
+    from .models import Family
+    fam = db.session.get(Family, family_id)
+    nu = totaal(family_id)
+    hoogste = getattr(fam, "niveau_hoogste", None) or 0
+    if nu > hoogste and fam is not None:
+        fam.niveau_hoogste = nu
+        db.session.commit()
+        return nu
+    return max(nu, hoogste)
+
+
+def zet_niveau_terug(family_id):
+    """Hoogwatermerk gelijkstellen aan het huidige totaal — enkel gebruiken
+    bij vastgesteld misbruik."""
+    from .models import Family
+    fam = db.session.get(Family, family_id)
+    if fam is not None:
+        fam.niveau_hoogste = max(0, totaal(family_id))
+        db.session.commit()
 
 
 def _uitgegeven(family_id):

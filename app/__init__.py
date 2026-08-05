@@ -684,6 +684,23 @@ def register_cli(app):
                 db.session.execute(text(
                     "ALTER TABLE inwisselingen ADD COLUMN IF NOT EXISTS geldig_tot TIMESTAMP"))
                 added.append("inwisselingen.geldigheid")
+        fam_cols = {c["name"] for c in insp.get_columns("families")}
+        if "niveau_hoogste" not in fam_cols:
+            db.session.execute(text(
+                "ALTER TABLE families ADD COLUMN IF NOT EXISTS niveau_hoogste "
+                "INTEGER DEFAULT 0 NOT NULL"))
+            # Backfill: bestaande gezinnen behouden hun huidige niveau.
+            db.session.execute(text(
+                "UPDATE families SET niveau_hoogste = COALESCE(("
+                "  SELECT SUM(p.punten) FROM ravot_punten p"
+                "  WHERE p.family_id = families.id), 0)"))
+            added.append("families.niveau_hoogste (+backfill)")
+        if "ravot_punten" in insp.get_table_names():
+            rp_cols = {c["name"] for c in insp.get_columns("ravot_punten")}
+            if "notitie" not in rp_cols:
+                db.session.execute(text(
+                    "ALTER TABLE ravot_punten ADD COLUMN IF NOT EXISTS notitie VARCHAR(120)"))
+                added.append("ravot_punten.notitie")
         ev_cols = {c["name"] for c in insp.get_columns("events")}
         if "commons_file" not in ev_cols:
             db.session.execute(text(

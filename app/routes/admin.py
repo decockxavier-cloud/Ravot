@@ -754,10 +754,21 @@ def family_detail(fid):
                 aantal = 0
             reden = (request.form.get("reden") or "").strip()[:100]
             if aantal and reden:
-                import time as _t
+                # ref_id moet uniek zijn per (gezin, reden): twee correcties
+                # binnen dezelfde seconde botsten vroeger op de unieke index,
+                # dus tellen we gewoon door vanaf de hoogste bestaande waarde.
+                vorige = (db.session.query(db.func.coalesce(
+                    db.func.max(RavotPunt.ref_id), 0))
+                    .filter(RavotPunt.family_id == fid,
+                            RavotPunt.reden == "admin").scalar() or 0)
                 db.session.add(RavotPunt(family_id=fid, reden="admin",
-                                         ref_id=int(_t.time()), punten=aantal))
+                                         ref_id=int(vorige) + 1, punten=aantal,
+                                         notitie=reden))
                 db.session.commit()
+                if request.form.get("niveau_mee") == "1" and aantal < 0:
+                    from .. import punten as _pas
+                    _pas.zet_niveau_terug(fid)
+                    audit(f"gezin {fid}: niveau meeverlaagd ({reden})")
                 audit(f"gezin {fid}: {aantal:+d} punten ({reden})")
                 flash(f"{aantal:+d} punten toegekend ({reden}).", "ok")
             else:
@@ -786,7 +797,8 @@ def family_detail(fid):
     aantal_bewaard = SavedEvent.query.filter_by(family_id=fid).count()
     # Detail: uitstappen, scores, Ravotpas en inwisselingen — het volledige
     # dossier op één scherm, zodat je vragen en misbruik zelf kan beoordelen.
-    from ..models import Event, Inwissel, INWISSEL_STATUSSEN, RavotPunt
+    from ..models import (Event, Inwissel, INWISSEL_STATUSSEN, PUNT_REDENEN,
+                          RavotPunt)
     from .. import punten as pas
     bewaard = db.session.query(SavedEvent, Event) \
         .join(Event, Event.id == SavedEvent.event_id) \
@@ -797,16 +809,29 @@ def family_detail(fid):
         .filter(Review.family_id == fid) \
         .order_by(Review.created_at.desc()).limit(20).all()
     puntlog = RavotPunt.query.filter_by(family_id=fid) \
-        .order_by(RavotPunt.created_at.desc()).limit(15).all()
+        .order_by(RavotPunt.created_at.desc()).limit(200).all()
+    # Waar kwam elk punt vandaan? De ref_id verwijst naar een fiche, daguitstap
+    # of feestje; voor fiches tonen we de naam zodat een vraag van een gezin
+    # meteen te beantwoorden is.
+    _fiche_redenen = ("review", "foto", "eerste_foto", "geweest", "plek",
+                      "veld_stem", "eerste_score")
+    _ids = {p.ref_id for p in puntlog if p.reden in _fiche_redenen and p.ref_id}
+    _namen = {e.id: (e.title, e.slug)
+              for e in Event.query.filter(Event.id.in_(_ids)).all()} if _ids else {}
+    punt_bron = {}
+    for p in puntlog:
+        if p.reden in _fiche_redenen and p.ref_id in _namen:
+            punt_bron[p.id] = _namen[p.ref_id]
     inwissels = Inwissel.query.filter_by(family_id=fid) \
         .order_by(Inwissel.created_at.desc()).all()
     pas_totaal = pas.totaal(fid)
     return render_template("admin/family_detail.html", fam=fam,
+                           punt_bron=punt_bron, PUNT_REDENEN=PUNT_REDENEN,
                            aantal_reviews=aantal_reviews, aantal_bewaard=aantal_bewaard,
                            bewaard=bewaard, scores=scores, puntlog=puntlog,
                            inwissels=inwissels, statussen=INWISSEL_STATUSSEN,
                            pas_totaal=pas_totaal, pas_saldo=pas.saldo(fid),
-                           pas_niveau=pas.niveau(pas_totaal),
+                           pas_niveau=pas.niveau(pas.niveau_punten(fid)),
                            title=f"Gezin {fam.email}", family=None, active="families")
 
 
