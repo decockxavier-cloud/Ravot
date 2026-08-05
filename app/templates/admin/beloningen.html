@@ -9,7 +9,7 @@ per uitstap, dus ± €{{ "%.2f"|format(30 * punt_eur) }} aan beloningswaarde.</
 {% set bw = catalogus | selectattr('id', 'equalto', request.args.get('bewerk') | int(-1)) | first %}
 <div class="card">
   <h2>{{ 'Beloning bewerken' if bw else 'Nieuwe beloning' }}</h2>
-  <form method="post" class="acties" style="align-items:end;flex-wrap:wrap">
+  <form method="post" class="acties" style="align-items:end;flex-wrap:wrap" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="actie" value="{{ 'bewerk' if bw else 'nieuw' }}">
     {% if bw %}<input type="hidden" name="bid" value="{{ bw.id }}">{% endif %}
@@ -33,9 +33,12 @@ per uitstap, dus ± €{{ "%.2f"|format(30 * punt_eur) }} aan beloningswaarde.</
           value="{{ bw.bon_winkel or '' if bw else '' }}"></label>
         <label>Webshop-URL<input type="text" name="bon_url" placeholder="www.k-bouter.be"
           value="{{ bw.bon_url or '' if bw else '' }}"></label>
-        <label>Logo <small class="hint">(bestand in static/img/)</small>
-          <input type="text" name="bon_logo" placeholder="kbouter.png"
-          value="{{ bw.bon_logo or '' if bw else '' }}"></label>
+        <label>Logo webshop <small class="hint">(png/jpg — komt in de bonmail)</small>
+          <input type="file" name="bon_logo_bestand" accept="image/*">
+          {% if bw and bw.bon_logo %}
+          <img src="{{ url_for('public.bonlogo', bid=bw.id) }}" alt="" height="34"
+               style="height:34px;vertical-align:middle;margin-top:4px">
+          {% endif %}</label>
         <label>Meldadres webshop <small class="hint">(krijgt de code)</small>
           <input type="email" name="bon_mail" placeholder="info@k-bouter.be"
           value="{{ bw.bon_mail or '' if bw else '' }}"></label>
@@ -48,7 +51,7 @@ per uitstap, dus ± €{{ "%.2f"|format(30 * punt_eur) }} aan beloningswaarde.</
 
 <h2>Catalogus</h2>
 <table class="tabel">
-  <tr><th></th><th>Beloning</th><th>Waarde</th><th>Punten</th><th>Voorraad</th><th>Soort</th><th>Status</th><th></th></tr>
+  <tr><th></th><th>Beloning</th><th>Waarde</th><th>Punten</th><th>Voorraad</th><th>Bon</th><th>Soort</th><th>Status</th><th></th></tr>
   {% for b in catalogus %}
   <tr>
     <td>{{ b.emoji }}</td>
@@ -56,6 +59,9 @@ per uitstap, dus ± €{{ "%.2f"|format(30 * punt_eur) }} aan beloningswaarde.</
     <td>€{{ "%.2f"|format(b.waarde_eur) }}</td>
     <td>{{ b.punten }}</td>
     <td>{{ b.voorraad if b.voorraad is not none else '∞' }}</td>
+    <td>{% if b.is_bon %}🎟️ bon{% if b.bon_logo %}
+      <img src="{{ url_for('public.bonlogo', bid=b.id) }}" alt="" height="22"
+           style="height:22px;vertical-align:middle">{% endif %}{% endif %}</td>
     <td>{{ 'partner' if b.soort == 'partner' else 'Ravot' }}{% if b.partner %} — {{ b.partner.title }}{% endif %}</td>
     <td><span class="badge {{ 'pil-ok' if b.actief else 'pil-uit' }}">{{ 'actief' if b.actief else 'uit' }}</span></td>
     <td>

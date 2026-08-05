@@ -1880,3 +1880,15 @@ def typebeeld(sleutel):
     if not pad:
         abort(404)
     return send_file(pad, mimetype="image/jpeg", max_age=86400)
+
+
+@bp.route("/bonlogo/<int:bid>.png")
+def bonlogo(bid):
+    """Webshoplogo van een cadeaubon (patch 175) — publiek, want het staat
+    ook in de bonmail die bij het gezin toekomt."""
+    from flask import send_file
+    from ..media import bon_logo_pad
+    pad = bon_logo_pad(bid)
+    if not pad:
+        abort(404)
+    return send_file(pad, mimetype="image/png", max_age=86400)

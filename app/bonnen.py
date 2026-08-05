@@ -43,9 +43,15 @@ def _bon_html(fam, beloning, inwissel):
     winkel_url = beloning.bon_url or site
     vanaf = inwissel.geldig_vanaf.strftime("%d/%m/%Y om %H:%M")
     tot = inwissel.geldig_tot.strftime("%d/%m/%Y")
-    logo_winkel = (f'<img src="{_logo_url(beloning.bon_logo)}" alt="{winkel}" '
-                   f'height="46" style="height:46px">'
-                   if beloning.bon_logo else f"<strong>{winkel}</strong>")
+    if beloning.bon_logo == "upload":
+        logo_src = f"{site}/bonlogo/{beloning.id}.png"
+    elif beloning.bon_logo:
+        logo_src = _logo_url(beloning.bon_logo)       # legacy: bestand in static
+    else:
+        logo_src = None
+    logo_winkel = (f'<img src="{logo_src}" alt="{winkel}" height="46" '
+                   f'style="height:46px">' if logo_src
+                   else f"<strong>{winkel}</strong>")
     return f"""\
 <div style="font-family:ui-rounded,'Nunito',Arial,sans-serif;background:#FAF7F0;
      padding:22px;color:#1F3A2A">

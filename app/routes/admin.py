@@ -1851,6 +1851,28 @@ def horeca_import():
                            active="horeca-import")
 
 
+def _bon_logo_opslaan(beloning):
+    """Geüpload webshoplogo bewaren (patch 175): PNG met transparantie,
+    geschaald naar max 240x120 zodat het netjes in de mail past."""
+    bestand = request.files.get("bon_logo_bestand")
+    if not bestand or not bestand.filename:
+        return
+    from ..media import BON_LOGO_MAP
+    import io
+    import os
+    try:
+        from PIL import Image
+        beeld = Image.open(io.BytesIO(bestand.read()))
+        beeld = beeld.convert("RGBA")
+        beeld.thumbnail((240, 120), Image.LANCZOS)
+    except Exception:
+        flash("Dat lijkt geen geldig logo (png/jpg/webp).", "error")
+        return
+    os.makedirs(BON_LOGO_MAP, exist_ok=True)
+    beeld.save(f"{BON_LOGO_MAP}/{beloning.id}.png", optimize=True)
+    beloning.bon_logo = "upload"     # markeert: gebruik het geüploade bestand
+
+
 @bp.route("/beloningen", methods=["GET", "POST"])
 @medewerker_required
 def beloningen():
@@ -1884,6 +1906,8 @@ def beloningen():
             b.bon_url = bu or None
             b.bon_logo = (request.form.get("bon_logo") or "").strip()[:120] or None
             b.bon_mail = (request.form.get("bon_mail") or "").strip()[:255] or None
+            db.session.commit()
+            _bon_logo_opslaan(b)
             db.session.commit()
             audit(f"beloning toegevoegd: {naam} ({pt} pt / €{eur})")
             flash("Beloning toegevoegd.", "ok")
@@ -1919,6 +1943,7 @@ def beloningen():
         b.bon_url = bu or None
         b.bon_logo = (request.form.get("bon_logo") or "").strip()[:120] or None
         b.bon_mail = (request.form.get("bon_mail") or "").strip()[:255] or None
+        _bon_logo_opslaan(b)
         db.session.commit()
         audit(f"beloning #{b.id} bewerkt: {b.naam}")
         flash("Beloning bijgewerkt.", "ok")

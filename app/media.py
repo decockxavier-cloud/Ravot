@@ -13,6 +13,14 @@ ILLUSTRATIES = {
     "zwem": "Zwemmen", "boerderij": "Kinderboerderij",
 }
 EIGEN_ILLUSTRATIE_MAP = "/data/uploads/typen"
+BON_LOGO_MAP = "/data/uploads/bonlogos"     # webshoplogo's (patch 175)
+
+
+def bon_logo_pad(beloning_id):
+    """Pad van het geüploade webshoplogo, of None."""
+    import os
+    pad = f"{BON_LOGO_MAP}/{int(beloning_id)}.png"
+    return pad if os.path.exists(pad) else None
 
 _SUBTYPE_KEY = {
     "horeca": "smullen", "zomerbar": "smullen", "winterbar": "smullen",
