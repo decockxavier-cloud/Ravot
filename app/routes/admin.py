@@ -359,6 +359,7 @@ INSTELLING_PAGINAS = {
         ("Beloningen & punten", ["beloningen_aan", "punt_waarde_eur",
                                  "punten_geldig_maanden"]),
         ("Niveaus", ["niveau_drempels"]),
+        ("Bijdragen zonder account", ["anoniem_stemmen_aan"]),
         ("Puntwaarden per bijdrage", [
             "punt_review", "punt_eerste_score", "punt_foto", "punt_eerste_foto",
             "punt_geweest", "punt_daguitstap", "punt_feestje", "punt_plek",

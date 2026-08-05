@@ -215,8 +215,16 @@
     <span class="help-titel">🧩 Weet jij het? Help deze fiche completer maken</span>
     <span class="help-aantal">{{ (ontbrekende_velden|length) + (voorlopige_velden|length) }} open</span>
   </summary>
+  {% set stem_mag = family or setting_bool('anoniem_stemmen_aan') %}
+  {% if stem_mag %}
   {% if family %}
   <p class="hint">Eén tik per vraag — je maakt de fiche completer en juister voor elk gezin na jou.</p>
+  {% else %}
+  <p class="hint">Eén tik per vraag — <strong>geen account nodig</strong>.
+    Je helpt er elk gezin na jou mee.
+    <a href="{{ url_for('auth.login') }}">Met een gratis profiel</a> spaar je
+    er bovendien ravotpunten mee.</p>
+  {% endif %}
 
   {% if voorlopige_velden %}
   <p class="help-subkop">Al ingevuld — klopt het?</p>
@@ -230,9 +238,9 @@
         </span>
       </span>
       <span class="help-knoppen">
-        <button type="button" class="help-knop" data-stem-url="{{ url_for('account.veld_stem', event_id=ev.id, veld=veld, waarde='ja') }}"
+        <button type="button" class="help-knop" data-stem-url="{{ url_for('account.veld_stem', event_id=ev.id, veld=veld, waarde='ja') if family else url_for('public.anon_veld_stem', event_id=ev.id, veld=veld, waarde='ja') }}"
           {% if mijn_stemmen.get(veld) == true %}aria-pressed="true"{% endif %}>✓ ja, wel</button>
-        <button type="button" class="help-knop help-nee" data-stem-url="{{ url_for('account.veld_stem', event_id=ev.id, veld=veld, waarde='nee') }}"
+        <button type="button" class="help-knop help-nee" data-stem-url="{{ url_for('account.veld_stem', event_id=ev.id, veld=veld, waarde='nee') if family else url_for('public.anon_veld_stem', event_id=ev.id, veld=veld, waarde='nee') }}"
           {% if mijn_stemmen.get(veld) == false %}aria-pressed="true"{% endif %}>✗ nee, niet</button>
       </span>
     </div>
@@ -247,8 +255,8 @@
     <div class="help-vraag" data-veld="{{ veld }}">
       <span class="help-label">{{ vraag }}</span>
       <span class="help-knoppen">
-        <button type="button" class="help-knop" data-stem-url="{{ url_for('account.veld_stem', event_id=ev.id, veld=veld, waarde='ja') }}">✓ ja</button>
-        <button type="button" class="help-knop help-nee" data-stem-url="{{ url_for('account.veld_stem', event_id=ev.id, veld=veld, waarde='nee') }}">✗ nee</button>
+        <button type="button" class="help-knop" data-stem-url="{{ url_for('account.veld_stem', event_id=ev.id, veld=veld, waarde='ja') if family else url_for('public.anon_veld_stem', event_id=ev.id, veld=veld, waarde='ja') }}">✓ ja</button>
+        <button type="button" class="help-knop help-nee" data-stem-url="{{ url_for('account.veld_stem', event_id=ev.id, veld=veld, waarde='nee') if family else url_for('public.anon_veld_stem', event_id=ev.id, veld=veld, waarde='nee') }}">✗ nee</button>
       </span>
     </div>
     {% endfor %}

@@ -14,7 +14,7 @@ import re
 import json
 from datetime import datetime, timedelta
 
-from flask import (Blueprint, abort, current_app, g, jsonify, redirect,
+from flask import (Blueprint, abort, current_app, flash, g, jsonify, redirect,
                    render_template, request, session, url_for, Response)
 
 from ..extensions import db, limiter
@@ -1901,3 +1901,54 @@ def bonlogo(bid):
     if not pad:
         abort(404)
     return send_file(pad, mimetype="image/png", max_age=86400)
+
+
+@bp.route("/bevestig/<int:event_id>/<veld>/<waarde>", methods=["POST"])
+@limiter.limit("40/hour")
+def anon_veld_stem(event_id, veld, waarde):
+    """Voorziening bevestigen zónder account (patch 182).
+
+    De drempel van een account is voor veel bezoekers te hoog terwijl ze wél
+    willen bijdragen — melden kan vandaag ook al anoniem. Zo'n stem weegt half
+    zo zwaar als die van een gezin: er is geen geschiedenis om vertrouwen op te
+    bouwen. Er worden uiteraard geen ravotpunten toegekend.
+    """
+    from ..models import (Event, VeldStem, VOORZIENING_LABELS, ZACHTE_VELDEN,
+                          get_bool)
+    from .. import stemmen
+    from .account import _herbereken_boolean
+    import hashlib
+    import secrets as _sec
+    if not get_bool("anoniem_stemmen_aan"):
+        abort(404)
+    if session.get("family_id"):
+        # Ingelogd? Dan via de gewone route, mét punten.
+        return redirect(url_for("account.veld_stem", event_id=event_id,
+                                veld=veld, waarde=waarde), code=307)
+    if veld not in ZACHTE_VELDEN or waarde not in ("ja", "nee"):
+        abort(400)
+    ev = db.session.get(Event, event_id) or abort(404)
+    if veld not in stemmen.relevante_velden(ev):
+        abort(400)
+    # Stabiele, niet-herleidbare bezoeker-id in de sessie (geen IP-opslag).
+    anon = session.get("anon_stem_id")
+    if not anon:
+        anon = hashlib.sha256(_sec.token_bytes(16)).hexdigest()[:24]
+        session["anon_stem_id"] = anon
+        session.permanent = True
+    ja = (waarde == "ja")
+    bestaand = VeldStem.query.filter_by(event_id=ev.id, veld=veld,
+                                        stemmer=f"anon:{anon}").first()
+    if bestaand is not None and bestaand.waarde == ja:
+        db.session.delete(bestaand)
+        _herbereken_boolean(ev, veld)
+        db.session.commit()
+        flash("Je antwoord is ingetrokken.", "ok")
+        return redirect(request.referrer or url_for("public.event", slug=ev.slug))
+    stemmen.leg_stem_vast(ev.id, veld, ja, anon_id=anon)
+    _herbereken_boolean(ev, veld)
+    db.session.commit()
+    lbl = VOORZIENING_LABELS.get(veld, veld)
+    flash(f"Bedankt! Je antwoord over {lbl} is genoteerd. "
+          "Met een gratis gezinsprofiel spaar je er ook ravotpunten mee. 🦊", "ok")
+    return redirect(request.referrer or url_for("public.event", slug=ev.slug))

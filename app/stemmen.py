@@ -19,8 +19,8 @@ import math
 from datetime import datetime
 
 from .extensions import db
-from .models import (VeldStem, ZACHTE_VELDEN, BRON_GEWICHT,
-                     GEBRUIKER_BASIS_GEWICHT)
+from .models import (VeldStem, ZACHTE_VELDEN, ANONIEM_GEWICHT,
+                     BRON_GEWICHT, GEBRUIKER_BASIS_GEWICHT)
 
 
 # Halfwaardetijd per soort veld, in dagen: na deze periode weegt een stem nog
@@ -119,6 +119,9 @@ def stemmer_vertrouwen(stemmer, nu=None):
     """
     if stemmer == "bron":
         return BRON_GEWICHT
+    if stemmer.startswith("anon:"):
+        # Geen account = geen betrouwbare geschiedenis; vast, lager gewicht.
+        return ANONIEM_GEWICHT
     nu = nu or datetime.utcnow()
     from datetime import timedelta
     eigen = VeldStem.query.filter_by(stemmer=stemmer).all()
@@ -157,19 +160,29 @@ def stemmer_vertrouwen(stemmer, nu=None):
     return max(VERTROUWEN_MIN, min(VERTROUWEN_MAX, gewicht))
 
 
-def _stemmer_id(family):
-    return "bron" if family is None else str(family.id)
+def _stemmer_id(family, anon_id=None):
+    if family is not None:
+        return str(family.id)
+    if anon_id:
+        return f"anon:{anon_id}"[:60]
+    return "bron"
 
 
-def leg_stem_vast(event_id, veld, waarde, family=None, gewicht=None):
+def leg_stem_vast(event_id, veld, waarde, family=None, gewicht=None,
+                  anon_id=None):
     """Registreer of wijzig één stem. Eén stem per (plek, veld, stemmer): wie
     van gedacht verandert, past zijn stem aan i.p.v. te stapelen.
 
     Retourneert de VeldStem-rij. Commit gebeurt door de aanroeper.
     """
-    stemmer = _stemmer_id(family)
+    stemmer = _stemmer_id(family, anon_id)
     if gewicht is None:
-        gewicht = BRON_GEWICHT if family is None else GEBRUIKER_BASIS_GEWICHT
+        if family is not None:
+            gewicht = GEBRUIKER_BASIS_GEWICHT
+        elif anon_id:
+            gewicht = ANONIEM_GEWICHT
+        else:
+            gewicht = BRON_GEWICHT
     rij = VeldStem.query.filter_by(event_id=event_id, veld=veld,
                                    stemmer=stemmer).first()
     if rij is None:

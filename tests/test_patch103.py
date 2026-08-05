@@ -671,17 +671,24 @@ def _fiche_met_gezin(app, **velden):
         return e.id, fam.id
 
 
-def test_fiche_toont_microvragen_enkel_ingelogd(client, app):
+def test_fiche_microvragen_zonder_account_uit(client, app):
+    """Met anoniem stemmen UIT: uitnodiging om aan te melden, geen knoppen."""
+    from app.models import Setting
     eid, fid = _fiche_met_gezin(app, toilet=None, picknick=None)
-    # uitgelogd: uitnodiging, geen knoppen
+    with app.app_context():
+        db.session.add(Setting(key="anoniem_stemmen_aan", value="0"))
+        db.session.commit()
     html = client.get("/e/fa1").data.decode()
     assert "Meld je aan" in html and "data-stem-url" not in html
-    # ingelogd: knoppen
-    with client.session_transaction() as s:
-        s["family_id"] = fid
-    html = client.get("/e/fa1").data.decode()
-    assert "data-stem-url" in html
 
+
+def test_fiche_toont_microvragen_enkel_ingelogd(client, app):
+    eid, fid = _fiche_met_gezin(app, toilet=None, picknick=None)
+    # Sinds patch 182 mag ook zónder account bevestigd worden (half gewicht,
+    # geen punten): de knoppen wijzen dan naar de anonieme route.
+    html = client.get("/e/fa1").data.decode()
+    assert "/bevestig/" in html
+    assert "geen account nodig" in html
 
 def test_een_stem_vult_veld_en_boolean_loopt_mee(client, app):
     from app.models import Event
