@@ -22,6 +22,18 @@
       <a class="btn btn-stil btn-klein" href="{{ url_for('public.opnieuw') }}">Wissen</a>
     </span>
   </div>
+  {# Deze bezoeker vulde net postcode én leeftijden in: dat is een gezinsprofiel
+     op het e-mailadres na. Niet blokkeren (dat jaagt weg en Google straft
+     tussenschermen af), wel meteen erna het aanbod. #}
+  <div class="bewaar-cta">
+    <div>
+      <strong>Bewaar deze instellingen 🦊</strong>
+      <p>Je hebt alles al ingevuld — enkel je e-mailadres nog. Dan onthoudt Ravot
+        jullie gezin, kun je favorieten bewaren, scores geven en punten sparen.
+        Gratis, en zonder wachtwoord.</p>
+    </div>
+    <a class="btn btn-zon" href="{{ url_for('auth.login') }}">Maak mijn gezinsprofiel →</a>
+  </div>
   {% endif %}
 
   {% include "account/_nakijk.html" ignore missing %}
@@ -138,4 +150,13 @@
       of op de <a href="{{ url_for('public.verkennen') }}">kaart</a>.</p>
     </div>
   {% endif %}
+{% if not family %}
+<section class="lijst-slot-cta">
+  <h2>Mis niks meer 🎈</h2>
+  <p>Met een gratis gezinsprofiel bewaar je favorieten, geef je Ravotscores
+    en krijg je elke week de leukste uitstappen in jouw buurt.
+    Geen wachtwoord, geen pop-ups, altijd gratis.</p>
+  <a class="btn btn-groot btn-zon" href="{{ url_for('auth.login') }}">Gratis profiel maken — 20 seconden</a>
+</section>
+{% endif %}
 {% endblock %}

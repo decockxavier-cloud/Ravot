@@ -1164,3 +1164,15 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 .foot-sociaal { margin: 6px 0; font-size: .92rem; }
 .mobiel-sociaal { display: flex; align-items: center; gap: 4px; padding: 10px 14px;
   border-top: 1px solid var(--lijn); font-size: .92rem; color: var(--inkt); }
+
+/* Uitnodigingen voor uitgelogde bezoekers (patch 172) */
+.bewaar-cta { display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+  justify-content: space-between; background: #FFF7EC; border: 2px solid var(--zon);
+  border-radius: 16px; padding: 14px 16px; margin: 12px 0 18px; }
+.bewaar-cta p { margin: 4px 0 0; font-size: .92rem; color: #5d6b57; max-width: 46ch; }
+.lijst-slot-cta, .fiche-cta { background: #F3F8EF; border: 1px solid var(--lijn);
+  border-radius: 18px; padding: 20px 18px; margin: 26px 0 10px; text-align: center; }
+.lijst-slot-cta h2 { margin: 0 0 6px; }
+.lijst-slot-cta p, .fiche-cta p { margin: 0 auto 12px; max-width: 52ch;
+  color: #5d6b57; font-size: .95rem; }
+.fiche-cta { text-align: left; }

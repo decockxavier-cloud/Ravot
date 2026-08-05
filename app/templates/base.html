@@ -46,7 +46,7 @@
       {% elif is_admin %}
         <a href="{{ url_for('admin.dashboard') }}" class="nav-cta {{ 'on' if active=='admin' }}">⚙️ Beheer</a>
       {% else %}
-        <a href="{{ url_for('auth.login') }}" class="nav-cta">Aanmelden</a>
+        <a href="{{ url_for('auth.login') }}" class="nav-cta">Gratis profiel</a>
       {% endif %}
     </nav>
 
@@ -68,7 +68,7 @@
     {% elif is_admin %}
       <a href="{{ url_for('admin.dashboard') }}" class="{{ 'on' if active=='admin' }}">⚙️ Beheer</a>
     {% else %}
-      <a href="{{ url_for('auth.login') }}">👋 Aanmelden</a>
+      <a href="{{ url_for('auth.login') }}">👋 Gratis profiel maken</a>
     {% endif %}
     {% if setting('social_facebook') or setting('social_instagram') %}
     <div class="mobiel-sociaal">Volg Ravot {% include "public/_sociaal.html" %}</div>

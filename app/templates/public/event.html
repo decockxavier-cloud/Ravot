@@ -322,7 +322,14 @@
 </details>
 {% endif %}
 
-{% if not family %}{% endif %}
+{% if not family %}
+<section class="fiche-cta">
+  <strong>Ga je hierheen? 🦊</strong>
+  <p>Bewaar deze plek in je eigen lijstje, geef achteraf een Ravotscore en help
+    andere gezinnen kiezen. Een gezinsprofiel is gratis en klaar in 20 seconden.</p>
+  <a class="btn btn-zon" href="{{ url_for('auth.login') }}">Bewaar deze plek →</a>
+</section>
+{% endif %}
 <details class="melden">
   <summary>Klopt er iets niet? Meld deze plek</summary>
   <form method="post" action="{{ url_for('account.melden', event_id=ev.id) }}" class="meld-form">
