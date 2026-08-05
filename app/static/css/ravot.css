@@ -1203,3 +1203,7 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
   .pas-punten .punt-kaart { min-width: 44%; }
   .pas-niveaus .pijl { display: none; }
 }
+
+/* Webshoplogo op een cadeaubon-beloning (patch 177) */
+.beloning-logo { max-height: 56px; max-width: 150px; object-fit: contain;
+  display: block; margin: 0 auto 4px; }

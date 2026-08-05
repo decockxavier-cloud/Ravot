@@ -1978,6 +1978,10 @@ def beloningen():
         punt_eur = 0.05
     catalogus = Beloning.query.order_by(Beloning.actief.desc(), Beloning.punten).all()
     inwissels = Inwissel.query.order_by(Inwissel.created_at.desc()).limit(100).all()
+    # Bonnencodes zijn gevoelige waarde-informatie: elke inzage komt in het
+    # logboek, zodat achteraf te zien is wie ze bekeken heeft.
+    if any(i.beloning and i.beloning.is_bon for i in inwissels):
+        audit("bonnencodes ingezien op /beheer/beloningen")
     # Controle: opvallende puntenverdieners van de laatste 7 dagen. Farming
     # valt hier meteen op (veel punten, veel 'geweest' op korte tijd).
     from datetime import datetime, timedelta
@@ -1995,6 +1999,7 @@ def beloningen():
     return render_template("admin/beloningen.html", catalogus=catalogus,
                            groepen=inst_groepen, waarden=inst_waarden, defs=inst_defs,
                            inwissels=inwissels, controle=controle,
+                           nu=datetime.utcnow(),
                            statussen=INWISSEL_STATUSSEN,
                            partners=partners, punt_eur=punt_eur,
                            title="Beloningen", family=None, active="beloningen")

@@ -17,7 +17,12 @@
 <div class="beloning-raster">
   {% for b in catalogus %}
   <div class="card beloning-kaart {{ 'kan-niet' if saldo < b.punten or (b.voorraad is not none and b.voorraad <= 0) }}">
+    {% if b.is_bon and b.bon_logo %}
+    <img class="beloning-logo" src="{{ url_for('public.bonlogo', bid=b.id) }}"
+         alt="{{ b.bon_winkel or 'webshop' }}" loading="lazy">
+    {% else %}
     <span class="beloning-emoji">{{ b.emoji }}</span>
+    {% endif %}
     <strong>{{ b.naam }}</strong>
     {% if b.beschrijving %}<span class="hint">{{ b.beschrijving }}</span>{% endif %}
     {% if b.soort == 'partner' and b.partner %}
@@ -69,7 +74,11 @@
 {% for i in mijn %}
 <div class="card mini-card">
   <div>
-    <strong>{{ i.beloning.emoji }} {{ i.beloning.naam }}</strong><br>
+    <strong>{% if i.beloning.is_bon and i.beloning.bon_logo %}
+      <img src="{{ url_for('public.bonlogo', bid=i.beloning.id) }}" alt=""
+           style="height:22px;vertical-align:middle">
+      {% else %}{{ i.beloning.emoji }}{% endif %}
+      {{ i.beloning.naam }}</strong><br>
     <span class="meta">code <strong>{{ i.code }}</strong> ·
       {{ i.created_at.strftime('%d/%m/%Y') }} · {{ statussen.get(i.status, i.status) }}</span>
   </div>

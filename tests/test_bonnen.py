@@ -116,3 +116,87 @@ def test_webshoplogo_uploaden_via_beheer(app, client, tmp_path, monkeypatch):
         b = db.session.get(Beloning, bid)
         assert b.bon_url == "https://www.k-bouter.be"
         assert b.bon_logo == "upload"
+
+
+def test_bonnenlog_is_admin_only_en_geaudit(client, app, bon_opzet):
+    """Patch 176: het log toont codes en geldigheid, maar alleen aan admins;
+    medewerkers zien een maskering en elke inzage komt in het auditlogboek."""
+    from app.models import Admin, AuditLog
+    from argon2 import PasswordHasher
+    fid, bid = bon_opzet
+    with client.session_transaction() as s:
+        s["family_id"] = fid
+    with patch("app.bonnen.send_mail"):
+        client.post(f"/mijn/beloningen/{bid}/wissel", data={},
+                    follow_redirects=True)
+    with app.app_context():
+        ph = PasswordHasher()
+        db.session.add(Admin(email="adm@r.be", pw_hash=ph.hash("x"), role="admin",
+                             totp_secret="JBSWY3DPEHPK3PXP", totp_confirmed=True))
+        db.session.add(Admin(email="med@r.be", pw_hash=ph.hash("x"),
+                             role="medewerker", totp_secret="JBSWY3DPEHPK3PXP",
+                             totp_confirmed=True))
+        db.session.commit()
+        code = Inwissel.query.first().code
+        ids = {a.role: a.id for a in Admin.query.all()}
+
+    for rol, aid in ids.items():
+        c = client
+        with c.session_transaction() as s:
+            s["admin_id"] = aid
+            s["admin_2fa_ok"] = True
+            s["admin_rol"] = rol
+        h = c.get("/beheer/beloningen").get_data(as_text=True)
+        if rol == "admin":
+            assert code in h
+            assert "K'Bouter" in h and "nog niet actief" in h
+        else:
+            assert code not in h and "••••••••" in h
+
+    with app.app_context():
+        assert any("bonnencodes ingezien" in (a.action or "")
+                   for a in AuditLog.query.all())
+
+
+def test_webshoplogo_op_beloningskaart(client, app, tmp_path, monkeypatch):
+    """Patch 177: bij een cadeaubon toont de gezinspagina het webshoplogo,
+    niet de generieke Ravot-emoji. Gewone beloningen houden hun emoji."""
+    import io
+    from PIL import Image as _Im
+    from app import media
+    from app.models import Admin, Family
+    from argon2 import PasswordHasher
+    monkeypatch.setattr(media, "BON_LOGO_MAP", str(tmp_path / "logos"))
+    with app.app_context():
+        db.session.add(Setting(key="beloningen_aan", value="1"))
+        db.session.add(Admin(email="a@r.be", pw_hash=PasswordHasher().hash("x"),
+                             role="admin", totp_secret="JBSWY3DPEHPK3PXP",
+                             totp_confirmed=True))
+        fam = Family(email="logo@t.be", postcode="8800")
+        bon = Beloning(naam="Cadeaubon", punten=300, waarde_eur=15.0, actief=True,
+                       is_bon=True, bon_winkel="K'Bouter", emoji="🦊")
+        ballon = Beloning(naam="Ballonnen", punten=40, waarde_eur=2.0,
+                          actief=True, emoji="🎈")
+        db.session.add_all([fam, bon, ballon])
+        db.session.commit()
+        fid, bid = fam.id, bon.id
+        aid = Admin.query.first().id
+    logo = io.BytesIO()
+    _Im.new("RGBA", (600, 200), (30, 90, 160, 255)).save(logo, "PNG")
+    logo.seek(0)
+    with client.session_transaction() as s:
+        s["admin_id"] = aid
+        s["admin_2fa_ok"] = True
+        s["admin_rol"] = "admin"
+    client.post("/beheer/beloningen", data={
+        "actie": "bewerk", "bid": str(bid), "naam": "Cadeaubon",
+        "punten": "300", "waarde": "15", "is_bon": "1",
+        "bon_winkel": "K'Bouter", "bon_logo_bestand": (logo, "kb.png")},
+        content_type="multipart/form-data", follow_redirects=True)
+    with client.session_transaction() as s:
+        s.pop("admin_id", None)
+        s["family_id"] = fid
+    h = client.get("/mijn/beloningen").get_data(as_text=True)
+    assert f"/bonlogo/{bid}.png" in h
+    assert 'beloning-emoji">🦊' not in h      # vos vervangen door logo
+    assert "🎈" in h                           # gewone beloning ongemoeid

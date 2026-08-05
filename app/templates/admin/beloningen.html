@@ -108,13 +108,27 @@ maar zonder punten — een klikker merkt dus niets en bereikt niets.</p>
 <h2>Inwisselingen</h2>
 {% if inwissels %}
 <table class="tabel">
-  <tr><th>Code</th><th>Beloning</th><th>Gezin</th><th>Bezorgadres</th><th>Punten</th><th>Datum</th><th>Status</th></tr>
+  <tr><th>Code</th><th>Beloning</th><th>Gezin</th><th>Bezorgadres / geldigheid</th><th>Punten</th><th>Datum</th><th>Status</th></tr>
   {% for i in inwissels %}
   <tr>
-    <td><strong>{{ i.code }}</strong></td>
+    <td>{% if admin_rol == 'admin' or not i.beloning.is_bon %}
+      <strong>{{ i.code }}</strong>
+      {% else %}<span class="hint" title="Enkel zichtbaar voor beheerders">•••••••• 🔒</span>{% endif %}</td>
     <td>{{ i.beloning.emoji }} {{ i.beloning.naam }}</td>
     <td><a href="{{ url_for('admin.family_detail', fid=i.family_id) }}">#{{ i.family_id }}</a></td>
-    <td class="hint" style="white-space:pre-line;max-width:220px">{{ i.bezorg_adres or ('bij partner met code' if i.beloning.soort == 'partner' else '—') }}</td>
+    <td class="hint" style="white-space:pre-line;max-width:240px">
+      {%- if i.beloning.is_bon -%}
+      🎟️ {{ i.beloning.bon_winkel or 'webshop' }}<br>
+      {% if i.geldig_vanaf %}geldig {{ i.geldig_vanaf.strftime('%d/%m/%Y %H:%M') }}
+        → {{ i.geldig_tot.strftime('%d/%m/%Y') }}
+        {% if i.geldig_vanaf > nu %}<br><span class="badge">⏳ nog niet actief</span>
+        {% elif i.geldig_tot < nu %}<br><span class="badge">verlopen</span>
+        {% else %}<br><span class="badge open">✅ bruikbaar</span>{% endif %}
+      {% endif %}
+      {%- else -%}
+      {{ i.bezorg_adres or ('bij partner met code' if i.beloning.soort == 'partner' else '—') }}
+      {%- endif -%}
+    </td>
     <td>{{ i.punten }}</td>
     <td>{{ i.created_at.strftime('%d/%m %H:%M') }}</td>
     <td>
