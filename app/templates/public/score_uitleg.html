@@ -25,22 +25,39 @@
   Elke actie telt één keer per plek, dus gewoon veel ravotten is de enige weg
   omhoog:</p>
   <table class="punten-tabel">
-    <tr><td>🐾 Bezoek bevestigen ("wij waren hier!")</td><td>+5</td></tr>
-    <tr><td>😄 Een Ravotscore geven</td><td>+10</td></tr>
-    <tr><td>📷 Een foto delen (na goedkeuring)</td><td>+15</td></tr>
-    <tr><td>🥇 De állereerste foto van een plek</td><td>+10 extra</td></tr>
-    <tr><td>🧺 Een daguitstap samenstellen</td><td>+5</td></tr>
-    <tr><td>🎂 Een feestje organiseren via Ravot</td><td>+10</td></tr>
-    <tr><td>📍 Zelf een nieuwe plek aanbrengen</td><td>+15</td></tr>
+    <tr><td>🐾 Bezoek bevestigen ("wij waren hier!")</td><td>+{{ pw.geweest }}</td></tr>
+    <tr><td>😄 Een Ravotscore geven</td><td>+{{ pw.review }}</td></tr>
+    <tr><td>🥇 De állereerste score van een plek</td><td>+{{ pw.eerste_score }} extra</td></tr>
+    <tr><td>📷 Een foto delen (na goedkeuring)</td><td>+{{ pw.foto }}</td></tr>
+    <tr><td>🥇 De állereerste foto van een plek</td><td>+{{ pw.eerste_foto }} extra</td></tr>
+    <tr><td>🔎 Een voorziening bevestigen (toilet, verschoontafel …)</td><td>+{{ pw.veld_stem }}</td></tr>
+    <tr><td>🧺 Een daguitstap samenstellen</td><td>+{{ pw.daguitstap }}</td></tr>
+    <tr><td>🎂 Een feestje organiseren via Ravot</td><td>+{{ pw.feestje }}</td></tr>
+    <tr><td>📍 Zelf een nieuwe plek aanbrengen</td><td>+{{ pw.plek }}</td></tr>
   </table>
+
+  <h3>Eerlijk spel: wat kan er per dag?</h3>
+  <p>Ravot beloont echte uitstappen, geen kliksessies. Daarom gelden er
+  dagelijkse grenzen — die halen jullie met normaal gebruik nooit:</p>
+  <ul>
+    <li>Maximaal <strong>{{ dag_max }} punten per dag</strong> per gezin.</li>
+    <li>Maximaal <strong>{{ geweest_max }} beloonde bezoeken per dag</strong>.</li>
+    {% if veldstem_max %}<li>Maximaal <strong>{{ veldstem_max }} beloonde
+      voorziening-bevestigingen per dag</strong>.</li>{% endif %}
+    <li>Elke actie telt <strong>één keer per plek</strong> — dezelfde knop
+      opnieuw indrukken levert niets extra op.</li>
+  </ul>
+  <p class="hint">Boven een grens blijven jullie knoppen gewoon werken en komt
+  jullie info netjes binnen; er komen alleen geen punten meer bij die dag.</p>
   <p>Met punten klim je door vijf vosje-niveaus:</p>
-  <p><span class="badge">🐣 Welpje (0)</span> <span class="badge">🔍 Speurneus (50)</span>
-  <span class="badge">🦊 Ravotter (150)</span> <span class="badge">⭐ Supervos (300)</span>
-  <span class="badge">👑 Vossenkoning (600)</span></p>
+  <p>{% for grens, emoji, naam in ladder %}
+    <span class="badge">{{ emoji }} {{ naam }} ({{ grens }})</span>
+  {% endfor %}</p>
   <p>Daarnaast verzamel je op je <strong>stempelkaart</strong> elke bezochte
   plek als stempel, en verdien je <strong>badges</strong> zoals
   🛝 Speeltuinspeurder of 🌧️ Regenridder. Reken op zo'n 30 punten per actieve
-  uitstap — na een tiental uitstappen ben je een echte Ravotter!</p>
+  uitstap: na een tiental uitstappen ben je Speurneus, en 👑 Vossenkoning is
+  bewust een titel voor de volhouders — die verdien je over jaren ravotten.</p>
   {% if family %}
   <a class="btn btn-zon btn-klein" href="{{ url_for('account.ravotpas') }}">Bekijk jullie Ravotpas →</a>
   {% else %}

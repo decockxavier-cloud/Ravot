@@ -67,7 +67,7 @@ def test_niveau_zakt_niet_bij_inwisselen_of_correctie(client, app):
     from app import punten as pas
     fid, aid = _opzet(app)
     with app.app_context():
-        for i in range(30):
+        for i in range(100):        # 1025 punten -> Supervos (drempel 1000)
             db.session.add(RavotPunt(family_id=fid, punten=10, reden="geweest",
                                      ref_id=i))
         db.session.commit()
@@ -77,10 +77,10 @@ def test_niveau_zakt_niet_bij_inwisselen_of_correctie(client, app):
         s["admin_2fa_ok"] = True
         s["admin_rol"] = "admin"
     client.post(f"/beheer/families/{fid}",
-                data={"actie": "punten", "aantal": "-250", "reden": "test"},
+                data={"actie": "punten", "aantal": "-900", "reden": "test"},
                 follow_redirects=True)
     with app.app_context():
-        assert pas.totaal(fid) < 300                     # saldo zakt wél
+        assert pas.totaal(fid) < 1000                    # saldo zakt wél
         assert pas.niveau(pas.niveau_punten(fid))["naam"] == "Supervos"
 
 
@@ -88,7 +88,7 @@ def test_niveau_wel_terugzetbaar_bij_misbruik(client, app):
     from app import punten as pas
     fid, aid = _opzet(app)
     with app.app_context():
-        for i in range(30):
+        for i in range(100):
             db.session.add(RavotPunt(family_id=fid, punten=10, reden="geweest",
                                      ref_id=i))
         db.session.commit()
@@ -97,7 +97,7 @@ def test_niveau_wel_terugzetbaar_bij_misbruik(client, app):
         s["admin_2fa_ok"] = True
         s["admin_rol"] = "admin"
     client.post(f"/beheer/families/{fid}",
-                data={"actie": "punten", "aantal": "-300", "reden": "misbruik",
+                data={"actie": "punten", "aantal": "-1020", "reden": "misbruik",
                       "niveau_mee": "1"}, follow_redirects=True)
     with app.app_context():
         assert pas.niveau(pas.niveau_punten(fid))["naam"] == "Welpje"

@@ -55,3 +55,32 @@ def test_puntwaarde_instelbaar(app):
         db.session.commit()
         from app.punten import ken_toe
         assert ken_toe(fid, "veld_stem", ref_id=ids[0] * 100 + 7) == 5
+
+
+def test_niveauladder_is_uitdagender_en_instelbaar(app, client):
+    """Patch 181: Vossenkoning moet een meerjarendoel zijn, geen kwestie van
+    twintig uitstappen. De drempels zijn instelbaar."""
+    from app import punten as pas
+    with app.app_context():
+        assert pas.niveau(600)["naam"] != "Vossenkoning"   # was vroeger wél
+        assert pas.niveau(2500)["naam"] == "Vossenkoning"
+        assert pas.niveau(100)["naam"] == "Speurneus"
+        db.session.add(Setting(key="niveau_drempels", value="0,200,600,1500,4000"))
+        db.session.commit()
+        assert pas.niveau(1500)["naam"] == "Supervos"
+        assert pas.niveau(3999)["naam"] != "Vossenkoning"
+        # onzin-invoer valt terug op de standaard
+        Setting.query.filter_by(key="niveau_drempels").delete()
+        db.session.add(Setting(key="niveau_drempels", value="kapot"))
+        db.session.commit()
+        assert pas.niveau(2500)["naam"] == "Vossenkoning"
+
+
+def test_dagplafonds_publiek_zichtbaar(client):
+    h = client.get("/ravotscore").get_data(as_text=True)
+    assert "60 punten per dag" in h
+    assert "3 beloonde bezoeken per dag" in h
+    assert "8 beloonde" in h
+    assert "één keer per plek" in h
+    v = client.get("/voorwaarden").get_data(as_text=True)
+    assert "dagelijkse grenzen" in v and "/ravotscore" in v

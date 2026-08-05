@@ -1293,8 +1293,17 @@ def score_uitleg():
     basis van vertrouwen (en van meedoen)."""
     _, fam = build_profile()
     from ..models import get_int
+    from ..punten import niveaus as _ladder
     return render_template("public/score_uitleg.html", family=fam,
                            geldig_maanden=get_int("punten_geldig_maanden", 6),
+                           ladder=_ladder(),
+                           pw={r: get_int(f"punt_{r}", d) for r, d in (
+                               ("geweest", 5), ("review", 10), ("eerste_score", 15),
+                               ("foto", 15), ("eerste_foto", 10), ("daguitstap", 5),
+                               ("feestje", 10), ("plek", 15), ("veld_stem", 3))},
+                           dag_max=get_int("punten_dag_max", 60),
+                           geweest_max=get_int("geweest_dag_max", 3),
+                           veldstem_max=get_int("veldstem_dag_max", 8),
                            title="Zo werken de Ravotscore & Ravotpas", active=None)
 
 

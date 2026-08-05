@@ -15,14 +15,31 @@ from .models import (Event, Photo, PUNT_REDENEN, RavotPunt, Review,
                      SavedEvent, get_int)
 from .types import activiteit_type
 
-# Vosje-niveaus: (ondergrens punten, emoji, naam)
-NIVEAUS = [
-    (0,   "🐣", "Welpje"),
-    (50,  "🔍", "Speurneus"),
-    (150, "🦊", "Ravotter"),
-    (300, "⭐", "Supervos"),
-    (600, "👑", "Vossenkoning"),
-]
+# Vosje-niveaus: (ondergrens punten, emoji, naam). De drempels zijn instelbaar
+# (niveau_drempels): een titel moet verdiend blijven voelen, dus Vossenkoning
+# hoort een meerjarendoel te zijn, geen kwestie van twintig uitstappen.
+NIVEAU_NAMEN = [("🐣", "Welpje"), ("🔍", "Speurneus"), ("🦊", "Ravotter"),
+                ("⭐", "Supervos"), ("👑", "Vossenkoning")]
+STANDAARD_DREMPELS = [0, 100, 400, 1000, 2500]
+
+
+def niveaus():
+    """De ladder zoals ingesteld; valt terug op de standaard bij onzin."""
+    from .models import get_setting
+    ruw = (get_setting("niveau_drempels") or "").strip()
+    grenzen = STANDAARD_DREMPELS
+    if ruw:
+        try:
+            waarden = [int(x) for x in ruw.replace(";", ",").split(",")
+                       if x.strip()]
+            if len(waarden) == len(NIVEAU_NAMEN) and waarden == sorted(waarden):
+                grenzen = waarden
+        except ValueError:
+            pass
+    return [(g, e, n) for g, (e, n) in zip(grenzen, NIVEAU_NAMEN)]
+
+
+NIVEAUS = [(g, e, n) for g, (e, n) in zip(STANDAARD_DREMPELS, NIVEAU_NAMEN)]
 
 # Badges: (code, emoji, naam, uitleg, doel) — 'teller' wordt live berekend.
 BADGES = [
@@ -170,12 +187,13 @@ def vervalt_binnenkort(family_id, dagen=30):
 
 def niveau(punten):
     """{emoji, naam, punten, volgende, te_gaan, procent} voor de voortgangsbalk."""
-    huidig = NIVEAUS[0]
+    ladder = niveaus()
+    huidig = ladder[0]
     volgende = None
-    for i, (grens, emoji, naam) in enumerate(NIVEAUS):
+    for i, (grens, emoji, naam) in enumerate(ladder):
         if punten >= grens:
             huidig = (grens, emoji, naam)
-            volgende = NIVEAUS[i + 1] if i + 1 < len(NIVEAUS) else None
+            volgende = ladder[i + 1] if i + 1 < len(ladder) else None
     uit = {"emoji": huidig[1], "naam": huidig[2], "punten": punten}
     if volgende:
         span = volgende[0] - huidig[0]

@@ -505,6 +505,9 @@ SETTING_DEFS = {
     "combi_prijs_jaar": ("360.00", "Combi (Partner + Feest): prijs per jaar (EUR, excl. btw)", "text"),
     "cap_zichtbaar_gemeente": ("4", "Exclusiviteit: max. zichtbaarheidspartners (⭐) per gemeente", "text"),
     "cap_feest_gemeente": ("0", "Max. feestpartners per gemeente (0 = onbeperkt — feest is een leadproduct: hoe meer aanbieders, hoe beter gezinnen kunnen vergelijken)", "text"),
+    "niveau_drempels": ("0,100,400,1000,2500",
+                        "Vosje-niveaus: punten voor Welpje, Speurneus, Ravotter, "
+                        "Supervos en Vossenkoning (vijf getallen, oplopend)", "text"),
     "punt_review": ("10", "Punten: Ravotscore gegeven", "text"),
     "punt_eerste_score": ("15", "Punten: állereerste score van een plek (bonus)", "text"),
     "punt_foto": ("15", "Punten: foto goedgekeurd", "text"),
