@@ -1177,38 +1177,24 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
   color: #5d6b57; font-size: .95rem; }
 .fiche-cta { text-align: left; }
 
-/* Ravotpas-blok op de landingspagina (patch 173, gekalmeerd in 184):
-   één rustige kaart in plaats van een geel dubbelkader — de inhoud
-   (concrete punten) doet het overtuigen, niet de opmaak. */
-.ravotpas-blok { background: #FDFAF3; border: 1px solid var(--lijn);
-  border-radius: 18px; padding: 18px 16px; margin: 18px 16px;
-  text-align: center; }
-.pas-kop { display: flex; gap: 12px; align-items: center; text-align: left;
-  justify-content: center; flex-wrap: wrap; }
-.pas-emoji { font-size: 2.1rem; line-height: 1; }
-.ravotpas-blok h2 { margin: 0 0 2px; font-size: 1.25rem; }
-.pas-kop p { margin: 0; color: #5d6b57; max-width: 46ch; font-size: .95rem; }
-.pas-punten { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-  margin: 14px 0 10px; }
-.punt-kaart { background: #fff; border: 1px solid var(--lijn); border-radius: 12px;
-  padding: 7px 12px; min-width: 116px; }
-.punt-kaart b { display: block; font-size: 1.2rem; color: var(--oranje); }
-.punt-kaart span { font-size: .8rem; color: #5d6b57; }
-.pas-niveaus { display: flex; gap: 5px; justify-content: center; align-items: center;
-  flex-wrap: wrap; margin: 4px 0 10px; }
-.pas-niveaus .niveau { background: #fff; border: 1px solid var(--lijn);
-  border-radius: 999px; padding: 3px 10px; font-size: .8rem; font-weight: 600; }
-.pas-niveaus .niveau.kroon { background: var(--zon); border-color: var(--zon); }
-.pas-niveaus .pijl { color: #b9b19f; }
-.pas-slot { color: #5d6b57; max-width: 60ch; margin: 0 auto 12px; font-size: .9rem; }
-@media (max-width: 560px) {
-  .ravotpas-blok { padding: 14px 12px; margin: 14px 10px; }
-  .pas-punten { display: grid; grid-template-columns: 1fr 1fr; }
-  .pas-punten .punt-kaart { min-width: 0; }
-  .pas-niveaus .pijl { display: none; }
-  .pas-slot { display: none; }   /* gsm: de kaartjes + ladder zeggen genoeg */
-}
+/* Ravotpas op de landingspagina (patch 186): één rustige kaart met een
+   compact prijslijstje — geen blokkendoos. */
+.ravotpas-blok { background: #fff; border: 1px solid var(--lijn);
+  border-radius: 18px; padding: 18px; margin: 18px 16px; max-width: 520px;
+  margin-left: auto; margin-right: auto; }
+.pas-kop { display: flex; gap: 12px; align-items: center; }
+.pas-emoji { font-size: 2rem; line-height: 1; }
+.ravotpas-blok h2 { margin: 0; font-size: 1.2rem; }
+.pas-kop p { margin: 2px 0 0; color: #5d6b57; font-size: .92rem; }
+.pas-lijst { list-style: none; margin: 14px 0 10px; padding: 0; }
+.pas-lijst li { display: flex; justify-content: space-between; align-items: center;
+  gap: 10px; padding: 7px 2px; font-size: .95rem; }
+.pas-lijst li + li { border-top: 1px dashed #ECE6D8; }
+.pas-lijst b { color: var(--groen); font-size: 1.05rem; white-space: nowrap; }
+.pas-ladder { text-align: center; font-size: .82rem; font-weight: 600;
+  color: #4a5a48; margin: 10px 0 4px; line-height: 1.9; }
+.pas-ladder span { color: #c8c0ae; font-weight: 400; padding: 0 2px; }
+.pas-slot { text-align: center; color: #5d6b57; font-size: .88rem;
+  margin: 0 0 12px; }
+.ravotpas-blok .btn { display: block; text-align: center; }
 
-/* Webshoplogo op een cadeaubon-beloning (patch 177) */
-.beloning-logo { max-height: 56px; max-width: 150px; object-fit: contain;
-  display: block; margin: 0 auto 4px; }
