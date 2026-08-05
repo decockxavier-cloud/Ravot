@@ -1143,6 +1143,22 @@ def beloning_wissel(bid):
         flash(f"Nog niet genoeg punten voor {b.naam} — blijven ravotten! 🦊", "error")
         return redirect(url_for("account.beloningen"))
     adres = (request.form.get("adres") or "").strip()[:300]
+    if b.is_bon:
+        # Cadeaubon: geen verzending, dus geen adres. Code + mails via de
+        # bonnendienst; het gezin ziet de melding over de 24 u verwerkingstijd.
+        from .. import bonnen
+        code = bonnen.maak_code()
+        iw = Inwissel(family_id=fam.id, beloning_id=b.id, punten=b.punten,
+                      code=code)
+        db.session.add(iw)
+        if b.voorraad is not None:
+            b.voorraad -= 1
+        db.session.commit()
+        bonnen.verwerk_bon(fam, b, iw)
+        flash(f"🎉 Gelukt! Jullie cadeaubon {code} staat in je mailbox. "
+              "Let op: de code wordt klaargezet bij de webshop en werkt "
+              "pas na 24 uur — daarna een jaar lang geldig.", "ok")
+        return redirect(url_for("account.beloningen"))
     if b.soort != "partner" and not adres:
         flash("Vul een bezorgadres in (naam + straat, postcode gemeente) — "
               "anders kunnen we je beloning niet opsturen!", "error")

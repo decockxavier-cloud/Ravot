@@ -1199,6 +1199,12 @@ class Beloning(db.Model):
     waarde_eur = db.Column(db.Float, nullable=False, default=0)
     voorraad = db.Column(db.Integer)          # None = onbeperkt
     actief = db.Column(db.Boolean, default=True, nullable=False)
+    # Cadeaubon-velden (patch 174): geen verzending, wel een code per mail.
+    is_bon = db.Column(db.Boolean, default=False, nullable=False)
+    bon_winkel = db.Column(db.String(80))     # bv. "K'Bouter"
+    bon_url = db.Column(db.String(200))       # bv. https://www.k-bouter.be
+    bon_logo = db.Column(db.String(120))      # bestandsnaam in static/img/
+    bon_mail = db.Column(db.String(255))      # meldadres van de webshop
     created_at = db.Column(db.DateTime, default=utcnow)
     partner = db.relationship("Event")
 
@@ -1216,9 +1222,12 @@ class Inwissel(db.Model):
     # Bezorgadres: enkel gevraagd bij fysieke Ravot-goodies, op het moment van
     # inwisselen (privacy by design: geen adressen "voor het geval dat").
     bezorg_adres = db.Column(db.String(300))
-    code = db.Column(db.String(16), unique=True, nullable=False)
+    code = db.Column(db.String(24), unique=True, nullable=False)
     status = db.Column(db.String(12), default="aangevraagd", nullable=False)
     created_at = db.Column(db.DateTime, default=utcnow)
+    # Bonnen: 24 u verwerkingstijd bij de webshop, daarna een jaar geldig.
+    geldig_vanaf = db.Column(db.DateTime)
+    geldig_tot = db.Column(db.DateTime)
     beloning = db.relationship("Beloning")
 
 

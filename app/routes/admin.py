@@ -1876,6 +1876,14 @@ def beloningen():
                 punten=pt, waarde_eur=eur,
                 voorraad=int(request.form["voorraad"]) if (request.form.get("voorraad") or "").isdigit() else None)
             db.session.add(b)
+            b.is_bon = request.form.get("is_bon") == "1"
+            b.bon_winkel = (request.form.get("bon_winkel") or "").strip()[:80] or None
+            bu = (request.form.get("bon_url") or "").strip()[:200]
+            if bu and not bu.startswith(("http://", "https://")):
+                bu = "https://" + bu
+            b.bon_url = bu or None
+            b.bon_logo = (request.form.get("bon_logo") or "").strip()[:120] or None
+            b.bon_mail = (request.form.get("bon_mail") or "").strip()[:255] or None
             db.session.commit()
             audit(f"beloning toegevoegd: {naam} ({pt} pt / €{eur})")
             flash("Beloning toegevoegd.", "ok")
@@ -1903,6 +1911,14 @@ def beloningen():
         partner_id = request.form.get("partner_id") or ""
         b.partner_event_id = int(partner_id) if partner_id.isdigit() else None
         b.soort = "partner" if b.partner_event_id else "ravot"
+        b.is_bon = request.form.get("is_bon") == "1"
+        b.bon_winkel = (request.form.get("bon_winkel") or "").strip()[:80] or None
+        bu = (request.form.get("bon_url") or "").strip()[:200]
+        if bu and not bu.startswith(("http://", "https://")):
+            bu = "https://" + bu
+        b.bon_url = bu or None
+        b.bon_logo = (request.form.get("bon_logo") or "").strip()[:120] or None
+        b.bon_mail = (request.form.get("bon_mail") or "").strip()[:255] or None
         db.session.commit()
         audit(f"beloning #{b.id} bewerkt: {b.naam}")
         flash("Beloning bijgewerkt.", "ok")

@@ -49,3 +49,16 @@ def test_ingelogd_gezin_ziet_geen_cta(client, app):
     h = client.get("/vandaag").get_data(as_text=True)
     assert "lijst-slot-cta" not in h and "bewaar-cta" not in h
     assert "fiche-cta" not in client.get("/e/cta1").get_data(as_text=True)
+
+
+def test_ravotpas_prominent_op_landing(client):
+    """Patch 173: de Ravotpas is de sterkste reden voor een profiel en staat
+    daarom als eigen blok bovenaan, niet verstopt tussen de features."""
+    h = client.get("/").get_data(as_text=True)
+    i_pas = h.find("ravotpas-blok")
+    i_waarom = h.find("Waarom Ravot")
+    assert 0 < i_pas < i_waarom
+    assert "+15" in h and "+10" in h                 # concrete puntenwaarden
+    assert "Welpje" in h and "Vossenkoning" in h     # de vosjes-niveaus
+    assert "Start je Ravotpas" in h                  # eigen CTA
+    assert h.count("De Ravotpas") == 1               # oude tegel verwijderd

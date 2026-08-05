@@ -23,6 +23,24 @@ per uitstap, dus ± €{{ "%.2f"|format(30 * punt_eur) }} aan beloningswaarde.</
       <select name="partner_id"><option value="">— (Ravot zelf)</option>
         {% for p in partners %}<option value="{{ p.id }}" {{ 'selected' if bw and bw.partner_event_id == p.id }}>{{ p.title }}</option>{% endfor %}
       </select></label>
+    <div style="flex-basis:100%;border-top:1px dashed #E7E0D2;padding-top:10px;margin-top:6px">
+      <label class="check"><input type="checkbox" name="is_bon" value="1"
+        {{ 'checked' if bw and bw.is_bon }}>
+        🎟️ <strong>Cadeaubon</strong> — geen verzending: het gezin krijgt een
+        unieke code per mail (24 u verwerkingstijd, daarna 1 jaar geldig)</label>
+      <div class="veldrij" style="flex-wrap:wrap;gap:10px;margin-top:6px">
+        <label>Webshop<input type="text" name="bon_winkel" placeholder="K'Bouter"
+          value="{{ bw.bon_winkel or '' if bw else '' }}"></label>
+        <label>Webshop-URL<input type="text" name="bon_url" placeholder="www.k-bouter.be"
+          value="{{ bw.bon_url or '' if bw else '' }}"></label>
+        <label>Logo <small class="hint">(bestand in static/img/)</small>
+          <input type="text" name="bon_logo" placeholder="kbouter.png"
+          value="{{ bw.bon_logo or '' if bw else '' }}"></label>
+        <label>Meldadres webshop <small class="hint">(krijgt de code)</small>
+          <input type="email" name="bon_mail" placeholder="info@k-bouter.be"
+          value="{{ bw.bon_mail or '' if bw else '' }}"></label>
+      </div>
+    </div>
     <button class="btn" type="submit">{{ 'Bewaar wijzigingen' if bw else 'Toevoegen' }}</button>
     {% if bw %}<a class="btn btn-stil" href="{{ url_for('admin.beloningen') }}">Annuleer</a>{% endif %}
   </form>

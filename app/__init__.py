@@ -665,6 +665,25 @@ def register_cli(app):
                 "ALTER TABLE photos ALTER COLUMN event_id DROP NOT NULL"))
             added.append("photos.route_id (+event_id nullable)")
         ph_cols = {c["name"] for c in insp.get_columns("photos")}
+        if "beloningen" in insp.get_table_names():
+            bl_cols = {c["name"] for c in insp.get_columns("beloningen")}
+            if "is_bon" not in bl_cols:
+                for kol, typ in (("is_bon", "BOOLEAN DEFAULT FALSE NOT NULL"),
+                                 ("bon_winkel", "VARCHAR(80)"),
+                                 ("bon_url", "VARCHAR(200)"),
+                                 ("bon_logo", "VARCHAR(120)"),
+                                 ("bon_mail", "VARCHAR(255)")):
+                    db.session.execute(text(
+                        f"ALTER TABLE beloningen ADD COLUMN IF NOT EXISTS {kol} {typ}"))
+                added.append("beloningen.bon-velden")
+        if "inwisselingen" in insp.get_table_names():
+            iw_cols = {c["name"] for c in insp.get_columns("inwisselingen")}
+            if "geldig_tot" not in iw_cols:
+                db.session.execute(text(
+                    "ALTER TABLE inwisselingen ADD COLUMN IF NOT EXISTS geldig_vanaf TIMESTAMP"))
+                db.session.execute(text(
+                    "ALTER TABLE inwisselingen ADD COLUMN IF NOT EXISTS geldig_tot TIMESTAMP"))
+                added.append("inwisselingen.geldigheid")
         ev_cols = {c["name"] for c in insp.get_columns("events")}
         if "commons_file" not in ev_cols:
             db.session.execute(text(

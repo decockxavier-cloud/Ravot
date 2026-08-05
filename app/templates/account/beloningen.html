@@ -40,11 +40,19 @@
       <summary class="btn btn-zon btn-klein">Wissel in</summary>
       <form method="post" action="{{ url_for('account.beloning_wissel', bid=b.id) }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% if b.is_bon %}
+        <p class="hint" style="margin:4px 0">🎟️ Je krijgt de code per mail.
+          Ze wordt klaargezet bij {{ b.bon_winkel or 'de webshop' }} en werkt
+          <strong>na 24 uur</strong> — daarna een jaar lang geldig.
+          Eén bon per bestelling.</p>
+        <button class="btn btn-zon btn-klein" type="submit">Bevestig</button>
+        {% else %}
         <label class="hint">Bezorgadres
           <textarea name="adres" rows="2" maxlength="300" required
                     placeholder="Naam&#10;Straat nr, postcode gemeente"></textarea></label>
         <button class="btn btn-zon btn-klein" type="submit">Bevestig</button>
         <span class="hint">Enkel gebruikt om deze beloning op te sturen.</span>
+        {% endif %}
       </form>
     </details>
     {% endif %}
