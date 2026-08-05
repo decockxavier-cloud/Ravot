@@ -17,6 +17,24 @@
   {% if blogartikel.samenvatting %}<p style="margin:4px 0 0;font-size:14px">{{ blogartikel.samenvatting }}</p>{% endif %}
 </div>
 {% endif %}
+{% if pas %}
+<div style="border:2px solid #F2B705;border-radius:14px;padding:14px 16px;margin:18px 0;background:#FFFBF0">
+  <p style="margin:0 0 6px;font-weight:700">🦊 Jullie Ravotpas: {{ pas.emoji }} {{ pas.naam }}
+    · {{ pas.saldo }} punten te besteden</p>
+  {% if pas.volgende %}
+  <p style="margin:0 0 8px;font-size:14px;color:#5f6d63">Nog {{ pas.te_gaan }} punten tot {{ pas.volgende }}.</p>
+  {% endif %}
+  <p style="margin:0 0 8px;font-size:14px">Verdien punten tijdens jullie uitstap:
+    <strong>+{{ pas.pw.geweest }}</strong> bevestigen dat je er was ·
+    <strong>+{{ pas.pw.review }}</strong> een Ravotscore ·
+    <strong>+{{ pas.pw.foto }}</strong> een foto.</p>
+  {% if pas.beloning %}
+  <p style="margin:0;font-size:14px">🎁 Te verdienen: <strong>{{ pas.beloning.naam }}</strong>
+    ({{ pas.beloning.punten }} punten{% if pas.beloning.waarde_eur %} · t.w.v. €{{ "%.0f"|format(pas.beloning.waarde_eur) }}{% endif %})
+    — <a href="{{ site }}/mijn/beloningen?utm_source=ravot&utm_medium=email&utm_campaign=weekendmail" style="color:#2E7D46">bekijk de beloningen</a></p>
+  {% endif %}
+</div>
+{% endif %}
 <p style="text-align:center;margin:22px 0"><a href="{{ site }}/weekend?utm_source=ravot&utm_medium=email&utm_campaign=weekendmail" style="background:#F2B705;color:#1F3A2A;text-decoration:none;padding:12px 22px;border-radius:999px;font-weight:700">Bekijk alles op Ravot</a></p>
 <p style="color:#777;font-size:.8rem">Je krijgt deze mail omdat je dat aangaf bij Ravot.
 <a href="{{ unsub_url }}" style="color:#777">Schrijf je uit met één klik</a> — je account en profiel blijven gewoon bestaan.</p>

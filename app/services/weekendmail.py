@@ -87,7 +87,7 @@ def bouw_weekendmail(family):
     blogartikel = (Artikel.query.filter_by(gepubliceerd=True)
                    .order_by(Artikel.publicatie_datum.desc()).first())
     html = render_template("mail/weekendmail.html", family=family, picks=picks,
-                           blogartikel=blogartikel,
+                           blogartikel=blogartikel, pas=pas_blok(family),
                            unsub_url=unsub_url, site=current_app.config["SITE_URL"])
     text = "\n".join(
         f"- {p['event'].title} ({p['event'].gemeente})" for p in picks
@@ -138,3 +138,26 @@ def send_all(mailer):
         if send_weekend_mail(fam, mailer):
             n += 1
     return n
+
+
+def pas_blok(family):
+    """Ravotpas-herinnering voor de weekmail: stand, volgende niveau en de
+    dichtstbijzijnde beloning. None als beloningen uitstaan."""
+    from ..models import Beloning, get_bool, get_int
+    from .. import punten as pas
+    if not family or not get_bool("beloningen_aan"):
+        return None
+    saldo = pas.saldo(family.id)
+    niv = pas.niveau(pas.niveau_punten(family.id))
+    beloning = (Beloning.query.filter_by(actief=True)
+                .filter(Beloning.punten >= saldo)
+                .order_by(Beloning.punten.asc()).first()
+                or Beloning.query.filter_by(actief=True)
+                .order_by(Beloning.punten.asc()).first())
+    return {
+        "emoji": niv["emoji"], "naam": niv["naam"], "saldo": saldo,
+        "volgende": niv.get("volgende"), "te_gaan": niv.get("te_gaan"),
+        "beloning": beloning,
+        "pw": {r: get_int(f"punt_{r}", d) for r, d in
+               (("geweest", 5), ("review", 10), ("foto", 15))},
+    }

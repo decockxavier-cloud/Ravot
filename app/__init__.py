@@ -114,6 +114,15 @@ def create_app(config_object=Config):
     app.jinja_env.globals["setting"] = _gs
     from .media import illustratie_url
     app.jinja_env.globals["illustratie_url"] = illustratie_url
+
+    def _puntwaarden():
+        """Actuele puntwaarden, voor CTA-teksten die de echte cijfers tonen."""
+        from .models import get_int
+        return {r: get_int(f"punt_{r}", d) for r, d in
+                (("geweest", 5), ("review", 10), ("foto", 15),
+                 ("eerste_foto", 10), ("eerste_score", 15), ("veld_stem", 3),
+                 ("plek", 15), ("daguitstap", 5), ("feestje", 10))}
+    app.jinja_env.globals["pw"] = _puntwaarden
     app.jinja_env.globals["feestpartner"] = is_feestpartner
     from .services.openingsuren import (status_badge, uren_overzicht,
                                         heeft_uren, dag_blokken)

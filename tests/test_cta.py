@@ -24,7 +24,8 @@ def test_landing_slot_cta_staat_hoger(client):
 def test_fiche_en_lijst_nodigen_uit(client, app):
     _plek(app)
     h = client.get("/e/cta1").get_data(as_text=True)
-    assert "fiche-cta" in h and "Bewaar deze plek" in h
+    # patch 183: dezelfde plek, maar nu in puntentaal (sterkere reden)
+    assert "fiche-cta" in h and "Verdien ravotpunten op deze plek" in h
     h = client.get("/vandaag").get_data(as_text=True)
     assert "lijst-slot-cta" in h
 
