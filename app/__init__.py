@@ -121,7 +121,8 @@ def create_app(config_object=Config):
         return {r: get_int(f"punt_{r}", d) for r, d in
                 (("geweest", 5), ("review", 10), ("foto", 15),
                  ("eerste_foto", 10), ("eerste_score", 15), ("veld_stem", 3),
-                 ("plek", 15), ("daguitstap", 5), ("feestje", 10))}
+                 ("plek", 15), ("daguitstap", 5), ("feestje", 10),
+                 ("uitnodiging", 25))}
     app.jinja_env.globals["pw"] = _puntwaarden
     app.jinja_env.globals["feestpartner"] = is_feestpartner
     from .services.openingsuren import (status_badge, uren_overzicht,
@@ -694,6 +695,12 @@ def register_cli(app):
                     "ALTER TABLE inwisselingen ADD COLUMN IF NOT EXISTS geldig_tot TIMESTAMP"))
                 added.append("inwisselingen.geldigheid")
         fam_cols = {c["name"] for c in insp.get_columns("families")}
+        if "ref_code" not in fam_cols:
+            db.session.execute(text(
+                "ALTER TABLE families ADD COLUMN IF NOT EXISTS ref_code VARCHAR(12)"))
+            db.session.execute(text(
+                "ALTER TABLE families ADD COLUMN IF NOT EXISTS invited_by INTEGER"))
+            added.append("families.ref_code/invited_by")
         if "niveau_hoogste" not in fam_cols:
             db.session.execute(text(
                 "ALTER TABLE families ADD COLUMN IF NOT EXISTS niveau_hoogste "

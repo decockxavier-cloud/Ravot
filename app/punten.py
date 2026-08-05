@@ -98,9 +98,41 @@ def ken_toe(family_id, reden, ref_id=None):
         if v_max and q_vandaag.filter(
                 RavotPunt.reden == "veld_stem").count() >= v_max:
             return 0
+    eerste_keer = not RavotPunt.query.filter_by(family_id=family_id).first()
     db.session.add(RavotPunt(family_id=family_id, reden=reden,
                              ref_id=ref_id, punten=punten))
+    if eerste_keer and reden != "uitnodiging":
+        from .models import Family
+        fam = db.session.get(Family, family_id)
+        if fam is not None:
+            beloon_uitnodiger(fam)
     return punten
+
+
+def deelcode(family):
+    """Persoonlijke uitnodigingscode (lazy aangemaakt, leesbaar alfabet)."""
+    import secrets as _sec
+    if family.ref_code:
+        return family.ref_code
+    from .models import Family
+    alfabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    for _ in range(30):
+        code = "".join(_sec.choice(alfabet) for _ in range(8))
+        if not Family.query.filter_by(ref_code=code).first():
+            family.ref_code = code
+            db.session.commit()
+            return code
+    return None
+
+
+def beloon_uitnodiger(nieuw_gezin):
+    """Ken de uitnodiger punten toe zodra het aangebrachte gezin zijn éérste
+    eigen punten verdient — dat is het bewijs dat het echt meedoet, en het
+    maakt wegwerp-aanmeldingen waardeloos. Idempotent per aangebracht gezin."""
+    inviter = getattr(nieuw_gezin, "invited_by", None)
+    if not inviter or inviter == nieuw_gezin.id:
+        return 0
+    return ken_toe(inviter, "uitnodiging", ref_id=nieuw_gezin.id)
 
 
 def totaal(family_id):

@@ -1177,31 +1177,36 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
   color: #5d6b57; font-size: .95rem; }
 .fiche-cta { text-align: left; }
 
-/* Ravotpas-blok op de landingspagina (patch 173) */
-.ravotpas-blok { background: linear-gradient(160deg, #FFF6E8, #F3F8EF);
-  border: 2px solid var(--zon); border-radius: 22px; padding: 22px 18px;
-  margin: 22px 16px; text-align: center; }
-.pas-kop { display: flex; gap: 14px; align-items: center; text-align: left;
+/* Ravotpas-blok op de landingspagina (patch 173, gekalmeerd in 184):
+   één rustige kaart in plaats van een geel dubbelkader — de inhoud
+   (concrete punten) doet het overtuigen, niet de opmaak. */
+.ravotpas-blok { background: #FDFAF3; border: 1px solid var(--lijn);
+  border-radius: 18px; padding: 18px 16px; margin: 18px 16px;
+  text-align: center; }
+.pas-kop { display: flex; gap: 12px; align-items: center; text-align: left;
   justify-content: center; flex-wrap: wrap; }
-.pas-emoji { font-size: 3rem; line-height: 1; }
-.ravotpas-blok h2 { margin: 0 0 4px; }
-.pas-kop p { margin: 0; color: #5d6b57; max-width: 46ch; }
-.pas-punten { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
-  margin: 18px 0 14px; }
-.punt-kaart { background: #fff; border: 1px solid var(--lijn); border-radius: 14px;
-  padding: 10px 14px; min-width: 128px; }
-.punt-kaart b { display: block; font-size: 1.5rem; color: var(--oranje); }
-.punt-kaart span { font-size: .84rem; color: #5d6b57; }
-.pas-niveaus { display: flex; gap: 6px; justify-content: center; align-items: center;
-  flex-wrap: wrap; margin: 6px 0 12px; }
+.pas-emoji { font-size: 2.1rem; line-height: 1; }
+.ravotpas-blok h2 { margin: 0 0 2px; font-size: 1.25rem; }
+.pas-kop p { margin: 0; color: #5d6b57; max-width: 46ch; font-size: .95rem; }
+.pas-punten { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+  margin: 14px 0 10px; }
+.punt-kaart { background: #fff; border: 1px solid var(--lijn); border-radius: 12px;
+  padding: 7px 12px; min-width: 116px; }
+.punt-kaart b { display: block; font-size: 1.2rem; color: var(--oranje); }
+.punt-kaart span { font-size: .8rem; color: #5d6b57; }
+.pas-niveaus { display: flex; gap: 5px; justify-content: center; align-items: center;
+  flex-wrap: wrap; margin: 4px 0 10px; }
 .pas-niveaus .niveau { background: #fff; border: 1px solid var(--lijn);
-  border-radius: 999px; padding: 5px 12px; font-size: .86rem; font-weight: 600; }
+  border-radius: 999px; padding: 3px 10px; font-size: .8rem; font-weight: 600; }
 .pas-niveaus .niveau.kroon { background: var(--zon); border-color: var(--zon); }
 .pas-niveaus .pijl { color: #b9b19f; }
-.pas-slot { color: #5d6b57; max-width: 60ch; margin: 0 auto 14px; font-size: .95rem; }
+.pas-slot { color: #5d6b57; max-width: 60ch; margin: 0 auto 12px; font-size: .9rem; }
 @media (max-width: 560px) {
-  .pas-punten .punt-kaart { min-width: 44%; }
+  .ravotpas-blok { padding: 14px 12px; margin: 14px 10px; }
+  .pas-punten { display: grid; grid-template-columns: 1fr 1fr; }
+  .pas-punten .punt-kaart { min-width: 0; }
   .pas-niveaus .pijl { display: none; }
+  .pas-slot { display: none; }   /* gsm: de kaartjes + ladder zeggen genoeg */
 }
 
 /* Webshoplogo op een cadeaubon-beloning (patch 177) */

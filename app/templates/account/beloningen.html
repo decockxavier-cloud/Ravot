@@ -4,6 +4,17 @@
 <a href="{{ url_for('account.ravotpas') }}" class="terug-link">← Onze Ravotpas</a>
 <h1>Beloningen 🎁</h1>
 
+{% if deelcode %}
+<div class="card" style="border:1px dashed var(--groen)">
+  <p style="margin:0 0 4px"><strong>👨‍👩‍👧 Nodig een ander gezin uit — verdien
+    +{{ pw().uitnodiging if pw().uitnodiging is defined else 25 }} punten</strong></p>
+  <p class="hint" style="margin:0 0 8px">Deel jullie persoonlijke link. Zodra dat
+    gezin zijn eerste eigen punten verdient (een score, foto of bezoek), krijgen
+    jullie de bonus — zo tellen alleen gezinnen die écht meedoen.</p>
+  <code style="user-select:all;background:#F3F8EF;padding:6px 10px;border-radius:8px;display:inline-block">{{ request.url_root.rstrip('/') }}/?ref={{ deelcode }}</code>
+</div>
+{% endif %}
+
 <div class="card ravotpas-kop">
   <p style="margin:0"><strong>Te besteden: {{ saldo }} ravotpunten</strong>
   <span class="hint">(in totaal {{ totaal }} verdiend — inwisselen verlaagt je

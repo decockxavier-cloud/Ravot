@@ -621,6 +621,15 @@ def proberen():
                            title="Meteen kijken wat er te doen is")
 
 
+@bp.before_app_request
+def _vang_deelcode():
+    """?ref=CODE op eender welke pagina onthouden tot aan de registratie."""
+    code = (request.args.get("ref") or "").strip().upper()[:12]
+    if code and code.isalnum() and not session.get("family_id"):
+        session["ref_code"] = code
+        session.permanent = True
+
+
 @bp.route("/", methods=["GET"])
 def home():
     """Home. Uitgelogde bezoekers zien de landingspagina; ingelogde gezinnen
@@ -1300,7 +1309,8 @@ def score_uitleg():
                            pw={r: get_int(f"punt_{r}", d) for r, d in (
                                ("geweest", 5), ("review", 10), ("eerste_score", 15),
                                ("foto", 15), ("eerste_foto", 10), ("daguitstap", 5),
-                               ("feestje", 10), ("plek", 15), ("veld_stem", 3))},
+                               ("feestje", 10), ("plek", 15), ("veld_stem", 3),
+                               ("uitnodiging", 25))},
                            dag_max=get_int("punten_dag_max", 60),
                            geweest_max=get_int("geweest_dag_max", 3),
                            veldstem_max=get_int("veldstem_dag_max", 8),

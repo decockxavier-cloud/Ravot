@@ -27,6 +27,9 @@ class Family(db.Model):
     # Hoogste punten-totaal ooit: bepaalt het vosjes-niveau, zodat dat nooit
     # zakt door inwisselen of een correctie (patch 179).
     niveau_hoogste = db.Column(db.Integer, default=0, nullable=False)
+    # Vrienden uitnodigen (patch 184): eigen deelcode + wie dit gezin aanbracht.
+    ref_code = db.Column(db.String(12), unique=True)
+    invited_by = db.Column(db.Integer, db.ForeignKey("families.id"))
     newsletter_opt_in = db.Column(db.Boolean, default=False, nullable=False)
     monday_opt_in = db.Column(db.Boolean, default=True, nullable=False)
     active = db.Column(db.Boolean, default=True, nullable=False)  # admin kan deactiveren
@@ -519,6 +522,8 @@ SETTING_DEFS = {
     "punt_feestje": ("10", "Punten: feestje georganiseerd", "text"),
     "punt_plek": ("15", "Punten: nieuwe plek toegevoegd die live ging", "text"),
     "punt_veld_stem": ("3", "Punten: voorziening bevestigd", "text"),
+    "punt_uitnodiging": ("25", "Punten: een nieuw gezin uitgenodigd dat zijn "
+                               "eerste punten verdiende", "text"),
     "veldstem_dag_max": ("8", "Max. beloonde voorziening-bevestigingen per gezin per dag "
                               "(0 = geen limiet; veldstemmen vragen geen bezoek, "
                               "dus een plafond voorkomt eindeloos doorklikken)", "text"),
@@ -1103,6 +1108,7 @@ PUNT_REDENEN = {
     "plek": 15,            # zelf een plek toegevoegd die live ging
     "veld_stem": 3,        # een voorziening bevestigd of aangevuld (fase 4)
     "eerste_score": 15,    # de állereerste Ravotscore van een plek (fase 4)
+    "uitnodiging": 25,     # een ander gezin aangebracht dat écht meedoet (p184)
 }
 
 

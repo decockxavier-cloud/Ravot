@@ -75,6 +75,14 @@ def onboarding():
             newsletter_opt_in=request.form.get("newsletter") == "on",  # expliciete opt-in
             display_name=(request.form.get("display_name") or "").strip()[:80] or None,
         )
+        # Aangebracht door een ander gezin? Koppelen; de beloning volgt pas
+        # zodra dit gezin zijn eerste eigen punten verdient (patch 184).
+        code = session.pop("ref_code", None)
+        if code:
+            from ..models import Family as _F
+            uitnodiger = _F.query.filter_by(ref_code=code).first()
+            if uitnodiger and uitnodiger.email.lower() != email.lower():
+                fam.invited_by = uitnodiger.id
         db.session.add(fam)
         db.session.flush()
         for jaar in jaren:
@@ -1115,7 +1123,9 @@ def beloningen():
         .order_by(Beloning.punten).all()
     mijn = Inwissel.query.filter_by(family_id=fam.id) \
         .order_by(Inwissel.created_at.desc()).all()
+    from ..punten import deelcode
     return render_template("account/beloningen.html", family=fam,
+                           deelcode=deelcode(fam),
                            catalogus=catalogus, mijn=mijn,
                            saldo=pas.saldo(fam.id), totaal=pas.totaal(fam.id),
                            vervalt=pas.vervalt_binnenkort(fam.id),
