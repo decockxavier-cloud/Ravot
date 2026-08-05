@@ -10,7 +10,7 @@
     {% if family %}
     <a class="btn btn-zon btn-groot" href="{{ url_for('account.feestje_nieuw') }}">Start je feestje →</a>
     {% else %}
-    <a class="btn btn-zon btn-groot" href="{{ url_for('auth.login', next=url_for('account.feestje_nieuw')) }}">Start je feestje →</a>
+    <a class="btn btn-zon btn-groot" href="{{ url_for('auth.login', terug='feestje') }}">Start je feestje →</a>
     {% endif %}
   </div>
   <p class="mini">Gratis · vrijblijvend · jij kiest zélf naar wie de aanvraag vertrekt</p>
@@ -64,7 +64,7 @@
   {% if family %}
   <a class="btn btn-groot" href="{{ url_for('account.feestje_nieuw') }}">Feestje plannen →</a>
   {% else %}
-  <a class="btn btn-groot" href="{{ url_for('auth.login', next=url_for('account.feestje_nieuw')) }}">Feestje plannen →</a>
+  <a class="btn btn-groot" href="{{ url_for('auth.login', terug='feestje') }}">Feestje plannen →</a>
   {% endif %}
 </section>
 

@@ -62,3 +62,34 @@ def test_geen_pasblok_als_beloningen_uit(app):
         wis_settings_cache()
         from app.services.weekendmail import pas_blok
         assert pas_blok(fam) is None
+
+
+def test_login_terug_parameter_is_slash_vrij(client, app):
+    """Patch 185: NPM's Block Common Exploits geeft 403 op paden in de
+    querystring; knoppen sturen daarom een slash-vrij token mee."""
+    import re
+    with app.app_context():
+        db.session.add(Event(title="Speeltuin", slug="npm2", source="osm",
+                             ext_id="npm2", is_permanent=True, pending=False,
+                             hidden=False, lat=50.9, lng=3.1,
+                             subtype="playground"))
+        db.session.commit()
+    h = client.get("/e/npm2").get_data(as_text=True)
+    m = re.search(r'href="([^"]*login[^"]*)"[^>]*>Verdien ravotpunten', h)
+    url = m.group(1).replace("&amp;", "&")
+    assert "?" in url and "/" not in url.split("?")[1]     # geen pad in query
+    client.get(url)
+    with client.session_transaction() as s:
+        assert s.get("na_login") == "/e/npm2"
+
+
+def test_login_terug_feestje_en_misbruik(client):
+    client.get("/login?terug=feestje")
+    with client.session_transaction() as s:
+        assert s.get("na_login") == "/mijn/feestje/nieuw"
+    fresh = client
+    with fresh.session_transaction() as s:
+        s.pop("na_login", None)
+    fresh.get("/login?terug=..%2F..%2Fetc")
+    with fresh.session_transaction() as s:
+        assert s.get("na_login") is None

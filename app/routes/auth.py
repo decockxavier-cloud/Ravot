@@ -22,6 +22,14 @@ def login():
     volgende = request.args.get("next") or ""
     if volgende.startswith("/") and not volgende.startswith("//"):
         session["na_login"] = volgende
+    # NPM's "Block Common Exploits" weigert paden in de querystring (403),
+    # dus knoppen sturen een slash-vrij token mee: "feestje" of een fiche-slug.
+    terug = (request.args.get("terug") or "").strip()[:120]
+    if terug and re.fullmatch(r"[a-z0-9][a-z0-9\-]*", terug):
+        if terug == "feestje":
+            session["na_login"] = url_for("account.feestje_nieuw")
+        else:
+            session["na_login"] = f"/e/{terug}"
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
         if not EMAIL_RE.match(email):

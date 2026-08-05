@@ -496,8 +496,9 @@ def test_kaart_toont_horeca(client, seed):
 def test_publieke_feestjespagina(client, seed):
     html = client.get("/feestjes").get_data(as_text=True)
     assert "Verjaardagsfeestje" in html and "offerte" in html
-    # uitgelogd: CTA loopt via login met next naar de wizard
-    assert "next=/mijn/feestje/nieuw" in html
+    # uitgelogd: CTA loopt via login met een slash-vrij terug-token (patch 185:
+    # NPM's exploit-filter weigert paden in de querystring)
+    assert "terug=feestje" in html
 
 
 def test_login_next_landt_in_wizard(client, seed):
