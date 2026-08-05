@@ -505,6 +505,18 @@ SETTING_DEFS = {
     "combi_prijs_jaar": ("360.00", "Combi (Partner + Feest): prijs per jaar (EUR, excl. btw)", "text"),
     "cap_zichtbaar_gemeente": ("4", "Exclusiviteit: max. zichtbaarheidspartners (⭐) per gemeente", "text"),
     "cap_feest_gemeente": ("0", "Max. feestpartners per gemeente (0 = onbeperkt — feest is een leadproduct: hoe meer aanbieders, hoe beter gezinnen kunnen vergelijken)", "text"),
+    "punt_review": ("10", "Punten: Ravotscore gegeven", "text"),
+    "punt_eerste_score": ("15", "Punten: állereerste score van een plek (bonus)", "text"),
+    "punt_foto": ("15", "Punten: foto goedgekeurd", "text"),
+    "punt_eerste_foto": ("10", "Punten: állereerste foto van een plek (bonus)", "text"),
+    "punt_geweest": ("5", "Punten: bezoek bevestigd", "text"),
+    "punt_daguitstap": ("5", "Punten: daguitstap samengesteld", "text"),
+    "punt_feestje": ("10", "Punten: feestje georganiseerd", "text"),
+    "punt_plek": ("15", "Punten: nieuwe plek toegevoegd die live ging", "text"),
+    "punt_veld_stem": ("3", "Punten: voorziening bevestigd", "text"),
+    "veldstem_dag_max": ("8", "Max. beloonde voorziening-bevestigingen per gezin per dag "
+                              "(0 = geen limiet; veldstemmen vragen geen bezoek, "
+                              "dus een plafond voorkomt eindeloos doorklikken)", "text"),
     "social_facebook": ("", "Facebook-pagina van Ravot (volledige URL, leeg = geen knop)", "text"),
     "social_instagram": ("", "Instagram-pagina van Ravot (volledige URL, leeg = geen knop)", "text"),
     "route_buurt_meter": ("400", "Fietsroutes: koppelafstand 'leuk onderweg' in meter", "text"),

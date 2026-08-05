@@ -48,7 +48,10 @@ _BADGE_TYPES = {
 def ken_toe(family_id, reden, ref_id=None):
     """Punten toekennen — stil en idempotent. Retourneert het aantal punten
     (0 als deze actie al eens beloond werd). Commit gebeurt door de caller."""
-    punten = PUNT_REDENEN.get(reden, 0)
+    # Puntwaarden zijn instelbaar (patch 180); de code-waarde is de standaard.
+    punten = get_int(f"punt_{reden}", PUNT_REDENEN.get(reden, 0))
+    if punten is None:
+        punten = PUNT_REDENEN.get(reden, 0)
     if not family_id or punten <= 0:
         return 0
     ref_id = int(ref_id or 0)
@@ -69,6 +72,14 @@ def ken_toe(family_id, reden, ref_id=None):
     if reden == "geweest":
         g_max = get_int("geweest_dag_max", 3) or 3
         if q_vandaag.filter(RavotPunt.reden == "geweest").count() >= g_max:
+            return 0
+    if reden == "veld_stem":
+        # Veldstemmen zijn de enige bijdrage waarvoor je nergens hoeft te zijn
+        # geweest: één klik per voorziening. Zonder eigen plafond kan een gezin
+        # eindeloos doorklikken over duizenden plekken (patch 180).
+        v_max = get_int("veldstem_dag_max", 8)
+        if v_max and q_vandaag.filter(
+                RavotPunt.reden == "veld_stem").count() >= v_max:
             return 0
     db.session.add(RavotPunt(family_id=family_id, reden=reden,
                              ref_id=ref_id, punten=punten))

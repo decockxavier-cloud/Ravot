@@ -229,7 +229,11 @@ def veld_stem(event_id, veld, waarde):
     # (gezin, plek+veld): blijven tikken levert nooit extra punten op. De punten
     # belonen de moeite, nooit de inhoud — je koopt geen betere score.
     from ..punten import ken_toe
-    ken_toe(fam.id, "veld_stem", ref_id=ev.id * 100 + (hash(veld) % 100))
+    # Stabiele sleutel: Python's hash() is per proces gerandomiseerd, waardoor
+    # dezelfde stem na een herstart opnieuw punten opleverde (patch 180).
+    from zlib import crc32
+    ken_toe(fam.id, "veld_stem",
+            ref_id=ev.id * 100 + (crc32(veld.encode()) % 100))
     db.session.commit()
 
     lbl = VOORZIENING_LABELS.get(veld, veld)
