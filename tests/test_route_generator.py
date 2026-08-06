@@ -351,3 +351,60 @@ def test_naamgeving_weert_sjablonen_en_herhaling(app):
         assert "was niet goed" in prompts[1]
         assert "Speelpaden Fietstocht" in prompts[0]   # bestaande meegegeven
         assert naam == "Knuffelgeitenronde"
+
+
+def test_moeilijkheid_wordt_gemeten_niet_aangenomen(app):
+    """Patch 194: 'vlak' moet een meting zijn. Heuvelachtig terrein levert een
+    zwaarder label op; een kapotte hoogte-API laat het veld eerlijk leeg in
+    plaats van terug te vallen op 'vlak'."""
+    from unittest.mock import patch as _patch
+    with app.app_context():
+        from app.services.route_generator import (genereer_voorstellen,
+                                                  laad_netwerk_uit_geojson,
+                                                  promoveer)
+        laad_netwerk_uit_geojson(_rasternet(), "test")
+        _plekken(app)
+        genereer_voorstellen("Roeselare", top=2)
+        rijen = RouteVoorstel.query.order_by(
+            RouteVoorstel.score.desc()).all()
+
+        class Heuvels:
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                import math as m
+                return {"elevation": [40 + 25 * m.sin(i / 2)
+                                      for i in range(60)]}
+
+        with _patch("app.services.route_generator.requests.get",
+                    return_value=Heuvels()), \
+             _patch("app.enrich._generate", side_effect=RuntimeError("uit")):
+            r = promoveer(rijen[0])
+        assert r.hoogte_m and r.hoogte_m > 60
+        assert r.moeilijkheid in ("licht", "pittig")     # géén 'vlak'
+
+        with _patch("app.services.route_generator.requests.get",
+                    side_effect=RuntimeError("offline")), \
+             _patch("app.enrich._generate", side_effect=RuntimeError("uit")):
+            r2 = promoveer(rijen[1])
+        assert r2.moeilijkheid == ""                     # eerlijk leeg
+
+
+def test_meet_klimmeters_filtert_ruis(app):
+    from unittest.mock import patch as _patch
+    with app.app_context():
+        from app.services.route_generator import meet_klimmeters
+
+        class Plat:
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                # golfjes van ±1 m: meetruis, geen klim
+                return {"elevation": [20 + (i % 2) for i in range(40)]}
+
+        geometrie = [[50.9 + i * 0.005, 3.1] for i in range(40)]
+        with _patch("app.services.route_generator.requests.get",
+                    return_value=Plat()):
+            assert meet_klimmeters(geometrie) == 0

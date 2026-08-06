@@ -7,7 +7,7 @@
     <h1 style="margin:4px 0 2px">{{ r.titel }}</h1>
     <p class="meta">📍 {{ r.gemeente or '' }}{% if r.regio %} · {{ r.regio }}{% endif %}
       &nbsp; {{ r.afstand_km }} km · ±{{ (r.duur_min or 0) // 60 }}u{{ '%02d' % ((r.duur_min or 0) % 60) }}
-      · {{ r.moeilijkheid }} · {{ 'lus' if r.is_lus else 'van A naar B' }}
+      {% if r.moeilijkheid %}· {{ r.moeilijkheid }} {% endif %}· {{ 'lus' if r.is_lus else 'van A naar B' }}
       {% if score %} · <strong>{{ "😞😕😐😄🤩"[(score.kid | round | int) - 1] }} {{ score.kid }}</strong>
       <span class="hint">({{ score.n }} gezin{{ 'nen' if score.n != 1 }})</span>{% endif %}</p>
   </div>

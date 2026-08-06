@@ -341,6 +341,37 @@ def genereer_voorstellen(gemeente, top=8):
 
 
 
+def meet_klimmeters(geometrie, stap_km=0.5):
+    """Echte klimmeters van een route via de gratis Open-Meteo hoogte-API
+    (patch 194). Bemonstert de lijn om de ~500 m, telt de positieve
+    hoogteverschillen op en filtert meetruis (< 2 m per stap telt niet).
+    Retourneert een int of None bij een API-fout — geen data is eerlijker
+    dan verzonnen data, dus de aanroeper mag NIET terugvallen op 0."""
+    punten = sample([(p[0], p[1], None) for p in (geometrie or [])],
+                    stap_km=stap_km)
+    if len(punten) < 2:
+        return None
+    punten = punten[:100]                      # API-limiet per aanroep
+    try:
+        antw = requests.get(
+            "https://api.open-meteo.com/v1/elevation",
+            params={"latitude": ",".join(f"{p[0]:.5f}" for p in punten),
+                    "longitude": ",".join(f"{p[1]:.5f}" for p in punten)},
+            headers=UA, timeout=30)
+        antw.raise_for_status()
+        hoogtes = antw.json().get("elevation") or []
+    except Exception:
+        return None
+    if len(hoogtes) < 2:
+        return None
+    stijging = 0.0
+    for a, b in zip(hoogtes, hoogtes[1:]):
+        d = (b or 0) - (a or 0)
+        if d >= 2:                             # ruisdrempel
+            stijging += d
+    return int(stijging)
+
+
 def schrijf_gpx(route):
     """GPX-bestand maken uit de routegeometrie (patch 191), zodat elke
     gepromoveerde lus meteen op een fietscomputer of in een app kan."""
@@ -508,7 +539,6 @@ def promoveer(voorstel):
         titel=titel, slug=slug, pending=True, hidden=False,
         gemeente=voorstel.gemeente, afstand_km=afstand,
         duur_min=duur_suggestie(afstand),
-        moeilijkheid=moeilijkheid_suggestie(afstand, 0),
         is_lus=True, geometrie=geometrie,
         start_lat=geometrie[0][0] if geometrie else None,
         start_lng=geometrie[0][1] if geometrie else None,
@@ -520,6 +550,16 @@ def promoveer(voorstel):
         lngs = [p[1] for p in geometrie]
         route.bbox_n, route.bbox_z = max(lats), min(lats)
         route.bbox_o, route.bbox_w = max(lngs), min(lngs)
+    # Echte klimmeters meten (patch 194): "vlak" mag geen aanname zijn.
+    # Lukt de meting niet, dan blijft de moeilijkheid leeg voor de redactie.
+    klim = meet_klimmeters(voorstel.geometrie)
+    if klim is not None:
+        route.hoogte_m = klim
+        route.moeilijkheid = moeilijkheid_suggestie(afstand, klim)
+    else:
+        # Let op: None triggert de kolomdefault "vlak" — en dat is nu net de
+        # aanname die we niet willen maken. Leeg = "weten we niet".
+        route.moeilijkheid = ""
     db.session.add(route)
     db.session.flush()
     koppel_route(route)

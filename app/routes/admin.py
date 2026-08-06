@@ -2938,6 +2938,14 @@ def route_ai_tekst(rid):
     r.routebeschrijving = besch + staart
     if not r.gpx_bestand:
         schrijf_gpx(r)
+    # Klimmeters (her)meten (patch 194): een gemeten "vlak" of een eerlijk
+    # leeg veld, maar nooit een aanname.
+    from ..services.route_generator import meet_klimmeters
+    from ..services.routes_gis import moeilijkheid_suggestie
+    klim = meet_klimmeters(r.geometrie)
+    if klim is not None:
+        r.hoogte_m = klim
+        r.moeilijkheid = moeilijkheid_suggestie(r.afstand_km or 0, klim)
     db.session.commit()
     audit(f"route {rid}: AI-tekst toegepast ('{oude_titel}' -> '{naam}')")
     flash(f"AI-voorstel toegepast (was: '{oude_titel}'). Pas gerust aan — "
