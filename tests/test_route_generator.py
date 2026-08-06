@@ -199,7 +199,8 @@ def test_promotie_maakt_gpx_en_ai_naam(app, tmp_path, monkeypatch):
             r = promoveer(v)
         assert "IJssalon Fresco" in m.call_args[0][0]     # echte plekken in prompt
         assert r.titel == "De IJsjes-safari"
-        assert "Knooppunten:" in r.routebeschrijving
+        assert "IJssalon Fresco" in r.beschrijving        # inspiratietekst
+        assert "Knooppunten:" in r.routebeschrijving      # stap-voor-stap
         assert r.gpx_bestand and os.path.exists(
             f"/data/uploads/gpx/{r.gpx_bestand}")
         inhoud = open(f"/data/uploads/gpx/{r.gpx_bestand}").read()
@@ -291,7 +292,8 @@ def test_ai_tekst_op_bestaande_route(client, app):
         r = db.session.get(FietsRoute, rid)
         assert r.titel == "De Vlinderronde"
         assert r.slug == "ai-testlus"                   # links blijven werken
-        assert "Knooppunten: 74" in r.routebeschrijving
+        assert "Speeltuin De Vlinder" in r.beschrijving  # inspiratietekst
+        assert r.routebeschrijving.startswith("Knooppunten: 74")   # opgeschoond
         assert r.gpx_bestand
 
 

@@ -2928,14 +2928,24 @@ def route_ai_tekst(rid):
         return redirect(url_for("admin.route_bewerk", rid=rid))
     naam, besch = ai
     oude_titel = r.titel
-    # Knooppuntenregel uit de bestaande beschrijving meenemen als die er is.
-    staart = ""
-    for regel in (r.routebeschrijving or "").splitlines():
-        if regel.strip().startswith("Knooppunten:"):
-            staart = "\n\n" + regel.strip()
-            break
+    # Warme AI-tekst hoort in de inspiratietekst (patch 195); een eerder per
+    # ongeluk bewaarde letterlijke "None" ruimen we meteen op. De
+    # routebeschrijving houdt enkel het stap-voor-stap-gedeelte: een oude
+    # AI-inspiratietekst die daar (vóór 195) belandde, vervangen we door de
+    # bewaarde knooppuntenregel.
     r.titel = naam
-    r.routebeschrijving = besch + staart
+    r.beschrijving = besch
+    oud_rb = (r.routebeschrijving or "").strip()
+    knooppunten = ""
+    for regel in oud_rb.splitlines():
+        if regel.strip().startswith("Knooppunten:"):
+            knooppunten = regel.strip()
+            break
+    if knooppunten and not oud_rb.startswith("Knooppunten:"):
+        r.routebeschrijving = knooppunten
+    for veld in ("regio",):
+        if (getattr(r, veld) or "").strip() == "None":
+            setattr(r, veld, None)
     if not r.gpx_bestand:
         schrijf_gpx(r)
     # Klimmeters (her)meten (patch 194): een gemeten "vlak" of een eerlijk

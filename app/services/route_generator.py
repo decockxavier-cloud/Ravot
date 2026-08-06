@@ -570,9 +570,9 @@ def promoveer(voorstel):
         naam, besch = ai
         route.titel = f"{naam}"
         route.slug = slugify(f"{naam}-{voorstel.gemeente}-{voorstel.id}")
-        route.routebeschrijving = (
-            besch + "\n\nKnooppunten: "
-            + " – ".join(voorstel.knooppunten or []))
+        # Warme tekst = inspiratietekst (de open kaart op de routepagina);
+        # de knooppuntenreeks blijft in de stap-voor-stap-routebeschrijving.
+        route.beschrijving = besch
     # ...en een GPX-bestand, meteen downloadbaar voor de testrit.
     schrijf_gpx(route)
     voorstel.status = "gepromoveerd"
