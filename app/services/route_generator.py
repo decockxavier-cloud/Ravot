@@ -329,7 +329,11 @@ def genereer_voorstellen(gemeente, top=8):
         db.session.add(RouteVoorstel(
             gemeente=gemeente,
             knooppunten=[knopen[i].nummer for i in pad_knopen],
-            geometrie=vereenvoudig([(p[0], p[1], None) for p in geometrie]),
+            # Fijne vereenvoudiging (patch 196): alleen collineaire punten
+            # weg. Zo volgt de GPX de echte weg i.p.v. hoeken af te snijden
+            # met sprongen van honderden meters.
+            geometrie=vereenvoudig([(p[0], p[1], None) for p in geometrie],
+                                   tolerantie=0.00006, maxi=4000),
             afstand_km=round(meters / 1000, 1),
             score=score, score_detail=detail))
         if len(gekozen) >= top:

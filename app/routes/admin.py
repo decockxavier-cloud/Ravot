@@ -2896,17 +2896,14 @@ def route_gpx_download(rid):
     from flask import send_file
     from ..models import FietsRoute
     r = db.session.get(FietsRoute, rid) or abort(404)
-    if not r.gpx_bestand:
-        from ..services.route_generator import schrijf_gpx
-        if not schrijf_gpx(r):
-            flash("Deze route heeft geen geometrie, dus geen GPX.", "error")
-            return redirect(url_for("admin.routes"))
-        db.session.commit()
+    # Altijd vers schrijven (patch 196): kost niets en zorgt dat het bestand
+    # de actuele geometrie volgt (bv. na een verbetering of hermeting).
+    from ..services.route_generator import schrijf_gpx
+    if not schrijf_gpx(r):
+        flash("Deze route heeft geen geometrie, dus geen GPX.", "error")
+        return redirect(url_for("admin.routes"))
+    db.session.commit()
     pad = f"/data/uploads/gpx/{r.gpx_bestand}"
-    if not os.path.exists(pad):
-        from ..services.route_generator import schrijf_gpx
-        schrijf_gpx(r)
-        db.session.commit()
     return send_file(pad, mimetype="application/gpx+xml", as_attachment=True,
                      download_name=f"ravot-{r.slug}.gpx")
 

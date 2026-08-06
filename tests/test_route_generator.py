@@ -410,3 +410,62 @@ def test_meet_klimmeters_filtert_ruis(app):
         with _patch("app.services.route_generator.requests.get",
                     return_value=Plat()):
             assert meet_klimmeters(geometrie) == 0
+
+
+def test_gpx_volgt_bochten_nauwkeurig(app):
+    """Patch 196: de GPX mag geen hoeken afsnijden — op bochtige wegen blijven
+    de tussenpunten behouden zodat een Garmin de echte weg tekent. (Op
+    kaarsrechte stukken mogen collineaire punten wél weg: dat is correct.)"""
+    import math as m
+    import re
+    from unittest.mock import patch as _patch
+
+    def _golvend_net():
+        def punt(i, j):
+            return [BASIS[1] + j * 1.6 * KM_LNG, BASIS[0] + i * 1.6 * KM_LAT]
+
+        def lijn(a, b):
+            uit = []
+            for t in range(17):
+                f = t / 16
+                golf = 0.00036 * m.sin(f * 3.14159 * 3)
+                uit.append([a[0] + (b[0] - a[0]) * f + golf,
+                            a[1] + (b[1] - a[1]) * f + golf])
+            return uit
+        feats = []
+        for i in range(4):
+            for j in range(4):
+                if j < 3:
+                    feats.append({"type": "Feature", "properties": {},
+                                  "geometry": {"type": "LineString",
+                                               "coordinates": lijn(punt(i, j),
+                                                                   punt(i, j + 1))}})
+                if i < 3:
+                    feats.append({"type": "Feature", "properties": {},
+                                  "geometry": {"type": "LineString",
+                                               "coordinates": lijn(punt(i, j),
+                                                                   punt(i + 1, j))}})
+        return {"type": "FeatureCollection", "features": feats}
+
+    with app.app_context():
+        from app.services.route_generator import (genereer_voorstellen,
+                                                  laad_netwerk_uit_geojson,
+                                                  promoveer)
+        laad_netwerk_uit_geojson(_golvend_net(), "test")
+        _plekken(app)
+        genereer_voorstellen("Roeselare", top=1)
+        with _patch("app.enrich._generate", side_effect=RuntimeError("uit")), \
+             _patch("app.services.route_generator.meet_klimmeters",
+                    return_value=10):
+            r = promoveer(RouteVoorstel.query.first())
+        inhoud = open(f"/data/uploads/gpx/{r.gpx_bestand}").read()
+        pts = [(float(a), float(b)) for a, b in
+               re.findall(r'lat="([\d.]+)" lon="([\d.]+)"', inhoud)]
+        # De juiste meetlat is niet de puntafstand maar de afwijking: DP
+        # garandeert ≤ ~7 m van de echte weg, en dan klopt de totale afstand
+        # (bij de oude grove tolerantie verdween ~1 km in afgesneden bochten).
+        from app.scoring import haversine_km
+        km = sum(haversine_km(*pts[i], *pts[i + 1])
+                 for i in range(len(pts) - 1))
+        assert abs(km - r.afstand_km) < 0.15     # afstand blijft behouden
+        assert len(pts) > 40                     # bochttoppen aanwezig
