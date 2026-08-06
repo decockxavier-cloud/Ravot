@@ -109,10 +109,65 @@ def laad_netwerk_uit_geojson(data, netwerk="onbekend"):
     return len(rooster), n_seg
 
 
+def nummer_knopen_uit_geojson(data, max_m=75):
+    """Echte knooppuntnummers uit een puntenlaag aan de geklikte knooppunten
+    hangen (koppeling op afstand). Retourneert het aantal genummerde knopen."""
+    knopen = Knooppunt.query.all()
+    if not knopen:
+        return 0
+    rooster = {}
+    for k in knopen:
+        rooster.setdefault((round(k.lat, 3), round(k.lng, 3)), []).append(k)
+    hits = 0
+    for f in data.get("features", []):
+        geom = f.get("geometry") or {}
+        if geom.get("type") != "Point":
+            continue
+        lng, lat = (geom.get("coordinates") or [None, None])[:2]
+        if lat is None:
+            continue
+        nummer = None
+        for kk, v in (f.get("properties") or {}).items():
+            kl = kk.lower()
+            if any(t in kl for t in ("nummer", "knooppunt", "nodenr", "nr")):
+                w = str(v).strip().split(".")[0]
+                if w.isdigit() and len(w) <= 3:
+                    nummer = w
+                    break
+        if not nummer:
+            continue
+        beste = None
+        for dla in (-0.001, 0, 0.001):
+            for dln in (-0.001, 0, 0.001):
+                for k in rooster.get((round(lat + dla, 3),
+                                      round(lng + dln, 3)), []):
+                    d = haversine_km(lat, lng, k.lat, k.lng) * 1000
+                    if d <= max_m and (beste is None or d < beste[0]):
+                        beste = (d, k)
+        if beste:
+            beste[1].nummer = nummer
+            hits += 1
+    db.session.commit()
+    return hits
+
+
 def laad_netwerk_van_url(url, netwerk="Toerisme Vlaanderen"):
-    antw = requests.get(url, headers=UA, timeout=120)
+    antw = requests.get(url, headers=UA, timeout=180)
     antw.raise_for_status()
-    return laad_netwerk_uit_geojson(antw.json(), netwerk)
+    knopen, segs = laad_netwerk_uit_geojson(antw.json(), netwerk)
+    # Zelfde bron heeft doorgaans ook een knopenlaag ("traject" -> "knoop"):
+    # die levert de échte knooppuntnummers, zodat je onderweg de bordjes kunt
+    # volgen in plaats van interne K-codes.
+    genummerd = 0
+    if "traject" in url:
+        try:
+            antw2 = requests.get(url.replace("traject", "knoop"),
+                                 headers=UA, timeout=180)
+            antw2.raise_for_status()
+            genummerd = nummer_knopen_uit_geojson(antw2.json())
+        except Exception:
+            pass
+    return knopen, segs, genummerd
 
 
 def _graaf():
@@ -200,11 +255,17 @@ def score_lus(geometrie):
                 kwal = 0.5 + (ev.quality or 0) / 100.0     # 0.5 .. 1.5
                 tel[g] += min(kwal, 1.5)
                 bezet_km.add(int(beste[1] * 0.3 // 3))     # 3km-vak
-    score = sum(GEWICHT[g] * min(tel[g], CAT_PLAFOND) for g in tel)
-    # Spreidingsbonus: stops verdeeld over de lus > alles op één kluitje
+    # Afnemende meeropbrengst i.p.v. een hard plafond: in een dichte stad
+    # botste elke lus tegen het maximum en werd alles ~dezelfde score. Nu
+    # telt de 25e speeltuin nog steeds iets, maar veel minder dan de 3e —
+    # lussen blijven onderscheidbaar zonder dat één wijk alles wint.
+    import math as _m
+    score = sum(GEWICHT[g] * CAT_PLAFOND * (1 - _m.exp(-tel[g] / CAT_PLAFOND))
+                for g in tel)
+    # Spreidingsbonus (zwaarder): stops verdeeld over de lus > één kluitje
     vakken = max(1, int(len(lijn) * 0.3 // 3))
-    score += 2.0 * (len(bezet_km) / vakken)
-    detail = {g: round(tel[g], 1) for g in tel}
+    score += 3.0 * (len(bezet_km) / vakken)
+    detail = {g: round(tel[g]) for g in tel}
     detail["spreiding"] = round(len(bezet_km) / vakken, 2)
     return round(score, 2), detail
 
@@ -252,15 +313,32 @@ def genereer_voorstellen(gemeente, top=8):
             score, detail = score_lus(geometrie)
             kandidaten.append((score, detail, pad_knopen, geometrie, meters))
     kandidaten.sort(key=lambda x: -x[0])
-    for score, detail, pad_knopen, geometrie, meters in kandidaten[:top]:
+    # Diversiteit: een top vol varianten van dezelfde lus helpt de redactie
+    # niet. Gulzig kiezen, maar kandidaten die >55% van hun knooppunten delen
+    # met een al gekozen lus slaan we over.
+    gekozen = []
+    for kand in kandidaten:
+        knoopset = set(kand[2][:-1])
+        if any(len(knoopset & g) / max(1, len(knoopset | g)) > 0.55
+               for g in gekozen):
+            continue
+        gekozen.append(knoopset)
+        yield_kand = kand
+        # bewaar meteen
+        score, detail, pad_knopen, geometrie, meters = yield_kand
         db.session.add(RouteVoorstel(
             gemeente=gemeente,
             knooppunten=[knopen[i].nummer for i in pad_knopen],
             geometrie=vereenvoudig([(p[0], p[1], None) for p in geometrie]),
             afstand_km=round(meters / 1000, 1),
             score=score, score_detail=detail))
+        if len(gekozen) >= top:
+            break
     db.session.commit()
-    return min(top, len(kandidaten)), len(kandidaten)
+    return len(gekozen), len(kandidaten)
+
+
+
 
 
 def promoveer(voorstel):

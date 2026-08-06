@@ -433,9 +433,10 @@ def register_cli(app):
             click.echo("Geen URL: geef er één mee of vul netwerk_bron_url in "
                        "bij Instellingen > Fietsroutes.")
             return
-        knopen, segmenten = laad_netwerk_van_url(url)
+        knopen, segmenten, genummerd = laad_netwerk_van_url(url)
         click.echo(f"Netwerk geladen: {knopen} knooppunten, "
-                   f"{segmenten} segmenten.")
+                   f"{segmenten} segmenten, {genummerd} met een echt "
+                   "knooppuntnummer.")
 
     @app.cli.command("genereer-routes")
     @click.argument("gemeente")

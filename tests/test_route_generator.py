@@ -123,3 +123,53 @@ def test_beheerwachtrij(client, app):
     with app.app_context():
         assert FietsRoute.query.filter_by(
             bron_naam="Ravot-routegenerator").count() == 1
+
+
+def test_echte_knooppuntnummers_gekoppeld(app):
+    """Patch 189: de knopenlaag levert de échte nummers, zodat je onderweg de
+    bordjes kunt volgen in plaats van interne K-codes."""
+    with app.app_context():
+        from app.services.route_generator import (laad_netwerk_uit_geojson,
+                                                  nummer_knopen_uit_geojson)
+        laad_netwerk_uit_geojson(_rasternet(), "test")
+
+        def punt(i, j):
+            return [BASIS[1] + j * 1.6 * KM_LNG, BASIS[0] + i * 1.6 * KM_LAT]
+        knopen_data = {"type": "FeatureCollection", "features": [
+            {"type": "Feature",
+             "properties": {"knooppuntnummer": str(10 + i * 4 + j)},
+             "geometry": {"type": "Point", "coordinates": punt(i, j)}}
+            for i in range(4) for j in range(4)]}
+        assert nummer_knopen_uit_geojson(knopen_data) == 16
+        assert all(not k.nummer.startswith("K")
+                   for k in Knooppunt.query.all())
+
+
+def test_top_is_divers_en_scores_onderscheiden(app):
+    """Patch 189: geen top vol varianten van dezelfde lus, en in dicht gebied
+    verzadigen de scores niet meer tot één waarde."""
+    import random
+    with app.app_context():
+        from app.services.route_generator import (genereer_voorstellen,
+                                                  laad_netwerk_uit_geojson)
+        laad_netwerk_uit_geojson(_rasternet(), "test")
+        random.seed(7)
+        for k in range(30):
+            st = random.choice(["playground", "playground", "horeca", "museum"])
+            db.session.add(Event(
+                title=f"D{k}", slug=f"dv{k}", source="osm", ext_id=f"dv{k}",
+                is_permanent=True, pending=False, hidden=False,
+                gemeente="Roeselare", subtype=st,
+                quality=random.randint(20, 80),
+                categories=["buiten"] if st == "playground" else [],
+                indoor=st != "playground",
+                lat=BASIS[0] + random.uniform(0, 4.8) * KM_LAT,
+                lng=BASIS[1] + random.uniform(0, 4.8) * KM_LNG))
+        db.session.commit()
+        genereer_voorstellen("Roeselare", top=6)
+        rijen = (RouteVoorstel.query
+                 .order_by(RouteVoorstel.score.desc()).all())
+        scores = [r.score for r in rijen]
+        assert len(set(scores)) >= 4              # geen eenheidsworst
+        a, b = set(rijen[0].knooppunten), set(rijen[1].knooppunten)
+        assert len(a & b) / len(a | b) <= 0.6     # top-2 echt verschillend
