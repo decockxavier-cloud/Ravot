@@ -407,10 +407,17 @@ def schrijf_gpx(route):
 
 
 def _hoogtepunten(route, maxi=8):
-    """Namen van de leukste plekken langs de route, voor de AI-tekst."""
-    from ..models import RouteBuurt
-    from ..types import groep_van
-    uit = {"ravotten": [], "smullen": [], "beleven": []}
+    """Wat er langs de route ligt, klaar voor de AI-tekst (patch 197):
+    - ravotten/beleven: naam mét typelabel, zodat de AI beschrijft wat een
+      plek ÍS en niets afleidt uit de naam (een 'Geitenpark' zonder geiten);
+    - smullen: alleen betalende Ravot-partners bij naam; de rest telt enkel
+      mee als aantal ("onderweg valt er iets te eten of drinken")."""
+    from ..models import RouteBuurt, utcnow
+    from ..types import TYPES, groep_van
+    TYPE_LABELS = {k: v[1].split("(")[0].strip() for k, v in TYPES.items()}
+    nu = utcnow().replace(tzinfo=None)
+    uit = {"ravotten": [], "beleven": [], "smullen_partners": [],
+           "smullen_aantal": 0}
     rijen = (RouteBuurt.query.filter_by(route_id=route.id)
              .order_by(RouteBuurt.route_km.asc()).all())
     for b in rijen:
@@ -418,10 +425,18 @@ def _hoogtepunten(route, maxi=8):
         if ev is None or not ev.title:
             continue
         g = groep_van(ev)
-        if g in uit and len(uit[g]) < maxi:
-            naam = ev.title.split("—")[0].strip()
-            if naam not in uit[g]:
-                uit[g].append(naam)
+        naam = ev.title.split("—")[0].strip()
+        soort = TYPE_LABELS.get(ev.subtype or "", "") if TYPE_LABELS else ""
+        etiket = f"{naam} ({soort})" if soort else naam
+        if g == "smullen":
+            uit["smullen_aantal"] += 1
+            partner = bool(ev.partner_until and ev.partner_until > nu)
+            if partner and naam not in uit["smullen_partners"] \
+                    and len(uit["smullen_partners"]) < 4:
+                uit["smullen_partners"].append(naam)
+        elif g in ("ravotten", "beleven") and len(uit[g]) < maxi:
+            if etiket not in uit[g]:
+                uit[g].append(etiket)
     return uit
 
 
@@ -464,10 +479,14 @@ def ai_titel_en_beschrijving(route):
     langs = []
     if h["ravotten"]:
         langs.append("speel- en ravotplekken: " + ", ".join(h["ravotten"][:5]))
-    if h["smullen"]:
-        langs.append("eet- en ijsstops: " + ", ".join(h["smullen"][:4]))
     if h["beleven"]:
         langs.append("te beleven: " + ", ".join(h["beleven"][:3]))
+    if h["smullen_partners"]:
+        langs.append("eet-/drinkstops die je bij naam mag noemen: "
+                     + ", ".join(h["smullen_partners"]))
+    if h["smullen_aantal"]:
+        langs.append(f"daarnaast {h['smullen_aantal']} plekjes om iets te "
+                     "eten of te drinken (GEEN namen noemen)")
     bestaande = [t for (t,) in db.session.query(FietsRoute.titel)
                  .filter(FietsRoute.id != route.id).all() if t]
 
@@ -493,8 +512,16 @@ def ai_titel_en_beschrijving(route):
             "- Elke route in de rubriek moet anders klinken: geen sjabloon, "
             "geen herhaling.\n"
             "\nDe beschrijving: 60-110 woorden, warm en concreet, noemt 2-3 "
-            "van de plekken hierboven bij naam en verzint NIETS wat er niet "
-            "staat. Geen superlatievenregen.\n"
+            "speel- of belevingsplekken bij naam. STRIKT:\n"
+            "- Beschrijf een plek enkel via het type tussen haakjes; leid "
+            "NIETS af uit de naam zelf. Een 'Geitenpark (speeltuin)' is een "
+            "speeltuin — schrijf dus niet dat er geiten zijn.\n"
+            "- Eet- en drinkzaken: noem alleen de zaken die expliciet bij "
+            "naam genoemd mogen worden. Voor de rest volstaat dat er "
+            "onderweg iets te eten of te drinken valt, zonder namen.\n"
+            "- Verzin geen kastelen, dieren, bezienswaardigheden of andere "
+            "details die hierboven niet staan. Twijfel = weglaten.\n"
+            "Geen superlatievenregen.\n"
             + feedback +
             "\nAntwoord exact zo:\nNAAM: ...\nBESCHRIJVING: ...")
         return regels
@@ -516,19 +543,70 @@ def ai_titel_en_beschrijving(route):
                 besch = r[13:].strip()[:1000]
         return naam, besch
 
+    # Niet-partner-horeca mag nergens bij naam vallen (patch 197): dat zou
+    # gratis reclame zijn naast betalende partners — en het is de kern van
+    # het partnermodel dat vermelding een partnervoordeel is.
+    from ..models import RouteBuurt, utcnow
+    from ..types import groep_van as _gv
+    nu = utcnow().replace(tzinfo=None)
+    verboden_namen = []
+    for b in RouteBuurt.query.filter_by(route_id=route.id).all():
+        ev = b.event
+        if ev is not None and ev.title and _gv(ev) == "smullen" \
+                and not (ev.partner_until and ev.partner_until > nu):
+            kern = ev.title.split("—")[0].strip()
+            if len(kern) >= 5:
+                verboden_namen.append(kern)
+
+    def _horeca_problemen(naam, besch):
+        tekst = f"{naam} {besch}".lower()
+        return [f"noemt de niet-partnerzaak '{n}'" for n in verboden_namen
+                if n.lower() in tekst]
+
     naam, besch = _vraag(_prompt())
     if not (naam and besch):
         return None
-    problemen = _naam_problemen(naam, route, bestaande)
+    problemen = _naam_problemen(naam, route, bestaande) \
+        + _horeca_problemen(naam, besch)
     if problemen:
         naam2, besch2 = _vraag(_prompt(
             f"\nJe vorige voorstel '{naam}' was niet goed: "
             + "; ".join(problemen) + ". Doe een wezenlijk ander voorstel.\n"))
-        if naam2 and besch2 and not _naam_problemen(naam2, route, bestaande):
-            return naam2, besch2
         if naam2 and besch2:
-            naam, besch = naam2, besch2   # beter dan niets; redactie schaaft
+            p2 = _naam_problemen(naam2, route, bestaande) \
+                + _horeca_problemen(naam2, besch2)
+            if not p2:
+                return naam2, besch2
+            if not _horeca_problemen(naam2, besch2):
+                return naam2, besch2      # stijlpuntjes mag de redactie doen
+        # Niet-partnerreclame blijft erin zitten: dan liever géén AI-tekst.
+        if _horeca_problemen(naam, besch):
+            return None
     return naam, besch
+
+
+def regio_suggestie(route):
+    """Regio afleiden uit bestaande routes (patch 197): eerst dezelfde
+    gemeente, anders de dichtstbijzijnde route (≤ 30 km) met een regio.
+    Eén keer handmatig invullen per streek volstaat dus."""
+    q = FietsRoute.query.filter(FietsRoute.id != route.id,
+                                FietsRoute.regio.isnot(None),
+                                FietsRoute.regio != "")
+    if route.gemeente:
+        zelfde = q.filter(FietsRoute.gemeente.ilike(route.gemeente)).first()
+        if zelfde:
+            return zelfde.regio
+    if route.start_lat is None:
+        return None
+    beste = None
+    for r in q.all():
+        if r.start_lat is None:
+            continue
+        d = haversine_km(route.start_lat, route.start_lng,
+                         r.start_lat, r.start_lng)
+        if d <= 30 and (beste is None or d < beste[0]):
+            beste = (d, r.regio)
+    return beste[1] if beste else None
 
 
 def promoveer(voorstel):
@@ -579,6 +657,8 @@ def promoveer(voorstel):
         route.beschrijving = besch
     # ...en een GPX-bestand, meteen downloadbaar voor de testrit.
     schrijf_gpx(route)
+    if not route.regio:
+        route.regio = regio_suggestie(route)
     voorstel.status = "gepromoveerd"
     voorstel.route_id = route.id
     db.session.commit()

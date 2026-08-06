@@ -2943,6 +2943,9 @@ def route_ai_tekst(rid):
     for veld in ("regio",):
         if (getattr(r, veld) or "").strip() == "None":
             setattr(r, veld, None)
+    if not r.regio:
+        from ..services.route_generator import regio_suggestie
+        r.regio = regio_suggestie(r)
     if not r.gpx_bestand:
         schrijf_gpx(r)
     # Klimmeters (her)meten (patch 194): een gemeten "vlak" of een eerlijk

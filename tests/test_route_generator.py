@@ -185,10 +185,14 @@ def test_promotie_maakt_gpx_en_ai_naam(app, tmp_path, monkeypatch):
                                                   laad_netwerk_uit_geojson,
                                                   promoveer)
         laad_netwerk_uit_geojson(_rasternet(), "test")
+        from datetime import timedelta
+        from app.models import utcnow
         db.session.add(Event(
             title="IJssalon Fresco", slug="gpx-ijs", source="osm",
             ext_id="gpx-ijs", is_permanent=True, pending=False, hidden=False,
             gemeente="Roeselare", subtype="horeca", quality=60, indoor=True,
+            # partner: alleen daarom mag de AI-tekst de zaak bij naam noemen
+            partner_until=utcnow().replace(tzinfo=None) + timedelta(days=90),
             lat=BASIS[0] + 0.001, lng=BASIS[1] + 0.001))
         _plekken(app)
         genereer_voorstellen("Roeselare", top=1)
@@ -469,3 +473,65 @@ def test_gpx_volgt_bochten_nauwkeurig(app):
                  for i in range(len(pts) - 1))
         assert abs(km - r.afstand_km) < 0.15     # afstand blijft behouden
         assert len(pts) > 40                     # bochttoppen aanwezig
+
+
+def test_horeca_alleen_partners_en_geen_verzinsels(app):
+    """Patch 197: niet-partner-horeca mag nergens bij naam vallen (vermelding
+    is een partnervoordeel), plekken krijgen hun type mee zodat de AI niets
+    uit namen afleidt, en de regio wordt overgeërfd van bestaande routes."""
+    from datetime import timedelta
+    from unittest.mock import patch as _patch
+    from app.models import FietsRoute, utcnow
+    with app.app_context():
+        from app.services.route_generator import (genereer_voorstellen,
+                                                  laad_netwerk_uit_geojson,
+                                                  promoveer)
+        laad_netwerk_uit_geojson(_rasternet(), "test")
+        db.session.add(FietsRoute(titel="Oude lus", slug="p197-oud",
+                                  afstand_km=15, duur_min=90,
+                                  moeilijkheid="vlak", is_lus=True,
+                                  pending=False, hidden=False,
+                                  gemeente="Roeselare", regio="Leiestreek",
+                                  start_lat=BASIS[0], start_lng=BASIS[1]))
+        db.session.add(Event(title="Geitenpark", slug="p197-gp", source="osm",
+                             ext_id="p197-gp", is_permanent=True,
+                             pending=False, hidden=False, subtype="playground",
+                             quality=60, categories=["buiten"],
+                             gemeente="Roeselare",
+                             lat=BASIS[0] + 0.001, lng=BASIS[1] + 0.001))
+        db.session.add(Event(title="Frituur Smulbox", slug="p197-fs",
+                             source="osm", ext_id="p197-fs", is_permanent=True,
+                             pending=False, hidden=False, subtype="horeca",
+                             indoor=True, gemeente="Roeselare",
+                             lat=BASIS[0] + 0.002, lng=BASIS[1] + 0.0015))
+        db.session.add(Event(title="Eethuis De Partner", slug="p197-ep",
+                             source="osm", ext_id="p197-ep", is_permanent=True,
+                             pending=False, hidden=False, subtype="horeca",
+                             indoor=True, gemeente="Roeselare",
+                             partner_until=utcnow().replace(tzinfo=None)
+                             + timedelta(days=200),
+                             lat=BASIS[0] + 0.0015, lng=BASIS[1] + 0.002))
+        db.session.commit()
+        genereer_voorstellen("Roeselare", top=1)
+
+        prompts = []
+
+        def nep(p, *a, **k):
+            prompts.append(p)
+            if len(prompts) == 1:
+                return ("NAAM: Smulbox-sprint\nBESCHRIJVING: Eet bij "
+                        "Frituur Smulbox in het Geitenpark.")
+            return ("NAAM: Schommelronde\nBESCHRIJVING: Spelen in "
+                    "speeltuin Geitenpark en onderweg genoeg plekjes "
+                    "voor een drankje.")
+
+        with _patch("app.enrich._generate", side_effect=nep), \
+             _patch("app.services.route_generator.meet_klimmeters",
+                    return_value=10):
+            r = promoveer(RouteVoorstel.query.first())
+        assert "Geitenpark (Speeltuin" in prompts[0]        # type mee
+        assert "mag noemen: Eethuis De Partner" in prompts[0]
+        assert "GEEN namen" in prompts[0]                   # rest anoniem
+        assert "niet-partnerzaak" in prompts[1]             # herkansing
+        assert "Smulbox" not in (r.beschrijving or "")
+        assert r.regio == "Leiestreek"                      # overgeërfd
