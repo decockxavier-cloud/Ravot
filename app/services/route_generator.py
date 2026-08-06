@@ -390,11 +390,41 @@ def _hoogtepunten(route, maxi=8):
     return uit
 
 
+def _naam_problemen(naam, route, bestaande):
+    """Waarom een voorgestelde naam niet goed genoeg is (lege lijst = prima).
+    Houdt de rubriek gevarieerd: geen gemeentenaam-sjablonen, geen generieke
+    achtervoegsels, geen naam die op een bestaande lijkt."""
+    problemen = []
+    n = naam.lower()
+    gem = (route.gemeente or "").lower()
+    # ook de bijvoeglijke vorm vangen ("Roeselaarse", "Izegemse"): de stam
+    # van de gemeentenaam volstaat als signaal
+    if gem and (gem in n or (len(gem) >= 6 and gem[:6] in n)):
+        problemen.append(f"bevat de gemeentenaam '{route.gemeente}'")
+    for verboden in ("fietstocht", "fietsroute", "fietslus", " route",
+                     " tocht", "wandeling"):
+        if verboden in n:
+            problemen.append(f"bevat het generieke woord '{verboden.strip()}'")
+            break
+    kern = {w for w in n.replace("-", " ").split()
+            if len(w) > 4 and w not in ("kleine", "grote")}
+    for titel in bestaande:
+        t = titel.lower()
+        tkern = {w for w in t.replace("-", " ").split() if len(w) > 4}
+        if n in t or t in n or (kern and kern & tkern):
+            problemen.append(f"lijkt te veel op de bestaande route '{titel}'")
+            break
+    return problemen
+
+
 def ai_titel_en_beschrijving(route):
     """Vraag de verrijkings-AI om een speelse naam + korte beschrijving,
-    geïnspireerd op wat er écht langs de route ligt. Retourneert (titel,
-    beschrijving) of None bij een AI-fout — de route werkt ook zonder."""
+    geïnspireerd op wat er écht langs de route ligt. De naam moet de rubriek
+    gevarieerd houden: bestaande namen worden meegegeven om herhaling te
+    vermijden, en een zwak voorstel krijgt één herkansing met uitleg.
+    Retourneert (titel, beschrijving) of None."""
     from ..enrich import _generate
+    from ..models import FietsRoute
     h = _hoogtepunten(route)
     langs = []
     if h["ravotten"]:
@@ -403,34 +433,67 @@ def ai_titel_en_beschrijving(route):
         langs.append("eet- en ijsstops: " + ", ".join(h["smullen"][:4]))
     if h["beleven"]:
         langs.append("te beleven: " + ", ".join(h["beleven"][:3]))
-    prompt = (
-        "Bedenk een naam en korte beschrijving voor een gezinsfietslus op "
-        "het knooppuntennetwerk.\n"
-        f"Gemeente: {route.gemeente or 'onbekend'} · Lengte: "
-        f"{route.afstand_km:g} km · Lus langs {'; '.join(langs) or 'landelijke wegen'}.\n\n"
-        "Regels: de naam is speels en kindgericht, geïnspireerd op wat je "
-        "onderweg tegenkomt (zoals 'IJsjesroute' of 'Speeltuinsafari'), "
-        "maximaal 5 woorden, zonder het woord 'route' verplicht. De "
-        "beschrijving is 60-110 woorden, warm en concreet, noemt 2-3 van de "
-        "plekken hierboven bij naam en verzint NIETS wat er niet staat. "
-        "Geen superlatievenregen.\n\n"
-        "Antwoord exact zo:\nNAAM: ...\nBESCHRIJVING: ...")
-    try:
-        ruw = _generate(prompt, "Je bent de redacteur van Ravot.be, een warm "
-                        "Vlaams gezinsplatform. Schrijf in het Nederlands.",
-                        max_tokens=400) or ""
-    except Exception:
-        return None
-    naam = besch = None
-    for regel in ruw.splitlines():
-        r = regel.strip()
-        if r.upper().startswith("NAAM:"):
-            naam = r[5:].strip().strip('"')[:80]
-        elif r.upper().startswith("BESCHRIJVING:"):
-            besch = r[13:].strip()[:1000]
-    if naam and besch:
+    bestaande = [t for (t,) in db.session.query(FietsRoute.titel)
+                 .filter(FietsRoute.id != route.id).all() if t]
+
+    def _prompt(feedback=""):
+        regels = (
+            "Bedenk een naam en korte beschrijving voor een gezinsfietslus op "
+            "het knooppuntennetwerk.\n"
+            f"Gemeente: {route.gemeente or 'onbekend'} · Lengte: "
+            f"{route.afstand_km:g} km · Lus langs "
+            f"{'; '.join(langs) or 'landelijke wegen'}.\n"
+            + (f"Bestaande routenamen (vermijd elke gelijkenis): "
+               f"{'; '.join(bestaande[:12])}.\n" if bestaande else "")
+            + "\nRegels voor de naam:\n"
+            "- Kies ÉÉN concrete verrassing van onderweg als kapstok: een "
+            "plek, dier, lekkernij of beeld — niet de gemeente.\n"
+            "- De gemeentenaam mag NIET in de naam.\n"
+            "- Verboden woorden: route, tocht, fietstocht, fietsroute, "
+            "fietslus.\n"
+            "- Maximaal 4 woorden. Woordspeling, alliteratie of een "
+            "verkleinwoord mag; denk aan namen als 'IJsjessafari', "
+            "'Vossenjacht aan de Mandel', 'Van Schommel tot Kasteel', "
+            "'Knuffelgeitenronde'.\n"
+            "- Elke route in de rubriek moet anders klinken: geen sjabloon, "
+            "geen herhaling.\n"
+            "\nDe beschrijving: 60-110 woorden, warm en concreet, noemt 2-3 "
+            "van de plekken hierboven bij naam en verzint NIETS wat er niet "
+            "staat. Geen superlatievenregen.\n"
+            + feedback +
+            "\nAntwoord exact zo:\nNAAM: ...\nBESCHRIJVING: ...")
+        return regels
+
+    systeem = ("Je bent de redacteur van Ravot.be, een warm Vlaams "
+               "gezinsplatform. Schrijf in het Nederlands.")
+
+    def _vraag(p):
+        try:
+            ruw = _generate(p, systeem, max_tokens=400) or ""
+        except Exception:
+            return None, None
+        naam = besch = None
+        for regel in ruw.splitlines():
+            r = regel.strip()
+            if r.upper().startswith("NAAM:"):
+                naam = r[5:].strip().strip('"')[:80]
+            elif r.upper().startswith("BESCHRIJVING:"):
+                besch = r[13:].strip()[:1000]
         return naam, besch
-    return None
+
+    naam, besch = _vraag(_prompt())
+    if not (naam and besch):
+        return None
+    problemen = _naam_problemen(naam, route, bestaande)
+    if problemen:
+        naam2, besch2 = _vraag(_prompt(
+            f"\nJe vorige voorstel '{naam}' was niet goed: "
+            + "; ".join(problemen) + ". Doe een wezenlijk ander voorstel.\n"))
+        if naam2 and besch2 and not _naam_problemen(naam2, route, bestaande):
+            return naam2, besch2
+        if naam2 and besch2:
+            naam, besch = naam2, besch2   # beter dan niets; redactie schaaft
+    return naam, besch
 
 
 def promoveer(voorstel):

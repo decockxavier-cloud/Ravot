@@ -16,13 +16,13 @@
 <form method="post" enctype="multipart/form-data" class="card">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <label>Titel <input type="text" name="titel" required maxlength="200"
-         value="{{ r.titel if r else '' }}"></label>
+         value="{{ (r.titel or '') if r else '' }}"></label>
   <label>Regio <span class="hint">(bv. Westhoek, Leiestreek)</span>
-    <input type="text" name="regio" maxlength="80" value="{{ r.regio if r else '' }}"></label>
+    <input type="text" name="regio" maxlength="80" value="{{ (r.regio or '') if r else '' }}"></label>
   <label>Inspiratietekst
-    <textarea name="beschrijving" rows="4">{{ r.beschrijving if r else '' }}</textarea></label>
+    <textarea name="beschrijving" rows="4">{{ (r.beschrijving or '') if r else '' }}</textarea></label>
   <label>Routebeschrijving <span class="hint">(optioneel, stap voor stap)</span>
-    <textarea name="routebeschrijving" rows="4">{{ r.routebeschrijving if r else '' }}</textarea></label>
+    <textarea name="routebeschrijving" rows="4">{{ (r.routebeschrijving or '') if r else '' }}</textarea></label>
 
   <div class="veldrij" style="flex-wrap:wrap;align-items:end">
     <label>Leeftijd van <input type="number" name="age_min" min="0" max="12" style="width:70px"

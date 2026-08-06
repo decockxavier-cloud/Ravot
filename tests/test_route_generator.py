@@ -293,3 +293,61 @@ def test_ai_tekst_op_bestaande_route(client, app):
         assert r.slug == "ai-testlus"                   # links blijven werken
         assert "Knooppunten: 74" in r.routebeschrijving
         assert r.gpx_bestand
+
+
+def test_naamgeving_weert_sjablonen_en_herhaling(app):
+    """Patch 193: namen moeten de rubriek gevarieerd houden — geen
+    gemeentenaam (ook niet als 'Roeselaarse'), geen generieke achtervoegsels,
+    geen gelijkenis met bestaande routes; zwak voorstel krijgt één herkansing."""
+    from unittest.mock import patch as _patch
+    from app.models import FietsRoute, RouteBuurt
+    with app.app_context():
+        oud = FietsRoute(titel="De Roeselaarse Speelpaden Fietstocht",
+                         slug="nm-oud", afstand_km=18.0, duur_min=110,
+                         moeilijkheid="makkelijk", is_lus=True, pending=False,
+                         hidden=False, gemeente="Roeselare",
+                         geometrie=[[BASIS[0], BASIS[1]]],
+                         start_lat=BASIS[0], start_lng=BASIS[1])
+        r = FietsRoute(titel="Gezinslus Roeselare — 22 km", slug="nm-nieuw",
+                       afstand_km=22.0, duur_min=135, moeilijkheid="makkelijk",
+                       is_lus=True, pending=True, hidden=False,
+                       gemeente="Roeselare",
+                       geometrie=[[BASIS[0], BASIS[1]],
+                                  [BASIS[0] + 0.01, BASIS[1] + 0.01]],
+                       start_lat=BASIS[0], start_lng=BASIS[1],
+                       bbox_n=BASIS[0] + 0.02, bbox_z=BASIS[0] - 0.02,
+                       bbox_w=BASIS[1] - 0.02, bbox_o=BASIS[1] + 0.02)
+        kb = Event(title="Kinderboerderij De Kobbe", slug="nm-kb", source="osm",
+                   ext_id="nm-kb", is_permanent=True, pending=False,
+                   hidden=False, lat=BASIS[0] + 0.001, lng=BASIS[1] + 0.001,
+                   subtype="farm", categories=["buiten"])
+        db.session.add_all([oud, r, kb])
+        db.session.flush()
+        db.session.add(RouteBuurt(route_id=r.id, event_id=kb.id,
+                                  afstand_m=120, route_km=6.2))
+        db.session.commit()
+
+        from app.services.route_generator import (_naam_problemen,
+                                                  ai_titel_en_beschrijving)
+        assert _naam_problemen("De Roeselaarse Kobbe Ronde", r,
+                               []) != []          # bijvoeglijke gemeentenaam
+        assert _naam_problemen("Knuffelgeitenronde", r,
+                               ["De Roeselaarse Speelpaden Fietstocht"]) == []
+
+        antwoorden = iter([
+            "NAAM: De Roeselaarse Kobbe Route\nBESCHRIJVING: Langs de Kobbe.",
+            "NAAM: Knuffelgeitenronde\nBESCHRIJVING: Aaien bij Kinderboerderij "
+            "De Kobbe en lekker doortrappen.",
+        ])
+        prompts = []
+
+        def nep(p, *a, **k):
+            prompts.append(p)
+            return next(antwoorden)
+
+        with _patch("app.enrich._generate", side_effect=nep):
+            naam, besch = ai_titel_en_beschrijving(r)
+        assert len(prompts) == 2                  # herkansing gebruikt
+        assert "was niet goed" in prompts[1]
+        assert "Speelpaden Fietstocht" in prompts[0]   # bestaande meegegeven
+        assert naam == "Knuffelgeitenronde"
