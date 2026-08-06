@@ -31,7 +31,7 @@
 <p class="intro">Ken je een leuke plek die nog niet op Ravot staat? Voeg ze toe!
   We kijken elke inzending even na voor ze verschijnt.</p>
 
-<form method="post" action="{{ url_for('account.toevoegen') }}" class="kaart-form">
+<form method="post" action="{{ url_for('account.toevoegen') }}" class="kaart-form" enctype="multipart/form-data">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
   <label>Naam van de plek *
@@ -76,10 +76,12 @@
 
   <div class="veldrij">
     <label>Vanaf leeftijd
-      <input type="number" name="age_min" min="0" max="18" value="0">
+      <input type="number" name="age_min" min="0" max="99" value="0">
     </label>
     <label>Tot leeftijd
-      <input type="number" name="age_max" min="0" max="18" value="12">
+      <input type="number" name="age_max" min="0" max="99" value="12">
+      <span class="hint">Ook leuk voor grote kinderen of het hele gezin?
+        Vul 99 in — dan tonen we "vanaf … jaar".</span>
     </label>
   </div>
 
@@ -96,6 +98,16 @@
     <textarea name="beschrijving" maxlength="2000" rows="4"
               placeholder="Wat maakt deze plek leuk voor kinderen?"></textarea>
   </label>
+  <div class="veld">
+    <label>📷 Foto's van de plek <span class="hint">(tot 3, optioneel — jpg,
+      png of webp)</span></label>
+    <input type="file" name="fotos" accept="image/jpeg,image/png,image/webp" multiple>
+    <label class="check"><input type="checkbox" name="foto_akkoord" value="1">
+      Ik heb deze foto's zelf gemaakt en deel ze met Ravot
+      <span class="hint">(verborgen gegevens zoals GPS-locatie halen we er
+      automatisch af; je naam komt er nooit bij te staan)</span></label>
+  </div>
+
 
   <div class="acties"><button class="btn btn-zon" type="submit">Plek indienen</button></div>
 </form>

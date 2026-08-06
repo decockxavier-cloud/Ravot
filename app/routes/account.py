@@ -689,8 +689,11 @@ def toevoegen():
             start_dt = _dt.combine(d1, _time(0, 0))
             eind_dt = _dt.combine(d2, _time(23, 59))
         try:
-            lo = max(0, min(18, int(request.form.get("age_min") or 0)))
-            hi = max(lo, min(18, int(request.form.get("age_max") or 12)))
+            # Bovengrens tot 99: veel plekken zijn ook leuk voor grote
+            # kinderen en volwassenen; 99 betekent "geen bovengrens" en wordt
+            # op de fiche als "vanaf X jaar" getoond.
+            lo = max(0, min(99, int(request.form.get("age_min") or 0)))
+            hi = max(lo, min(99, int(request.form.get("age_max") or 12)))
         except ValueError:
             lo, hi = 0, 12
         coord = postcode_coord(postcode) if postcode else None
@@ -737,8 +740,27 @@ def toevoegen():
             slug=f"{_slugify(titel)}-u{secrets.token_hex(3)}",
         )
         db.session.add(ev)
+        db.session.flush()
+        # Foto's mogen meteen mee (patch 190): de indiener stond er net en
+        # hééft die foto. Zelfde pijplijn als op de fiche: EXIF-strip +
+        # moderatiewachtrij; punten volgen pas bij goedkeuring.
+        n_fotos = 0
+        if request.form.get("foto_akkoord"):
+            from ..models import Photo
+            from ..fotos import verwerk_upload
+            for f in request.files.getlist("fotos")[:3]:
+                naam = verwerk_upload(f)
+                if naam:
+                    db.session.add(Photo(event_id=ev.id, family_id=fam.id,
+                                         filename=naam, status="pending"))
+                    n_fotos += 1
         db.session.commit()
-        flash("Bedankt! Je plek is ingediend en verschijnt zodra we ze nagekeken hebben.", "ok")
+        if n_fotos:
+            flash(f"Bedankt! Je plek en {n_fotos} foto('s) zijn ingediend en "
+                  "verschijnen zodra we ze nagekeken hebben.", "ok")
+        else:
+            flash("Bedankt! Je plek is ingediend en verschijnt zodra we ze "
+                  "nagekeken hebben.", "ok")
         return redirect(url_for("public.vandaag"))
     from ..types import TYPES
     return render_template("account/toevoegen.html", categories=CATEGORIES,
