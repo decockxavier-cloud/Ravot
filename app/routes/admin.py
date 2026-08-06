@@ -2909,3 +2909,37 @@ def route_gpx_download(rid):
         db.session.commit()
     return send_file(pad, mimetype="application/gpx+xml", as_attachment=True,
                      download_name=f"ravot-{r.slug}.gpx")
+
+
+@bp.route("/routes/<int:rid>/ai-tekst", methods=["POST"])
+@medewerker_required
+def route_ai_tekst(rid):
+    """AI-naam en -beschrijving voor een bestáánde route (patch 192): zelfde
+    machine als bij de promotie, maar op verzoek. De slug blijft ongemoeid
+    zodat links en reviews blijven werken; de oude titel staat in de melding
+    zodat er niets stilletjes verloren gaat."""
+    from ..models import FietsRoute
+    from ..services.route_generator import ai_titel_en_beschrijving, schrijf_gpx
+    r = db.session.get(FietsRoute, rid) or abort(404)
+    ai = ai_titel_en_beschrijving(r)
+    if not ai:
+        flash("De AI gaf geen bruikbaar voorstel (backend niet beschikbaar?). "
+              "Probeer het straks opnieuw.", "error")
+        return redirect(url_for("admin.route_bewerk", rid=rid))
+    naam, besch = ai
+    oude_titel = r.titel
+    # Knooppuntenregel uit de bestaande beschrijving meenemen als die er is.
+    staart = ""
+    for regel in (r.routebeschrijving or "").splitlines():
+        if regel.strip().startswith("Knooppunten:"):
+            staart = "\n\n" + regel.strip()
+            break
+    r.titel = naam
+    r.routebeschrijving = besch + staart
+    if not r.gpx_bestand:
+        schrijf_gpx(r)
+    db.session.commit()
+    audit(f"route {rid}: AI-tekst toegepast ('{oude_titel}' -> '{naam}')")
+    flash(f"AI-voorstel toegepast (was: '{oude_titel}'). Pas gerust aan — "
+          "jij kent de route, de AI niet.", "ok")
+    return redirect(url_for("admin.route_bewerk", rid=rid))

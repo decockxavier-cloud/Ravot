@@ -247,3 +247,49 @@ def test_beheer_gpx_download_ook_pending(client, app):
     resp = client.get(f"/beheer/routes/{rid}/gpx")
     assert resp.status_code == 200
     assert "gpx" in resp.headers.get("Content-Disposition", "")
+
+
+def test_ai_tekst_op_bestaande_route(client, app):
+    """Patch 192: de AI-naamgeving is ook op bestáánde routes toe te passen
+    via de bewerkpagina — slug en knooppuntenregel blijven behouden."""
+    from unittest.mock import patch as _patch
+    from argon2 import PasswordHasher
+    from app.models import FietsRoute, RouteBuurt
+    with app.app_context():
+        db.session.add(Admin(email="ai@r.be", pw_hash=PasswordHasher().hash("x"),
+                             role="admin", totp_secret="JBSWY3DPEHPK3PXP",
+                             totp_confirmed=True))
+        r = FietsRoute(titel="Testlus", slug="ai-testlus", afstand_km=18.0,
+                       duur_min=110, moeilijkheid="makkelijk", is_lus=True,
+                       pending=False, hidden=False, gemeente="Roeselare",
+                       start_lat=BASIS[0], start_lng=BASIS[1],
+                       geometrie=[[BASIS[0], BASIS[1]],
+                                  [BASIS[0] + 0.01, BASIS[1] + 0.01]],
+                       bbox_n=BASIS[0] + 0.02, bbox_z=BASIS[0] - 0.02,
+                       bbox_w=BASIS[1] - 0.02, bbox_o=BASIS[1] + 0.02,
+                       routebeschrijving="Oud.\n\nKnooppunten: 74 – 32")
+        sp = Event(title="Speeltuin De Vlinder", slug="ai-vl", source="osm",
+                   ext_id="ai-vl", is_permanent=True, pending=False,
+                   hidden=False, lat=BASIS[0] + 0.001, lng=BASIS[1] + 0.001,
+                   subtype="playground", categories=["buiten"])
+        db.session.add_all([r, sp])
+        db.session.flush()
+        db.session.add(RouteBuurt(route_id=r.id, event_id=sp.id,
+                                  afstand_m=120, route_km=6.2))
+        db.session.commit()
+        rid, aid = r.id, Admin.query.filter_by(email="ai@r.be").first().id
+    with client.session_transaction() as s:
+        s["admin_id"] = aid
+        s["admin_2fa_ok"] = True
+        s["admin_rol"] = "admin"
+    nep = "NAAM: De Vlinderronde\nBESCHRIJVING: Langs Speeltuin De Vlinder."
+    with _patch("app.enrich._generate", return_value=nep):
+        resp = client.post(f"/beheer/routes/{rid}/ai-tekst",
+                           follow_redirects=True)
+    assert "Testlus" in resp.get_data(as_text=True)     # oude titel gemeld
+    with app.app_context():
+        r = db.session.get(FietsRoute, rid)
+        assert r.titel == "De Vlinderronde"
+        assert r.slug == "ai-testlus"                   # links blijven werken
+        assert "Knooppunten: 74" in r.routebeschrijving
+        assert r.gpx_bestand

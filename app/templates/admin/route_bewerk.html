@@ -2,6 +2,16 @@
 {% block admin_content %}
 <p><a href="{{ url_for('admin.routes') }}">← Alle routes</a></p>
 <h1>{{ r.titel if r else "Nieuwe fietsroute" }} 🚲</h1>
+{% if r and r.id %}
+<form method="post" action="{{ url_for('admin.route_ai_tekst', rid=r.id) }}"
+      style="margin:8px 0">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button class="btn btn-klein btn-stil" type="submit">✨ AI: naam &amp;
+    beschrijving voorstellen</button>
+  <span class="hint">op basis van wat er langs de route ligt — je huidige
+    titel wordt vervangen (staat daarna in de melding)</span>
+</form>
+{% endif %}
 
 <form method="post" enctype="multipart/form-data" class="card">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
