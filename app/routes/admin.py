@@ -318,7 +318,8 @@ def delete_review(review_id):
 INSTELLING_PAGINAS = {
     "kern": [
         ("Sociale media", ["social_facebook", "social_instagram"]),
-        ("Fietsroutes", ["route_buurt_meter", "route_partner_meter",
+        ("Fietsroutes", ["netwerk_bron_url", "generator_min_km", "generator_max_km",
+                         "route_buurt_meter", "route_partner_meter",
                          "route_tempo_kmu", "routes_in_menu"]),
         ("Weergave & gedrag", ["default_radius", "toon_maanden_vooruit",
                                "ontdek_per_pagina", "onderhoud_aan", "uit_zichtbaar"]),
@@ -2841,3 +2842,46 @@ def illustratie_upload(sleutel):
     flash(f"Illustratie '{ILLUSTRATIES[sleutel]}' vervangen — geldt meteen "
           "op alle kaartjes en fiches van dat type.", "ok")
     return redirect(url_for("admin.illustraties"))
+
+
+@bp.route("/route-voorstellen", methods=["GET", "POST"])
+@medewerker_required
+def route_voorstellen():
+    """Wachtrij van de routegenerator (patch 188): de machine stelt lussen
+    voor op gezinsdichtheid, de redactie beslist — en rijdt ze liefst na."""
+    from ..models import Knooppunt, RouteVoorstel
+    from ..services.route_generator import genereer_voorstellen, promoveer
+    if request.method == "POST":
+        actie = request.form.get("actie")
+        if actie == "genereer":
+            gemeente = (request.form.get("gemeente") or "").strip()
+            if gemeente:
+                bewaard, onderzocht = genereer_voorstellen(gemeente)
+                if onderzocht == 0:
+                    flash("Niets gevonden. Is het netwerk geladen en heeft "
+                          f"'{gemeente}' plekken in Ravot?", "error")
+                else:
+                    flash(f"{onderzocht} lussen onderzocht, {bewaard} nieuwe "
+                          "voorstellen bewaard.", "ok")
+                audit(f"routegenerator: {gemeente}")
+        elif actie in ("promoveer", "afwijzen"):
+            v = db.session.get(RouteVoorstel, int(request.form.get("vid", 0)))
+            if v is not None and v.status == "nieuw":
+                if actie == "promoveer":
+                    route = promoveer(v)
+                    flash(f"Voorstel is nu conceptroute '{route.titel}' — werk "
+                          "hem af (titel, verhaal, foto) en rijd hem na vóór "
+                          "publicatie.", "ok")
+                    audit(f"routevoorstel {v.id} gepromoveerd tot route {route.id}")
+                else:
+                    v.status = "afgewezen"
+                    db.session.commit()
+                    audit(f"routevoorstel {v.id} afgewezen")
+        return redirect(url_for("admin.route_voorstellen"))
+    voorstellen = (RouteVoorstel.query.filter_by(status="nieuw")
+                   .order_by(RouteVoorstel.score.desc()).limit(60).all())
+    n_knopen = Knooppunt.query.count()
+    return render_template("admin/route_voorstellen.html",
+                           voorstellen=voorstellen, n_knopen=n_knopen,
+                           title="Routevoorstellen", family=None,
+                           active="routes")

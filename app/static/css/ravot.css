@@ -1198,3 +1198,14 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
   margin: 0 0 12px; }
 .ravotpas-blok .btn { display: block; text-align: center; }
 
+
+/* Routeweefsel op de fiche (patch 187) */
+.langs-routes { margin: 14px 0; padding: 12px 14px; background: #F3F8EF;
+  border: 1px solid var(--lijn); border-radius: 14px; display: flex;
+  gap: 8px; align-items: center; flex-wrap: wrap; }
+.route-chip { background: #fff; border: 1px solid var(--lijn);
+  border-radius: 999px; padding: 5px 12px; font-size: .9rem;
+  text-decoration: none; }
+.route-chip:hover { border-color: var(--groen); }
+.route-gezinslaag { display: flex; gap: 10px; align-items: center;
+  flex-wrap: wrap; margin: 8px 0 12px; }

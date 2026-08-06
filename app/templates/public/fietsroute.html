@@ -15,6 +15,21 @@
           data-url="{{ request.url }}">📤 Deel</button>
 </div>
 
+{% if start_km is not none or pauzeplan %}
+<div class="route-gezinslaag">
+  {% if start_km is not none %}
+  <span class="badge open">🏠 Start op ±{{ start_km }} km van jullie</span>
+  {% endif %}
+  {% if pauzeplan %}
+  <span class="hint">Onderweg voor de kinderen:
+    {%- if pauzeplan.ravotten %} 🛝 {{ pauzeplan.ravotten }}× ravotten{% endif %}
+    {%- if pauzeplan.smullen %}{% if pauzeplan.ravotten %} ·{% endif %} 🍦 {{ pauzeplan.smullen }}× smullen{% endif %}
+    {%- if pauzeplan.beleven %}{% if pauzeplan.ravotten or pauzeplan.smullen %} ·{% endif %} 🎭 {{ pauzeplan.beleven }}× beleven{% endif %}
+    — pauzes gegarandeerd.</span>
+  {% endif %}
+</div>
+{% endif %}
+
 {% if cover %}
 <img src="/foto/{{ cover.id }}" alt="" class="fiche-beeld" loading="lazy"
      style="object-position:50% {{ cover.focus_y or 50 }}%">

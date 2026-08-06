@@ -209,6 +209,17 @@
    Bescheiden en ingeklapt, onderaan. Onbekende velden → open vraag.
    Voorlopige velden (door enkele stemmen ingevuld, nog niet vast) → "klopt dit?"
    zodat de volgende bezoeker ze kan versterken of weerleggen. #}
+{% if langs_routes %}
+<div class="langs-routes">
+  <strong>🚴 Deze plek ligt langs:</strong>
+  {% for route, koppel in langs_routes %}
+  <a class="route-chip" href="{{ url_for('public.fietsroute', slug=route.slug) }}">
+    {{ route.titel }} <span class="hint">· km {{ "%.0f"|format(koppel.route_km or 0) }}
+    van {{ "%.0f"|format(route.afstand_km or 0) }}</span></a>
+  {% endfor %}
+</div>
+{% endif %}
+
 {% if ontbrekende_velden or voorlopige_velden %}
 <details class="help-aanvullen">
   <summary>

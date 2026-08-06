@@ -1203,6 +1203,19 @@ def api_kaart():
                     "markers": [_kaart_marker(e) for e in evs]})
 
 
+def _langs_routes(ev):
+    """'Ligt langs route X' op de fiche — alleen als de routes-rubriek aan
+    staat en de plek permanent is (patch 187, het routeweefsel)."""
+    from ..models import get_bool
+    if not get_bool("routes_in_menu") or not ev.is_permanent:
+        return []
+    try:
+        from ..services.routes_gis import routes_bij_event
+        return routes_bij_event(ev)
+    except Exception:
+        return []
+
+
 @bp.route("/e/<slug>")
 @limiter.limit("60/minute;1000/hour")  # fiches: 15k stuks leegtrekken duurt zo dagen per IP
 def event(slug):
@@ -1284,6 +1297,7 @@ def event(slug):
         daguitstappen=mijn_daguitstappen,
         euro=euro_indicator(total), reviews=[r.public_dict() for r in series_reviews[:10]],
         friends=friends_interested, saved=saved, shared=shared, family=fam,
+        langs_routes=_langs_routes(ev),
         fotos=goedgekeurde_fotos,
         ontbrekende_velden=ontbrekende_velden,
         voorlopige_velden=voorlopige_velden, mijn_stemmen=mijn_stemmen,
@@ -1868,7 +1882,27 @@ def fietsroute(slug):
     beschrijving_html = render_markdown(r.beschrijving) if r.beschrijving else None
     routebeschrijving_html = (render_markdown(r.routebeschrijving)
                               if r.routebeschrijving else None)
+    # Gezinslaag (patch 187): afstand tot de start voor gezin óf gast, en een
+    # pauzeplan-samenvatting uit wat er onderweg ligt.
+    start_km = None
+    pc = (fam_.postcode if fam_ else None) or guest_profile().get("postcode")
+    if pc and r.start_lat is not None:
+        from ..geo import postcode_coord as _pc
+        centrum = _pc(pc)
+        if centrum:
+            from ..scoring import haversine_km
+            start_km = round(haversine_km(centrum[0], centrum[1],
+                                          r.start_lat, r.start_lng))
+    pauzeplan = None
+    if buurt:
+        tel = {"ravotten": 0, "smullen": 0, "beleven": 0}
+        for b in buurt:
+            g = groep_van(b.event)
+            if g in tel:
+                tel[g] += 1
+        pauzeplan = tel if any(tel.values()) else None
     return render_template("public/fietsroute.html", r=r, buurt=buurt,
+                           start_km=start_km, pauzeplan=pauzeplan,
                            beschrijving_html=beschrijving_html,
                            routebeschrijving_html=routebeschrijving_html,
                            partners=partners, vandaag=vandaag, fotos=fotos,

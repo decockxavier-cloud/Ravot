@@ -1,0 +1,59 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<h1>🧪 Routevoorstellen</h1>
+<p class="hint">De generator zoekt lussen door het knooppuntennetwerk en
+  rangschikt ze op wat er voor gezinnen langs ligt — speeltuinen wegen het
+  zwaarst, dan smullen, dan beleven, plus een bonus als de stops mooi over de
+  lus gespreid liggen. Een voorstel wordt pas een route na jouw goedkeuring;
+  rijd hem na vóór publicatie.</p>
+
+{% if n_knopen == 0 %}
+<div class="card"><p><strong>⚠️ Nog geen netwerk geladen.</strong> Draai eerst
+  <code>flask netwerk-laad &lt;geojson-url&gt;</code> (of vul de URL in bij
+  Instellingen → Fietsroutes en draai het zonder argument).</p></div>
+{% else %}
+<form method="post" class="card" style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="actie" value="genereer">
+  <div><label>Gemeente</label>
+    <input name="gemeente" placeholder="bv. Roeselare" required></div>
+  <button class="btn" type="submit">Genereer voorstellen</button>
+  <span class="hint">Netwerk: {{ n_knopen }} knooppunten geladen.</span>
+</form>
+{% endif %}
+
+{% if voorstellen %}
+<table class="tabel">
+  <tr><th>Score</th><th>Gemeente</th><th>Lus</th><th>Onderweg</th><th></th></tr>
+  {% for v in voorstellen %}
+  <tr>
+    <td><strong>{{ v.score }}</strong></td>
+    <td>{{ v.gemeente }}</td>
+    <td>{{ v.afstand_km }} km · {{ (v.knooppunten or [])|length - 1 }} knooppunten
+      <div class="hint">{{ (v.knooppunten or [])|join(" – ") }}</div></td>
+    <td class="hint">
+      {%- set d = v.score_detail or {} -%}
+      🛝 {{ d.get("ravotten", 0) }} · 🍦 {{ d.get("smullen", 0) }}
+      · 🎭 {{ d.get("beleven", 0) }} · spreiding {{ d.get("spreiding", 0) }}
+    </td>
+    <td style="white-space:nowrap">
+      <form method="post" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="actie" value="promoveer">
+        <input type="hidden" name="vid" value="{{ v.id }}">
+        <button class="btn btn-klein" type="submit">✔ Promoveer</button>
+      </form>
+      <form method="post" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="actie" value="afwijzen">
+        <input type="hidden" name="vid" value="{{ v.id }}">
+        <button class="btn btn-klein btn-stil" type="submit">✕</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="hint">Nog geen open voorstellen.</p>
+{% endif %}
+{% endblock %}

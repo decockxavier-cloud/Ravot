@@ -421,6 +421,36 @@ def register_cli(app):
         print(f"Klaar: {weg} plekken verwijderd · {len(vuil)} vervuilde "
               "postcode-zwaartepunten opgeruimd.")
 
+    @app.cli.command("netwerk-laad")
+    @click.argument("url", required=False)
+    def netwerk_laad(url):
+        """Fietsknooppuntennetwerk laden uit een GeoJSON-URL (of instelling
+        netwerk_bron_url). Vervangt het bestaande netwerk volledig."""
+        from .models import get_setting
+        from .services.route_generator import laad_netwerk_van_url
+        url = url or get_setting("netwerk_bron_url")
+        if not url:
+            click.echo("Geen URL: geef er één mee of vul netwerk_bron_url in "
+                       "bij Instellingen > Fietsroutes.")
+            return
+        knopen, segmenten = laad_netwerk_van_url(url)
+        click.echo(f"Netwerk geladen: {knopen} knooppunten, "
+                   f"{segmenten} segmenten.")
+
+    @app.cli.command("genereer-routes")
+    @click.argument("gemeente")
+    @click.option("--top", default=8, help="Aantal voorstellen om te bewaren")
+    def genereer_routes(gemeente, top):
+        """Gezinslus-voorstellen genereren rond een gemeente (redactie kiest)."""
+        from .services.route_generator import genereer_voorstellen
+        bewaard, onderzocht = genereer_voorstellen(gemeente, top=top)
+        if onderzocht == 0:
+            click.echo("Niets gevonden: is het netwerk geladen (flask "
+                       "netwerk-laad) en heeft de gemeente plekken in Ravot?")
+        else:
+            click.echo(f"{onderzocht} lussen onderzocht, {bewaard} voorstellen "
+                       f"bewaard — nakijken op /beheer/route-voorstellen.")
+
     @app.cli.command("straatnamen")
     def straatnamen_cmd():
         """Naamloze OSM-plekken (Speeltuin, Park, ...) een straatnaam geven

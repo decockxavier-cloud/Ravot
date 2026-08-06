@@ -529,6 +529,10 @@ SETTING_DEFS = {
                               "dus een plafond voorkomt eindeloos doorklikken)", "text"),
     "social_facebook": ("", "Facebook-pagina van Ravot (volledige URL, leeg = geen knop)", "text"),
     "social_instagram": ("", "Instagram-pagina van Ravot (volledige URL, leeg = geen knop)", "text"),
+    "netwerk_bron_url": ("", "Routegenerator: GeoJSON-URL van het "
+                             "fietsknooppuntennetwerk (open data)", "text"),
+    "generator_min_km": ("12", "Routegenerator: minimale luslengte (km)", "text"),
+    "generator_max_km": ("25", "Routegenerator: maximale luslengte (km)", "text"),
     "route_buurt_meter": ("400", "Fietsroutes: koppelafstand 'leuk onderweg' in meter", "text"),
     "route_partner_meter": ("800", "Fietsroutes: ruimere afstand waarop ⭐-partners nog uitgelicht worden (m)", "text"),
     "route_tempo_kmu": ("10", "Fietsroutes: gezinstempo voor de duur-suggestie (km/u)", "text"),
@@ -819,6 +823,45 @@ class RouteBuurt(db.Model):
     afstand_m = db.Column(db.Integer, nullable=False)
     route_km = db.Column(db.Float, nullable=False)
     event = db.relationship("Event")
+
+
+class Knooppunt(db.Model):
+    """Fietsknooppunt uit het (open) netwerk (patch 188). Nummers kunnen per
+    netwerk herhalen; het id is leidend, het nummer is presentatie."""
+    __tablename__ = "knooppunten"
+    id = db.Column(db.Integer, primary_key=True)
+    nummer = db.Column(db.String(8))
+    lat = db.Column(db.Float, nullable=False)
+    lng = db.Column(db.Float, nullable=False)
+    netwerk = db.Column(db.String(60))
+
+
+class NetwerkSegment(db.Model):
+    """Traject tussen twee knooppunten, met de echte geometrie."""
+    __tablename__ = "netwerk_segmenten"
+    id = db.Column(db.Integer, primary_key=True)
+    van_id = db.Column(db.Integer, db.ForeignKey("knooppunten.id"),
+                       nullable=False, index=True)
+    naar_id = db.Column(db.Integer, db.ForeignKey("knooppunten.id"),
+                        nullable=False, index=True)
+    afstand_m = db.Column(db.Integer, nullable=False)
+    geometrie = db.Column(db.JSON)          # [[lat, lng], ...] van->naar
+
+
+class RouteVoorstel(db.Model):
+    """Door de generator voorgestelde gezinslus; wordt pas een FietsRoute na
+    redactionele goedkeuring (auto-berekend, nooit auto-beslist)."""
+    __tablename__ = "route_voorstellen"
+    id = db.Column(db.Integer, primary_key=True)
+    gemeente = db.Column(db.String(80), index=True)
+    knooppunten = db.Column(db.JSON)        # ["31", "05", ...]
+    geometrie = db.Column(db.JSON)          # vereenvoudigd, [[lat, lng], ...]
+    afstand_km = db.Column(db.Float)
+    score = db.Column(db.Float, index=True)
+    score_detail = db.Column(db.JSON)       # {"ravotten": 4, "smullen": 2, ...}
+    status = db.Column(db.String(12), default="nieuw", nullable=False)
+    route_id = db.Column(db.Integer, db.ForeignKey("fietsroutes.id"))
+    created_at = db.Column(db.DateTime, default=utcnow)
 
 
 class RouteReview(db.Model):
