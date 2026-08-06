@@ -341,6 +341,98 @@ def genereer_voorstellen(gemeente, top=8):
 
 
 
+def schrijf_gpx(route):
+    """GPX-bestand maken uit de routegeometrie (patch 191), zodat elke
+    gepromoveerde lus meteen op een fietscomputer of in een app kan."""
+    import os
+    from xml.sax.saxutils import escape
+    punten = route.geometrie or []
+    if not punten:
+        return None
+    regels = ['<?xml version="1.0" encoding="UTF-8"?>',
+              '<gpx version="1.1" creator="Ravot.be" '
+              'xmlns="http://www.topografix.com/GPX/1/1">',
+              "  <metadata>",
+              f"    <name>{escape(route.titel or 'Ravot-route')}</name>",
+              "    <link href=\"https://ravot.be\">"
+              "<text>Ravot.be — gezinsuitstappen</text></link>",
+              "  </metadata>",
+              "  <trk>",
+              f"    <name>{escape(route.titel or 'Ravot-route')}</name>",
+              "    <trkseg>"]
+    for p in punten:
+        regels.append(f'      <trkpt lat="{p[0]:.6f}" lon="{p[1]:.6f}"/>')
+    regels += ["    </trkseg>", "  </trk>", "</gpx>"]
+    os.makedirs("/data/uploads/gpx", exist_ok=True)
+    naam = f"route-{route.slug}.gpx"
+    with open(f"/data/uploads/gpx/{naam}", "w", encoding="utf-8") as f:
+        f.write("\n".join(regels))
+    route.gpx_bestand = naam
+    return naam
+
+
+def _hoogtepunten(route, maxi=8):
+    """Namen van de leukste plekken langs de route, voor de AI-tekst."""
+    from ..models import RouteBuurt
+    from ..types import groep_van
+    uit = {"ravotten": [], "smullen": [], "beleven": []}
+    rijen = (RouteBuurt.query.filter_by(route_id=route.id)
+             .order_by(RouteBuurt.route_km.asc()).all())
+    for b in rijen:
+        ev = b.event
+        if ev is None or not ev.title:
+            continue
+        g = groep_van(ev)
+        if g in uit and len(uit[g]) < maxi:
+            naam = ev.title.split("—")[0].strip()
+            if naam not in uit[g]:
+                uit[g].append(naam)
+    return uit
+
+
+def ai_titel_en_beschrijving(route):
+    """Vraag de verrijkings-AI om een speelse naam + korte beschrijving,
+    geïnspireerd op wat er écht langs de route ligt. Retourneert (titel,
+    beschrijving) of None bij een AI-fout — de route werkt ook zonder."""
+    from ..enrich import _generate
+    h = _hoogtepunten(route)
+    langs = []
+    if h["ravotten"]:
+        langs.append("speel- en ravotplekken: " + ", ".join(h["ravotten"][:5]))
+    if h["smullen"]:
+        langs.append("eet- en ijsstops: " + ", ".join(h["smullen"][:4]))
+    if h["beleven"]:
+        langs.append("te beleven: " + ", ".join(h["beleven"][:3]))
+    prompt = (
+        "Bedenk een naam en korte beschrijving voor een gezinsfietslus op "
+        "het knooppuntennetwerk.\n"
+        f"Gemeente: {route.gemeente or 'onbekend'} · Lengte: "
+        f"{route.afstand_km:g} km · Lus langs {'; '.join(langs) or 'landelijke wegen'}.\n\n"
+        "Regels: de naam is speels en kindgericht, geïnspireerd op wat je "
+        "onderweg tegenkomt (zoals 'IJsjesroute' of 'Speeltuinsafari'), "
+        "maximaal 5 woorden, zonder het woord 'route' verplicht. De "
+        "beschrijving is 60-110 woorden, warm en concreet, noemt 2-3 van de "
+        "plekken hierboven bij naam en verzint NIETS wat er niet staat. "
+        "Geen superlatievenregen.\n\n"
+        "Antwoord exact zo:\nNAAM: ...\nBESCHRIJVING: ...")
+    try:
+        ruw = _generate(prompt, "Je bent de redacteur van Ravot.be, een warm "
+                        "Vlaams gezinsplatform. Schrijf in het Nederlands.",
+                        max_tokens=400) or ""
+    except Exception:
+        return None
+    naam = besch = None
+    for regel in ruw.splitlines():
+        r = regel.strip()
+        if r.upper().startswith("NAAM:"):
+            naam = r[5:].strip().strip('"')[:80]
+        elif r.upper().startswith("BESCHRIJVING:"):
+            besch = r[13:].strip()[:1000]
+    if naam and besch:
+        return naam, besch
+    return None
+
+
 def promoveer(voorstel):
     """Voorstel -> FietsRoute (pending: de redactie werkt hem af en rijdt hem
     na). Koppelt meteen de buurt zodat het pauzeplan direct klopt."""
@@ -368,6 +460,18 @@ def promoveer(voorstel):
     db.session.add(route)
     db.session.flush()
     koppel_route(route)
+    # Nu de buurt bekend is: speelse naam + beschrijving door de AI (valt
+    # stil terug op de werktitel als de AI niet beschikbaar is)...
+    ai = ai_titel_en_beschrijving(route)
+    if ai:
+        naam, besch = ai
+        route.titel = f"{naam}"
+        route.slug = slugify(f"{naam}-{voorstel.gemeente}-{voorstel.id}")
+        route.routebeschrijving = (
+            besch + "\n\nKnooppunten: "
+            + " – ".join(voorstel.knooppunten or []))
+    # ...en een GPX-bestand, meteen downloadbaar voor de testrit.
+    schrijf_gpx(route)
     voorstel.status = "gepromoveerd"
     voorstel.route_id = route.id
     db.session.commit()

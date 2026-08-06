@@ -10,7 +10,8 @@
   <tr><th>Route</th><th>Regio</th><th>Afstand</th><th>Onderweg</th><th>Status</th></tr>
   {% for r in rijen %}
   <tr>
-    <td><a href="{{ url_for('admin.route_bewerk', rid=r.id) }}">{{ r.titel }}</a></td>
+    <td><a href="{{ url_for('admin.route_bewerk', rid=r.id) }}">{{ r.titel }}</a>
+      <a class="btn btn-klein btn-stil" href="{{ url_for('admin.route_gpx_download', rid=r.id) }}">GPX ⬇</a></td>
     <td>{{ r.regio or '—' }}</td>
     <td>{{ r.afstand_km or '?' }} km</td>
     <td>{{ tellers.get(r.id, 0) }} plekken</td>

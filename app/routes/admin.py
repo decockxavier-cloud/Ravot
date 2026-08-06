@@ -2885,3 +2885,27 @@ def route_voorstellen():
                            voorstellen=voorstellen, n_knopen=n_knopen,
                            title="Routevoorstellen", family=None,
                            active="routes")
+
+
+@bp.route("/routes/<int:rid>/gpx")
+@medewerker_required
+def route_gpx_download(rid):
+    """GPX van een (concept)route voor de redactie — óók pending, want je wilt
+    hem juist vóór de testrit op je fietscomputer (patch 191)."""
+    import os
+    from flask import send_file
+    from ..models import FietsRoute
+    r = db.session.get(FietsRoute, rid) or abort(404)
+    if not r.gpx_bestand:
+        from ..services.route_generator import schrijf_gpx
+        if not schrijf_gpx(r):
+            flash("Deze route heeft geen geometrie, dus geen GPX.", "error")
+            return redirect(url_for("admin.routes"))
+        db.session.commit()
+    pad = f"/data/uploads/gpx/{r.gpx_bestand}"
+    if not os.path.exists(pad):
+        from ..services.route_generator import schrijf_gpx
+        schrijf_gpx(r)
+        db.session.commit()
+    return send_file(pad, mimetype="application/gpx+xml", as_attachment=True,
+                     download_name=f"ravot-{r.slug}.gpx")

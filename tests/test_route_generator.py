@@ -173,3 +173,77 @@ def test_top_is_divers_en_scores_onderscheiden(app):
         assert len(set(scores)) >= 4              # geen eenheidsworst
         a, b = set(rijen[0].knooppunten), set(rijen[1].knooppunten)
         assert len(a & b) / len(a | b) <= 0.6     # top-2 echt verschillend
+
+
+def test_promotie_maakt_gpx_en_ai_naam(app, tmp_path, monkeypatch):
+    """Patch 191: promoveren levert een downloadbaar GPX-bestand op en een
+    speelse AI-naam/beschrijving op basis van wat er écht langs ligt."""
+    import os
+    from unittest.mock import patch as _patch
+    with app.app_context():
+        from app.services.route_generator import (genereer_voorstellen,
+                                                  laad_netwerk_uit_geojson,
+                                                  promoveer)
+        laad_netwerk_uit_geojson(_rasternet(), "test")
+        db.session.add(Event(
+            title="IJssalon Fresco", slug="gpx-ijs", source="osm",
+            ext_id="gpx-ijs", is_permanent=True, pending=False, hidden=False,
+            gemeente="Roeselare", subtype="horeca", quality=60, indoor=True,
+            lat=BASIS[0] + 0.001, lng=BASIS[1] + 0.001))
+        _plekken(app)
+        genereer_voorstellen("Roeselare", top=1)
+        v = RouteVoorstel.query.first()
+        nep = ("NAAM: De IJsjes-safari\n"
+               "BESCHRIJVING: Langs IJssalon Fresco, met veel speelplezier.")
+        with _patch("app.enrich._generate", return_value=nep) as m:
+            r = promoveer(v)
+        assert "IJssalon Fresco" in m.call_args[0][0]     # echte plekken in prompt
+        assert r.titel == "De IJsjes-safari"
+        assert "Knooppunten:" in r.routebeschrijving
+        assert r.gpx_bestand and os.path.exists(
+            f"/data/uploads/gpx/{r.gpx_bestand}")
+        inhoud = open(f"/data/uploads/gpx/{r.gpx_bestand}").read()
+        assert "<trkpt" in inhoud and "De IJsjes-safari" in inhoud
+
+
+def test_promotie_overleeft_ai_storing(app):
+    from unittest.mock import patch as _patch
+    with app.app_context():
+        from app.services.route_generator import (genereer_voorstellen,
+                                                  laad_netwerk_uit_geojson,
+                                                  promoveer)
+        laad_netwerk_uit_geojson(_rasternet(), "test")
+        _plekken(app)
+        genereer_voorstellen("Roeselare", top=1)
+        v = RouteVoorstel.query.first()
+        with _patch("app.enrich._generate", side_effect=RuntimeError("uit")):
+            r = promoveer(v)
+        assert r.titel.startswith("Gezinslus")            # nette terugval
+        assert r.gpx_bestand                              # GPX komt er toch
+
+
+def test_beheer_gpx_download_ook_pending(client, app):
+    from argon2 import PasswordHasher
+    with app.app_context():
+        from app.services.route_generator import (genereer_voorstellen,
+                                                  laad_netwerk_uit_geojson,
+                                                  promoveer)
+        from unittest.mock import patch as _patch
+        laad_netwerk_uit_geojson(_rasternet(), "test")
+        _plekken(app)
+        genereer_voorstellen("Roeselare", top=1)
+        with _patch("app.enrich._generate", side_effect=RuntimeError("uit")):
+            r = promoveer(RouteVoorstel.query.first())
+        db.session.add(Admin(email="g@r.be", pw_hash=PasswordHasher().hash("x"),
+                             role="admin", totp_secret="JBSWY3DPEHPK3PXP",
+                             totp_confirmed=True))
+        db.session.commit()
+        rid, aid = r.id, Admin.query.first().id
+        assert r.pending is True
+    with client.session_transaction() as s:
+        s["admin_id"] = aid
+        s["admin_2fa_ok"] = True
+        s["admin_rol"] = "admin"
+    resp = client.get(f"/beheer/routes/{rid}/gpx")
+    assert resp.status_code == 200
+    assert "gpx" in resp.headers.get("Content-Disposition", "")
