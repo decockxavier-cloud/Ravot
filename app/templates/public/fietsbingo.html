@@ -3,7 +3,7 @@
 <div class="bingo-scherm">
   <a href="{{ url_for('public.fietsroute', slug=r.slug) }}" class="terug-link">← {{ r.titel }}</a>
   <div class="acties" style="margin:10px 0">
-    <button class="btn btn-zon" type="button" onclick="window.print()">🖨️ Print of bewaar als PDF</button>
+    <button class="btn btn-zon" type="button" id="bingo-print">🖨️ Print of bewaar als PDF</button>
   </div>
 </div>
 
@@ -54,6 +54,7 @@
 {% endif %}
 </div>
 
+<script src="{{ url_for('static', filename='js/bingo_print.js') }}" defer></script>
 <style>
 .bingo-blad { background:#fff; border:2px solid var(--zon); border-radius:16px;
   padding:18px; max-width:720px; margin:0 auto; }

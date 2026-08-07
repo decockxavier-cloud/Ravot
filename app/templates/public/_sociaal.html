@@ -3,7 +3,8 @@
    SVG-pad — geen externe scripts, CSP-veilig, geen tracking. #}
 {% set fb = setting('social_facebook') %}
 {% set ig = setting('social_instagram') %}
-{% if fb or ig %}
+{% set tt = setting('social_tiktok') %}
+{% if fb or ig or tt %}
 <span class="sociaal-knoppen">
   {% if fb %}
   <a href="{{ fb }}" class="sociaal-knop" target="_blank" rel="noopener me"
@@ -15,6 +16,12 @@
   <a href="{{ ig }}" class="sociaal-knop" target="_blank" rel="noopener me"
      aria-label="Ravot op Instagram" title="Ravot op Instagram">
     <svg viewBox="0 0 24 24" aria-hidden="true" width="26" height="26"><path fill="currentColor" d="M12 2.16c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.23.41.56.22.96.48 1.38.9.42.42.68.82.9 1.38.16.42.36 1.06.41 2.23.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.23-.22.56-.48.96-.9 1.38-.42.42-.82.68-1.38.9-.42.16-1.06.36-2.23.41-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.23-.41-.56-.22-.96-.48-1.38-.9-.42-.42-.68-.82-.9-1.38-.16-.42-.36-1.06-.41-2.23C2.17 15.58 2.16 15.2 2.16 12s.01-3.58.07-4.85c.05-1.17.25-1.8.41-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.42-.16 1.06-.36 2.23-.41C8.42 2.17 8.8 2.16 12 2.16zm0 3.29A6.55 6.55 0 1 0 18.55 12 6.55 6.55 0 0 0 12 5.45zm0 10.8A4.25 4.25 0 1 1 16.25 12 4.25 4.25 0 0 1 12 16.25zm8.34-11.06a1.53 1.53 0 1 1-1.53-1.53 1.53 1.53 0 0 1 1.53 1.53z"/></svg>
+  </a>
+  {% endif %}
+  {% if tt %}
+  <a href="{{ tt }}" class="sociaal-knop" target="_blank" rel="noopener me"
+     aria-label="Ravot op TikTok" title="Ravot op TikTok">
+    <svg viewBox="0 0 24 24" aria-hidden="true" width="26" height="26"><path fill="currentColor" d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 1 1-2.31-2.83v-3.5a6.37 6.37 0 1 0 5.76 6.33V8.71a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.14z"/></svg>
   </a>
   {% endif %}
 </span>

@@ -531,6 +531,7 @@ SETTING_DEFS = {
                               "dus een plafond voorkomt eindeloos doorklikken)", "text"),
     "social_facebook": ("", "Facebook-pagina van Ravot (volledige URL, leeg = geen knop)", "text"),
     "social_instagram": ("", "Instagram-pagina van Ravot (volledige URL, leeg = geen knop)", "text"),
+    "social_tiktok": ("", "TikTok-pagina van Ravot (volledige URL, leeg = geen knop)", "text"),
     "netwerk_bron_url": ("", "Routegenerator: GeoJSON-URL van het "
                              "fietsknooppuntennetwerk (open data)", "text"),
     "generator_min_km": ("12", "Routegenerator: minimale luslengte (km)", "text"),

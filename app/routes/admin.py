@@ -317,7 +317,7 @@ def delete_review(review_id):
 # nieuwe, nog niet ingedeelde keys op.
 INSTELLING_PAGINAS = {
     "kern": [
-        ("Sociale media", ["social_facebook", "social_instagram"]),
+        ("Sociale media", ["social_facebook", "social_instagram", "social_tiktok"]),
         ("Fietsroutes", ["netwerk_bron_url", "generator_min_km", "generator_max_km",
                          "route_buurt_meter", "route_partner_meter",
                          "route_tempo_kmu", "routes_in_menu"]),
