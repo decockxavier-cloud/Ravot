@@ -108,7 +108,7 @@
       </ul>
       <p class="hint">Bij twijfel: afwijzen. Beter een foto te weinig dan een rechtenprobleem.</p>
     </details>
-    <div class="foto-raster">
+    <div class="foto-galerij">
     {% for f in fotos %}
     <div class="foto-item">
       <img src="{{ url_for('public.foto', pid=f.id) }}" alt="ter beoordeling" loading="lazy">

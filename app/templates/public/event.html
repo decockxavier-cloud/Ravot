@@ -317,7 +317,7 @@
 {% if fotos %}
 <div class="card">
   <h2 style="margin-top:0">Foto's van gezinnen</h2>
-  <div class="foto-raster">
+  <div class="foto-galerij">
     {% for f in fotos %}<img src="{{ url_for('public.foto', pid=f.id) }}" alt="{{ ev.title }}" loading="lazy">{% endfor %}
   </div>
 </div>

@@ -727,8 +727,8 @@ def kamp_nieuw(op):
         start = _pdate(request.form.get("start"))
         eind = _pdate(request.form.get("eind")) or start
         try:
-            leeft_min = max(0, min(18, int(request.form.get("age_min") or 0)))
-            leeft_max = max(leeft_min, min(18, int(request.form.get("age_max") or 12)))
+            leeft_min = max(0, min(99, int(request.form.get("age_min") or 0)))
+            leeft_max = max(leeft_min, min(99, int(request.form.get("age_max") or 12)))
         except ValueError:
             leeft_min, leeft_max = 0, 12
         if not titel or not start:

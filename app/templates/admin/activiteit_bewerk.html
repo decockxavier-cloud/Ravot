@@ -96,8 +96,8 @@
         {% for c in categories %}<option value="{{ c }}" {{ 'selected' if v_cat==c }}>{{ c }}</option>{% endfor %}
       </select>
     </label>
-    <label>Leeftijd van <input type="number" name="age_min" value="{{ v_min if v_min is not none else '' }}" min="0" max="18" style="width:80px"></label>
-    <label>tot <input type="number" name="age_max" value="{{ v_max if v_max is not none else '' }}" min="0" max="18" style="width:80px"></label>
+    <label>Leeftijd van <input type="number" name="age_min" value="{{ v_min if v_min is not none else '' }}" min="0" max="99" style="width:80px"></label>
+    <label>tot <input type="number" name="age_max" value="{{ v_max if v_max is not none else '' }}" min="0" max="99" style="width:80px"></label>
   </div>
 
   <h2 class="sectie-kop">Locatie &amp; contact</h2>
@@ -184,33 +184,6 @@
     <label>Lengtegraad (lng) <input type="text" name="lng" value="{{ ev.lng or '' }}" placeholder="3.72"></label>
   </div>
   <label>Menu- of reservatielink <input type="url" name="reservatie_url" value="{{ ev.reservatie_url or '' }}" placeholder="https://..."></label>
-
-  <h2 class="sectie-kop">Openingsuren</h2>
-  <p class="hint">Formaat <code>09:00-18:00</code> of <code>09:00-12:00, 13:00-18:00</code>; leeg = gesloten.</p>
-  <div class="veldrij" style="flex-wrap:wrap">
-    {% for dag in dagen %}
-    <label style="min-width:180px">{{ dag_labels[dag] }}
-      <input type="text" name="uren_{{ dag }}" value="{{ uren_nu[dag] }}" placeholder="gesloten"></label>
-    {% endfor %}
-  </div>
-
-  <h2 class="sectie-kop">Kindvriendelijke voorzieningen</h2>
-  <div class="veldrij" style="flex-wrap:wrap">
-    {% for veld, lbl in [("kinderstoel","🪑 Kinderstoelen"),("speelhoek","🧸 Speelhoek"),
-                         ("kindermenu","🍟 Kindermenu"),("verzorgingstafel","🍼 Verschoontafel"),
-                         ("buggy_ok","👶 Buggy-vriendelijk"),("omheind","🚧 Omheind terrein"),
-                         ("terras","☀️ Terras"),("overdekt_terras","⛱️ Overdekt terras"),
-                         ("parking","🅿️ Parking"),("toegankelijk","♿ Toegankelijk"),
-                         ("allergievriendelijk","🌾 Allergievriendelijk"),
-                         ("babyvoeding","🍼 Babyvoeding opwarmen"),("huisdieren","🐕 Huisdieren")] %}
-    <label style="min-width:210px">{{ lbl }}
-      <select name="{{ veld }}">
-        <option value="" {{ 'selected' if ev[veld] is none }}>onbekend</option>
-        <option value="1" {{ 'selected' if ev[veld] == true }}>ja</option>
-        <option value="0" {{ 'selected' if ev[veld] == false }}>nee</option>
-      </select></label>
-    {% endfor %}
-  </div>
 
   <h2 class="sectie-kop">Feestjes</h2>
   <div class="veldrij" style="align-items:end">

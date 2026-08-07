@@ -1619,7 +1619,8 @@ def activiteit_bewerk(event_id):
                 setattr(ev, veld, int(waarde) if waarde.isdigit() else None)
             elif veld in ("age_min", "age_max"):
                 if waarde.isdigit():
-                    setattr(ev, veld, int(waarde))
+                    # zelfde grenzen als overal (0-99, patch 190/202)
+                    setattr(ev, veld, max(0, min(99, int(waarde))))
             elif veld == "postcode":
                 ev.postcode = _re.sub(r"\D", "", waarde)[:8] or None
             else:
