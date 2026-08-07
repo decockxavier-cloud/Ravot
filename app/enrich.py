@@ -128,7 +128,8 @@ def _parse_json(ruw):
 
 def _clamp_leeftijd(v, standaard):
     try:
-        return max(0, min(18, int(v)))
+        # zelfde grenzen als overal (0-99, patch 202/205)
+        return max(0, min(99, int(v)))
     except (TypeError, ValueError):
         return standaard
 

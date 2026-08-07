@@ -45,7 +45,7 @@ def test_verrijk_negeert_ongeldige_categorie_en_clamp_leeftijd(app):
     with app.app_context():
         v = enrich.verrijk_plek(ev, generate=fake)
     assert v["categorie"] is None                    # onbekende categorie geweigerd
-    assert v["leeftijd_min"] == 0 and v["leeftijd_max"] == 18   # geklemd op 0-18
+    assert v["leeftijd_min"] == 0 and v["leeftijd_max"] == 99   # geklemd op 0-99 (p205)
 
 
 def test_verrijk_testpagina_rendert(client, app):

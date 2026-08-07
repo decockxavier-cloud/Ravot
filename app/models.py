@@ -531,6 +531,7 @@ SETTING_DEFS = {
                               "dus een plafond voorkomt eindeloos doorklikken)", "text"),
     "social_facebook": ("", "Facebook-pagina van Ravot (volledige URL, leeg = geen knop)", "text"),
     "social_instagram": ("", "Instagram-pagina van Ravot (volledige URL, leeg = geen knop)", "text"),
+    "tv_max": ("2000", "Toerisme Vlaanderen: maximum aantal items per sync", "text"),
     "social_tiktok": ("", "TikTok-pagina van Ravot (volledige URL, leeg = geen knop)", "text"),
     "netwerk_bron_url": ("", "Routegenerator: GeoJSON-URL van het "
                              "fietsknooppuntennetwerk (open data)", "text"),

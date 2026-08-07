@@ -1215,3 +1215,8 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
   border-radius: 999px; font-size: .8rem; font-weight: 700;
   text-decoration: none; white-space: nowrap; box-shadow: 0 1px 4px
   rgba(0,0,0,.25); }
+
+
+/* Webshoplogo op beloningskaarten (patch 177, CSS vergeten -> audit 205) */
+.beloning-logo { height: 44px; max-width: 140px; object-fit: contain;
+  display: block; margin-bottom: 6px; }

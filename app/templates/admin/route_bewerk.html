@@ -26,9 +26,9 @@
 
   <div class="veldrij" style="flex-wrap:wrap;align-items:end">
     <label>Leeftijd van <input type="number" name="age_min" min="0" max="12" style="width:70px"
-           value="{{ r.age_min if r else 4 }}"></label>
+           value="{{ r.age_min if r and r.age_min is not none else 4 }}"></label>
     <label>tot <input type="number" name="age_max" min="0" max="16" style="width:70px"
-           value="{{ r.age_max if r else 12 }}"></label>
+           value="{{ r.age_max if r and r.age_max is not none else 12 }}"></label>
     <label>Moeilijkheid
       <select name="moeilijkheid">
         {% for m in ("vlak", "licht", "pittig") %}
