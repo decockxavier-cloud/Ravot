@@ -3023,3 +3023,77 @@ def bingo_foto(bid):
     if not os.path.exists(pad):
         abort(404)
     return send_file(pad, mimetype="image/jpeg")
+
+
+@bp.route("/route-voorstellen/<int:vid>")
+@medewerker_required
+def route_voorstel_detail(vid):
+    """Voorstel bekijken vóór je beslist (patch 201): tracé op kaart, gemeten
+    klimmeters en de plekken die er écht langs liggen."""
+    from ..models import Event, RouteVoorstel, get_int
+    from ..scoring import haversine_km
+    from ..services.route_generator import meet_klimmeters
+    from ..services.routes_gis import moeilijkheid_suggestie, sample
+    v = db.session.get(RouteVoorstel, vid) or abort(404)
+    if v.hoogte_m is None:
+        v.hoogte_m = meet_klimmeters(v.geometrie)
+        if v.hoogte_m is not None:
+            db.session.commit()
+    moeilijkheid = (moeilijkheid_suggestie(v.afstand_km or 0, v.hoogte_m)
+                    if v.hoogte_m is not None else None)
+    # Plekken langs het tracé (zelfde logica als de score, nu met namen)
+    lijn = sample([(p[0], p[1], None) for p in (v.geometrie or [])],
+                  stap_km=0.3)
+    plekken = []
+    if lijn:
+        lats = [p[0] for p in lijn]
+        lngs = [p[1] for p in lijn]
+        marge = 0.006
+        from ..types import TYPES, groep_van
+        kandidaten = (Event.query
+                      .filter(Event.is_permanent.is_(True),
+                              Event.pending.is_(False),
+                              Event.hidden.is_(False),
+                              Event.lat.between(min(lats) - marge,
+                                                max(lats) + marge),
+                              Event.lng.between(min(lngs) - marge,
+                                                max(lngs) + marge))
+                      .limit(400).all())
+        for ev in kandidaten:
+            beste = None
+            for i, (la, ln, _) in enumerate(lijn):
+                d = haversine_km(ev.lat, ev.lng, la, ln)
+                if beste is None or d < beste[0]:
+                    beste = (d, i)
+            if beste and beste[0] * 1000 <= 400:
+                emoji = TYPES.get(ev.subtype or "", ("📍",))[0]
+                plekken.append((round(beste[1] * 0.3, 1), emoji, ev.title,
+                                groep_van(ev)))
+        plekken.sort()
+    return render_template("admin/route_voorstel_detail.html", v=v,
+                           moeilijkheid=moeilijkheid, plekken=plekken[:25],
+                           min_km=get_int("generator_min_km", 12),
+                           title=f"Voorstel {v.id}", family=None,
+                           active="routes")
+
+
+@bp.route("/route-voorstellen/<int:vid>/gpx")
+@medewerker_required
+def route_voorstel_gpx(vid):
+    """Proef-GPX van een voorstel — testrijden vóór je promoveert."""
+    import io
+    from xml.sax.saxutils import escape
+    from flask import send_file
+    from ..models import RouteVoorstel
+    v = db.session.get(RouteVoorstel, vid) or abort(404)
+    naam = f"Ravot-voorstel {v.id} — {v.gemeente} {v.afstand_km:g} km"
+    regels = ['<?xml version="1.0" encoding="UTF-8"?>',
+              '<gpx version="1.1" creator="Ravot.be" '
+              'xmlns="http://www.topografix.com/GPX/1/1">',
+              f"  <trk><name>{escape(naam)}</name><trkseg>"]
+    for p in (v.geometrie or []):
+        regels.append(f'    <trkpt lat="{p[0]:.6f}" lon="{p[1]:.6f}"/>')
+    regels += ["  </trkseg></trk>", "</gpx>"]
+    return send_file(io.BytesIO("\n".join(regels).encode()),
+                     mimetype="application/gpx+xml", as_attachment=True,
+                     download_name=f"ravot-voorstel-{v.id}.gpx")

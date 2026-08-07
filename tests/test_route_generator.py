@@ -581,3 +581,48 @@ def test_streek_run_spreidt_over_steden(app):
                     for v in RouteVoorstel.query.all()]
         assert len(sleutels) == len(set(sleutels))     # kruis-dedupe
         assert all(b <= 3 for _, b, _ in per)
+
+
+def test_voorstel_detailpagina(client, app):
+    """Patch 201: kiezen met kennis van zaken — tracé op kaart, gemeten
+    (en gecachete) klimmeters, plekken langs de route en een proef-GPX."""
+    from unittest.mock import patch as _patch
+    from argon2 import PasswordHasher
+    with app.app_context():
+        from app.services.route_generator import (genereer_voorstellen,
+                                                  laad_netwerk_uit_geojson)
+        laad_netwerk_uit_geojson(_rasternet(), "test")
+        _plekken(app)
+        db.session.add(Admin(email="vd@r.be", pw_hash=PasswordHasher().hash("x"),
+                             role="admin", totp_secret="JBSWY3DPEHPK3PXP",
+                             totp_confirmed=True))
+        db.session.commit()
+        genereer_voorstellen("Roeselare", top=1)
+        vid = RouteVoorstel.query.first().id
+        aid = Admin.query.filter_by(email="vd@r.be").first().id
+    with client.session_transaction() as s:
+        s["admin_id"] = aid
+        s["admin_2fa_ok"] = True
+        s["admin_rol"] = "admin"
+
+    class Vlak:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"elevation": [20.0] * 80}
+
+    with _patch("app.services.route_generator.requests.get",
+                return_value=Vlak()):
+        h = client.get(f"/beheer/route-voorstellen/{vid}").get_data(as_text=True)
+    assert 'id="voorstel-kaart"' in h and "data-geometrie" in h
+    assert "0 klimmeters" in h and ">vlak<" in h
+    assert "Promoveer tot conceptroute" in h and "proefrit" in h
+    with _patch("app.services.route_generator.requests.get",
+                return_value=Vlak()) as m2:
+        client.get(f"/beheer/route-voorstellen/{vid}")
+        assert m2.call_count == 0                  # hoogte gecachet
+    g = client.get(f"/beheer/route-voorstellen/{vid}/gpx")
+    assert g.status_code == 200 and b"<trkpt" in g.data
+    lijst = client.get("/beheer/route-voorstellen").get_data(as_text=True)
+    assert f"/beheer/route-voorstellen/{vid}" in lijst

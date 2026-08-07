@@ -31,7 +31,9 @@
   <tr>
     <td><strong>{{ v.score }}</strong></td>
     <td>{{ v.gemeente }}</td>
-    <td>{{ v.afstand_km }} km · {{ (v.knooppunten or [])|length - 1 }} knooppunten
+    <td><a href="{{ url_for('admin.route_voorstel_detail', vid=v.id) }}">
+        <strong>{{ v.afstand_km }} km · {{ (v.knooppunten or [])|length - 1 }}
+        knooppunten</strong> 🔍</a>
       <div class="hint">{{ (v.knooppunten or [])|join(" – ") }}</div></td>
     <td class="hint">
       {%- set d = v.score_detail or {} -%}

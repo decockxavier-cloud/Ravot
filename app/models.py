@@ -861,6 +861,7 @@ class RouteVoorstel(db.Model):
     afstand_km = db.Column(db.Float)
     score = db.Column(db.Float, index=True)
     score_detail = db.Column(db.JSON)       # {"ravotten": 4, "smullen": 2, ...}
+    hoogte_m = db.Column(db.Integer)        # gemeten klimmeters (lazy, p201)
     status = db.Column(db.String(12), default="nieuw", nullable=False)
     route_id = db.Column(db.Integer, db.ForeignKey("fietsroutes.id"))
     created_at = db.Column(db.DateTime, default=utcnow)

@@ -1,0 +1,58 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<a href="{{ url_for('admin.route_voorstellen') }}" class="terug-link">← Alle voorstellen</a>
+<h1>Voorstel {{ v.id }} — {{ v.gemeente }}</h1>
+
+<p>
+  <span class="badge">score {{ v.score }}</span>
+  <span class="badge">{{ v.afstand_km }} km</span>
+  <span class="badge">{{ (v.knooppunten or [])|length - 1 }} knooppunten</span>
+  {% if v.hoogte_m is not none %}
+  <span class="badge">⛰️ {{ v.hoogte_m }} klimmeter{% if v.hoogte_m != 1 %}s{% endif %}</span>
+  {% if moeilijkheid %}<span class="badge open">{{ moeilijkheid }}</span>{% endif %}
+  {% else %}
+  <span class="hint">hoogtemeting lukte niet (API) — herlaad om opnieuw te proberen</span>
+  {% endif %}
+</p>
+
+<div id="voorstel-kaart" style="height:380px;border-radius:14px;margin:10px 0"
+     data-geometrie='{{ (v.geometrie or [])|tojson }}'></div>
+
+<p class="hint">Knooppunten: {{ (v.knooppunten or [])|join(" – ") }}</p>
+
+<div class="acties" style="margin:10px 0">
+  <a class="btn" href="{{ url_for('admin.route_voorstel_gpx', vid=v.id) }}">GPX ⬇ (proefrit)</a>
+  {% if v.status == "nieuw" %}
+  <form method="post" action="{{ url_for('admin.route_voorstellen') }}" style="display:inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="actie" value="promoveer">
+    <input type="hidden" name="vid" value="{{ v.id }}">
+    <button class="btn btn-zon" type="submit">✔ Promoveer tot conceptroute</button>
+  </form>
+  <form method="post" action="{{ url_for('admin.route_voorstellen') }}" style="display:inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="actie" value="afwijzen">
+    <input type="hidden" name="vid" value="{{ v.id }}">
+    <button class="btn btn-stil" type="submit">✕ Afwijzen</button>
+  </form>
+  {% else %}
+  <span class="badge">status: {{ v.status }}</span>
+  {% endif %}
+</div>
+
+<h2>Onderweg ({{ plekken|length }} plekken binnen 400 m)</h2>
+{% if plekken %}
+<table class="tabel">
+  <tr><th>km</th><th>Plek</th><th>Groep</th></tr>
+  {% for km, emoji, titel, groep in plekken %}
+  <tr><td>{{ km }}</td><td>{{ emoji }} {{ titel }}</td><td class="hint">{{ groep }}</td></tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="hint">Geen plekken binnen 400 m van het tracé gevonden.</p>
+{% endif %}
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ url_for('static', filename='js/voorstel_kaart.js') }}"></script>
+{% endblock %}

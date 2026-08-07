@@ -749,6 +749,13 @@ def register_cli(app):
                 "  SELECT SUM(p.punten) FROM ravot_punten p"
                 "  WHERE p.family_id = families.id), 0)"))
             added.append("families.niveau_hoogste (+backfill)")
+        if "route_voorstellen" in insp.get_table_names():
+            rv_cols = {c["name"] for c in insp.get_columns("route_voorstellen")}
+            if "hoogte_m" not in rv_cols:
+                db.session.execute(text(
+                    "ALTER TABLE route_voorstellen ADD COLUMN IF NOT EXISTS "
+                    "hoogte_m INTEGER"))
+                added.append("route_voorstellen.hoogte_m")
         if "ravot_punten" in insp.get_table_names():
             rp_cols = {c["name"] for c in insp.get_columns("ravot_punten")}
             if "notitie" not in rp_cols:
