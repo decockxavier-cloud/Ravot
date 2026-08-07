@@ -522,6 +522,8 @@ SETTING_DEFS = {
     "punt_feestje": ("10", "Punten: feestje georganiseerd", "text"),
     "punt_plek": ("15", "Punten: nieuwe plek toegevoegd die live ging", "text"),
     "punt_veld_stem": ("3", "Punten: voorziening bevestigd", "text"),
+    "punt_bingo": ("15", "Punten: fietsbingo-kaart ingezonden (na "
+                         "goedkeuring; max. 1 per route per maand)", "text"),
     "punt_uitnodiging": ("25", "Punten: een nieuw gezin uitgenodigd dat zijn "
                                "eerste punten verdiende", "text"),
     "veldstem_dag_max": ("8", "Max. beloonde voorziening-bevestigingen per gezin per dag "
@@ -864,6 +866,26 @@ class RouteVoorstel(db.Model):
     created_at = db.Column(db.DateTime, default=utcnow)
 
 
+class BingoInzending(db.Model):
+    """Ingevulde fietsbingo-kaart van een gezin (patch 200): foto van het
+    blad, per route en per maand één inzending per gezin. Na goedkeuring
+    volgen ravotpunten; de maandwinnaar kiest de redactie."""
+    __tablename__ = "bingo_inzendingen"
+    id = db.Column(db.Integer, primary_key=True)
+    family_id = db.Column(db.Integer, db.ForeignKey("families.id"),
+                          nullable=False, index=True)
+    route_id = db.Column(db.Integer, db.ForeignKey("fietsroutes.id"),
+                         nullable=False, index=True)
+    filename = db.Column(db.String(120), nullable=False)
+    maand = db.Column(db.Integer, nullable=False, index=True)   # YYYYMM
+    status = db.Column(db.String(12), default="pending", nullable=False)
+    created_at = db.Column(db.DateTime, default=utcnow)
+    __table_args__ = (db.UniqueConstraint("family_id", "route_id", "maand"),)
+
+    family = db.relationship("Family")
+    route = db.relationship("FietsRoute")
+
+
 class RouteReview(db.Model):
     """Ravotscore van een gezin voor een fietsroute (patch 161) — dezelfde
     scoretaal als bij plekken: kindsmileys (1-5) + ouder-gemak (1-3)."""
@@ -1152,6 +1174,7 @@ PUNT_REDENEN = {
     "veld_stem": 3,        # een voorziening bevestigd of aangevuld (fase 4)
     "eerste_score": 15,    # de állereerste Ravotscore van een plek (fase 4)
     "uitnodiging": 25,     # een ander gezin aangebracht dat écht meedoet (p184)
+    "bingo": 15,           # volle fietsbingo-kaart ingezonden en goedgekeurd
 }
 
 

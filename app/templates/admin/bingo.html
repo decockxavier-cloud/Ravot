@@ -1,0 +1,42 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<h1>🎯 Fietsbingo-inzendingen</h1>
+<p class="hint">Goedkeuren geeft het gezin +{{ punt_bingo }} ravotpunten
+  (automatisch eenmalig per route per maand). De maandwinnaar kies je zelf uit
+  de goedgekeurde kaarten; een extra prijs of bonuspunten regel je via de
+  puntencorrectie op de gezinspagina.</p>
+{% if rijen %}
+<table class="tabel">
+  <tr><th>Kaart</th><th>Gezin</th><th>Route</th><th>Maand</th><th>Status</th><th></th></tr>
+  {% for i in rijen %}
+  <tr>
+    <td><a href="{{ url_for('admin.bingo_foto', bid=i.id) }}" target="_blank">
+      <img src="{{ url_for('admin.bingo_foto', bid=i.id) }}" alt=""
+           style="height:64px;border-radius:8px"></a></td>
+    <td><a href="{{ url_for('admin.family_detail', fid=i.family_id) }}">#{{ i.family_id }}</a></td>
+    <td>{{ i.route.titel if i.route else i.route_id }}</td>
+    <td>{{ i.maand }}</td>
+    <td>{{ {'pending': '⏳', 'goed': '✅', 'afgekeurd': '✕'}.get(i.status, i.status) }}</td>
+    <td style="white-space:nowrap">
+      {% if i.status == 'pending' %}
+      <form method="post" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="bid" value="{{ i.id }}">
+        <input type="hidden" name="actie" value="goed">
+        <button class="btn btn-klein" type="submit">✔ Goedkeuren</button>
+      </form>
+      <form method="post" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="bid" value="{{ i.id }}">
+        <input type="hidden" name="actie" value="af">
+        <button class="btn btn-klein btn-stil" type="submit">✕</button>
+      </form>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="hint">Nog geen inzendingen.</p>
+{% endif %}
+{% endblock %}

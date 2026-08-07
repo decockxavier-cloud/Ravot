@@ -11,6 +11,7 @@
       {% if score %} · <strong>{{ "😞😕😐😄🤩"[(score.kid | round | int) - 1] }} {{ score.kid }}</strong>
       <span class="hint">({{ score.n }} gezin{{ 'nen' if score.n != 1 }})</span>{% endif %}</p>
   </div>
+  <a class="btn" href="{{ url_for('public.fietsbingo', slug=r.slug) }}">🎯 Fietsbingo</a>
   <button type="button" class="deel-knop btn" data-titel="{{ r.titel }}"
           data-url="{{ request.url }}">📤 Deel</button>
 </div>

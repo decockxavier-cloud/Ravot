@@ -364,7 +364,7 @@ INSTELLING_PAGINAS = {
         ("Puntwaarden per bijdrage", [
             "punt_review", "punt_eerste_score", "punt_foto", "punt_eerste_foto",
             "punt_geweest", "punt_daguitstap", "punt_feestje", "punt_plek",
-            "punt_veld_stem", "veldstem_dag_max"]),
+            "punt_veld_stem", "punt_bingo", "veldstem_dag_max"]),
     ],
 }
 
@@ -2855,7 +2855,21 @@ def route_voorstellen():
         actie = request.form.get("actie")
         if actie == "genereer":
             gemeente = (request.form.get("gemeente") or "").strip()
-            if gemeente:
+            if "," in gemeente:
+                # Streek-run: meerdere steden, 3 voorstellen per stad =
+                # spreiding over de streek i.p.v. een stapel rond één centrum.
+                from ..services.route_generator import genereer_streek
+                bewaard, onderzocht, per = genereer_streek(
+                    gemeente.split(","))
+                if onderzocht == 0:
+                    flash("Niets gevonden. Is het netwerk geladen en hebben "
+                          "deze gemeenten plekken in Ravot?", "error")
+                else:
+                    detail = " · ".join(f"{g}: {b}" for g, b, _ in per)
+                    flash(f"Streek-run: {onderzocht} lussen onderzocht, "
+                          f"{bewaard} voorstellen bewaard ({detail}).", "ok")
+                audit(f"routegenerator streek: {gemeente}")
+            elif gemeente:
                 bewaard, onderzocht = genereer_voorstellen(gemeente)
                 if onderzocht == 0:
                     flash("Niets gevonden. Is het netwerk geladen en heeft "
@@ -2961,3 +2975,51 @@ def route_ai_tekst(rid):
     flash(f"AI-voorstel toegepast (was: '{oude_titel}'). Pas gerust aan — "
           "jij kent de route, de AI niet.", "ok")
     return redirect(url_for("admin.route_bewerk", rid=rid))
+
+
+@bp.route("/bingo", methods=["GET", "POST"])
+@medewerker_required
+def bingo_nazicht():
+    """Bingowedstrijd (patch 200): inzendingen nakijken. Goedkeuren = punten
+    voor het gezin (eenmalig per route per maand, via de unieke ref).
+    De maandwinnaar kies je zelf uit de goedgekeurde kaarten — extra punten
+    geef je via de puntencorrectie op de gezinspagina."""
+    from ..models import BingoInzending, get_int
+    from .. import punten as pas
+    if request.method == "POST":
+        inz = db.session.get(BingoInzending,
+                             int(request.form.get("bid", 0))) or abort(404)
+        actie = request.form.get("actie")
+        if actie == "goed" and inz.status == "pending":
+            inz.status = "goed"
+            ref = inz.maand * 100000 + inz.route_id
+            n = pas.ken_toe(inz.family_id, "bingo", ref_id=ref)
+            db.session.commit()
+            audit(f"bingo {inz.id} goedgekeurd (+{n} punten gezin {inz.family_id})")
+            flash(f"Goedgekeurd — +{n} ravotpunten voor het gezin.", "ok")
+        elif actie == "af" and inz.status == "pending":
+            inz.status = "afgekeurd"
+            db.session.commit()
+            audit(f"bingo {inz.id} afgekeurd")
+            flash("Afgekeurd.", "ok")
+        return redirect(url_for("admin.bingo_nazicht"))
+    rijen = (BingoInzending.query.order_by(BingoInzending.created_at.desc())
+             .limit(100).all())
+    return render_template("admin/bingo.html", rijen=rijen,
+                           punt_bingo=get_int("punt_bingo", 15),
+                           title="Fietsbingo", family=None, active="routes")
+
+
+@bp.route("/bingo-foto/<int:bid>")
+@medewerker_required
+def bingo_foto(bid):
+    """Bingo-inzendingsfoto, enkel voor het beheer (nooit publiek)."""
+    import os
+    from flask import send_file
+    from ..models import BingoInzending
+    from ..fotos import pad_van
+    inz = db.session.get(BingoInzending, bid) or abort(404)
+    pad = pad_van(inz.filename)
+    if not os.path.exists(pad):
+        abort(404)
+    return send_file(pad, mimetype="image/jpeg")

@@ -1812,8 +1812,48 @@ def fietsroutes():
                     afstanden[r.id] = round(haversine_km(
                         centrum[0], centrum[1], r.start_lat, r.start_lng))
             rijen.sort(key=lambda r: afstanden.get(r.id, 9999))
+    # Levendige kaarten (patch 198): een gesprokkelde foto van een plek
+    # onderweg, een tekstsnippet en het onderweg-profiel per route.
+    from ..media import has_echte_foto, poi_image
+    from ..models import RouteBuurt
+    from ..types import groep_van
+    beelden, onderweg, snippets = {}, {}, {}
+    for r in rijen:
+        if r.beschrijving:
+            kort = " ".join(r.beschrijving.split())
+            snippets[r.id] = kort[:130] + ("…" if len(kort) > 130 else "")
+        tel = {"ravotten": 0, "smullen": 0, "beleven": 0}
+        for b in (RouteBuurt.query.filter_by(route_id=r.id)
+                  .order_by(RouteBuurt.route_km.asc()).limit(120).all()):
+            ev = b.event
+            if ev is None:
+                continue
+            g = groep_van(ev)
+            if g in tel:
+                tel[g] += 1
+            if r.id not in beelden and not r.cover_photo_id \
+                    and has_echte_foto(ev):
+                beelden[r.id] = (poi_image(ev), ev.title)
+        if any(tel.values()):
+            onderweg[r.id] = tel
+    kaartdata = [{"lat": r.start_lat, "lng": r.start_lng, "titel": r.titel,
+                  "km": r.afstand_km, "regio": r.regio or "",
+                  "url": url_for("public.fietsroute", slug=r.slug)}
+                 for r in rijen if r.start_lat is not None]
+    regio_labels = []
+    for reg in regios:
+        pts = [k for k in kaartdata if k["regio"] == reg]
+        if pts:
+            regio_labels.append({
+                "regio": reg,
+                "lat": sum(p["lat"] for p in pts) / len(pts),
+                "lng": sum(p["lng"] for p in pts) / len(pts),
+                "url": url_for("public.fietsroutes", regio=reg)})
     return render_template("public/fietsroutes.html", rijen=rijen, regios=regios,
                            regio=regio, afstanden=afstanden,
+                           beelden=beelden, onderweg=onderweg,
+                           snippets=snippets, kaartdata=kaartdata,
+                           regio_labels=regio_labels,
                            title="Gezinsfietsroutes", family=fam, active="routes")
 
 
@@ -1996,3 +2036,58 @@ def anon_veld_stem(event_id, veld, waarde):
     flash(f"Bedankt! Je antwoord over {lbl} is genoteerd. "
           "Met een gratis gezinsprofiel spaar je er ook ravotpunten mee. 🦊", "ok")
     return redirect(request.referrer or url_for("public.event", slug=ev.slug))
+
+
+@bp.route("/fietsroutes/<slug>/bingo")
+def fietsbingo(slug):
+    """Afdrukbare fietsbingo (patch 200): de browser maakt er de PDF van."""
+    from ..models import BingoInzending, FietsRoute, get_int, utcnow
+    from ..services.bingo import items_voor_route
+    r = FietsRoute.query.filter_by(slug=slug).first_or_404()
+    if (r.pending or r.hidden) and not session.get("admin_id"):
+        abort(404)
+    nu = utcnow()
+    maand = nu.year * 100 + nu.month
+    fam = current_family()
+    al_ingezonden = bool(fam and BingoInzending.query.filter_by(
+        family_id=fam.id, route_id=r.id, maand=maand).first())
+    return render_template("public/fietsbingo.html", r=r,
+                           items=items_voor_route(r, maand),
+                           maand_label=nu.strftime("%m/%Y"),
+                           al_ingezonden=al_ingezonden,
+                           punt_bingo=get_int("punt_bingo", 15),
+                           family=fam, active="routes",
+                           title=f"Fietsbingo — {r.titel}")
+
+
+@bp.route("/fietsroutes/<slug>/bingo", methods=["POST"])
+@limiter.limit("10/hour")
+def fietsbingo_upload(slug):
+    """Volle kaart insturen: één per gezin per route per maand; punten volgen
+    pas na goedkeuring door de redactie."""
+    from ..models import BingoInzending, FietsRoute, utcnow
+    from ..fotos import verwerk_upload
+    r = FietsRoute.query.filter_by(slug=slug).first_or_404()
+    fam = current_family()
+    if fam is None:
+        flash("Maak eerst een gratis gezinsprofiel om mee te doen.", "error")
+        return redirect(url_for("auth.login", terug=f"{slug}"))
+    nu = utcnow()
+    maand = nu.year * 100 + nu.month
+    if BingoInzending.query.filter_by(family_id=fam.id, route_id=r.id,
+                                      maand=maand).first():
+        flash("Jullie kaart voor deze route is deze maand al ingestuurd. 🦊",
+              "ok")
+        return redirect(url_for("public.fietsbingo", slug=slug))
+    naam = verwerk_upload(request.files.get("kaart"))
+    if not naam:
+        flash("Dat lukte niet — stuur een foto (jpg/png) van jullie "
+              "ingevulde blad.", "error")
+        return redirect(url_for("public.fietsbingo", slug=slug))
+    db.session.add(BingoInzending(family_id=fam.id, route_id=r.id,
+                                  filename=naam, maand=maand))
+    db.session.commit()
+    flash("Jullie bingokaart is binnen! We kijken hem na; daarna komen de "
+          "ravotpunten erbij en dingen jullie mee naar de maandprijs. 🎉",
+          "ok")
+    return redirect(url_for("public.fietsroute", slug=slug))

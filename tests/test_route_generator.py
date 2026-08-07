@@ -535,3 +535,49 @@ def test_horeca_alleen_partners_en_geen_verzinsels(app):
         assert "niet-partnerzaak" in prompts[1]             # herkansing
         assert "Smulbox" not in (r.beschrijving or "")
         assert r.regio == "Leiestreek"                      # overgeërfd
+
+
+def test_streek_run_spreidt_over_steden(app):
+    """Patch 199: een streek-run levert 3 voorstellen per stad, gespreid,
+    zonder dubbele lussen over gemeentegrenzen heen."""
+    import math as m
+    with app.app_context():
+        from app.services.route_generator import (genereer_streek,
+                                                  laad_netwerk_uit_geojson)
+
+        def punt(i, j):
+            return [BASIS[1] + j * 1.6 * KM_LNG, BASIS[0] + i * 1.6 * KM_LAT]
+        feats = []
+        for i in range(6):
+            for j in range(6):
+                if j < 5:
+                    feats.append({"type": "Feature", "properties": {},
+                                  "geometry": {"type": "LineString",
+                                               "coordinates": [punt(i, j),
+                                                               punt(i, j + 1)]}})
+                if i < 5:
+                    feats.append({"type": "Feature", "properties": {},
+                                  "geometry": {"type": "LineString",
+                                               "coordinates": [punt(i, j),
+                                                               punt(i + 1, j)]}})
+        laad_netwerk_uit_geojson(
+            {"type": "FeatureCollection", "features": feats}, "test")
+        for n, (di, dj, gem) in enumerate([(0, 0, "Roeselare"),
+                                           (1, 1, "Roeselare"),
+                                           (4, 4, "Izegem"),
+                                           (5, 4, "Izegem")]):
+            db.session.add(Event(
+                title=f"S{n}", slug=f"sk{n}", source="osm", ext_id=f"sk{n}",
+                is_permanent=True, pending=False, hidden=False, gemeente=gem,
+                subtype="playground", quality=60, categories=["buiten"],
+                lat=BASIS[0] + di * 1.6 * KM_LAT + 0.001,
+                lng=BASIS[1] + dj * 1.6 * KM_LNG + 0.001))
+        db.session.commit()
+        bewaard, onderzocht, per = genereer_streek(
+            ["Roeselare", " Izegem "], per_gemeente=3)
+        assert {v.gemeente for v in RouteVoorstel.query.all()} == \
+            {"Roeselare", "Izegem"}                    # echte spreiding
+        sleutels = [tuple(sorted(v.knooppunten))
+                    for v in RouteVoorstel.query.all()]
+        assert len(sleutels) == len(set(sleutels))     # kruis-dedupe
+        assert all(b <= 3 for _, b, _ in per)

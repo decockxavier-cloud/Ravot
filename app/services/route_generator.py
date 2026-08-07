@@ -298,8 +298,10 @@ def genereer_voorstellen(gemeente, top=8):
          if haversine_km(k.lat, k.lng, centrum[0], centrum[1]) <= 3.5),
         key=lambda k: haversine_km(k.lat, k.lng, centrum[0], centrum[1]))[:12]
 
+    # Dedupe over álle voorstellen: buurgemeenten delen knooppunten, en een
+    # streek-run mag dezelfde lus niet twee keer opleveren (patch 199).
     bestaand = {tuple(sorted(v.knooppunten or []))
-                for v in RouteVoorstel.query.filter_by(gemeente=gemeente).all()}
+                for v in RouteVoorstel.query.all()}
     gezien = set(bestaand)
     kandidaten = []
     for st in starts:
@@ -607,6 +609,24 @@ def regio_suggestie(route):
         if d <= 30 and (beste is None or d < beste[0]):
             beste = (d, r.regio)
     return beste[1] if beste else None
+
+
+def genereer_streek(gemeenten, per_gemeente=3):
+    """Streek-modus (patch 199): een rubriek per streek wil spréiding — twee à
+    drie sterke lussen per stad over meerdere steden, niet acht rond één
+    centrum. Zelfde generator, meerdere centra; de kruis-dedupe voorkomt dat
+    buurgemeenten dezelfde lus dubbel aanleveren."""
+    totaal_bewaard = totaal_onderzocht = 0
+    per = []
+    for g in gemeenten:
+        g = g.strip()
+        if not g:
+            continue
+        bewaard, onderzocht = genereer_voorstellen(g, top=per_gemeente)
+        per.append((g, bewaard, onderzocht))
+        totaal_bewaard += bewaard
+        totaal_onderzocht += onderzocht
+    return totaal_bewaard, totaal_onderzocht, per
 
 
 def promoveer(voorstel):

@@ -15,8 +15,10 @@
 <form method="post" class="card" style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="actie" value="genereer">
-  <div><label>Gemeente</label>
-    <input name="gemeente" placeholder="bv. Roeselare" required></div>
+  <div><label>Stad of streek <span class="hint">(één gemeente = 8
+      voorstellen; komma-lijst = streek-run met 3 per stad)</span></label>
+    <input name="gemeente" placeholder="bv. Roeselare, Izegem, Tielt"
+           required style="min-width:280px"></div>
   <button class="btn" type="submit">Genereer voorstellen</button>
   <span class="hint">Netwerk: {{ n_knopen }} knooppunten geladen.</span>
 </form>

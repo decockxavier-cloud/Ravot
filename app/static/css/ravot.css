@@ -1209,3 +1209,9 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 .route-chip:hover { border-color: var(--groen); }
 .route-gezinslaag { display: flex; gap: 10px; align-items: center;
   flex-wrap: wrap; margin: 8px 0 12px; }
+
+/* Routekaart-streeklabels (patch 198) */
+.regio-label a { background: var(--groen); color: #fff; padding: 3px 10px;
+  border-radius: 999px; font-size: .8rem; font-weight: 700;
+  text-decoration: none; white-space: nowrap; box-shadow: 0 1px 4px
+  rgba(0,0,0,.25); }

@@ -16,13 +16,23 @@
 </div>
 {% endif %}
 
+{% if kaartdata %}
+<div id="routes-kaart" style="height:300px;border-radius:16px;margin:12px 0"
+     data-routes='{{ kaartdata|tojson }}'
+     data-regios='{{ regio_labels|tojson }}'></div>
+{% endif %}
+
 {% for r in rijen %}
 <div class="card" style="display:flex;gap:12px;align-items:center">
-  <div style="width:76px;height:76px;border-radius:12px;background:#dce8d2;
+  <div style="width:104px;height:88px;border-radius:12px;background:#dce8d2;
               display:flex;align-items:center;justify-content:center;
               font-size:32px;flex:none;overflow:hidden">
     {% if r.cover_photo_id %}<img src="/foto/{{ r.cover_photo_id }}" alt=""
-      style="width:100%;height:100%;object-fit:cover">{% else %}🚲{% endif %}
+      style="width:100%;height:100%;object-fit:cover">
+    {% elif beelden.get(r.id) %}<img src="{{ beelden[r.id][0] }}" loading="lazy"
+      alt="Onderweg: {{ beelden[r.id][1] }}"
+      style="width:100%;height:100%;object-fit:cover">
+    {% else %}🚲{% endif %}
   </div>
   <div>
     <h3 style="margin:0 0 2px">
@@ -35,9 +45,24 @@
     {% if afstanden.get(r.id) is not none %}
     <span class="badge badge-groen" style="background:#4CA362;color:#fff">start op {{ afstanden[r.id] }} km van jou</span>
     {% endif %}
+    {% if snippets.get(r.id) %}
+    <p class="hint" style="margin:6px 0 0">{{ snippets[r.id] }}</p>
+    {% endif %}
+    {% if onderweg.get(r.id) %}
+    <p class="hint" style="margin:4px 0 0">Onderweg:
+      {%- set t = onderweg[r.id] -%}
+      {%- if t.ravotten %} 🛝 {{ t.ravotten }}× ravotten{% endif %}
+      {%- if t.smullen %}{% if t.ravotten %} ·{% endif %} 🍦 {{ t.smullen }}× smullen{% endif %}
+      {%- if t.beleven %}{% if t.ravotten or t.smullen %} ·{% endif %} 🎭 {{ t.beleven }}× beleven{% endif %}</p>
+    {% endif %}
   </div>
 </div>
 {% else %}
 <p class="hint">Nog geen routes in deze selectie.</p>
 {% endfor %}
+{% if kaartdata %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ url_for('static', filename='js/routes_kaart.js') }}"></script>
+{% endif %}
 {% endblock %}

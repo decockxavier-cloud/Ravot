@@ -442,9 +442,16 @@ def register_cli(app):
     @click.argument("gemeente")
     @click.option("--top", default=8, help="Aantal voorstellen om te bewaren")
     def genereer_routes(gemeente, top):
-        """Gezinslus-voorstellen genereren rond een gemeente (redactie kiest)."""
-        from .services.route_generator import genereer_voorstellen
-        bewaard, onderzocht = genereer_voorstellen(gemeente, top=top)
+        """Voorstellen rond een gemeente, of een streek via een komma-lijst
+        ("Roeselare,Izegem,Tielt" = 3 per stad, gespreid)."""
+        from .services.route_generator import (genereer_streek,
+                                               genereer_voorstellen)
+        if "," in gemeente:
+            bewaard, onderzocht, per = genereer_streek(gemeente.split(","))
+            for g, b, o in per:
+                click.echo(f"  {g}: {o} lussen, {b} bewaard")
+        else:
+            bewaard, onderzocht = genereer_voorstellen(gemeente, top=top)
         if onderzocht == 0:
             click.echo("Niets gevonden: is het netwerk geladen (flask "
                        "netwerk-laad) en heeft de gemeente plekken in Ravot?")
