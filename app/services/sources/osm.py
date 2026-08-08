@@ -270,6 +270,33 @@ def fetch():
                 time.sleep(0.5)
 
 
+def _in_bediend_gebied(lat, lng, tags=None):
+    """Ligt dit punt in het gebied dat Ravot bedient? (patch 222)
+
+    Vangnet náást de Overpass-gebiedsfilter, niet in de plaats ervan: die
+    filter (ISO3166-2=BE-VLG) is de echte poort. Dit is een tweede slot voor
+    het geval de regio-instelling ooit ruimer staat — zo zijn ooit Weert,
+    Susteren en Wolfrath binnengeraakt en blijven staan.
+
+    Let op de grens van dit vangnet: vlak over de landsgrens (enkele km) kan
+    afstand alleen geen land onderscheiden. Een expliciete buitenlandse
+    addr:country weren we wél altijd.
+    """
+    if (tags or {}).get("addr:country", "BE").upper() not in ("BE", ""):
+        return False
+    try:
+        from ...models import PostcodeCentroid
+        if not PostcodeCentroid.query.first():
+            # Geen referentietabel geladen? Dan niet blokkeren: anders valt de
+            # hele import stil zonder dat iemand begrijpt waarom.
+            return True
+        from ...geo import gemeente_uit_punt
+        gem, _ = gemeente_uit_punt(lat, lng, max_km=6)
+        return gem is not None
+    except Exception:
+        return True     # bij twijfel niet blokkeren: liever te veel dan stil falen
+
+
 def normalise(el):
     tags = el.get("tags") or {}
     # Gesloten/verlaten/voormalige plekken weren (bestaan niet meer).
@@ -305,6 +332,8 @@ def normalise(el):
     lng = el.get("lon") or (el.get("center") or {}).get("lon")
     if lat is None or lng is None:
         return None
+    if not _in_bediend_gebied(lat, lng, tags):
+        return None      # over de grens: hoort niet in Ravot
 
     website = tags.get("website") or tags.get("contact:website") or None
     oh = tags.get("opening_hours")
@@ -386,6 +415,8 @@ def _normalise_horeca(el, tags):
     lng = el.get("lon") or (el.get("center") or {}).get("lon")
     if lat is None or lng is None:
         return None
+    if not _in_bediend_gebied(lat, lng, tags):
+        return None      # over de grens: hoort niet in Ravot
     troeven = []
     if "kids_area" in signalen:
         troeven.append("speelhoek voor de kinderen")
