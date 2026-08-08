@@ -1,5 +1,10 @@
 """Patch 217: het printblad toont een échte kaart (OSM-tegels) in plaats van
-een lijn op een effen vlak, met caching en een nette terugval."""
+een lijn op een effen vlak, met caching en een nette terugval.
+
+De tegelserver wordt hier gemockt: tests mogen niet van een externe (gratis)
+dienst afhangen. In gewone tests slaat de kaartbouw zichzelf over; alleen met
+forceer=True wordt hij bewust uitgevoerd.
+"""
 import io
 import os
 from unittest.mock import patch
@@ -50,13 +55,13 @@ def test_kaart_wordt_samengesteld_en_gecachet(app, tmp_path):
             return _NepTegel()
 
         with patch.object(SK.requests, "get", side_effect=nep):
-            pad = SK.kaart_bestand(r, map_=str(tmp_path))
+            pad = SK.kaart_bestand(r, map_=str(tmp_path), forceer=True)
         assert pad and os.path.exists(pad)
         assert Image.open(pad).size == (1400, 900)      # liggend A4
         opgehaald = teller["n"]
         assert opgehaald > 0
         with patch.object(SK.requests, "get", side_effect=nep):
-            SK.kaart_bestand(r, map_=str(tmp_path))
+            SK.kaart_bestand(r, map_=str(tmp_path), forceer=True)
         assert teller["n"] == opgehaald                 # tweede keer uit cache
 
 
@@ -68,7 +73,8 @@ def test_zonder_tegels_nette_terugval(client, app, tmp_path):
         r = FR.query.filter_by(slug="sk-1").first()
         with patch.object(SK.requests, "get",
                           side_effect=RuntimeError("offline")):
-            assert SK.kaart_bestand(r, map_=str(tmp_path)) is None
+            assert SK.kaart_bestand(r, map_=str(tmp_path),
+                                    forceer=True) is None
     with patch("app.services.statische_kaart.kaart_bestand",
                return_value=None):
         resp = client.get("/fietsroutes/sk-1/kaartje.svg")

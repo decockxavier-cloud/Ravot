@@ -138,3 +138,27 @@ def adres_van_punt(lat, lng):
               or a.get("municipality") or a.get("suburb"))
     stukken = [x for x in (straat, plaats) if x]
     return ", ".join(stukken)[:200] or None
+
+
+def gemeente_uit_punt(lat, lng, max_km=10):
+    """Gemeente + postcode afleiden uit een speld op de kaart (patch 220).
+
+    Zonder gemeente is een fiche onvindbaar bij het zoeken op stad — precies
+    wat er gebeurde bij plekken die enkel met een speld werden aangeduid.
+    Gebruikt de postcode-centroïden die al in de databank zitten; geen externe
+    dienst nodig. Retourneert (gemeente, postcode) of (None, None).
+    """
+    if lat is None or lng is None:
+        return None, None
+    from .models import PostcodeCentroid
+    from .scoring import haversine_km
+    beste = None
+    for c in PostcodeCentroid.query.all():
+        if c.lat is None:
+            continue
+        d = haversine_km(lat, lng, c.lat, c.lng)
+        if beste is None or d < beste[0]:
+            beste = (d, c)
+    if beste and beste[0] <= max_km:
+        return beste[1].gemeente, beste[1].postcode
+    return None, None

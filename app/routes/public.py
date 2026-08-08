@@ -1879,7 +1879,9 @@ def fietsroutes():
     if route_ids:
         paren = (db.session.query(RouteBuurt.route_id, Event)
                  .join(Event, RouteBuurt.event_id == Event.id)
-                 .filter(RouteBuurt.route_id.in_(route_ids))
+                 .filter(RouteBuurt.route_id.in_(route_ids),
+                         Event.hidden.is_(False),   # geschrapt telt niet mee
+                         Event.pending.is_(False))
                  .order_by(RouteBuurt.route_id, RouteBuurt.route_km.asc())
                  .all())
         for rid, ev in paren:
@@ -1933,8 +1935,8 @@ def fietsroute(slug):
     r = FietsRoute.query.filter_by(slug=slug).first_or_404()
     if (r.pending or r.hidden) and not session.get("admin_id"):
         abort(404)
-    buurt = (RouteBuurt.query.filter_by(route_id=r.id)
-             .order_by(RouteBuurt.route_km.asc()).all())
+    from ..services.routes_gis import zichtbare_buurt
+    buurt = zichtbare_buurt(r.id)
     partners = [b for b in buurt if partner_zichtbaar(b.event)]
     from ..models import RouteReview
     revs = RouteReview.query.filter_by(route_id=r.id).all()
@@ -2201,8 +2203,8 @@ def fietsroute_print(slug):
         for k in Knooppunt.query.filter(Knooppunt.nummer.in_(knooppunten),
                                         Knooppunt.straat.isnot(None)).all():
             straten.setdefault(k.nummer, k.straat)
-    buurt = (RouteBuurt.query.filter_by(route_id=r.id)
-             .order_by(RouteBuurt.route_km.asc()).limit(40).all())
+    from ..services.routes_gis import zichtbare_buurt
+    buurt = zichtbare_buurt(r.id, limiet=40)
     stops = [(b.route_km, b.event.title, groep_van(b.event))
              for b in buurt if b.event is not None]
     return render_template("public/fietsroute_print.html", r=r,
@@ -2211,7 +2213,8 @@ def fietsroute_print(slug):
                            active="routes", title=f"Printblad — {r.titel}")
 
 
-@bp.route("/fietsroutes/<slug>/kaartje.svg")
+@bp.route("/fietsroutes/<slug>/kaartje")
+@bp.route("/fietsroutes/<slug>/kaartje.svg")   # oude naam blijft werken
 def fietsroute_kaartje(slug):
     """Eenvoudig kaartje van het tracé als SVG (patch 214): werkt in print
     zonder tegels te laden, en blijft scherp op papier."""

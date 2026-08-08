@@ -38,9 +38,14 @@ def test_printblad_heeft_alles_om_mee_te_nemen(client, app):
     assert "onclick" not in h                         # CSP-proof
 
 
-def test_kaartje_is_geldige_svg(client, app):
+def test_kaartje_valt_terug_op_svg_zonder_tegels(client, app):
+    """Zonder bereikbare tegelserver blijft het blad bruikbaar: dan tekent
+    hij de kale routelijn (patch 217). Tests halen nooit echte tegels op."""
+    from unittest.mock import patch as _patch
     _opzet(app)
-    r = client.get("/fietsroutes/pr-1/kaartje.svg")
+    with _patch("app.services.statische_kaart.kaart_bestand",
+                return_value=None):
+        r = client.get("/fietsroutes/pr-1/kaartje")
     assert r.status_code == 200
     assert b"<polyline" in r.data and b"<svg" in r.data
 
@@ -60,7 +65,10 @@ def test_printblad_is_liggend_met_onderweg_op_blad_twee(client, app):
     assert "A4 landscape" in h
     assert "print-blad2" in h and "break-before: page" in h
     assert "Ravotten" in h                        # gegroepeerd i.p.v. één lijst
-    svg = client.get("/fietsroutes/pr-1/kaartje.svg").get_data(as_text=True)
+    from unittest.mock import patch as _patch
+    with _patch("app.services.statische_kaart.kaart_bestand",
+                return_value=None):
+        svg = client.get("/fietsroutes/pr-1/kaartje").get_data(as_text=True)
     assert 'viewBox="0 0 1400 900"' in svg        # liggende verhouding
 
 

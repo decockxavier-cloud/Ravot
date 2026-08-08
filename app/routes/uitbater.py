@@ -253,6 +253,13 @@ def zaak_nieuw(op):
             p_lng = float(request.form.get("lng") or "")
         except ValueError:
             p_lat = p_lng = None
+        if p_lat is not None and (not gemeente or not postcode):
+            # Speld gezet maar gemeente niet ingevuld (patch 220): afleiden,
+            # anders komt de zaak niet boven bij zoeken op stad.
+            from ..geo import gemeente_uit_punt
+            g2, p2 = gemeente_uit_punt(p_lat, p_lng)
+            gemeente = gemeente or (g2 or "")
+            postcode = postcode or (p2 or "")
         if p_lat is None and postcode:
             from ..geo import postcode_coord
             c = postcode_coord(postcode)

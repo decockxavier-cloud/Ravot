@@ -734,10 +734,14 @@ section h2 { font-size: 1.25rem; margin: 22px 0 8px; }
   /* Filters staan op mobiel gewoon inline boven de resultaten (patch 212):
      de losse ⚙️-knop opende een overlay die op desktop niets deed en op
      mobiel verwarde. Zichtbaar = gebruikt. */
-  .ontdek-zij { display: block; margin-bottom: 12px; }
-  .zij-sluit { display: block; }
+  /* Niet sticky op mobiel (patch 220): het paneel bleef plakken terwijl de
+     resultaten eronderdoor schoven — je zag activiteiten dwars door de
+     filters heen. Inline meescrollen is hier het juiste gedrag. */
+  .ontdek-zij { display: block; margin-bottom: 12px; position: static;
+    top: auto; }
+  .zij-sluit { display: none; }
   .zij-toon { display: block; text-align: center; margin-top: 10px;
-    position: sticky; bottom: 0; }
+    position: static; }
 }
 
 /* ---- Weergave-schakelaar Lijst/Kaart + kaartbalkje ---- */

@@ -1663,6 +1663,13 @@ def activiteit_bewerk(event_id):
                 ev.lat = float(f["lat"]); ev.lng = float(f.get("lng") or ev.lng)
         except (TypeError, ValueError):
             flash("Coördinaten niet begrepen — gebruik punten (51.05).", "error")
+        # Speld zonder gemeente? Afleiden (patch 220) — anders is de fiche
+        # onvindbaar bij het zoeken op stad.
+        if ev.lat is not None and (not ev.gemeente or not ev.postcode):
+            from ..geo import gemeente_uit_punt
+            g2, p2 = gemeente_uit_punt(ev.lat, ev.lng)
+            ev.gemeente = ev.gemeente or g2
+            ev.postcode = ev.postcode or p2
         # Openingsuren, zelfde formaat als op de uitbater-fiche.
         from ..services.openingsuren import DAGEN as _DGN, parse_dagtekst
         if any(f"uren_{d}" in f for d in _DGN):
@@ -2637,6 +2644,8 @@ def routes():
     omgekeerd = request.args.get("omlaag") == "1"
     tellers = dict(db.session.query(RouteBuurt.route_id,
                                     db.func.count(RouteBuurt.event_id))
+                   .join(Event, RouteBuurt.event_id == Event.id)
+                   .filter(Event.hidden.is_(False), Event.pending.is_(False))
                    .group_by(RouteBuurt.route_id).all())
     rijen = FietsRoute.query.all()
     sleutels = {

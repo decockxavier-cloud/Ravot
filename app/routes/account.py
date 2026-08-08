@@ -709,18 +709,10 @@ def toevoegen():
         if coord and (not gemeente or not postcode):
             # Pin zonder adresgegevens? Dichtstbijzijnde postcode invullen,
             # anders is de plek onvindbaar in de lijsten.
-            from ..models import PostcodeCentroid
-            from ..scoring import haversine_km
-            best = None
-            for c in PostcodeCentroid.query.all():
-                if c.lat is None:
-                    continue
-                d = haversine_km(coord[0], coord[1], c.lat, c.lng)
-                if best is None or d < best[0]:
-                    best = (d, c)
-            if best and best[0] <= 10:
-                gemeente = gemeente or best[1].gemeente
-                postcode = postcode or best[1].postcode
+            from ..geo import gemeente_uit_punt
+            g2, p2 = gemeente_uit_punt(coord[0], coord[1])
+            gemeente = gemeente or g2
+            postcode = postcode or p2
         ev = Event(
             source="user", pending=True, hidden=False,
             is_permanent=(aard != "tijdelijk"),

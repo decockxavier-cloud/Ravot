@@ -42,7 +42,7 @@ def _kies_zoom(punten):
     return 6
 
 
-def kaart_bestand(route, map_=None):
+def kaart_bestand(route, map_=None, forceer=False):
     """Pad naar de kaart-PNG van een route; maakt hem aan als hij ontbreekt.
     Retourneert None als er geen geometrie is of de tegels niet opgehaald
     kunnen worden (de aanroeper valt dan terug op de SVG-lijn)."""
@@ -58,6 +58,14 @@ def kaart_bestand(route, map_=None):
     if os.path.exists(pad):
         return pad
 
+    try:
+        from flask import current_app
+        if current_app.config.get("TESTING") and not forceer:
+            # Tests mogen nooit van een externe tegelserver afhangen: traag,
+            # wisselvallig en onbeleefd tegenover een gratis dienst.
+            return None
+    except RuntimeError:
+        pass
     try:
         from PIL import Image, ImageDraw
     except ImportError:

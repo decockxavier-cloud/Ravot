@@ -62,7 +62,8 @@ def items_voor_route(route, maand):
             items.append(("🔢", f"knooppuntbordje {nr}"))
 
     tel = {"ravotten": 0, "smullen": 0, "beleven": 0}
-    for b in RouteBuurt.query.filter_by(route_id=route.id).limit(120).all():
+    from .routes_gis import zichtbare_buurt
+    for b in zichtbare_buurt(route.id, limiet=120):
         if b.event is not None:
             g = groep_van(b.event)
             if g in tel:

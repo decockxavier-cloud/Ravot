@@ -146,6 +146,30 @@ def sample(punten, stap_km=0.2):
 
 # ---------------------------------------------------------- de koppeling
 
+def zichtbare_buurt(route_id, limiet=None):
+    """Buurt van een route, mét de actuele zichtbaarheid (patch 219).
+
+    De koppeling wordt één keer gelegd bij het promoveren. Wordt een plek
+    daarna geschrapt (verborgen of terug in nazicht), dan blijft die rij
+    bestaan — en stond de plek dus nog op de route. Daarom filteren we hier
+    opnieuw, zodat elke weergave de waarheid van vandaag toont.
+    """
+    from ..extensions import db
+    from ..models import Event, RouteBuurt
+    q = (db.session.query(RouteBuurt, Event)
+         .join(Event, RouteBuurt.event_id == Event.id)
+         .filter(RouteBuurt.route_id == route_id,
+                 Event.hidden.is_(False), Event.pending.is_(False))
+         .order_by(RouteBuurt.route_km.asc()))
+    if limiet:
+        q = q.limit(limiet)
+    rijen = []
+    for b, ev in q.all():
+        b.event = ev            # relatie al gevuld: geen extra query per rij
+        rijen.append(b)
+    return rijen
+
+
 def koppel_route(route):
     """Herbouw route_buurt voor één route: bbox-prefilter in SQL, haversine
     tegen de gesamplede lijn in Python. Retourneert het aantal koppelingen."""
@@ -191,3 +215,27 @@ def routes_bij_event(event, limiet=3):
              .filter(FietsRoute.pending.is_(False), FietsRoute.hidden.is_(False))
              .order_by(RouteBuurt.afstand_m.asc()).limit(limiet).all())
     return [(db.session.get(FietsRoute, r.route_id), r) for r in rijen]
+
+
+def ruim_buurt_op():
+    """Verweesde buurt-koppelingen wissen (patch 219).
+
+    De weergaven filteren geschrapte plekken al weg, maar de rijen zelf laten
+    staan geeft misleidende tellingen in ruwe queries en laat de tabel groeien.
+    Retourneert het aantal opgeruimde rijen.
+    """
+    from ..extensions import db
+    from ..models import Event, RouteBuurt
+    # RouteBuurt heeft een samengestelde sleutel (route_id + event_id).
+    dood = [(b.route_id, b.event_id) for b in
+            db.session.query(RouteBuurt)
+            .outerjoin(Event, RouteBuurt.event_id == Event.id)
+            .filter(db.or_(Event.id.is_(None),
+                           Event.hidden.is_(True),
+                           Event.pending.is_(True))).all()]
+    for rid, eid in dood:
+        (RouteBuurt.query.filter_by(route_id=rid, event_id=eid)
+         .delete(synchronize_session=False))
+    if dood:
+        db.session.commit()
+    return len(dood)

@@ -1153,8 +1153,12 @@ def register_cli(app):
     def sync_osm():
         """Wekelijkse OSM-sync (cron: zondagnacht). Zwaar via Overpass, maar
         speeltuinen/parken veranderen traag — één keer per week volstaat."""
+        from .services.routes_gis import ruim_buurt_op
         from .services.sources import sync_one
         r = sync_one("osm", force=True)
+        weg = ruim_buurt_op()
+        if weg:
+            click.echo(f"Routebuurt: {weg} verweesde koppeling(en) opgeruimd.")
         click.echo(f"OSM: {r.get('verwerkt', 0)} verwerkt, "
                    f"{r.get('verworpen', 0)} verworpen.")
 
