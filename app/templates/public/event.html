@@ -69,8 +69,15 @@
 {% if ev.image_url %}
 <img src="{{ ev.image_url }}" alt="" class="fiche-beeld" loading="lazy"
      style="object-position:50% {{ foto_focus(ev.image_url) }}%">
-{% elif not fotos %}
-<img src="{{ poi_image(ev) }}" alt="" class="fiche-beeld fiche-beeld-illustratie" loading="lazy">
+{% else %}
+{# Geen eigen foto van de zaak? Dan is een goedgekeurde gezinsfoto beter dan
+   een pictogram (patch 209); poi_image kiest dat automatisch. #}
+{% set kop_gezin = gezinsfoto_id(ev) %}
+<img src="{{ poi_image(ev) }}" alt=""
+     class="fiche-beeld{{ '' if kop_gezin else ' fiche-beeld-illustratie' }}"
+     loading="lazy"{% if kop_gezin %} data-lightbox{% endif %}>
+{% if kop_gezin %}<p class="hint" style="margin:-6px 0 8px">📷 Foto ingestuurd
+  door een gezin</p>{% endif %}
 {% endif %}
 {% if ev.is_kamp %}
 <div class="kamp-info card">
@@ -221,7 +228,10 @@
 {% endif %}
 
 {% if ontbrekende_velden or voorlopige_velden %}
-<details class="help-aanvullen">
+{# Open zolang er iets te beantwoorden valt (patch 209): ingeklapt werd het
+   nauwelijks aangetikt, en dan blijft een fiche eeuwig half ingevuld. Wie
+   niets wil invullen, klapt hem gewoon dicht. #}
+<details class="help-aanvullen" open>
   <summary>
     <span class="help-titel">🧩 Weet jij het? Help deze fiche completer maken</span>
     <span class="help-aantal">{{ (ontbrekende_velden|length) + (voorlopige_velden|length) }} open</span>
@@ -318,7 +328,8 @@
 <div class="card">
   <h2 style="margin-top:0">Foto's van gezinnen</h2>
   <div class="foto-galerij">
-    {% for f in fotos %}<img src="{{ url_for('public.foto', pid=f.id) }}" alt="{{ ev.title }}" loading="lazy">{% endfor %}
+    {% for f in fotos %}<img src="{{ url_for('public.foto', pid=f.id) }}"
+      alt="{{ ev.title }}" loading="lazy" data-lightbox>{% endfor %}
   </div>
 </div>
 {% endif %}

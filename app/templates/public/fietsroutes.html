@@ -5,22 +5,28 @@
   speeltuinen, ijsjes of een kasteel. Bestaande, bewegwijzerde lussen —
   door Ravot gekozen en aangekleed voor gezinnen.</p>
 
+{# Filterchips (patch 208): wat bij je keuze hoort blijft groen, de rest
+   verdoft — maar alles blijft klikbaar zodat je vlot kunt wisselen. #}
 {% if provincies and provincies|length > 1 %}
-<div class="chips">
-  <a class="btn btn-klein {{ '' if provincie or regio else 'btn-zon' }}"
+<div class="filterrij">
+  <a class="chip {{ 'aan' if not provincie and not regio }}"
      href="{{ url_for('public.fietsroutes') }}">Heel Vlaanderen</a>
   {% for prov in provincies %}
-  <a class="btn btn-klein {{ 'btn-zon' if provincie|lower == prov|lower }}"
+  {% set hoort_bij = (provincie|lower == prov|lower)
+       or (regio and regio_provincie.get(regio|lower) == prov) %}
+  <a class="chip {{ 'aan' if hoort_bij else 'uit' }}"
      href="{{ url_for('public.fietsroutes', provincie=prov) }}">{{ prov }}</a>
   {% endfor %}
 </div>
 {% endif %}
 {% if regios %}
-<div class="acties" style="flex-wrap:wrap;gap:6px;margin:8px 0">
-  <a class="btn btn-klein {{ '' if regio else 'btn-zon' }}"
-     href="{{ url_for('public.fietsroutes') }}">Alle regio's</a>
+<div class="filterrij">
+  <a class="chip {{ 'aan' if not regio and not provincie }}"
+     href="{{ url_for('public.fietsroutes') }}">Alle streken</a>
   {% for reg in regios %}
-  <a class="btn btn-klein {{ 'btn-zon' if regio|lower == reg|lower }}"
+  {% set hoort_bij = (regio|lower == reg|lower) if regio
+       else (not provincie or regio_provincie.get(reg|lower)|lower == provincie|lower) %}
+  <a class="chip {{ 'aan' if hoort_bij else 'uit' }}"
      href="{{ url_for('public.fietsroutes', regio=reg) }}">{{ reg }}</a>
   {% endfor %}
 </div>

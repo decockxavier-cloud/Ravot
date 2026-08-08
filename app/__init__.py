@@ -50,7 +50,7 @@ def create_app(config_object=Config):
         return (request.path.startswith("/static/")
                 or request.path in ("/health", "/sw.js", "/manifest.json"))
 
-    from .media import poi_image, has_echte_foto
+    from .media import poi_image, has_echte_foto, gezinsfoto_id
     import os as _os
     from flask import url_for as _url_for
     def static_v(filename):
@@ -64,6 +64,7 @@ def create_app(config_object=Config):
         return _url_for("static", filename=filename, v=v)
     app.jinja_env.globals["static_v"] = static_v
     app.jinja_env.globals["poi_image"] = poi_image
+    app.jinja_env.globals["gezinsfoto_id"] = gezinsfoto_id
     from .media import poi_emoji
     app.jinja_env.globals["poi_emoji"] = poi_emoji
     app.jinja_env.globals["has_echte_foto"] = has_echte_foto

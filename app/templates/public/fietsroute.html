@@ -11,7 +11,6 @@
       {% if score %} · <strong>{{ "😞😕😐😄🤩"[(score.kid | round | int) - 1] }} {{ score.kid }}</strong>
       <span class="hint">({{ score.n }} gezin{{ 'nen' if score.n != 1 }})</span>{% endif %}</p>
   </div>
-  <a class="btn" href="{{ url_for('public.fietsbingo', slug=r.slug) }}">🎯 Fietsbingo</a>
   <button type="button" class="deel-knop btn" data-titel="{{ r.titel }}"
           data-url="{{ request.url }}">📤 Deel</button>
 </div>
@@ -66,6 +65,7 @@
     <a class="btn btn-klein" target="_blank" rel="noopener"
        href="https://www.google.com/maps/dir/?api=1&destination={{ r.start_lat }},{{ r.start_lng }}">🧭 Naar het startpunt</a>
     {% endif %}
+    <a class="btn btn-klein" href="{{ url_for('public.fietsbingo', slug=r.slug) }}">🎯 Fietsbingo (printen)</a>
     {% if family and not mijn_review %}
     <a class="btn btn-klein" href="{{ url_for('account.route_review', route_id=r.id) }}">😄 Geef een Ravotscore</a>
     {% endif %}
@@ -92,26 +92,38 @@
 </div>
 {% endif %}
 
-{% if buurt %}
+{% if buurt_groepen %}
 <h2>Leuk onderweg 🎒</h2>
-{% macro buurt_kaartje(b) %}
-<div class="card" style="display:flex;gap:10px;align-items:center;{% if partner_zichtbaar(b.event) %}border-color:#F4B233{% endif %}">
-  <strong style="min-width:56px">km {{ b.route_km }}</strong>
-  <div>
-    <a href="{{ url_for('public.event', slug=b.event.slug) }}">{{ b.event.title }}</a>
-    {% if partner_zichtbaar(b.event) %}<span class="badge" style="background:#F4B233">⭐ Partner</span>{% endif %}
-    <span class="hint">op {{ b.afstand_m }} m van het pad · {{ toon_gemeente(b.event) }}</span>
-  </div>
-</div>
+<p class="hint">Alles binnen een paar honderd meter van het pad, op volgorde
+  van de kilometerpaal.</p>
+{% macro onderweg_regel(b) %}
+<li class="onderweg-regel{% if partner_zichtbaar(b.event) %} partner{% endif %}">
+  <span class="onderweg-km">km {{ b.route_km }}</span>
+  <a href="{{ url_for('public.event', slug=b.event.slug) }}">{{ b.event.title }}</a>
+  {% if partner_zichtbaar(b.event) %}<span class="badge" style="background:#F4B233">⭐</span>{% endif %}
+  <span class="hint">{{ b.afstand_m }} m</span>
+</li>
 {% endmacro %}
-{% for b in buurt[:6] %}{{ buurt_kaartje(b) }}{% endfor %}
-{% if buurt | length > 6 %}
-<details class="meer-onderweg">
-  <summary class="btn btn-klein" style="display:inline-block;cursor:pointer">
-    ▾ Toon alle {{ buurt | length }} plekken onderweg</summary>
-  {% for b in buurt[6:] %}{{ buurt_kaartje(b) }}{% endfor %}
-</details>
+{% for sleutel, titel, emoji, rijen in buurt_groepen %}
+{% if rijen %}
+<div class="card onderweg-groep">
+  <h3 style="margin:0 0 6px">{{ emoji }} {{ titel }}
+    <span class="hint">({{ rijen|length }})</span></h3>
+  <ul class="onderweg-lijst">
+    {% for b in rijen[:5] %}{{ onderweg_regel(b) }}{% endfor %}
+  </ul>
+  {% if rijen|length > 5 %}
+  <details>
+    <summary class="btn btn-klein" style="display:inline-block;cursor:pointer">
+      ▾ Toon alle {{ rijen|length }}</summary>
+    <ul class="onderweg-lijst">
+      {% for b in rijen[5:] %}{{ onderweg_regel(b) }}{% endfor %}
+    </ul>
+  </details>
+  {% endif %}
+</div>
 {% endif %}
+{% endfor %}
 {% endif %}
 
 {% if vandaag %}

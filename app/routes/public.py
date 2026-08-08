@@ -1859,9 +1859,13 @@ def fietsroutes():
     from ..regios import provincie_van_streek
     provincies = sorted({p for p in (provincie_van_streek(r) for r in regios)
                          if p})
+    regio_provincie = {r.lower(): (provincie_van_streek(r) or "")
+                       for r in regios}
     return render_template("public/fietsroutes.html", rijen=rijen, regios=regios,
                            regio=regio, provincie=provincie,
-                           provincies=provincies, afstanden=afstanden,
+                           provincies=provincies,
+                           regio_provincie=regio_provincie,
+                           afstanden=afstanden,
                            beelden=beelden, onderweg=onderweg,
                            snippets=snippets, kaartdata=kaartdata,
                            regio_labels=regio_labels,
@@ -1952,7 +1956,21 @@ def fietsroute(slug):
             if g in tel:
                 tel[g] += 1
         pauzeplan = tel if any(tel.values()) else None
+    # Onderweg gegroepeerd (patch 209): één lange lijst met tientallen
+    # horecazaken zegt niets; per groep met eigen kop leest veel sneller.
+    from ..types import groep_van
+    _emmers = {"ravotten": [], "smullen": [], "beleven": []}
+    for b in buurt:
+        g = groep_van(b.event) if b.event is not None else None
+        if g in _emmers:
+            _emmers[g].append(b)
+    buurt_groepen = [
+        ("ravotten", "Ravotten", "🛝", _emmers["ravotten"]),
+        ("beleven", "Beleven", "🎭", _emmers["beleven"]),
+        ("smullen", "Smullen", "🍦", _emmers["smullen"]),
+    ]
     return render_template("public/fietsroute.html", r=r, buurt=buurt,
+                           buurt_groepen=buurt_groepen,
                            start_km=start_km, pauzeplan=pauzeplan,
                            beschrijving_html=beschrijving_html,
                            routebeschrijving_html=routebeschrijving_html,

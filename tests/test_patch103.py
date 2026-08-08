@@ -782,7 +782,9 @@ def test_help_blok_is_ingeklapt_en_onderaan(client, app):
         s["family_id"] = fid
     html = client.get("/e/fa1").data.decode()
     assert '<details class="help-aanvullen"' in html      # inklapbaar
-    assert 'help-aanvullen" open' not in html             # standaard dicht
+    # p209: bewust wél standaard open zolang er vragen openstaan — ingeklapt
+    # werd het blok nauwelijks aangetikt en bleven fiches half ingevuld.
+    assert 'help-aanvullen" open' in html
     assert html.count("help-vraag") <= 4                   # niet alle tegelijk
 
 

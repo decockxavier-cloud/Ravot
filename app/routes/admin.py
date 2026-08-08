@@ -2601,12 +2601,27 @@ def simulator():
 @medewerker_required
 def routes():
     from ..models import FietsRoute, RouteBuurt
-    rijen = FietsRoute.query.order_by(FietsRoute.pending.desc(),
-                                      FietsRoute.titel).all()
+    # Sorteerbaar op elke kolomkop (patch 208); standaard concepten eerst.
+    sorteer = (request.args.get("sorteer") or "").strip()
+    omgekeerd = request.args.get("omlaag") == "1"
     tellers = dict(db.session.query(RouteBuurt.route_id,
                                     db.func.count(RouteBuurt.event_id))
                    .group_by(RouteBuurt.route_id).all())
+    rijen = FietsRoute.query.all()
+    sleutels = {
+        "route": lambda r: (r.titel or "").lower(),
+        "regio": lambda r: ((r.regio or "\uffff").lower(), (r.titel or "").lower()),
+        "afstand": lambda r: (r.afstand_km or 0),
+        "onderweg": lambda r: tellers.get(r.id, 0),
+        "status": lambda r: (0 if r.pending else 1, 0 if r.hidden else 1,
+                             (r.titel or "").lower()),
+    }
+    if sorteer in sleutels:
+        rijen.sort(key=sleutels[sorteer], reverse=omgekeerd)
+    else:
+        rijen.sort(key=lambda r: (0 if r.pending else 1, (r.titel or "").lower()))
     return render_template("admin/routes.html", rijen=rijen, tellers=tellers,
+                           sorteer=sorteer, omlaag=omgekeerd,
                            title="Fietsroutes", family=None, active="routes")
 
 

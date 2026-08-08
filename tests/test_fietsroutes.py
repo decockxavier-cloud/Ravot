@@ -140,5 +140,6 @@ def test_leuk_onderweg_inklap(client, app):
         n = koppel_route(r)
         assert n > 6
     h = client.get("/fietsroutes/vollus").get_data(as_text=True)
-    assert "meer-onderweg" in h              # details-element aanwezig
-    assert f"Toon alle {n} plekken" in h
+    # p209: per groep (Ravotten/Beleven/Smullen), rest per groep ingeklapt
+    assert "onderweg-groep" in h
+    assert "Toon alle" in h

@@ -1220,3 +1220,29 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 /* Webshoplogo op beloningskaarten (patch 177, CSS vergeten -> audit 205) */
 .beloning-logo { height: 44px; max-width: 140px; object-fit: contain;
   display: block; margin-bottom: 6px; }
+
+/* Sorteerbare tabelkoppen in het beheer (patch 208) */
+.sorteer-kop { color: inherit; text-decoration: none; white-space: nowrap; }
+.sorteer-kop:hover { text-decoration: underline; }
+.sorteer-kop.aan { color: var(--groen); }
+
+/* Filterchips streken/provincies (patch 208): aan = groen, uit = verdoft
+   maar wel klikbaar, zodat filters altijd te resetten zijn. */
+.filterrij { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.chip { display: inline-block; padding: 5px 12px; border-radius: 999px;
+  font-size: .85rem; font-weight: 700; text-decoration: none;
+  border: 1px solid transparent; background: var(--groen); color: #fff; }
+.chip.uit { background: #eceade; color: #7b8175; border-color: #ded9c6; }
+.chip.uit:hover { background: #e0dccb; color: #5d6b57; }
+
+/* "Leuk onderweg" per groep (patch 209): compacte regels i.p.v. kaarten,
+   zodat een route met 40 eetstops leesbaar blijft. */
+.onderweg-groep { padding: 12px 14px; }
+.onderweg-lijst { list-style: none; margin: 0; padding: 0; }
+.onderweg-regel { display: flex; align-items: baseline; gap: 8px;
+  padding: 5px 0; border-bottom: 1px dotted #e6e1d2; flex-wrap: wrap; }
+.onderweg-regel:last-child { border-bottom: none; }
+.onderweg-regel.partner { background: #fdf6e6; border-radius: 8px;
+  padding-left: 6px; padding-right: 6px; }
+.onderweg-km { min-width: 54px; font-weight: 700; color: #5d6b57;
+  font-size: .85rem; }

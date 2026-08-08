@@ -7,7 +7,14 @@
   kaart, "leuk onderweg" — wordt automatisch berekend.
   <a class="btn btn-klein" href="{{ url_for('admin.route_bewerk') }}">+ Nieuwe route</a></p>
 <table class="admin-tabel">
-  <tr><th>Route</th><th>Regio</th><th>Afstand</th><th>Onderweg</th><th>Status</th></tr>
+  {% macro kop(sleutel, label) -%}
+    {%- set actief = sorteer == sleutel -%}
+    <th><a href="{{ url_for('admin.routes', sorteer=sleutel,
+                            omlaag='1' if (actief and not omlaag) else None) }}"
+           class="sorteer-kop{{ ' aan' if actief }}">{{ label }}{% if actief %}
+      {{ '▼' if omlaag else '▲' }}{% endif %}</a></th>
+  {%- endmacro %}
+  <tr>{{ kop('route', 'Route') }}{{ kop('regio', 'Regio') }}{{ kop('afstand', 'Afstand') }}{{ kop('onderweg', 'Onderweg') }}{{ kop('status', 'Status') }}</tr>
   {% for r in rijen %}
   <tr>
     <td><a href="{{ url_for('admin.route_bewerk', rid=r.id) }}">{{ r.titel }}</a>

@@ -92,11 +92,47 @@ def _veilige_afbeelding(url):
     return None   # onbetrouwbaar -> liever de nette categorie-illustratie
 
 
+def gezinsfoto_id(event):
+    """Id van de best gekeurde gezinsfoto bij een plek, of None (patch 209).
+
+    Heeft een zaak geen eigen foto, dan is een echte gezinsfoto altijd beter
+    dan een pictogram. Per verzoek gememoiseerd, zodat een lijst met 24
+    kaarten niet 24 keer opnieuw hetzelfde vraagt."""
+    eid = getattr(event, "id", None)
+    if not eid:
+        return None
+    try:
+        from flask import g as _g
+        cache = _g._gezinsfoto_cache
+    except (RuntimeError, AttributeError):
+        cache = None
+        try:
+            from flask import g as _g
+            cache = _g._gezinsfoto_cache = {}
+        except RuntimeError:
+            pass
+    if cache is not None and eid in cache:
+        return cache[eid]
+    from .models import Photo
+    f = (Photo.query
+         .filter_by(event_id=eid, soort="gezin", status="approved")
+         .order_by(Photo.id.desc()).first())
+    uit = f.id if f else None
+    if cache is not None:
+        cache[eid] = uit
+    return uit
+
+
 def poi_image(event):
-    """URL van de best beschikbare afbeelding. Nooit None, nooit een kapotte."""
+    """URL van de best beschikbare afbeelding. Nooit None, nooit een kapotte.
+    Volgorde: eigen foto van de zaak -> goedgekeurde gezinsfoto -> pictogram."""
     echt = _veilige_afbeelding(getattr(event, "image_url", None))
     if echt:
         return echt
+    fid = gezinsfoto_id(event)
+    if fid:
+        from flask import url_for
+        return url_for("public.foto", pid=fid)
     return illustratie_url(beeld_sleutel(event))
 
 

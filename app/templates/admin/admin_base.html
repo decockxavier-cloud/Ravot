@@ -12,11 +12,16 @@
         <a href="{{ url_for('admin.types_beheer') }}" class="{{ 'on' if active=='types' }}">Types</a>
         <a href="{{ url_for('admin.nazicht') }}" class="{{ 'on' if active=='nazicht' }}">Nazicht</a>
       {% else %}
+        {# Elke admin-pagina hoort in precies één sectie: staat een 'active'
+           hier niet in, dan klapt het menu dicht bij het openen (patch 208). #}
         {% set sectie = {
-          'content': ['activiteiten', 'nazicht', 'types', 'artikels'],
+          'content': ['activiteiten', 'nazicht', 'types', 'artikels', 'routes',
+                      'route-voorstellen', 'bingo'],
           'bronnen': ['horeca-import', 'verbindingen', 'feeds', 'verrijk'],
-          'gezinnen': ['families', 'partners', 'feestjes', 'feestprospecten', 'beloningen'],
-          'beheer': ['facturatie', 'paginas', 'mails', 'instellingen', 'status', 'partner-log', 'team'],
+          'gezinnen': ['families', 'partners', 'feestjes', 'feestprospecten',
+                       'beloningen', 'verkopers', 'simulator'],
+          'beheer': ['facturatie', 'paginas', 'mails', 'instellingen', 'status',
+                     'partner-log', 'team', 'illustraties'],
         } %}
         <a href="{{ url_for('admin.dashboard') }}" class="{{ 'on' if active=='dashboard' }}">Dashboard</a>
         <a href="{{ url_for('admin.herkomst') }}" class="{{ 'on' if active=='herkomst' }}">Herkomst</a>
