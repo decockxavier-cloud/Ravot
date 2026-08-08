@@ -140,13 +140,19 @@ def adres_van_punt(lat, lng):
     return ", ".join(stukken)[:200] or None
 
 
-def gemeente_uit_punt(lat, lng, max_km=10):
+def gemeente_uit_punt(lat, lng, max_km=5):
     """Gemeente + postcode afleiden uit een speld op de kaart (patch 220).
 
     Zonder gemeente is een fiche onvindbaar bij het zoeken op stad — precies
     wat er gebeurde bij plekken die enkel met een speld werden aangeduid.
     Gebruikt de postcode-centroïden die al in de databank zitten; geen externe
     dienst nodig. Retourneert (gemeente, postcode) of (None, None).
+
+    De grens van 5 km is bewust krap (patch 221): een Belgisch punt ligt
+    vrijwel altijd binnen enkele kilometers van een Belgische centroïde,
+    terwijl een punt over de grens dat niet doet. Met een ruimere grens kregen
+    Nederlandse en Duitse plekken vlakbij Maaseik ten onrechte een Vlaamse
+    gemeente toegewezen — erger dan geen gemeente, want het is onwaar.
     """
     if lat is None or lng is None:
         return None, None

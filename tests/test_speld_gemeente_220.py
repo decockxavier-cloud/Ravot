@@ -77,3 +77,17 @@ def test_ingevulde_gemeente_wint_van_speld(client, app):
         "categorie": "ravotten"}, follow_redirects=True)
     with app.app_context():
         assert db.session.get(Event, eid).gemeente == "Rumbeke"
+
+
+def test_buitenlandse_punten_krijgen_geen_vlaamse_gemeente(app):
+    """Patch 221: bij Maaseik liggen Nederlandse en Duitse plekken op enkele
+    kilometers. Met een ruime grens kregen die 'Maaseik' toegewezen — onwaar,
+    en erger dan geen gemeente."""
+    with app.app_context():
+        db.session.add(PostcodeCentroid(postcode="3680", gemeente="Maaseik",
+                                        lat=51.0975, lng=5.7869))
+        db.session.commit()
+        from app.geo import gemeente_uit_punt
+        assert gemeente_uit_punt(51.098, 5.788) == ("Maaseik", "3680")
+        assert gemeente_uit_punt(51.060, 5.855) == (None, None)   # Susteren NL
+        assert gemeente_uit_punt(51.001, 5.869) == (None, None)   # Sittard NL
