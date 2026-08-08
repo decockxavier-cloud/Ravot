@@ -708,3 +708,28 @@ def test_wachtrij_gegroepeerd_per_streek(client, app):
     assert h.index("Antwerpse Kempen") < h.index("Hoge Kempen")  # tabelvolgorde
     genk = h[h.index("Hoge Kempen"):]
     assert genk.index("30.0") < genk.index("20.0")   # hoogste score bovenaan
+
+
+def test_k_codes_niet_in_publieksbeschrijving(app):
+    """Patch 216: kruispunten zonder bordje (K-codes) horen niet in de
+    knooppuntenreeks — je zou onderweg naar een bordje zoeken dat er niet is."""
+    from unittest.mock import patch as _patch
+    with app.app_context():
+        from app.services.route_generator import (_enkel_bordnummers,
+                                                  genereer_voorstellen,
+                                                  laad_netwerk_uit_geojson,
+                                                  promoveer)
+        assert _enkel_bordnummers(["73", "K10060", "6", "K19114"]) == ["73", "6"]
+        laad_netwerk_uit_geojson(_rasternet(), "test")
+        knopen = Knooppunt.query.order_by(Knooppunt.id).all()
+        for n, k in enumerate(knopen):
+            k.nummer = f"K{1000 + n}" if n % 4 == 0 else str(10 + n)
+        _plekken(app)
+        db.session.commit()
+        genereer_voorstellen("Roeselare", top=1)
+        with _patch("app.enrich._generate", side_effect=RuntimeError("uit")), \
+             _patch("app.services.route_generator.meet_klimmeters",
+                    return_value=10):
+            r = promoveer(RouteVoorstel.query.first())
+        reeks = r.routebeschrijving.split("Knooppunten:")[1]
+        assert "K" not in reeks

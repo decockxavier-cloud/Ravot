@@ -2189,7 +2189,7 @@ def fietsroute_print(slug):
         if regel.strip().startswith("Knooppunten:"):
             knooppunten = [n.strip() for n in
                            regel.split(":", 1)[1].replace("–", "-").split("-")
-                           if n.strip()]
+                           if n.strip().isdigit()]   # geen K-codes (p216)
             break
     # Straatnamen bij de knooppunten (patch 214): opgeslagen op het knooppunt
     # zelf, zodat we niet per bezoek een geocoder bevragen.

@@ -160,6 +160,12 @@ def nummer_knopen_uit_geojson(data, max_m=75):
     return hits
 
 
+def _enkel_bordnummers(nummers):
+    """Enkel echte knooppuntnummers houden (patch 216). Interne K-codes staan
+    voor kruispunten zonder bordje: nutteloos om naar te zoeken onderweg."""
+    return [n for n in nummers if str(n).strip().isdigit()]
+
+
 def _vouw_dubbels(nummers):
     """Opeenvolgende gelijke knooppuntnummers samenvouwen (patch 207)."""
     uit = []
@@ -692,7 +698,11 @@ def promoveer(voorstel):
         start_lat=geometrie[0][0] if geometrie else None,
         start_lng=geometrie[0][1] if geometrie else None,
         bron_naam="Ravot-routegenerator",
-        routebeschrijving="Knooppunten: " + " – ".join(voorstel.knooppunten or []),
+        # Alleen echte bordnummers in de publieksbeschrijving (patch 216):
+        # een K-code is een kruispunt zónder bordje, dus zoekt de fietser
+        # tevergeefs. Je rijdt er onderweg vanzelf over.
+        routebeschrijving="Knooppunten: " + " – ".join(
+            _enkel_bordnummers(voorstel.knooppunten or [])),
     )
     if geometrie:
         lats = [p[0] for p in geometrie]
