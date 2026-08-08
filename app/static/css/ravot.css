@@ -1226,14 +1226,22 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 .sorteer-kop:hover { text-decoration: underline; }
 .sorteer-kop.aan { color: var(--groen); }
 
-/* Filterchips streken/provincies (patch 208): aan = groen, uit = verdoft
-   maar wel klikbaar, zodat filters altijd te resetten zijn. */
+/* Filterchips streken/provincies (patch 210): niet-actieve chips blijven
+   gewoon leesbaar (witte pil met rand); alleen de effectieve keuze is groen
+   gevuld. Verdoffen mag nooit ten koste van leesbaarheid gaan. */
 .filterrij { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
 .chip { display: inline-block; padding: 5px 12px; border-radius: 999px;
   font-size: .85rem; font-weight: 700; text-decoration: none;
-  border: 1px solid transparent; background: var(--groen); color: #fff; }
-.chip.uit { background: #eceade; color: #7b8175; border-color: #ded9c6; }
-.chip.uit:hover { background: #e0dccb; color: #5d6b57; }
+  border: 1.5px solid #cfd8c9; background: #fff; color: #3f4a3c; }
+.chip:hover { border-color: var(--groen); color: var(--groen); }
+.chip.aan { background: var(--groen); border-color: var(--groen); color: #fff; }
+.chip.aan:hover { color: #fff; }
+/* buiten de gekozen provincie/streek: rustiger, maar leesbaar en klikbaar */
+.chip.uit { background: #fff; border-color: #e4e0d3; color: #97a08f; }
+.chip.uit:hover { border-color: var(--groen); color: var(--groen); }
+.filterrij-label { font-size: .78rem; color: #7b8175; align-self: center;
+  margin-right: 2px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .04em; }
 
 /* "Leuk onderweg" per groep (patch 209): compacte regels i.p.v. kaarten,
    zodat een route met 40 eetstops leesbaar blijft. */

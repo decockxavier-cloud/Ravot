@@ -9,6 +9,7 @@
    verdoft — maar alles blijft klikbaar zodat je vlot kunt wisselen. #}
 {% if provincies and provincies|length > 1 %}
 <div class="filterrij">
+  <span class="filterrij-label">Provincie</span>
   <a class="chip {{ 'aan' if not provincie and not regio }}"
      href="{{ url_for('public.fietsroutes') }}">Heel Vlaanderen</a>
   {% for prov in provincies %}
@@ -21,6 +22,7 @@
 {% endif %}
 {% if regios %}
 <div class="filterrij">
+  <span class="filterrij-label">Streek</span>
   <a class="chip {{ 'aan' if not regio and not provincie }}"
      href="{{ url_for('public.fietsroutes') }}">Alle streken</a>
   {% for reg in regios %}

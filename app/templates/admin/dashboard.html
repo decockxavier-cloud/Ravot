@@ -92,6 +92,41 @@
   </div>
 </div>
 
+<section class="card">
+  <h2 style="margin-top:0">🧩 Gezinnen vullen aan</h2>
+  <p class="hint">Wat bezoekers zelf beantwoorden op de fiches — de motor
+    achter completere data. (Bronstemmen van OSM tellen niet mee.)</p>
+  <div class="stat-raster">
+    <div class="stat-tegel">
+      <span class="stat-cijfer">{{ aanvul.vandaag }}</span>
+      <span class="stat-label">Antwoorden vandaag</span>
+      <span class="stat-sub">ingevulde parameters</span>
+    </div>
+    <div class="stat-tegel">
+      <span class="stat-cijfer">{{ aanvul.week }}</span>
+      <span class="stat-label">Deze week</span>
+      <span class="stat-sub">op {{ aanvul.fiches_week }} fiche{{ '' if aanvul.fiches_week == 1 else 's' }}</span>
+    </div>
+    <div class="stat-tegel">
+      <span class="stat-cijfer">{{ aanvul.stemmers_week }}</span>
+      <span class="stat-label">Bijdragers</span>
+      <span class="stat-sub">gezinnen + anoniem, 7 dagen</span>
+    </div>
+    <div class="stat-tegel">
+      <span class="stat-cijfer">{{ aanvul_fotos }}</span>
+      <span class="stat-label">Foto's deze week</span>
+      <span class="stat-sub">ingestuurd door gezinnen</span>
+    </div>
+  </div>
+  {% if aanvul_velden %}
+  <p class="hint" style="margin:10px 0 0">Meest ingevuld deze week:
+    {% for veld, n in aanvul_velden %}<span class="badge">{{ voorziening_label(veld) }} · {{ n }}</span>
+    {% endfor %}</p>
+  {% else %}
+  <p class="hint" style="margin:10px 0 0">Nog geen antwoorden deze week.</p>
+  {% endif %}
+</section>
+
 <div class="admin-kolommen">
   <section class="card">
     <h2 style="margin-top:0">Populairste gemeenten</h2>

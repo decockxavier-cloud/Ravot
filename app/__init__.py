@@ -65,6 +65,13 @@ def create_app(config_object=Config):
     app.jinja_env.globals["static_v"] = static_v
     app.jinja_env.globals["poi_image"] = poi_image
     app.jinja_env.globals["gezinsfoto_id"] = gezinsfoto_id
+
+    def _voorziening_label(veld):
+        """Leesbare naam van een veld ('toilet' -> 'een toilet')."""
+        from .models import VOORZIENING_LABELS
+        return VOORZIENING_LABELS.get(veld, veld.replace("_", " "))
+
+    app.jinja_env.globals["voorziening_label"] = _voorziening_label
     from .media import poi_emoji
     app.jinja_env.globals["poi_emoji"] = poi_emoji
     app.jinja_env.globals["has_echte_foto"] = has_echte_foto

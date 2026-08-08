@@ -230,6 +230,35 @@ def dashboard():
         .filter(Event.start >= now, Event.gemeente.isnot(None)) \
         .group_by(Event.gemeente).order_by(db.text("n DESC")).limit(8).all()
 
+    # Crowdsourcing-pols (patch 210): hoeveel vullen gezinnen effectief aan?
+    # Bewust geen detaillijst — enkel de beweging: hoeveel antwoorden, op
+    # hoeveel fiches, en welke velden het meest.
+    from ..models import Photo as _Photo, VeldStem
+    dag_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    zeven = now - timedelta(days=7)
+    aanvul = {
+        "vandaag": VeldStem.query.filter(VeldStem.created_at >= dag_start,
+                                         VeldStem.stemmer != "bron").count(),
+        "week": VeldStem.query.filter(VeldStem.created_at >= zeven,
+                                      VeldStem.stemmer != "bron").count(),
+        "fiches_week": db.session.query(VeldStem.event_id)
+                       .filter(VeldStem.created_at >= zeven,
+                               VeldStem.stemmer != "bron")
+                       .distinct().count(),
+        "stemmers_week": db.session.query(VeldStem.stemmer)
+                         .filter(VeldStem.created_at >= zeven,
+                                 VeldStem.stemmer != "bron")
+                         .distinct().count(),
+    }
+    aanvul_velden = (db.session.query(VeldStem.veld,
+                                      db.func.count(VeldStem.id).label("n"))
+                     .filter(VeldStem.created_at >= zeven,
+                             VeldStem.stemmer != "bron")
+                     .group_by(VeldStem.veld)
+                     .order_by(db.text("n DESC")).limit(6).all())
+    aanvul_fotos = (_Photo.query.filter(_Photo.created_at >= zeven).count()
+                    if hasattr(_Photo, "created_at") else 0)
+
     # Recentste aanmeldingen
     nieuwste_gezinnen = Family.query.order_by(Family.created_at.desc()).limit(5).all()
     recent_reviews = Review.query.order_by(Review.created_at.desc()).limit(10).all()
@@ -293,7 +322,9 @@ def dashboard():
             laatste_mails.append({"soort": soort, "ok": m.ok,
                                   "detail": m.detail, "wanneer": m.created_at})
 
-    return render_template("admin/dashboard.html", kwaliteit=kwaliteit, stats=stats,
+    return render_template("admin/dashboard.html", kwaliteit=kwaliteit,
+                           aanvul=aanvul, aanvul_velden=aanvul_velden,
+                           aanvul_fotos=aanvul_fotos, stats=stats,
                            top_gemeenten=top_gemeenten, nieuwste_gezinnen=nieuwste_gezinnen,
                            reviews=recent_reviews, taken=taken,
                            taken_totaal=taken_totaal, systeem=systeem,
