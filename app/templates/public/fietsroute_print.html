@@ -44,14 +44,22 @@
   {% endif %}
 
   {% if stops %}
+  <div class="print-blad2">
   <h2 class="print-kop2">Onderweg</h2>
+  {% for sleutel, kop, emoji in [('ravotten', 'Ravotten', '🛝'),
+                                 ('beleven', 'Beleven', '🎭'),
+                                 ('smullen', 'Eten & drinken', '🍦')] %}
+  {% set rijen = stops | selectattr('2', 'equalto', sleutel) | list %}
+  {% if rijen %}
+  <h3 class="print-kop3">{{ emoji }} {{ kop }} <span class="print-aantal">({{ rijen|length }})</span></h3>
   <ul class="print-stops">
-    {% for km, titel, groep in stops %}
-    <li><span class="print-km">km {{ km }}</span>
-      {{ {'ravotten': '🛝', 'smullen': '🍦', 'beleven': '🎭'}.get(groep, '📍') }}
-      {{ titel }}</li>
+    {% for km, titel, groep in rijen %}
+    <li><span class="print-km">km {{ km }}</span>{{ titel }}</li>
     {% endfor %}
   </ul>
+  {% endif %}
+  {% endfor %}
+  </div>
   {% endif %}
 
   <footer class="print-voet">ravot.be/fietsroutes · veel fietsplezier!</footer>
@@ -65,7 +73,7 @@
   border-bottom:2px solid #eee5cd; padding-bottom:8px; margin-bottom:10px; }
 .print-vos { font-size:2.2rem; }
 .print-start { margin:0 0 10px; }
-.print-kaart { width:100%; max-height:320px; object-fit:contain;
+.print-kaart { width:100%; max-height:60vh; object-fit:contain;
   border:1px solid #e0dccb; border-radius:12px; margin:0 0 12px; }
 .print-kop2 { font-size:1.05rem; margin:12px 0 6px; }
 .print-knopen { list-style:none; display:flex; flex-wrap:wrap; gap:6px;
@@ -75,17 +83,25 @@
   font-size:.85rem; }
 .print-nr { font-weight:800; color:var(--gras); }
 .print-straat { color:#6b7364; font-size:.78rem; }
-.print-stops { list-style:none; padding:0; margin:0; columns:2; }
+.print-stops { list-style:none; padding:0; margin:0 0 8px; columns:3; }
+.print-kop3 { font-size:.92rem; margin:8px 0 4px; }
+.print-aantal { color:#8a927f; font-weight:400; }
 .print-stops li { padding:2px 0; font-size:.85rem; break-inside:avoid; }
 .print-km { display:inline-block; min-width:48px; font-weight:700;
   color:#5d6b57; }
 .print-voet { text-align:center; color:#8a927f; font-size:.8rem;
   margin-top:14px; border-top:1px solid #eee5cd; padding-top:8px; }
 @media print {
+  /* Liggend A4 (patch 215): de kaart krijgt zo de volle breedte van blad 1;
+     alles "Onderweg" verhuist naar blad 2 (de achterkant). */
+  @page { size: A4 landscape; margin: 10mm; }
   header, footer, nav, .print-scherm, .flash { display:none !important; }
   body { background:#fff; }
   .print-blad { border:none; max-width:none; padding:0; }
-  .print-kaart { max-height:240px; }
+  .print-kaart { max-height:none; height:14cm; width:100%; border:none; }
+  .print-blad2 { break-before: page; page-break-before: always; }
+  .print-stops { columns:3; }
+  .print-knopen li { padding:2px 6px; }
 }
 </style>
 {% endblock %}

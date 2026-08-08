@@ -1863,8 +1863,9 @@ def fietsroutes():
                     afstanden[r.id] = round(haversine_km(
                         centrum[0], centrum[1], r.start_lat, r.start_lng))
             rijen.sort(key=lambda r: afstanden.get(r.id, 9999))
-    # Levendige kaarten (patch 198): een gesprokkelde foto van een plek
-    # onderweg, een tekstsnippet en het onderweg-profiel per route.
+    # Levendige kaarten (patch 198), in één query (patch 215): per route apart
+    # de buurt ophalen gaf N+1 — met twintig routes waren dat duizenden
+    # queries en laadde de pagina traag. Nu één join voor alle routes samen.
     from ..media import has_echte_foto, poi_image
     from ..models import RouteBuurt
     from ..types import groep_van
@@ -1873,20 +1874,27 @@ def fietsroutes():
         if r.beschrijving:
             kort = " ".join(r.beschrijving.split())
             snippets[r.id] = kort[:130] + ("…" if len(kort) > 130 else "")
-        tel = {"ravotten": 0, "smullen": 0, "beleven": 0}
-        for b in (RouteBuurt.query.filter_by(route_id=r.id)
-                  .order_by(RouteBuurt.route_km.asc()).limit(120).all()):
-            ev = b.event
-            if ev is None:
-                continue
+    route_ids = [r.id for r in rijen]
+    foto_kandidaat = {}
+    if route_ids:
+        paren = (db.session.query(RouteBuurt.route_id, Event)
+                 .join(Event, RouteBuurt.event_id == Event.id)
+                 .filter(RouteBuurt.route_id.in_(route_ids))
+                 .order_by(RouteBuurt.route_id, RouteBuurt.route_km.asc())
+                 .all())
+        for rid, ev in paren:
+            tel = onderweg.setdefault(rid, {"ravotten": 0, "smullen": 0,
+                                            "beleven": 0})
             g = groep_van(ev)
             if g in tel:
                 tel[g] += 1
-            if r.id not in beelden and not r.cover_photo_id \
-                    and has_echte_foto(ev):
-                beelden[r.id] = (poi_image(ev), ev.title)
-        if any(tel.values()):
-            onderweg[r.id] = tel
+            if rid not in foto_kandidaat and has_echte_foto(ev):
+                foto_kandidaat[rid] = ev
+        onderweg = {k: v for k, v in onderweg.items() if any(v.values())}
+    for r in rijen:
+        ev = foto_kandidaat.get(r.id)
+        if ev is not None and not r.cover_photo_id:
+            beelden[r.id] = (poi_image(ev), ev.title)
     kaartdata = [{"lat": r.start_lat, "lng": r.start_lng, "titel": r.titel,
                   "km": r.afstand_km, "regio": r.regio or "",
                   "url": url_for("public.fietsroute", slug=r.slug)}
@@ -2221,7 +2229,8 @@ def fietsroute_kaartje(slug):
     # zonder die correctie oogt de lus uitgerekt.
     import math
     k = math.cos(math.radians(sum(lats) / len(lats)))
-    W, H, M = 900, 620, 20
+    # Liggende verhouding (A4 landscape, patch 215)
+    W, H, M = 1400, 900, 24
     schaal = min((W - 2 * M) / (breedte_g * k), (H - 2 * M) / hoogte_g)
     def xy(p):
         x = M + (p[1] - o) * k * schaal
@@ -2233,9 +2242,9 @@ def fietsroute_kaartje(slug):
            f'width="{W}" height="{H}">'
            f'<rect width="{W}" height="{H}" fill="#fdfaf2"/>'
            f'<polyline points="{pad}" fill="none" stroke="#EE8035" '
-           f'stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>'
+           f'stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/>'
            f'<circle cx="{start.split(",")[0]}" cy="{start.split(",")[1]}" '
-           f'r="9" fill="#4CA362" stroke="#fff" stroke-width="3"/>'
+           f'r="13" fill="#4CA362" stroke="#fff" stroke-width="4"/>'
            f'</svg>')
     from flask import Response
     return Response(svg, mimetype="image/svg+xml")
