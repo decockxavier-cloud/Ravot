@@ -626,3 +626,85 @@ def test_voorstel_detailpagina(client, app):
     assert g.status_code == 200 and b"<trkpt" in g.data
     lijst = client.get("/beheer/route-voorstellen").get_data(as_text=True)
     assert f"/beheer/route-voorstellen/{vid}" in lijst
+
+
+def test_wfs_paging_haalt_alle_blokken(app):
+    """Patch 207: geoservers kappen op hun maximum; de lader haalt de laag in
+    blokken op tot er niets meer komt — anders laadt half Vlaanderen niet."""
+    from unittest.mock import patch as _patch
+    with app.app_context():
+        from app.services import route_generator as RG
+        feats = [{"type": "Feature", "properties": {}, "geometry": {
+            "type": "Point", "coordinates": [3.1, 50.9]}}] * 10
+
+        class Blok:
+            status_code = 200
+
+            def __init__(self, url):
+                import re as _re
+                st = int(_re.search(r"startIndex=(\d+)", url).group(1))
+                self._deel = feats[st:st + 3]
+
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"features": self._deel}
+
+        aanvragen = []
+
+        def nep(url, **kw):
+            aanvragen.append(url)
+            return Blok(url)
+
+        with _patch.object(RG.requests, "get", side_effect=nep):
+            uit = RG._wfs_alle_features("https://x/wfs?t=y", bloklengte=3)
+        assert len(uit) == 10                     # alles binnen
+        assert len(aanvragen) == 4                # 3+3+3+1
+
+
+def test_dubbele_knooppuntnummers_samengevouwen(app):
+    """Patch 207: gesplitste kruispunten geven '81 – 81'-ruis; de reeks
+    vouwt opeenvolgende gelijke nummers samen."""
+    with app.app_context():
+        from app.services.route_generator import (_vouw_dubbels,
+                                                  genereer_voorstellen,
+                                                  laad_netwerk_uit_geojson)
+        assert _vouw_dubbels(["81", "81", "78", "5", "5", "81"]) == \
+            ["81", "78", "5", "81"]
+        laad_netwerk_uit_geojson(_rasternet(), "test")
+        for n, k in enumerate(Knooppunt.query.order_by(Knooppunt.id).all()):
+            k.nummer = str(10 + n // 2)           # paren delen een nummer
+        _plekken(app)
+        genereer_voorstellen("Roeselare", top=2)
+        for v in RouteVoorstel.query.all():
+            assert all(a != b for a, b in
+                       zip(v.knooppunten, v.knooppunten[1:]))
+
+
+def test_wachtrij_gegroepeerd_per_streek(client, app):
+    """Patch 207: kiezen per streek — de wachtrij toont blokken per streek
+    (met provincie), hoogste score bovenaan binnen elk blok."""
+    from argon2 import PasswordHasher
+    with app.app_context():
+        db.session.add(Admin(email="gr@r.be",
+                             pw_hash=PasswordHasher().hash("x"), role="admin",
+                             totp_secret="JBSWY3DPEHPK3PXP",
+                             totp_confirmed=True))
+        for gem, sc in (("Genk", 20.0), ("Genk", 30.0), ("Kasterlee", 25.0)):
+            db.session.add(RouteVoorstel(gemeente=gem, knooppunten=["1", "2"],
+                                         geometrie=[[50.9, 3.1], [50.91, 3.11]],
+                                         afstand_km=15.0, score=sc,
+                                         score_detail={}))
+        db.session.commit()
+        aid = Admin.query.filter_by(email="gr@r.be").first().id
+    with client.session_transaction() as s:
+        s["admin_id"] = aid
+        s["admin_2fa_ok"] = True
+        s["admin_rol"] = "admin"
+    h = client.get("/beheer/route-voorstellen").get_data(as_text=True)
+    assert "Hoge Kempen / Midden-Limburg" in h and "· Limburg" in h
+    assert "Antwerpse Kempen" in h and "· Antwerpen" in h
+    assert h.index("Antwerpse Kempen") < h.index("Hoge Kempen")  # tabelvolgorde
+    genk = h[h.index("Hoge Kempen"):]
+    assert genk.index("30.0") < genk.index("20.0")   # hoogste score bovenaan

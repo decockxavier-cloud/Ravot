@@ -151,20 +151,51 @@ def nummer_knopen_uit_geojson(data, max_m=75):
     return hits
 
 
+def _vouw_dubbels(nummers):
+    """Opeenvolgende gelijke knooppuntnummers samenvouwen (patch 207)."""
+    uit = []
+    for n in nummers:
+        if not uit or uit[-1] != n:
+            uit.append(n)
+    return uit
+
+
+def _wfs_alle_features(url, bloklengte=10000, max_blokken=30):
+    """WFS-paging (patch 207): geoservers kappen een GetFeature af op hun
+    maximum (vaak 10.000). Voor heel Vlaanderen halen we de laag daarom op in
+    blokken met count/startIndex tot er niets meer komt — anders laadt de
+    kaart stilletjes maar half en heeft half Vlaanderen géén netwerk."""
+    features = []
+    for blok in range(max_blokken):
+        blok_url = (f"{url}&count={bloklengte}"
+                    f"&startIndex={blok * bloklengte}&sortBy=id")
+        antw = requests.get(blok_url, headers=UA, timeout=180)
+        if antw.status_code >= 400 and blok == 0:
+            # server kent count/startIndex/sortBy niet: val terug op één keer
+            antw = requests.get(url, headers=UA, timeout=180)
+            antw.raise_for_status()
+            return antw.json().get("features", [])
+        antw.raise_for_status()
+        deel = antw.json().get("features", [])
+        features.extend(deel)
+        if len(deel) < bloklengte:
+            break
+    return features
+
+
 def laad_netwerk_van_url(url, netwerk="Toerisme Vlaanderen"):
-    antw = requests.get(url, headers=UA, timeout=180)
-    antw.raise_for_status()
-    knopen, segs = laad_netwerk_uit_geojson(antw.json(), netwerk)
+    data = {"type": "FeatureCollection",
+            "features": _wfs_alle_features(url)}
+    knopen, segs = laad_netwerk_uit_geojson(data, netwerk)
     # Zelfde bron heeft doorgaans ook een knopenlaag ("traject" -> "knoop"):
     # die levert de échte knooppuntnummers, zodat je onderweg de bordjes kunt
     # volgen in plaats van interne K-codes.
     genummerd = 0
     if "traject" in url:
         try:
-            antw2 = requests.get(url.replace("traject", "knoop"),
-                                 headers=UA, timeout=180)
-            antw2.raise_for_status()
-            genummerd = nummer_knopen_uit_geojson(antw2.json())
+            knoop_feats = _wfs_alle_features(url.replace("traject", "knoop"))
+            genummerd = nummer_knopen_uit_geojson(
+                {"type": "FeatureCollection", "features": knoop_feats})
         except Exception:
             pass
     return knopen, segs, genummerd
@@ -330,7 +361,10 @@ def genereer_voorstellen(gemeente, top=8):
         score, detail, pad_knopen, geometrie, meters = yield_kand
         db.session.add(RouteVoorstel(
             gemeente=gemeente,
-            knooppunten=[knopen[i].nummer for i in pad_knopen],
+            # Gesplitste kruispunten geven twee graafknopen met hetzelfde
+            # bordnummer; "81 – 81" is ruis voor de lezer, dus samenvouwen.
+            knooppunten=_vouw_dubbels(
+                [knopen[i].nummer for i in pad_knopen]),
             # Fijne vereenvoudiging (patch 196): alleen collineaire punten
             # weg. Zo volgt de GPX de echte weg i.p.v. hoeken af te snijden
             # met sprongen van honderden meters.

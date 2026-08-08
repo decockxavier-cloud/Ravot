@@ -24,10 +24,13 @@
 </form>
 {% endif %}
 
-{% if voorstellen %}
+{% for streek, prov, voorstellen in groepen %}
+<h2 style="margin:18px 0 6px">{{ streek }}
+  {% if prov %}<span class="hint">· {{ prov }}</span>{% endif %}
+  <span class="hint">({{ voorstellen|length }})</span></h2>
 <table class="tabel">
   <tr><th>Score</th><th>Gemeente</th><th>Lus</th><th>Onderweg</th><th></th></tr>
-  {% for v in voorstellen %}
+{% for v in voorstellen %}
   <tr>
     <td><strong>{{ v.score }}</strong></td>
     <td>{{ v.gemeente }}</td>
@@ -58,6 +61,6 @@
   {% endfor %}
 </table>
 {% else %}
-<p class="hint">Nog geen open voorstellen.</p>
-{% endif %}
+<p class="hint">Geen open voorstellen. Genereer hierboven een stad of streek.</p>
+{% endfor %}
 {% endblock %}

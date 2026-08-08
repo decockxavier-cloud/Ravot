@@ -2893,11 +2893,22 @@ def route_voorstellen():
                     db.session.commit()
                     audit(f"routevoorstel {v.id} afgewezen")
         return redirect(url_for("admin.route_voorstellen"))
-    voorstellen = (RouteVoorstel.query.filter_by(status="nieuw")
-                   .order_by(RouteVoorstel.score.desc()).limit(60).all())
+    # Gegroepeerd per streek (patch 207): kiezen doe je per streek, dus de
+    # wachtrij toont per streek een blok, hoogste score bovenaan. Volgorde:
+    # provincie, dan streek; gemeenten buiten de tabel onder "Overige".
+    from ..regios import STREEK_PROVINCIE, streek_van_gemeente
+    alle = (RouteVoorstel.query.filter_by(status="nieuw")
+            .order_by(RouteVoorstel.score.desc()).limit(300).all())
+    per_streek = {}
+    for v in alle:
+        per_streek.setdefault(streek_van_gemeente(v.gemeente) or "Overige",
+                              []).append(v)
+    volgorde = list(STREEK_PROVINCIE.keys()) + ["Overige"]
+    groepen = [(st, STREEK_PROVINCIE.get(st, ""), per_streek[st])
+               for st in volgorde if st in per_streek]
     n_knopen = Knooppunt.query.count()
     return render_template("admin/route_voorstellen.html",
-                           voorstellen=voorstellen, n_knopen=n_knopen,
+                           groepen=groepen, n_knopen=n_knopen,
                            title="Routevoorstellen", family=None,
                            active="routes")
 
