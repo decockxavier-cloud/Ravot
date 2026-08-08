@@ -731,16 +731,10 @@ section h2 { font-size: 1.25rem; margin: 22px 0 8px; }
 
 @media (max-width: 860px) {
   .ontdek-layout { grid-template-columns: 1fr; }
-  .filterknop { display: inline-flex; }
-  /* Paneel: standaard verborgen, via de schakel-checkbox als overlay erbij */
-  .ontdek-zij { display: none; }
-  .filters-schakel:checked ~ .ontdek-layout .ontdek-zij {
-    display: block; position: fixed; inset: auto 0 0 0; top: 8vh; z-index: 60;
-    border-radius: 20px 20px 0 0; overflow-y: auto; max-height: 92vh;
-    box-shadow: 0 -8px 40px rgba(0,0,0,0.25); }
-  .filters-schakel:checked ~ .ontdek-layout::before {
-    content: ""; position: fixed; inset: 0; background: rgba(0,0,0,0.35);
-    z-index: 50; }
+  /* Filters staan op mobiel gewoon inline boven de resultaten (patch 212):
+     de losse ⚙️-knop opende een overlay die op desktop niets deed en op
+     mobiel verwarde. Zichtbaar = gebruikt. */
+  .ontdek-zij { display: block; margin-bottom: 12px; }
   .zij-sluit { display: block; }
   .zij-toon { display: block; text-align: center; margin-top: 10px;
     position: sticky; bottom: 0; }
@@ -1255,3 +1249,22 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
   padding-left: 6px; padding-right: 6px; }
 .onderweg-km { min-width: 54px; font-weight: 700; color: #5d6b57;
   font-size: .85rem; }
+
+/* Inloggen naast "Gratis profiel" (patch 212): bestaande gebruikers zochten
+   tevergeefs naar een inlogknop. */
+.nav-inlog { font-weight: 700; color: var(--gras); text-decoration: none;
+  padding: 6px 10px; border-radius: 999px; }
+.nav-inlog:hover { background: #eef3ea; }
+
+/* Onderweg-stippen op de routekaart (patch 212): gekleurd per groep, zodat
+   eet- en drinkstops op een drukke fietskaart meteen opvallen. */
+.rv-stip { display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 50%; font-size: 15px;
+  border: 2.5px solid #fff; box-shadow: 0 2px 5px rgba(31,58,42,.35);
+  position: relative; }
+.rv-stip-ravotten { background: #4CA362; }
+.rv-stip-smullen  { background: #C4452F; }
+.rv-stip-beleven  { background: #6A5AC9; }
+.rv-stip-partner { width: 34px; height: 34px; font-size: 17px;
+  border-color: var(--zon); }
+.rv-stip-ster { position: absolute; right: -6px; top: -8px; font-size: 12px; }

@@ -483,7 +483,9 @@ def test_ontdek_zijbalk_en_filterteller(client, seed):
     html = client.get("/ontdek?wanneer=alle&ouder=omheind&filter=gratis") \
         .get_data(as_text=True)
     assert "ontdek-zij" in html          # zijbalk aanwezig
-    assert "filter-teller" in html       # actieve-filters-badge
+    # p212: de losse ⚙️-filterknop met teller is weg; de filters staan
+    # nu altijd zichtbaar in de zijbalk, ook op mobiel.
+    assert "filters-open" not in html
     assert "wis alles (2)" in html       # gratis + omheind = 2 actief
 
 
@@ -2720,7 +2722,7 @@ def test_partner_uitgelicht_bovenaan_lijst(client, seed, app):
     db.session.commit()
     h = client.get("/ontdek?wanneer=alle").get_data(as_text=True)
     assert "partner-uitgelicht" in h            # uitgelicht blok aanwezig
-    assert "Betalende partner" in h             # nieuwe formulering
+    assert "Partner · Authentieke gezinsscore" in h   # p212: kortere formulering
     assert "Partner Pretpark" in h and "Gewoon Park" in h
 
 

@@ -247,6 +247,11 @@ def gast_actief():
     return bool(guest_profile().get("postcode")) and current_family() is None
 
 
+# Zonder bekende locatie lichten we hoogstens dit aantal partners uit: de
+# betaalde zichtbaarheid blijft, maar de kop loopt niet vol (patch 212).
+PARTNER_MAX_ZONDER_LOCATIE = 3
+
+
 def _veilig_int(waarde, standaard):
     try:
         return int(str(waarde).strip() or standaard)
@@ -852,9 +857,13 @@ def ontdek():
         if pe.id not in _in_cand:
             candidates.append(pe)
             _in_cand.add(pe.id)
-    # Bekende plaats gezocht? Filter op afstand (buurgemeenten mee).
+    # Bekende plaats gezocht? Filter op afstand (buurgemeenten mee). De straal
+    # komt uit het gezinsprofiel (patch 212): stond die op 50 km, dan deed de
+    # instelling voorheen niets omdat hier 20 hardgecodeerd stond.
+    straal = int(getattr(profile, "radius_km", None) or 20)
     if centrum:
-        candidates = _filter_buurt([{"event": e} for e in candidates], centrum, 20)
+        candidates = _filter_buurt([{"event": e} for e in candidates], centrum,
+                                   straal)
         candidates = [r["event"] for r in candidates]
 
     # Ravotscore ophalen (voor tonen + sorteren) — commercieel zonder Partner
@@ -883,8 +892,40 @@ def ontdek():
     # zakt bij datumsortering naar achteren) op een late pagina en lijkt hij
     # "verdwenen". We trekken ze uit de volledige lijst en tonen ze enkel op
     # pagina 1; in de gewone (gepagineerde) stroom laten we ze weg.
-    partner_rows = [r for r in rows
-                    if partner_zichtbaar(r["event"], now)]
+    # Uitgelichte partners zijn alleen zinvol als ze in de búúrt liggen
+    # (patch 212). Zocht iemand expliciet op een plaats, dan hoort een
+    # uitgelichte partner in die gemeente te liggen — niet in het dorp
+    # ernaast. Kennen we helemaal geen locatie (geen zoekterm, geen postcode),
+    # dan lichten we niemand uit: willekeurige partners uit heel Vlaanderen
+    # bovenaan zetten helpt niemand en verdringt echte resultaten.
+    _gezocht_gem = (zoek or "").strip() if (zoek and centrum) else None
+    _thuis_lat = centrum[0] if centrum else getattr(profile, "lat", None)
+    _thuis_lng = centrum[1] if centrum else getattr(profile, "lng", None)
+
+    def _partner_dichtbij(e):
+        if _gezocht_gem and e.gemeente:
+            return e.gemeente.strip().lower() == _gezocht_gem.strip().lower()
+        if _thuis_lat is not None and e.lat is not None:
+            return haversine_km(_thuis_lat, _thuis_lng,
+                                e.lat, e.lng) <= straal
+        return None            # locatie onbekend
+
+    _alle_partners = [r for r in rows if partner_zichtbaar(r["event"], now)]
+    _dichtbij = [r for r in _alle_partners
+                 if _partner_dichtbij(r["event"]) is True]
+    _onbekend = [r for r in _alle_partners
+                 if _partner_dichtbij(r["event"]) is None]
+    if _dichtbij or _gezocht_gem or _thuis_lat is not None:
+        # Locatie bekend: alleen partners in de buurt uitlichten. Een partner
+        # uit een andere streek bovenaan zetten helpt niemand.
+        partner_rows = _dichtbij
+    else:
+        # Locatie onbekend: partners blijven uitgelicht — dat is de betaalde
+        # belofte — maar hoogstens PARTNER_MAX, zodat de kop niet volloopt
+        # naarmate er honderden partners bijkomen.
+        partner_rows = _onbekend[:PARTNER_MAX_ZONDER_LOCATIE]
+    partner_zonder_locatie = bool(partner_rows) and not _dichtbij \
+        and _thuis_lat is None and not _gezocht_gem
     partner_ids = {r["event"].id for r in partner_rows}
     gewone_rows = [r for r in rows if r["event"].id not in partner_ids]
 
@@ -894,6 +935,8 @@ def ontdek():
     pagina_rows = gewone_rows[begin:begin + per_pagina]
     # Uitgelichte partners enkel op de eerste pagina meesturen.
     uitgelichte_partners = partner_rows if pagina == 1 else []
+    # Partners die niét uitgelicht raken, mogen nooit onvindbaar worden: die
+    # blijven gewoon in de stroom staan (zie gewone_rows hierboven).
 
     from ..models import get_bool as _gb
     # Weerbericht: op de gezóchte plaats als die bekend is, anders woonplaats.
@@ -920,7 +963,7 @@ def ontdek():
     aantal_actief = ((1 if filter_type else 0) + (1 if cat else 0)
                      + (1 if soort else 0) + len(ouder_filters)
                      + (1 if lft else 0) + (1 if sort == "score" else 0))
-    return render_template("public/ontdek.html", lft=lft, leeftijden=LEEFTIJDEN, rows=pagina_rows, uitgelichte_partners=uitgelichte_partners, sort=sort, zoek=zoek, wanneer=wanneer, cat=cat, verberg_sp=verberg_sp, toon_alles=toon_alles, curatie_aan=_gb("enkel_gecureerd"), ouder_filters=ouder_filters, weer=weer, soort=soort, groep=groep, soorten=TYPES, flink=_ontdek_url, aantal_actief=aantal_actief, gast_actief=gast_actief(),
+    return render_template("public/ontdek.html", lft=lft, leeftijden=LEEFTIJDEN, rows=pagina_rows, uitgelichte_partners=uitgelichte_partners, partner_zonder_locatie=partner_zonder_locatie, sort=sort, zoek=zoek, wanneer=wanneer, cat=cat, verberg_sp=verberg_sp, toon_alles=toon_alles, curatie_aan=_gb("enkel_gecureerd"), ouder_filters=ouder_filters, weer=weer, soort=soort, groep=groep, soorten=TYPES, flink=_ontdek_url, aantal_actief=aantal_actief, gast_actief=gast_actief(),
                            wissel_lijst=_ontdek_url(), wissel_kaart=_ontdek_url("public.verkennen"),
                            wis_url=url_for("public.ontdek", wanneer=wanneer, q=zoek),
                            zoek_endpoint="public.ontdek", weergave="lijst", toon_sorteer=True, kaart=False,
@@ -1113,7 +1156,7 @@ def verkennen():
 
 
 def _kaart_marker(e):
-    from ..types import activiteit_type
+    from ..types import activiteit_type, groep_van
     return {
         "lat": e.lat, "lng": e.lng, "title": e.title,
         "url": url_for("public.event", slug=e.slug),
@@ -1123,6 +1166,7 @@ def _kaart_marker(e):
         "indoor": bool(e.indoor), "img": poi_image(e),
         "emoji": activiteit_type(e)["emoji"], "type": activiteit_type(e)["label"],
         "permanent": bool(e.is_permanent), "eet": e.subtype == "horeca",
+        "groep": groep_van(e),
         "partner": partner_zichtbaar(e),
         "score": None, "count": None,
     }

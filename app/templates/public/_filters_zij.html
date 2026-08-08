@@ -5,7 +5,6 @@
   <div class="zij-kop">
     <strong>Filters</strong>
     {% if aantal_actief %}<a class="zij-wis" href="{{ wis_url }}">wis alles ({{ aantal_actief }})</a>{% endif %}
-    <label for="filters-open" class="zij-sluit" aria-label="Sluit filters">✕</label>
   </div>
 
   <details class="zij-groep" {{ "open" if filter_type }}>
@@ -66,5 +65,5 @@
   </details>
   {% endif %}
 
-  <label for="filters-open" class="btn btn-zon zij-toon">Toon {{ totaal }} {{ 'op de kaart' if kaart else 'activiteiten' }}</label>
+  <a href="#resultaten" class="btn btn-zon zij-toon">Toon {{ totaal }} {{ 'op de kaart' if kaart else 'activiteiten' }}</a>
 </aside>

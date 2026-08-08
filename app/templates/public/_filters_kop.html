@@ -29,10 +29,6 @@
     <a class="filterchip {{ 'aan' if wanneer=='deze-week' }}" href="{{ flink(wanneer='deze-week') }}">Deze week</a>
     <a class="filterchip {{ 'aan' if wanneer=='weekend' }}" href="{{ flink(wanneer='weekend') }}">Weekend</a>
     <a class="filterchip {{ 'aan' if wanneer not in ('vandaag','deze-week','weekend') }}" href="{{ flink(wanneer='alle') }}">📆 Alle data</a>
-    <label for="filters-open" class="filterknop btn btn-stil btn-klein">
-      ⚙️ Filters{% if aantal_actief %} <span class="filter-teller">{{ aantal_actief }}</span>{% endif %}
-    </label>
   </div>
 </div>
-<input type="checkbox" id="filters-open" class="filters-schakel">
 <script src="{{ static_v('js/filters.js') }}" defer></script>

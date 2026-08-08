@@ -42,7 +42,11 @@
       // Kleur toont score/gratis/binnen; het glyph toont het TYPE (speeltuin,
       // theater, museum…) zodat je op de kaart meteen ziet wat het is.
       var kleur;
-      if (m.score && m.score >= 4) { kleur = "#2E7D46"; }        // goed gescoord
+      // Eet- en drinkstops krijgen hun eigen, duidelijk afwijkende kleur
+      // (patch 212): op een drukke kaart moet je "waar kunnen we iets eten"
+      // in één oogopslag zien, niet zoeken tussen blauwe binnen-pins.
+      if (m.groep === "smullen") { kleur = "#C4452F"; }          // smullen
+      else if (m.score && m.score >= 4) { kleur = "#2E7D46"; }   // goed gescoord
       else if (m.free) { kleur = "#F4B233"; }                    // gratis
       else if (m.indoor) { kleur = "#5B8DEF"; }                  // binnen
       else { kleur = "#EE8035"; }                                // overig

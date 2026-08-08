@@ -48,10 +48,14 @@
 
     {% if rows or uitgelichte_partners %}
       {% if uitgelichte_partners %}
+{% if partner_zonder_locatie %}
+<p class="hint" style="margin:4px 0 0">📍 Vul je postcode in om partners
+  <em>in jouw buurt</em> te zien in plaats van een greep uit Vlaanderen.</p>
+{% endif %}
       <div class="partner-uitgelicht">
         <div class="partner-uitgelicht-kop">
           <span class="badge badge-partner">⭐ Partner</span>
-          <span class="partner-uitgelicht-sub">Betalende partner · Authentieke gezinsscore</span>
+          <span class="partner-uitgelicht-sub">Partner · Authentieke gezinsscore</span>
         </div>
         <div class="kaarten-raster">
         {% for r in uitgelichte_partners %}{% set e = r.event %}

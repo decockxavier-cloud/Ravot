@@ -34,12 +34,14 @@
                 smullen: L.layerGroup() };
   (data.markers || []).forEach(function (m) {
     var emoji = m.emoji || "📍";
-    var html = m.partner
-      ? "<span style='font-size:22px'>⭐</span><span style='font-size:13px;" +
-        "position:relative;left:-8px;top:6px'>" + emoji + "</span>"
-      : "<span style='font-size:18px'>" + emoji + "</span>";
+    // Gekleurde bolletjes per groep (patch 212): losse emoji's op een drukke
+    // fietskaart vielen weg. Smullen krijgt een eigen, opvallende kleur.
+    var klas = "rv-stip rv-stip-" + (m.groep || "ravotten") +
+               (m.partner ? " rv-stip-partner" : "");
+    var html = '<span class="' + klas + '">' + emoji +
+               (m.partner ? '<span class="rv-stip-ster">⭐</span>' : "") + "</span>";
     var marker = L.marker([m.lat, m.lng], {
-      icon: L.divIcon({ className: "", html: html, iconSize: [26, 26] }),
+      icon: L.divIcon({ className: "", html: html, iconSize: [30, 30] }),
       title: m.title,
     }).bindPopup("<strong>" + m.title + "</strong><br>km " + m.km +
                  " · <a href='/e/" + m.slug + "'>bekijk de fiche</a>");
