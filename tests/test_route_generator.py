@@ -205,9 +205,10 @@ def test_promotie_maakt_gpx_en_ai_naam(app, tmp_path, monkeypatch):
         assert r.titel == "De IJsjes-safari"
         assert "IJssalon Fresco" in r.beschrijving        # inspiratietekst
         assert "Knooppunten:" in r.routebeschrijving      # stap-voor-stap
-        assert r.gpx_bestand and os.path.exists(
-            f"/data/uploads/gpx/{r.gpx_bestand}")
-        inhoud = open(f"/data/uploads/gpx/{r.gpx_bestand}").read()
+        from app.services.route_generator import gpx_map
+        pad = os.path.join(gpx_map(), r.gpx_bestand)
+        assert r.gpx_bestand and os.path.exists(pad)
+        inhoud = open(pad).read()
         assert "<trkpt" in inhoud and "De IJsjes-safari" in inhoud
 
 
@@ -421,6 +422,7 @@ def test_gpx_volgt_bochten_nauwkeurig(app):
     de tussenpunten behouden zodat een Garmin de echte weg tekent. (Op
     kaarsrechte stukken mogen collineaire punten wél weg: dat is correct.)"""
     import math as m
+    import os
     import re
     from unittest.mock import patch as _patch
 
@@ -462,7 +464,8 @@ def test_gpx_volgt_bochten_nauwkeurig(app):
              _patch("app.services.route_generator.meet_klimmeters",
                     return_value=10):
             r = promoveer(RouteVoorstel.query.first())
-        inhoud = open(f"/data/uploads/gpx/{r.gpx_bestand}").read()
+        from app.services.route_generator import gpx_map
+        inhoud = open(os.path.join(gpx_map(), r.gpx_bestand)).read()
         pts = [(float(a), float(b)) for a, b in
                re.findall(r'lat="([\d.]+)" lon="([\d.]+)"', inhoud)]
         # De juiste meetlat is niet de puntafstand maar de afwijking: DP

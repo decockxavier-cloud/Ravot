@@ -2035,12 +2035,14 @@ def fietsroute(slug):
 
 @bp.route("/fietsroutes/<slug>/gpx")
 def fietsroute_gpx(slug):
+    import os
     from ..models import FietsRoute
     from flask import send_file
     r = FietsRoute.query.filter_by(slug=slug).first_or_404()
     if r.pending or r.hidden or not r.gpx_bestand:
         abort(404)
-    return send_file(f"/data/uploads/gpx/{r.gpx_bestand}",
+    from ..services.route_generator import gpx_map
+    return send_file(os.path.join(gpx_map(), r.gpx_bestand),
                      mimetype="application/gpx+xml", as_attachment=True,
                      download_name=f"ravot-{r.slug}.gpx", max_age=86400)
 
@@ -2220,6 +2222,17 @@ def fietsroute_kaartje(slug):
     punten = r.geometrie or []
     if len(punten) < 2:
         abort(404)
+    # Echte kaart met wegen en dorpen (patch 217); lukt dat niet (geen net,
+    # tegels traag), dan valt hij terug op de kale lijn hieronder — het blad
+    # blijft dan gewoon bruikbaar.
+    from ..services.statische_kaart import kaart_bestand
+    try:
+        png = kaart_bestand(r)
+    except Exception:
+        png = None
+    if png:
+        from flask import send_file
+        return send_file(png, mimetype="image/png")
     lats = [p[0] for p in punten]
     lngs = [p[1] for p in punten]
     b, o = min(lats), min(lngs)

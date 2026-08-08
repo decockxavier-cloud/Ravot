@@ -2714,10 +2714,11 @@ def route_bewerk(rid=None):
                 r.duur_min = routes_gis.duur_suggestie(st["afstand_km"])
             r.moeilijkheid = request.form.get("moeilijkheid") or \
                 routes_gis.moeilijkheid_suggestie(st["afstand_km"], st["hoogte_m"])
-            os.makedirs("/data/uploads/gpx", exist_ok=True)
+            from ..services.route_generator import gpx_map
+            os.makedirs(gpx_map(), exist_ok=True)
             naam = f"route-{r.slug}.gpx"
             bestand.seek(0)
-            bestand.save(f"/data/uploads/gpx/{naam}")
+            bestand.save(os.path.join(gpx_map(), naam))
             r.gpx_bestand = naam
             # gemeente van het startpunt via de bestaande buurtafleiding
             from ..services.sources.base import dichtste_gemeente
@@ -2975,7 +2976,8 @@ def route_gpx_download(rid):
         flash("Deze route heeft geen geometrie, dus geen GPX.", "error")
         return redirect(url_for("admin.routes"))
     db.session.commit()
-    pad = f"/data/uploads/gpx/{r.gpx_bestand}"
+    from ..services.route_generator import gpx_map
+    pad = os.path.join(gpx_map(), r.gpx_bestand)
     return send_file(pad, mimetype="application/gpx+xml", as_attachment=True,
                      download_name=f"ravot-{r.slug}.gpx")
 

@@ -160,6 +160,18 @@ def nummer_knopen_uit_geojson(data, max_m=75):
     return hits
 
 
+def gpx_map():
+    """Map voor GPX-bestanden, afgeleid van UPLOAD_DIR (patch 217).
+
+    Stond eerder hardgecodeerd op /data/uploads/gpx, waardoor de tests in de
+    CI-runner (waar /data niet bestaat) faalden met een PermissionError.
+    """
+    import os as _os
+    from flask import current_app
+    basis = current_app.config.get("UPLOAD_DIR", "/data/uploads")
+    return _os.path.join(basis, "gpx")
+
+
 def _enkel_bordnummers(nummers):
     """Enkel echte knooppuntnummers houden (patch 216). Interne K-codes staan
     voor kruispunten zonder bordje: nutteloos om naar te zoeken onderweg."""
@@ -449,9 +461,10 @@ def schrijf_gpx(route):
     for p in punten:
         regels.append(f'      <trkpt lat="{p[0]:.6f}" lon="{p[1]:.6f}"/>')
     regels += ["    </trkseg>", "  </trk>", "</gpx>"]
-    os.makedirs("/data/uploads/gpx", exist_ok=True)
+    map_ = gpx_map()
+    os.makedirs(map_, exist_ok=True)
     naam = f"route-{route.slug}.gpx"
-    with open(f"/data/uploads/gpx/{naam}", "w", encoding="utf-8") as f:
+    with open(os.path.join(map_, naam), "w", encoding="utf-8") as f:
         f.write("\n".join(regels))
     route.gpx_bestand = naam
     return naam
