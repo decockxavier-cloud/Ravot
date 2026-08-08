@@ -5,6 +5,16 @@
   speeltuinen, ijsjes of een kasteel. Bestaande, bewegwijzerde lussen —
   door Ravot gekozen en aangekleed voor gezinnen.</p>
 
+{% if provincies and provincies|length > 1 %}
+<div class="chips">
+  <a class="btn btn-klein {{ '' if provincie or regio else 'btn-zon' }}"
+     href="{{ url_for('public.fietsroutes') }}">Heel Vlaanderen</a>
+  {% for prov in provincies %}
+  <a class="btn btn-klein {{ 'btn-zon' if provincie|lower == prov|lower }}"
+     href="{{ url_for('public.fietsroutes', provincie=prov) }}">{{ prov }}</a>
+  {% endfor %}
+</div>
+{% endif %}
 {% if regios %}
 <div class="acties" style="flex-wrap:wrap;gap:6px;margin:8px 0">
   <a class="btn btn-klein {{ '' if regio else 'btn-zon' }}"

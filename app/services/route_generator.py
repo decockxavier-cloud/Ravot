@@ -588,9 +588,13 @@ def ai_titel_en_beschrijving(route):
 
 
 def regio_suggestie(route):
-    """Regio afleiden uit bestaande routes (patch 197): eerst dezelfde
-    gemeente, anders de dichtstbijzijnde route (≤ 30 km) met een regio.
-    Eén keer handmatig invullen per streek volstaat dus."""
+    """Regio bepalen (patch 197/206): eerst de vaste gemeente->streek-tabel
+    (redactioneel gecureerd, dus gewoon juist), pas daarna overerving van
+    bestaande routes: zelfde gemeente, anders dichtstbijzijnde ≤ 30 km."""
+    from ..regios import streek_van_gemeente
+    vast = streek_van_gemeente(route.gemeente)
+    if vast:
+        return vast
     q = FietsRoute.query.filter(FietsRoute.id != route.id,
                                 FietsRoute.regio.isnot(None),
                                 FietsRoute.regio != "")

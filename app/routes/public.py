@@ -1790,6 +1790,7 @@ def blog_artikel(slug):
 def fietsroutes():
     from ..models import FietsRoute
     regio = (request.args.get("regio") or "").strip()
+    provincie = (request.args.get("provincie") or "").strip()
     q = FietsRoute.query.filter(FietsRoute.pending.is_(False),
                                 FietsRoute.hidden.is_(False))
     regios = sorted({r[0] for r in db.session.query(FietsRoute.regio)
@@ -1798,6 +1799,12 @@ def fietsroutes():
                              FietsRoute.hidden.is_(False)).all()})
     if regio:
         q = q.filter(FietsRoute.regio.ilike(regio))
+    elif provincie:
+        from ..regios import STREEK_PROVINCIE
+        streken_in = [st for st, pr in STREEK_PROVINCIE.items()
+                      if pr.lower() == provincie.lower()]
+        q = q.filter(FietsRoute.regio.in_(streken_in)) if streken_in \
+            else q.filter(db.false())
     rijen = q.order_by(FietsRoute.titel).all()
     # Gezinspersonalisatie: routes met startpunt binnen de straal eerst
     fam = current_family()
@@ -1849,8 +1856,12 @@ def fietsroutes():
                 "lat": sum(p["lat"] for p in pts) / len(pts),
                 "lng": sum(p["lng"] for p in pts) / len(pts),
                 "url": url_for("public.fietsroutes", regio=reg)})
+    from ..regios import provincie_van_streek
+    provincies = sorted({p for p in (provincie_van_streek(r) for r in regios)
+                         if p})
     return render_template("public/fietsroutes.html", rijen=rijen, regios=regios,
-                           regio=regio, afstanden=afstanden,
+                           regio=regio, provincie=provincie,
+                           provincies=provincies, afstanden=afstanden,
                            beelden=beelden, onderweg=onderweg,
                            snippets=snippets, kaartdata=kaartdata,
                            regio_labels=regio_labels,
