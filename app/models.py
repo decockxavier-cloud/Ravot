@@ -799,6 +799,7 @@ class FietsRoute(db.Model):
     geometrie = db.Column(db.JSON)
     hoogte_m = db.Column(db.Integer)
     start_lat = db.Column(db.Float); start_lng = db.Column(db.Float)
+    start_adres = db.Column(db.String(200))   # leesbaar startpunt (patch 214)
     eind_lat = db.Column(db.Float); eind_lng = db.Column(db.Float)
     is_lus = db.Column(db.Boolean, default=True)
     bbox_n = db.Column(db.Float); bbox_z = db.Column(db.Float, index=True)
@@ -835,6 +836,7 @@ class Knooppunt(db.Model):
     __tablename__ = "knooppunten"
     id = db.Column(db.Integer, primary_key=True)
     nummer = db.Column(db.String(8))
+    straat = db.Column(db.String(120))   # bordje-straat (p214)
     lat = db.Column(db.Float, nullable=False)
     lng = db.Column(db.Float, nullable=False)
     netwerk = db.Column(db.String(60))

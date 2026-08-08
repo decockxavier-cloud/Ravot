@@ -134,6 +134,13 @@ def nummer_knopen_uit_geojson(data, max_m=75):
                 if w.isdigit() and len(w) <= 3:
                     nummer = w
                     break
+        straat = None
+        for kk, v in (f.get("properties") or {}).items():
+            kl = kk.lower()
+            if any(t in kl for t in ("straat", "street", "weg_naam",
+                                     "wegnaam", "locatie")) and v:
+                straat = str(v).strip()[:120]
+                break
         if not nummer:
             continue
         beste = None
@@ -146,6 +153,8 @@ def nummer_knopen_uit_geojson(data, max_m=75):
                         beste = (d, k)
         if beste:
             beste[1].nummer = nummer
+            if straat:
+                beste[1].straat = straat
             hits += 1
     db.session.commit()
     return hits
@@ -715,6 +724,9 @@ def promoveer(voorstel):
         route.beschrijving = besch
     # ...en een GPX-bestand, meteen downloadbaar voor de testrit.
     schrijf_gpx(route)
+    if not route.start_adres and route.start_lat is not None:
+        from ..geo import adres_van_punt
+        route.start_adres = adres_van_punt(route.start_lat, route.start_lng)
     if not route.regio:
         route.regio = regio_suggestie(route)
     voorstel.status = "gepromoveerd"

@@ -757,6 +757,20 @@ def register_cli(app):
                 "  SELECT SUM(p.punten) FROM ravot_punten p"
                 "  WHERE p.family_id = families.id), 0)"))
             added.append("families.niveau_hoogste (+backfill)")
+        if "fietsroutes" in insp.get_table_names():
+            fr_cols = {c["name"] for c in insp.get_columns("fietsroutes")}
+            if "start_adres" not in fr_cols:
+                db.session.execute(text(
+                    "ALTER TABLE fietsroutes ADD COLUMN IF NOT EXISTS "
+                    "start_adres VARCHAR(200)"))
+                added.append("fietsroutes.start_adres")
+        if "knooppunten" in insp.get_table_names():
+            kn_cols = {c["name"] for c in insp.get_columns("knooppunten")}
+            if "straat" not in kn_cols:
+                db.session.execute(text(
+                    "ALTER TABLE knooppunten ADD COLUMN IF NOT EXISTS "
+                    "straat VARCHAR(120)"))
+                added.append("knooppunten.straat")
         if "route_voorstellen" in insp.get_table_names():
             rv_cols = {c["name"] for c in insp.get_columns("route_voorstellen")}
             if "hoogte_m" not in rv_cols:

@@ -113,3 +113,28 @@ def zoek_centrum(term, strict=False):
     if pc:
         return (pc.lat, pc.lng)
     return _geocode(term)   # laatste redmiddel: geocoder
+
+
+def adres_van_punt(lat, lng):
+    """Omgekeerde geocodering: coördinaat -> leesbaar adres (patch 214).
+
+    Gebruikt Nominatim met dezelfde hoffelijkheid als de rest van deze module
+    (User-Agent, korte timeout, stil falen). Bedoeld voor eenmalig gebruik bij
+    het promoveren van een route — nooit in een lus over veel punten.
+    """
+    import requests
+    try:
+        antw = requests.get(
+            "https://nominatim.openstreetmap.org/reverse",
+            params={"lat": lat, "lon": lng, "format": "jsonv2", "zoom": 17,
+                    "addressdetails": 1},
+            headers={"User-Agent": "Ravot.be/1.0 (info@ravot.be)"}, timeout=12)
+        antw.raise_for_status()
+        a = (antw.json() or {}).get("address") or {}
+    except Exception:
+        return None
+    straat = a.get("road") or a.get("pedestrian") or a.get("cycleway")
+    plaats = (a.get("city") or a.get("town") or a.get("village")
+              or a.get("municipality") or a.get("suburb"))
+    stukken = [x for x in (straat, plaats) if x]
+    return ", ".join(stukken)[:200] or None

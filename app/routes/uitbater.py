@@ -475,9 +475,12 @@ def partner(op, event_id):
             return redirect(url_for("uitbater.facturatie", volgende=ev.id))
         # Formulekeuze (patch 153) + exclusiviteitscap per gemeente.
         from ..models import get_int, Verkoper
-        plan = request.form.get("plan") or "partner"
+        plan = (request.form.get("plan") or "").strip()
         if plan not in mollie.PLANNEN:
-            plan = "partner"
+            # Geen geldige keuze (bv. alle formules volzet): niet stilletjes
+            # de goedkoopste doorrekenen, maar terugsturen (patch 213).
+            flash("Kies eerst een formule.", "error")
+            return redirect(url_for("uitbater.partner", event_id=ev.id))
         if ev.gemeente:
             if plan in ("partner", "combi"):
                 cap = get_int("cap_zichtbaar_gemeente", 4)

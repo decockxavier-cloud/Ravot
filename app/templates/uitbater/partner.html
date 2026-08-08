@@ -50,6 +50,8 @@
               or (f.pool == 'beide' and (z_vol or f_vol)) %}
     <label class="formule-kaart {{ 'formule-vol' if vol }}">
       <input type="radio" name="plan" value="{{ f.plan }}"
+             data-naam="{{ f.naam }}" data-prijs="{{ f.prijs }}"
+             data-incl="{{ f.incl }}"
              {{ 'disabled' if vol }} {{ 'checked' if f.plan == 'combi' and not vol }}>
       <strong>{{ f.naam }}</strong>
       <div class="prijs-groot">€{{ f.prijs }} <span class="prijs-per">/jaar</span></div>
@@ -80,10 +82,15 @@
   <p class="hint">⚠️ Vul eerst je <a href="{{ url_for('uitbater.facturatie', volgende=ev.id) }}">facturatiegegevens</a>
     in (bedrijfsnaam + btw-nummer) — verplicht voor je elektronische factuur.</p>
   {% endif %}
-  <div class="checkrij partner-prijsblok">
-    <input type="hidden" name="plan" value="jaar">
-    <div class="prijs-groot">€{{ prijs_jaar }} <span class="prijs-per">per jaar</span></div>
-    <p class="hint" style="margin:2px 0 0">excl. btw (€{{ prijs_jaar_incl }} incl.) — één jaar volledig Partner</p>
+  {# Samenvatting volgt de gekozen formule (patch 213). Het oude blok hier
+     toonde altijd de Partner-prijs én stuurde een verborgen plan=jaar mee,
+     waardoor een gekozen Feest- of Combi-formule verkeerd kon afrekenen. #}
+  <div class="checkrij partner-prijsblok" id="partner-samenvatting">
+    <div class="prijs-groot"><span id="ps-naam">—</span>:
+      €<span id="ps-prijs">{{ prijs_jaar }}</span>
+      <span class="prijs-per">per jaar</span></div>
+    <p class="hint" style="margin:2px 0 0">excl. btw
+      (€<span id="ps-incl">{{ prijs_jaar_incl }}</span> incl.) — één jaar</p>
   </div>
   {% if betalen_actief %}
   <div class="acties"><button class="btn btn-zon" type="submit">Veilig betalen via Mollie</button></div>
@@ -93,4 +100,5 @@
     Mail <a href="mailto:info@ravot.be">info@ravot.be</a>.</p>
   {% endif %}
 </form>
+<script src="{{ url_for('static', filename='js/partner_kassa.js') }}" defer></script>
 {% endblock %}

@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="print-scherm">
+  <a href="{{ url_for('public.fietsroute', slug=r.slug) }}" class="terug-link">← {{ r.titel }}</a>
+  <div class="acties" style="margin:10px 0">
+    <button class="btn btn-zon" type="button" id="route-print">🖨️ Print of bewaar als PDF</button>
+    <a class="btn btn-klein" href="{{ url_for('public.fietsbingo', slug=r.slug) }}">🎯 Ook de fietsbingo</a>
+  </div>
+</div>
+
+<div class="print-blad">
+  <header class="print-kop">
+    <div>
+      <h1 style="margin:0">{{ r.titel }}</h1>
+      <p style="margin:2px 0 0">{{ r.afstand_km }} km
+        {%- if r.duur_min %} · ±{{ (r.duur_min // 60) }}u{{ '%02d'|format(r.duur_min % 60) }}{% endif %}
+        {%- if r.moeilijkheid %} · {{ r.moeilijkheid }}{% endif %}
+        {%- if r.is_lus %} · lus{% endif %}
+        {%- if r.regio %} · {{ r.regio }}{% endif %}</p>
+    </div>
+    <span class="print-vos">🦊</span>
+  </header>
+
+  {% if r.start_adres or r.start_lat %}
+  <p class="print-start"><strong>📍 Startpunt:</strong>
+    {{ r.start_adres or "zie kaart" }}
+    {%- if r.gemeente and (not r.start_adres or r.gemeente not in r.start_adres) %}
+    ({{ r.gemeente }}){% endif %}</p>
+  {% endif %}
+
+  {% if r.geometrie %}
+  <img class="print-kaart" alt="Kaartje van de route" loading="lazy"
+       src="{{ url_for('public.fietsroute_kaartje', slug=r.slug) }}">
+  {% endif %}
+
+  {% if knooppunten %}
+  <h2 class="print-kop2">Knooppunten volgen</h2>
+  <ol class="print-knopen">
+    {% for n in knooppunten %}
+    <li><span class="print-nr">{{ n }}</span>{% if straten.get(n) %}
+      <span class="print-straat">{{ straten[n] }}</span>{% endif %}</li>
+    {% endfor %}
+  </ol>
+  {% endif %}
+
+  {% if stops %}
+  <h2 class="print-kop2">Onderweg</h2>
+  <ul class="print-stops">
+    {% for km, titel, groep in stops %}
+    <li><span class="print-km">km {{ km }}</span>
+      {{ {'ravotten': '🛝', 'smullen': '🍦', 'beleven': '🎭'}.get(groep, '📍') }}
+      {{ titel }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  <footer class="print-voet">ravot.be/fietsroutes · veel fietsplezier!</footer>
+</div>
+
+<script src="{{ url_for('static', filename='js/route_print.js') }}" defer></script>
+<style>
+.print-blad { background:#fff; border:2px solid var(--zon); border-radius:16px;
+  padding:18px; max-width:760px; margin:0 auto; }
+.print-kop { display:flex; justify-content:space-between; align-items:center;
+  border-bottom:2px solid #eee5cd; padding-bottom:8px; margin-bottom:10px; }
+.print-vos { font-size:2.2rem; }
+.print-start { margin:0 0 10px; }
+.print-kaart { width:100%; max-height:320px; object-fit:contain;
+  border:1px solid #e0dccb; border-radius:12px; margin:0 0 12px; }
+.print-kop2 { font-size:1.05rem; margin:12px 0 6px; }
+.print-knopen { list-style:none; display:flex; flex-wrap:wrap; gap:6px;
+  padding:0; margin:0; }
+.print-knopen li { display:flex; align-items:center; gap:5px;
+  border:1px solid #ded9c6; border-radius:8px; padding:3px 8px;
+  font-size:.85rem; }
+.print-nr { font-weight:800; color:var(--gras); }
+.print-straat { color:#6b7364; font-size:.78rem; }
+.print-stops { list-style:none; padding:0; margin:0; columns:2; }
+.print-stops li { padding:2px 0; font-size:.85rem; break-inside:avoid; }
+.print-km { display:inline-block; min-width:48px; font-weight:700;
+  color:#5d6b57; }
+.print-voet { text-align:center; color:#8a927f; font-size:.8rem;
+  margin-top:14px; border-top:1px solid #eee5cd; padding-top:8px; }
+@media print {
+  header, footer, nav, .print-scherm, .flash { display:none !important; }
+  body { background:#fff; }
+  .print-blad { border:none; max-width:none; padding:0; }
+  .print-kaart { max-height:240px; }
+}
+</style>
+{% endblock %}

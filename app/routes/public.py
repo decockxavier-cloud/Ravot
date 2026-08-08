@@ -2164,3 +2164,78 @@ def fietsbingo_upload(slug):
           "ravotpunten erbij en dingen jullie mee naar de maandprijs. 🎉",
           "ok")
     return redirect(url_for("public.fietsroute", slug=slug))
+
+
+@bp.route("/fietsroutes/<slug>/print")
+def fietsroute_print(slug):
+    """Afdrukbare routefiche (patch 214): kaartje, knooppuntenreeks met
+    straatnamen, startpunt en de stops onderweg — één blad om mee te nemen.
+    De browser maakt er de PDF van; geen extra bibliotheek nodig."""
+    from ..models import FietsRoute, RouteBuurt
+    from ..types import groep_van
+    r = FietsRoute.query.filter_by(slug=slug).first_or_404()
+    if (r.pending or r.hidden) and not session.get("admin_id"):
+        abort(404)
+    knooppunten = []
+    for regel in (r.routebeschrijving or "").splitlines():
+        if regel.strip().startswith("Knooppunten:"):
+            knooppunten = [n.strip() for n in
+                           regel.split(":", 1)[1].replace("–", "-").split("-")
+                           if n.strip()]
+            break
+    # Straatnamen bij de knooppunten (patch 214): opgeslagen op het knooppunt
+    # zelf, zodat we niet per bezoek een geocoder bevragen.
+    from ..models import Knooppunt
+    straten = {}
+    if knooppunten:
+        for k in Knooppunt.query.filter(Knooppunt.nummer.in_(knooppunten),
+                                        Knooppunt.straat.isnot(None)).all():
+            straten.setdefault(k.nummer, k.straat)
+    buurt = (RouteBuurt.query.filter_by(route_id=r.id)
+             .order_by(RouteBuurt.route_km.asc()).limit(40).all())
+    stops = [(b.route_km, b.event.title, groep_van(b.event))
+             for b in buurt if b.event is not None]
+    return render_template("public/fietsroute_print.html", r=r,
+                           knooppunten=knooppunten, straten=straten,
+                           stops=stops, family=current_family(),
+                           active="routes", title=f"Printblad — {r.titel}")
+
+
+@bp.route("/fietsroutes/<slug>/kaartje.svg")
+def fietsroute_kaartje(slug):
+    """Eenvoudig kaartje van het tracé als SVG (patch 214): werkt in print
+    zonder tegels te laden, en blijft scherp op papier."""
+    from ..models import FietsRoute
+    r = FietsRoute.query.filter_by(slug=slug).first_or_404()
+    if (r.pending or r.hidden) and not session.get("admin_id"):
+        abort(404)
+    punten = r.geometrie or []
+    if len(punten) < 2:
+        abort(404)
+    lats = [p[0] for p in punten]
+    lngs = [p[1] for p in punten]
+    b, o = min(lats), min(lngs)
+    hoogte_g = max(1e-6, max(lats) - b)
+    breedte_g = max(1e-6, max(lngs) - o)
+    # Op deze breedtegraad is een lengtegraad ~0,63 keer een breedtegraad;
+    # zonder die correctie oogt de lus uitgerekt.
+    import math
+    k = math.cos(math.radians(sum(lats) / len(lats)))
+    W, H, M = 900, 620, 20
+    schaal = min((W - 2 * M) / (breedte_g * k), (H - 2 * M) / hoogte_g)
+    def xy(p):
+        x = M + (p[1] - o) * k * schaal
+        y = H - M - (p[0] - b) * schaal
+        return f"{x:.1f},{y:.1f}"
+    pad = " ".join(xy(p) for p in punten)
+    start = xy(punten[0])
+    svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" '
+           f'width="{W}" height="{H}">'
+           f'<rect width="{W}" height="{H}" fill="#fdfaf2"/>'
+           f'<polyline points="{pad}" fill="none" stroke="#EE8035" '
+           f'stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>'
+           f'<circle cx="{start.split(",")[0]}" cy="{start.split(",")[1]}" '
+           f'r="9" fill="#4CA362" stroke="#fff" stroke-width="3"/>'
+           f'</svg>')
+    from flask import Response
+    return Response(svg, mimetype="image/svg+xml")

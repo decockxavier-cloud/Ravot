@@ -3018,6 +3018,9 @@ def route_ai_tekst(rid):
     if not r.regio:
         from ..services.route_generator import regio_suggestie
         r.regio = regio_suggestie(r)
+    if not r.start_adres and r.start_lat is not None:
+        from ..geo import adres_van_punt
+        r.start_adres = adres_van_punt(r.start_lat, r.start_lng)
     if not r.gpx_bestand:
         schrijf_gpx(r)
     # Klimmeters (her)meten (patch 194): een gemeten "vlak" of een eerlijk
