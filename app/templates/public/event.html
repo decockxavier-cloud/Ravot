@@ -227,6 +227,27 @@
 </div>
 {% endif %}
 
+{% if in_de_buurt %}
+<section class="card buurt-tips">
+  <h2 style="margin-top:0">🧭 Ook leuk in de buurt</h2>
+  <div class="buurt-raster">
+    {% for t in in_de_buurt %}
+    <a class="buurt-kaart{{ ' partner' if t.partner }}"
+       href="{{ url_for('public.event', slug=t.ev.slug) }}">
+      <span class="buurt-beeld"><img src="{{ poi_image(t.ev) }}" alt=""
+            loading="lazy"></span>
+      <span class="buurt-tekst">
+        <strong>{{ t.ev.title }}</strong>
+        <span class="hint">{{ activiteit_type(t.ev)["emoji"] }}
+          {{ activiteit_type(t.ev)["label"] }} · {{ t.km }} km</span>
+        {% if t.partner %}<span class="badge" style="background:#F4B233">⭐ Partner</span>{% endif %}
+      </span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 {% if ontbrekende_velden or voorlopige_velden %}
 {# Open zolang er iets te beantwoorden valt (patch 209): ingeklapt werd het
    nauwelijks aangetikt, en dan blijft een fiche eeuwig half ingevuld. Wie

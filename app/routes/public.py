@@ -1260,6 +1260,59 @@ def _langs_routes(ev):
         return []
 
 
+def _in_de_buurt(ev, maxi=3, straal_km=12):
+    """Twee à drie plekken vlakbij deze fiche (patch 224).
+
+    Een bezoeker die één fiche opent en weggaat, heeft niet gezien wat er nog
+    meer in de buurt ligt. Voorrang: eerst een andere groep dan deze plek
+    (speeltuin -> ijssalon leest als een uitstap, speeltuin -> speeltuin als
+    een lijst), dichtbij, en met een deftige kwaliteitsscore.
+
+    Partners krijgen voorrang binnen dezelfde afstand — maar nooit verder weg
+    dan een gewone plek: relevantie eerst, anders verkoop je je bezoeker een
+    omweg (patch 212-les).
+    """
+    if ev.lat is None:
+        return []
+    from ..scoring import haversine_km
+    from ..types import groep_van
+    marge = straal_km / 111.0
+    q = (bron_filter(Event.query)
+         .filter(Event.id != ev.id,
+                 Event.is_permanent.is_(True),
+                 Event.pending.is_(False), Event.hidden.is_(False),
+                 Event.lat.between(ev.lat - marge, ev.lat + marge),
+                 Event.lng.between(ev.lng - marge * 1.6, ev.lng + marge * 1.6))
+         .limit(300))
+    eigen_groep = groep_van(ev)
+    nu = datetime.utcnow()
+    kandidaten = []
+    for k in q.all():
+        if k.lat is None or not k.title:
+            continue
+        d = haversine_km(ev.lat, ev.lng, k.lat, k.lng)
+        if d > straal_km or d < 0.02:      # zelfde punt = vermoedelijk dubbel
+            continue
+        partner = bool(k.partner_until and k.partner_until > nu)
+        andere_groep = groep_van(k) != eigen_groep
+        # Lager = beter. Afstand weegt het zwaarst; partner en een andere
+        # groep geven een duwtje, geen vrijgeleide.
+        rang = d - (2.5 if partner else 0) - (1.5 if andere_groep else 0) \
+            - min((k.quality or 0) / 60.0, 1.5)
+        kandidaten.append((rang, d, partner, k))
+    kandidaten.sort(key=lambda x: x[0])
+    uit, groepen = [], set()
+    for rang, d, partner, k in kandidaten:
+        g = groep_van(k)
+        if g in groepen and len(groepen) < 2:
+            continue                       # eerst variatie, dan pas herhaling
+        groepen.add(g)
+        uit.append({"ev": k, "km": round(d, 1), "partner": partner})
+        if len(uit) >= maxi:
+            break
+    return uit
+
+
 @bp.route("/e/<slug>")
 @limiter.limit("60/minute;1000/hour")  # fiches: 15k stuks leegtrekken duurt zo dagen per IP
 def event(slug):
@@ -1344,6 +1397,7 @@ def event(slug):
         euro=euro_indicator(total), reviews=[r.public_dict() for r in series_reviews[:10]],
         friends=friends_interested, saved=saved, shared=shared, family=fam,
         langs_routes=_langs_routes(ev),
+        in_de_buurt=_in_de_buurt(ev),
         fotos=goedgekeurde_fotos,
         ontbrekende_velden=ontbrekende_velden,
         voorlopige_velden=voorlopige_velden, mijn_stemmen=mijn_stemmen,

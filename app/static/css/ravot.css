@@ -1285,3 +1285,26 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
   .trechter-label { min-width: 120px; font-size: .8rem; }
   .trechter-cijfer { min-width: 70px; font-size: .85rem; }
 }
+
+/* "Ook leuk in de buurt" op de fiche (patch 224): een tweede klik aanbieden
+   op het moment dat iemand net iets bekeek. */
+.buurt-raster { display: grid; gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+.buurt-kaart { display: flex; gap: 10px; align-items: center;
+  padding: 8px; border: 1.5px solid var(--lijn); border-radius: 14px;
+  text-decoration: none; color: inherit; background: #fff; }
+.buurt-kaart:hover { border-color: var(--groen); }
+.buurt-kaart.partner { border-color: var(--zon); background: #fffdf6; }
+.buurt-beeld { width: 64px; height: 64px; border-radius: 10px; flex: none;
+  overflow: hidden; background: #eef1e9; }
+.buurt-beeld img { width: 100%; height: 100%; object-fit: cover; }
+.buurt-tekst { display: flex; flex-direction: column; gap: 2px;
+  min-width: 0; }
+.buurt-tekst strong { line-height: 1.2; }
+
+/* Trechterbalken: de vulling moet zichtbaar zijn (fix patch 224) */
+.trechter { display: block; }
+.trechter-balk { display: block; flex: 1; min-width: 60px; height: 20px;
+  background: #efece1; border-radius: 999px; overflow: hidden; }
+.trechter-vul { display: block; height: 100%; min-width: 3px;
+  background: var(--groen); border-radius: 999px; }
