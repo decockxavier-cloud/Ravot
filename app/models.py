@@ -871,6 +871,19 @@ class RouteVoorstel(db.Model):
     created_at = db.Column(db.DateTime, default=utcnow)
 
 
+class TrechterTeller(db.Model):
+    """Dagtellers voor de conversietrechter (patch 223).
+
+    Bewust minimaal: enkel een dag, een stapnaam en een aantal. Geen IP, geen
+    sessie-id, geen persoonsgegevens — we willen weten wáár mensen afhaken,
+    niet wíé. Elke stap telt hoogstens één keer per sessie (zie tel_stap).
+    """
+    __tablename__ = "trechter_tellers"
+    dag = db.Column(db.Date, primary_key=True)
+    stap = db.Column(db.String(32), primary_key=True)
+    aantal = db.Column(db.Integer, default=0, nullable=False)
+
+
 class BingoInzending(db.Model):
     """Ingevulde fietsbingo-kaart van een gezin (patch 200): foto van het
     blad, per route en per maand één inzending per gezin. Na goedkeuring

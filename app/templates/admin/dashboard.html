@@ -93,6 +93,29 @@
 </div>
 
 <section class="card">
+  <h2 style="margin-top:0">🪜 Van bezoeker tot profiel <span class="hint">(14 dagen)</span></h2>
+  <p class="hint">Waar haken mensen af? Elke stap telt hoogstens één keer per
+    sessie. Het percentage is telkens t.o.v. wie een fiche opende.</p>
+  {% if trechter and trechter[0][2] %}
+  <div class="trechter">
+    {% for stap, label, n, pct in trechter %}
+    <div class="trechter-rij">
+      <span class="trechter-label">{{ label }}</span>
+      <span class="trechter-balk"><span class="trechter-vul"
+            style="width:{{ pct }}%"></span></span>
+      <span class="trechter-cijfer">{{ n }} <span class="hint">· {{ pct }}%</span></span>
+    </div>
+    {% endfor %}
+  </div>
+  <p class="hint" style="margin:8px 0 0">Grootste val tussen twee stappen =
+    waar je moet werken: aanbod (te weinig doorklikken), moment (uitnodiging
+    wordt niet gezien) of drempel (formulier haakt af).</p>
+  {% else %}
+  <p class="hint">Nog geen metingen — de teller loopt vanaf deze deploy.</p>
+  {% endif %}
+</section>
+
+<section class="card">
   <h2 style="margin-top:0">🧩 Gezinnen vullen aan</h2>
   <p class="hint">Wat bezoekers zelf beantwoorden op de fiches — de motor
     achter completere data. (Bronstemmen van OSM tellen niet mee.)</p>

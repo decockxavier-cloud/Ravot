@@ -259,6 +259,11 @@ def dashboard():
     aanvul_fotos = (_Photo.query.filter(_Photo.created_at >= zeven).count()
                     if hasattr(_Photo, "created_at") else 0)
 
+    # Conversietrechter (patch 223): waar haken bezoekers af op weg naar
+    # een profiel? Cijfers over 14 dagen, zodat één rustige dag niets zegt.
+    from ..trechter import cijfers as trechter_cijfers
+    trechter = trechter_cijfers(14)
+
     # Recentste aanmeldingen
     nieuwste_gezinnen = Family.query.order_by(Family.created_at.desc()).limit(5).all()
     recent_reviews = Review.query.order_by(Review.created_at.desc()).limit(10).all()
@@ -323,6 +328,7 @@ def dashboard():
                                   "detail": m.detail, "wanneer": m.created_at})
 
     return render_template("admin/dashboard.html", kwaliteit=kwaliteit,
+                           trechter=trechter,
                            aanvul=aanvul, aanvul_velden=aanvul_velden,
                            aanvul_fotos=aanvul_fotos, stats=stats,
                            top_gemeenten=top_gemeenten, nieuwste_gezinnen=nieuwste_gezinnen,

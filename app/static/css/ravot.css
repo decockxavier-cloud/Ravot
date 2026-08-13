@@ -1272,3 +1272,16 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 .rv-stip-partner { width: 34px; height: 34px; font-size: 17px;
   border-color: var(--zon); }
 .rv-stip-ster { position: absolute; right: -6px; top: -8px; font-size: 12px; }
+
+/* Conversietrechter op het dashboard (patch 223) */
+.trechter-rij { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+.trechter-label { min-width: 210px; font-size: .9rem; }
+.trechter-balk { flex: 1; height: 20px; background: #efece1;
+  border-radius: 999px; overflow: hidden; }
+.trechter-vul { display: block; height: 100%; background: var(--groen);
+  border-radius: 999px; }
+.trechter-cijfer { min-width: 92px; text-align: right; font-weight: 700; }
+@media (max-width: 640px) {
+  .trechter-label { min-width: 120px; font-size: .8rem; }
+  .trechter-cijfer { min-width: 70px; font-size: .85rem; }
+}

@@ -1263,6 +1263,8 @@ def _langs_routes(ev):
 @bp.route("/e/<slug>")
 @limiter.limit("60/minute;1000/hour")  # fiches: 15k stuks leegtrekken duurt zo dagen per IP
 def event(slug):
+    from ..trechter import tel_fiche_bezoek
+    tel_fiche_bezoek()
     ev = bron_filter(Event.query).filter_by(slug=slug).first_or_404()
     # Nog niet gemodereerde gebruikersbijdrage: niet publiek tonen.
     # (Enkel de indiener zelf mag meekijken; geen indiener bekend => niemand.)

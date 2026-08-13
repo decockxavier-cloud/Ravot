@@ -764,6 +764,7 @@ def register_cli(app):
                     "ALTER TABLE fietsroutes ADD COLUMN IF NOT EXISTS "
                     "start_adres VARCHAR(200)"))
                 added.append("fietsroutes.start_adres")
+        db.create_all()          # nieuwe tabellen (o.a. trechter_tellers)
         if "knooppunten" in insp.get_table_names():
             kn_cols = {c["name"] for c in insp.get_columns("knooppunten")}
             if "straat" not in kn_cols:

@@ -17,6 +17,8 @@ EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 @bp.route("/login", methods=["GET", "POST"])
 @limiter.limit("20/hour", methods=["POST"])
 def login():
+    from ..trechter import tel_stap
+    tel_stap("login_gezien")
     # Veilige "kom terug"-bestemming (bv. vanaf de feestjespagina): enkel
     # interne paden, nooit externe URL's.
     volgende = request.args.get("next") or ""
@@ -50,6 +52,7 @@ def login():
             return render_template("auth/nieuw_profiel.html", email=email,
                                    title="Nieuw bij Ravot?", family=None,
                                    active=None)
+        tel_stap("code_gevraagd")
         code = magic.issue_code(email)
         magic.send_mail(
             email, f"Jouw Ravot-inlogcode: {code}",

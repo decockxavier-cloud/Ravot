@@ -67,6 +67,8 @@ def onboarding():
             return render_template("account/onboarding.html", categories=CATEGORIES,
                                    current_year=datetime.now(timezone.utc).year,
                                    title="Welkom bij Ravot", family=None, active=None)
+        from ..trechter import tel_stap
+        tel_stap("account", eenmalig=False)
         fam = Family(
             email=email,
             postcode=postcode,
