@@ -14,6 +14,11 @@ bp = Blueprint("auth", __name__)
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
+def _google_aan():
+    from ..services import google_login
+    return google_login.actief()
+
+
 @bp.route("/login", methods=["GET", "POST"])
 @limiter.limit("20/hour", methods=["POST"])
 def login():
@@ -36,12 +41,12 @@ def login():
         email = request.form.get("email", "").strip().lower()
         if not EMAIL_RE.match(email):
             flash("Dat lijkt geen geldig e-mailadres.", "error")
-            return render_template("auth/login.html", title="Aanmelden", family=None, active=None)
+            return render_template("auth/login.html", google_aan=_google_aan(), title="Aanmelden", family=None, active=None)
         from ..models import get_int
         max_codes = get_int("codes_per_uur", 0) or current_app.config["MAGIC_REQUESTS_PER_HOUR"]
         if magic.recent_requests(email) >= max_codes:
             flash("Er zijn al enkele codes verstuurd. Kijk in je mailbox (ook spam).", "error")
-            return render_template("auth/login.html", title="Aanmelden", family=None, active=None)
+            return render_template("auth/login.html", google_aan=_google_aan(), title="Aanmelden", family=None, active=None)
         # Onbekend adres? Dan sturen we NIET zomaar een code (typfouten en
         # vreemde adressen krijgen zo nooit ongevraagde mail). We tonen eerst
         # de vraag of ze een nieuw profiel willen; pas na die bewuste klik
@@ -64,7 +69,7 @@ def login():
         session["code_email"] = email
         return render_template("auth/code_invoeren.html", email=email,
                                title="Voer je code in", family=None, active=None)
-    return render_template("auth/login.html", title="Aanmelden", family=None, active=None)
+    return render_template("auth/login.html", google_aan=_google_aan(), title="Aanmelden", family=None, active=None)
 
 
 @bp.route("/code", methods=["POST"])
@@ -148,3 +153,53 @@ def gezinslid_bevestig(token):
     flash("Adres bevestigd! Meld je aan met je eigen e-mailadres — je krijgt "
           "dan een inlogcode en komt in jullie gezinsaccount terecht.", "ok")
     return redirect(url_for("auth.login"))
+
+
+# --- Inloggen met Google (patch 225) ----------------------------------------
+
+@bp.route("/login/google")
+@limiter.limit("20/hour")
+def google_start():
+    """Stuur de bezoeker naar Google. Eén tik in plaats van code-uit-mail."""
+    from ..services import google_login
+    if not google_login.actief():
+        flash("Inloggen met Google is hier niet ingesteld.", "error")
+        return redirect(url_for("auth.login"))
+    from ..trechter import tel_stap
+    tel_stap("code_gevraagd")        # zelfde trechterstap: drempel genomen
+    state = google_login.nieuwe_state()
+    session["google_state"] = state
+    terug = url_for("auth.google_terug", _external=True)
+    return redirect(google_login.start_url(terug, state))
+
+
+@bp.route("/login/google/terug")
+@limiter.limit("30/hour")
+def google_terug():
+    """Terugkeer van Google: state controleren, e-mail ophalen, inloggen."""
+    from ..models import find_family_by_email
+    from ..services import google_login
+    verwacht = session.pop("google_state", None)
+    if not verwacht or request.args.get("state") != verwacht:
+        # Geen of verkeerde state: mogelijk CSRF, dus niets doen.
+        flash("Aanmelden is onderbroken. Probeer het opnieuw.", "error")
+        return redirect(url_for("auth.login"))
+    code = request.args.get("code")
+    if not code:
+        return redirect(url_for("auth.login"))
+    terug = url_for("auth.google_terug", _external=True)
+    email = google_login.email_uit_code(code, terug)
+    if not email:
+        flash("We kregen geen geverifieerd e-mailadres van Google. "
+              "Meld je aan met je e-mailadres.", "error")
+        return redirect(url_for("auth.login"))
+    session.permanent = True
+    family = find_family_by_email(email)
+    if family is None:
+        session["pending_email"] = email
+        return redirect(url_for("account.onboarding"))
+    session["family_id"] = family.id
+    doel = session.pop("na_login", None)
+    if doel and doel.startswith("/") and not doel.startswith("//"):
+        return redirect(doel)
+    return redirect(url_for("public.vandaag"))

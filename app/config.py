@@ -73,6 +73,10 @@ class Config:
     ODOO_API_KEY = os.environ.get("ODOO_API_KEY", "")
     # Gebruikersfoto's: persistente map (Docker-volume) + limieten.
     UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/data/uploads")
+    # Inloggen met Google (patch 225): leeg = knop verschijnt niet.
+    # Secrets horen in .env, nooit in de settings-tabel.
+    GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+    GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
     MAX_CONTENT_LENGTH = int(os.environ.get("MAX_UPLOAD_BYTES", 10 * 1024 * 1024))  # 10 MB
     FOTO_MAX_ZIJDE = 1600   # px; grotere foto's worden verkleind
     FOTO_KWALITEIT = 82     # JPEG-kwaliteit na heringcodering
