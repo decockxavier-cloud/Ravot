@@ -5,11 +5,12 @@
 <div class="card">
   <form method="post">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <label>In welk jaar zijn je kinderen geboren?</label>
+    <label>In welk jaar zijn je kinderen geboren?
+      <span class="hint">(optioneel — je kunt dit later invullen)</span></label>
     <div id="kinderen">
       <div class="kind-rij">
         <input type="number" name="birth_year" min="{{ current_year - 17 }}" max="{{ current_year }}"
-               placeholder="geboortejaar (bv. {{ current_year - 6 }})" inputmode="numeric" required>
+               placeholder="geboortejaar (bv. {{ current_year - 6 }})" inputmode="numeric">
         <button type="button" class="kind-weg" aria-label="verwijder">×</button>
       </div>
     </div>

@@ -48,8 +48,10 @@
       {% elif is_admin %}
         <a href="{{ url_for('admin.dashboard') }}" class="nav-cta {{ 'on' if active=='admin' }}">⚙️ Beheer</a>
       {% else %}
-        <a href="{{ url_for('auth.login') }}" class="nav-inlog">Inloggen</a>
-        <a href="{{ url_for('auth.login') }}" class="nav-cta">Gratis profiel</a>
+        {# Eén deur (patch 226): twee knoppen naast elkaar deden mensen twijfelen
+           waar een bestaand gezin moest zijn. Achter de knop leidt hetzelfde
+           e-mailadres bestaande gezinnen naar binnen en nieuwe naar de start. #}
+        <a href="{{ url_for('auth.login') }}" class="nav-cta">Inloggen of aanmelden</a>
       {% endif %}
     </nav>
 
@@ -71,7 +73,7 @@
     {% elif is_admin %}
       <a href="{{ url_for('admin.dashboard') }}" class="{{ 'on' if active=='admin' }}">⚙️ Beheer</a>
     {% else %}
-      <a href="{{ url_for('auth.login') }}">👋 Gratis profiel maken</a>
+      <a href="{{ url_for('auth.login') }}">👋 Inloggen of gratis aanmelden</a>
     {% endif %}
     {% if setting('social_facebook') or setting('social_instagram') or setting('social_tiktok') %}
     <div class="mobiel-sociaal">Volg Ravot {% include "public/_sociaal.html" %}</div>

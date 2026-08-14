@@ -58,6 +58,7 @@ def login():
                                    title="Nieuw bij Ravot?", family=None,
                                    active=None)
         tel_stap("code_gevraagd")
+        tel_stap("poging")
         code = magic.issue_code(email)
         magic.send_mail(
             email, f"Jouw Ravot-inlogcode: {code}",
@@ -166,7 +167,8 @@ def google_start():
         flash("Inloggen met Google is hier niet ingesteld.", "error")
         return redirect(url_for("auth.login"))
     from ..trechter import tel_stap
-    tel_stap("code_gevraagd")        # zelfde trechterstap: drempel genomen
+    tel_stap("google_gestart")
+    tel_stap("poging")
     state = google_login.nieuwe_state()
     session["google_state"] = state
     terug = url_for("auth.google_terug", _external=True)

@@ -21,9 +21,17 @@ from .extensions import db
 STAPPEN = [
     ("bezoek", "Fiche bekeken"),
     ("verdieping", "3+ fiches (aan het plannen)"),
+    ("slot_geraakt", "Iets achter de deur geprobeerd"),
     ("login_gezien", "Aanmeldpagina geopend"),
-    ("code_gevraagd", "E-mailcode gevraagd"),
+    ("poging", "Inlogpoging gestart"),
     ("account", "Profiel aangemaakt"),
+]
+
+# Welke deur mensen kozen — geen trechterstap, maar wel goed om te weten:
+# als niemand de e-mailcode meer gebruikt, kan die drempel weg.
+METHODES = [
+    ("code_gevraagd", "via e-mailcode"),
+    ("google_gestart", "via Google"),
 ]
 
 
@@ -58,6 +66,19 @@ def tel_fiche_bezoek():
             tel_stap("verdieping")
     except Exception:
         pass
+
+
+def methode_cijfers(dagen=14):
+    """Hoe vaak elke inlogmethode gestart werd (patch 226)."""
+    from datetime import timedelta
+    from .models import TrechterTeller
+    vanaf = date.today() - timedelta(days=dagen - 1)
+    ruw = dict(db.session.query(TrechterTeller.stap,
+                                db.func.sum(TrechterTeller.aantal))
+               .filter(TrechterTeller.dag >= vanaf)
+               .group_by(TrechterTeller.stap).all())
+    return [(stap, label, int(ruw.get(stap, 0) or 0))
+            for stap, label in METHODES]
 
 
 def cijfers(dagen=14):

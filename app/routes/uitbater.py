@@ -18,6 +18,11 @@ from ..services import magic
 
 bp = Blueprint("uitbater", __name__, url_prefix="/uitbater")
 
+
+def _google_aan():
+    from ..services import google_login
+    return google_login.actief()
+
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
@@ -91,11 +96,11 @@ def login():
         email = (request.form.get("email") or "").strip().lower()
         if not EMAIL_RE.match(email):
             flash("Dat lijkt geen geldig e-mailadres.", "error")
-            return render_template("uitbater/login.html", title="Voor uitbaters",
+            return render_template("uitbater/login.html", google_aan=_google_aan(), title="Voor uitbaters",
                                    prijzen=_prijzen(), family=None, active=None)
         if magic.recent_requests(email) >= current_app.config["MAGIC_REQUESTS_PER_HOUR"]:
             flash("Er zijn al enkele codes verstuurd. Kijk in je mailbox (ook spam).", "error")
-            return render_template("uitbater/login.html", title="Voor uitbaters",
+            return render_template("uitbater/login.html", google_aan=_google_aan(), title="Voor uitbaters",
                                    prijzen=_prijzen(), family=None, active=None)
         code = magic.issue_code(email, purpose="operator")
         magic.send_mail(
@@ -107,7 +112,7 @@ def login():
         session["operator_code_email"] = email
         return render_template("uitbater/code.html", email=email,
                                title="Voer je code in", family=None, active=None)
-    return render_template("uitbater/login.html", title="Voor uitbaters",
+    return render_template("uitbater/login.html", google_aan=_google_aan(), title="Voor uitbaters",
                            prijzen=_prijzen(), family=None, active=None)
 
 
@@ -840,4 +845,49 @@ def machtiging_intrek(op, mid):
     m.tot = datetime.utcnow()
     db.session.commit()
     flash("Invulhulp ingetrokken.", "ok")
+    return redirect(url_for("uitbater.dashboard"))
+
+
+# --- Inloggen met Google voor uitbaters (patch 226) --------------------------
+
+@bp.route("/login/google")
+@limiter.limit("20/hour")
+def google_start():
+    """Zelfde Google-client als bij gezinnen, andere landingsplaats."""
+    from ..services import google_login
+    if not google_login.actief():
+        flash("Inloggen met Google is hier niet ingesteld.", "error")
+        return redirect(url_for("uitbater.login"))
+    state = google_login.nieuwe_state()
+    session["op_google_state"] = state
+    terug = url_for("uitbater.google_terug", _external=True)
+    return redirect(google_login.start_url(terug, state))
+
+
+@bp.route("/login/google/terug")
+@limiter.limit("30/hour")
+def google_terug():
+    """Terugkeer van Google. Een uitbater moet al bekend zijn: een zaak claimen
+    blijft een bewuste stap met controle, geen bijproduct van inloggen."""
+    from ..models import Operator
+    from ..services import google_login
+    verwacht = session.pop("op_google_state", None)
+    if not verwacht or request.args.get("state") != verwacht:
+        flash("Aanmelden is onderbroken. Probeer het opnieuw.", "error")
+        return redirect(url_for("uitbater.login"))
+    code = request.args.get("code")
+    if not code:
+        return redirect(url_for("uitbater.login"))
+    terug = url_for("uitbater.google_terug", _external=True)
+    email = google_login.email_uit_code(code, terug)
+    if not email:
+        flash("We kregen geen geverifieerd e-mailadres van Google.", "error")
+        return redirect(url_for("uitbater.login"))
+    op = Operator.query.filter(db.func.lower(Operator.email) == email).first()
+    if op is None or not op.active:
+        flash("We vonden geen uitbatersaccount voor dat adres. Meld je aan "
+              "met je e-mailadres, dan maken we er een.", "error")
+        return redirect(url_for("uitbater.login"))
+    session.permanent = True
+    session["operator_id"] = op.id
     return redirect(url_for("uitbater.dashboard"))

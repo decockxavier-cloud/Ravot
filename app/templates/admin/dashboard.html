@@ -107,6 +107,11 @@
     </div>
     {% endfor %}
   </div>
+  {% if methodes and (methodes[0][2] or methodes[1][2]) %}
+  <p class="hint" style="margin:8px 0 0">Gekozen deur:
+    {% for stap, label, n in methodes %}<span class="badge">{{ label }}: {{ n }}</span>
+    {% endfor %}</p>
+  {% endif %}
   <p class="hint" style="margin:8px 0 0">Grootste val tussen twee stappen =
     waar je moet werken: aanbod (te weinig doorklikken), moment (uitnodiging
     wordt niet gezien) of drempel (formulier haakt af).</p>

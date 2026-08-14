@@ -62,8 +62,12 @@ def onboarding():
     if request.method == "POST":
         jaren = _geboortejaren(request.form)
         postcode = re.sub(r"\D", "", request.form.get("postcode", ""))[:4]
-        if not jaren or len(postcode) != 4:
-            flash("Vul minstens één geboortejaar en je postcode in.", "error")
+        # Geboortejaren zijn optioneel (patch 226): ze verfijnen de tips, maar
+        # ze eisen bij de eerste stap kost meer registraties dan het oplevert.
+        # Je kunt ze later toevoegen in je profiel.
+        if len(postcode) != 4:
+            flash("Vul je postcode in — daarmee tonen we plekken in jouw buurt.",
+                  "error")
             return render_template("account/onboarding.html", categories=CATEGORIES,
                                    current_year=datetime.now(timezone.utc).year,
                                    title="Welkom bij Ravot", family=None, active=None)

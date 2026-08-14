@@ -9,6 +9,17 @@ from app.models import (Admin, BingoInzending, Event, FietsRoute, Family,
                         RavotPunt, RouteBuurt)
 
 
+def _login_gezin(client, app):
+    """Printblad, GPX en bingo vragen sinds patch 226 een gratis profiel."""
+    with app.app_context():
+        fam = Family(email=f"slot-{id(client)}@t.be", postcode="8800")
+        db.session.add(fam)
+        db.session.commit()
+        fid = fam.id
+    with client.session_transaction() as s:
+        s["family_id"] = fid
+
+
 def _opzet(app):
     from argon2 import PasswordHasher
     with app.app_context():
@@ -48,13 +59,15 @@ def _foto():
 
 def test_bingokaart_is_afdrukbaar_en_eerlijk(client, app):
     _opzet(app)
+    _login_gezin(client, app)
     h = client.get("/fietsroutes/bg-route/bingo").get_data(as_text=True)
     assert h.count('class="bingo-vak"') == 16
     assert "knooppuntbordje" in h                  # uit de route zelf
     assert "glijbaan" in h and "ijsje of frietje" in h   # uit echte data
     assert "Smulbox" not in h                     # geen zaaknamen (partnerregel)
     assert "Print of bewaar als PDF" in h
-    assert "Gratis gezinsprofiel" in h            # gast ziet wedstrijd-CTA
+    # p226: de gast-CTA staat nu op de slotpagina, niet meer op de kaart zelf
+    assert "Volle kaart? Stuur hem in" in h        # ingelogd: kan insturen
 
 
 def test_kaart_wisselt_per_maand(app):
@@ -93,3 +106,16 @@ def test_upload_en_goedkeuring_met_punten(client, app):
         p = RavotPunt.query.filter_by(family_id=fid, reden="bingo").all()
         assert len(p) == 1 and p[0].punten == 15
         assert BingoInzending.query.first().status == "goed"
+
+
+
+def test_gast_ziet_uitnodiging_i_p_v_bingokaart(client, app):
+    """Patch 226: de bingokaart vraagt een gratis profiel. De route zelf blijft
+    volledig zichtbaar — alleen de meeneem-extra's zitten achter de deur."""
+    _opzet(app)
+    h = client.get("/fietsroutes/bg-route/bingo").get_data(as_text=True)
+    assert "gratis Ravotpas" in h
+    assert "bingo-vak" not in h
+    # de route zelf blijft open voor iedereen
+    r = client.get("/fietsroutes/bg-route").get_data(as_text=True)
+    assert "Knuffelgeitenronde" in r

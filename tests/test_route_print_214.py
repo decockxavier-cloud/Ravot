@@ -4,6 +4,18 @@ from app.extensions import db
 from app.models import Event, FietsRoute, Knooppunt, RouteBuurt
 
 
+def _login_gezin(client, app):
+    """Printblad, GPX en bingo vragen sinds patch 226 een gratis profiel."""
+    from app.models import Family
+    with app.app_context():
+        fam = Family(email=f"slot-{id(client)}@t.be", postcode="8800")
+        db.session.add(fam)
+        db.session.commit()
+        fid = fam.id
+    with client.session_transaction() as s:
+        s["family_id"] = fid
+
+
 def _opzet(app):
     with app.app_context():
         r = FietsRoute(titel="Knuffelronde", slug="pr-1", afstand_km=18.0,
@@ -30,6 +42,7 @@ def _opzet(app):
 
 def test_printblad_heeft_alles_om_mee_te_nemen(client, app):
     _opzet(app)
+    _login_gezin(client, app)
     h = client.get("/fietsroutes/pr-1/print").get_data(as_text=True)
     assert "Sint-Amandsstraat, Roeselare" in h        # startpunt
     assert ">74<" in h and "Kasteeldreef" in h        # knooppunt + straatnaam
@@ -61,6 +74,7 @@ def test_printblad_is_liggend_met_onderweg_op_blad_twee(client, app):
     """Patch 215: kaart groot op blad 1 (liggend A4), alles onderweg op de
     achterkant en gegroepeerd per soort."""
     _opzet(app)
+    _login_gezin(client, app)
     h = client.get("/fietsroutes/pr-1/print").get_data(as_text=True)
     assert "A4 landscape" in h
     assert "print-blad2" in h and "break-before: page" in h

@@ -7,6 +7,18 @@ from app.extensions import db
 from app.models import Event, FietsRoute, RouteBuurt
 
 
+def _login_gezin(client, app):
+    """Printblad, GPX en bingo vragen sinds patch 226 een gratis profiel."""
+    from app.models import Family
+    with app.app_context():
+        fam = Family(email=f"slot-{id(client)}@t.be", postcode="8800")
+        db.session.add(fam)
+        db.session.commit()
+        fid = fam.id
+    with client.session_transaction() as s:
+        s["family_id"] = fid
+
+
 def _opzet(app):
     with app.app_context():
         r = FietsRoute(titel="Testlus", slug="gs-1", afstand_km=18,
@@ -46,6 +58,7 @@ def test_ook_weg_uit_lijst_en_printblad(client, app):
     _opzet(app)
     lijst = client.get("/fietsroutes").get_data(as_text=True)
     assert "1× ravotten" in lijst          # niet 2
+    _login_gezin(client, app)
     print_h = client.get("/fietsroutes/gs-1/print").get_data(as_text=True)
     assert "Speeltuin Blijft" in print_h and "Geschrapt" not in print_h
 

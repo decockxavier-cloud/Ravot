@@ -2099,6 +2099,9 @@ def fietsroute_gpx(slug):
     r = FietsRoute.query.filter_by(slug=slug).first_or_404()
     if r.pending or r.hidden or not r.gpx_bestand:
         abort(404)
+    slot = _vraagt_profiel(r, "GPX-bestand")
+    if slot is not None:
+        return slot
     from ..services.route_generator import gpx_map
     return send_file(os.path.join(gpx_map(), r.gpx_bestand),
                      mimetype="application/gpx+xml", as_attachment=True,
@@ -2179,6 +2182,24 @@ def anon_veld_stem(event_id, veld, waarde):
     return redirect(request.referrer or url_for("public.event", slug=ev.slug))
 
 
+def _vraagt_profiel(r, wat):
+    """Toon een uitnodiging i.p.v. de download voor wie nog geen profiel heeft
+    (patch 226).
+
+    De route zelf blijft volledig zichtbaar — kaart, knooppunten, plekken
+    onderweg — zodat Google alles blijft vinden en een bezoeker de waarde ziet
+    vóór de vraag komt. Alleen de meeneem-extra's vragen een gratis profiel:
+    dat is waar de inspanning van Ravot zit, en het is een eerlijke ruil.
+    """
+    if current_family() is not None:
+        return None
+    from ..trechter import tel_stap
+    tel_stap("slot_geraakt")
+    return render_template("public/route_slot.html", r=r, wat=wat,
+                           family=None, active="routes",
+                           title=f"{wat} — {r.titel}")
+
+
 @bp.route("/fietsroutes/<slug>/bingo")
 def fietsbingo(slug):
     """Afdrukbare fietsbingo (patch 200): de browser maakt er de PDF van."""
@@ -2187,6 +2208,9 @@ def fietsbingo(slug):
     r = FietsRoute.query.filter_by(slug=slug).first_or_404()
     if (r.pending or r.hidden) and not session.get("admin_id"):
         abort(404)
+    slot = _vraagt_profiel(r, "Fietsbingo")
+    if slot is not None:
+        return slot
     nu = utcnow()
     maand = nu.year * 100 + nu.month
     fam = current_family()
@@ -2244,6 +2268,9 @@ def fietsroute_print(slug):
     r = FietsRoute.query.filter_by(slug=slug).first_or_404()
     if (r.pending or r.hidden) and not session.get("admin_id"):
         abort(404)
+    slot = _vraagt_profiel(r, "Printblad")
+    if slot is not None:
+        return slot
     knooppunten = []
     for regel in (r.routebeschrijving or "").splitlines():
         if regel.strip().startswith("Knooppunten:"):
