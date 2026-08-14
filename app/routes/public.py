@@ -645,6 +645,8 @@ def home():
     from ..models import Event, Review
     stats = _landing_stats()
     return render_template("public/landing.html", stats=stats,
+                           jsonld=[seo.organisatie_jsonld(),
+                                   seo.website_jsonld()],
                            family=None, active=None,
                            title="Ravot — waar gaan we vandaag ravotten?")
 
@@ -1401,6 +1403,7 @@ def event(slug):
         friends=friends_interested, saved=saved, shared=shared, family=fam,
         langs_routes=_langs_routes(ev),
         in_de_buurt=_in_de_buurt(ev),
+        og_image=poi_image(ev), og_type="article",
         fotos=goedgekeurde_fotos,
         ontbrekende_velden=ontbrekende_velden,
         voorlopige_velden=voorlopige_velden, mijn_stemmen=mijn_stemmen,

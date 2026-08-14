@@ -135,12 +135,18 @@ def event_jsonld(event, agg=None, family_total=None):
 
 
 def breadcrumb_jsonld(items):
-    """items: [(naam, pad), ...]"""
+    """items: [(naam, pad of volledige URL), ...]
+
+    Gestructureerde data moet absolute URL's bevatten — een relatieve link
+    negeert Google stilzwijgend. _abs laat volledige URL's ongemoeid, zodat
+    beide aanroepvormen werken (patch 230).
+    """
     return json.dumps({
         "@context": "https://schema.org",
         "@type": "BreadcrumbList",
         "itemListElement": [
-            {"@type": "ListItem", "position": i + 1, "name": name, "item": _abs(path)}
+            {"@type": "ListItem", "position": i + 1, "name": name,
+             "item": path if str(path).startswith("http") else _abs(path)}
             for i, (name, path) in enumerate(items)
         ],
     }, ensure_ascii=False)
@@ -253,14 +259,45 @@ def itemlist_jsonld(items):
     }, ensure_ascii=False)
 
 
-def breadcrumb_jsonld(paden):
-    """Kruimelpad: helpt Google de hiërarchie zien en levert vaak een mooiere
-    weergave in de zoekresultaten."""
+def organisatie_jsonld():
+    """Wie is Ravot? (patch 230)
+
+    Zonder dit weet Google niet dat ravot.be, de Facebook-, Instagram- en
+    TikTok-pagina's bij één organisatie horen. Met sameAs kan het die signalen
+    bundelen — belangrijk voor een jong domein zonder backlinks.
+    """
+    from flask import current_app
+    from .models import get_setting
+    kanalen = [get_setting(k) for k in
+               ("social_facebook", "social_instagram", "social_tiktok")]
     return json.dumps({
         "@context": "https://schema.org",
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-            {"@type": "ListItem", "position": i + 1, "name": naam, "item": url}
-            for i, (naam, url) in enumerate(paden)
-        ],
+        "@type": "Organization",
+        "name": "Ravot",
+        "url": current_app.config["SITE_URL"],
+        "logo": _abs("/static/img/icon-512.png"),
+        "description": "Gezinsuitstappen in Vlaanderen: speeltuinen, "
+                       "kinderboerderijen, musea en fietsroutes, met echte "
+                       "scores van gezinnen.",
+        "areaServed": {"@type": "AdministrativeArea", "name": "Vlaanderen"},
+        "sameAs": [k for k in kanalen if k],
+    }, ensure_ascii=False)
+
+
+def website_jsonld():
+    """WebSite met SearchAction: meldt de zoekfunctie aan bij Google."""
+    from flask import current_app
+    site = current_app.config["SITE_URL"]
+    return json.dumps({
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Ravot",
+        "url": site,
+        "inLanguage": "nl-BE",
+        "potentialAction": {
+            "@type": "SearchAction",
+            "target": {"@type": "EntryPoint",
+                       "urlTemplate": f"{site}/ontdek?q={{search_term_string}}"},
+            "query-input": "required name=search_term_string",
+        },
     }, ensure_ascii=False)
