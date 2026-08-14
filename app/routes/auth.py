@@ -19,6 +19,12 @@ def _google_aan():
     return google_login.actief()
 
 
+def _feestjes_aan():
+    """Feestjes alleen beloven als ze effectief vrijgegeven zijn (patch 234)."""
+    from ..models import get_bool
+    return get_bool("feestjes_aan")
+
+
 @bp.route("/login", methods=["GET", "POST"])
 @limiter.limit("20/hour", methods=["POST"])
 def login():
@@ -41,12 +47,12 @@ def login():
         email = request.form.get("email", "").strip().lower()
         if not EMAIL_RE.match(email):
             flash("Dat lijkt geen geldig e-mailadres.", "error")
-            return render_template("auth/login.html", google_aan=_google_aan(), title="Aanmelden", family=None, active=None)
+            return render_template("auth/login.html", google_aan=_google_aan(), feestjes_aan=_feestjes_aan(), title="Aanmelden", family=None, active=None)
         from ..models import get_int
         max_codes = get_int("codes_per_uur", 0) or current_app.config["MAGIC_REQUESTS_PER_HOUR"]
         if magic.recent_requests(email) >= max_codes:
             flash("Er zijn al enkele codes verstuurd. Kijk in je mailbox (ook spam).", "error")
-            return render_template("auth/login.html", google_aan=_google_aan(), title="Aanmelden", family=None, active=None)
+            return render_template("auth/login.html", google_aan=_google_aan(), feestjes_aan=_feestjes_aan(), title="Aanmelden", family=None, active=None)
         # Onbekend adres? Dan sturen we NIET zomaar een code (typfouten en
         # vreemde adressen krijgen zo nooit ongevraagde mail). We tonen eerst
         # de vraag of ze een nieuw profiel willen; pas na die bewuste klik
@@ -70,7 +76,7 @@ def login():
         session["code_email"] = email
         return render_template("auth/code_invoeren.html", email=email,
                                title="Voer je code in", family=None, active=None)
-    return render_template("auth/login.html", google_aan=_google_aan(), title="Aanmelden", family=None, active=None)
+    return render_template("auth/login.html", google_aan=_google_aan(), feestjes_aan=_feestjes_aan(), title="Aanmelden", family=None, active=None)
 
 
 @bp.route("/code", methods=["POST"])

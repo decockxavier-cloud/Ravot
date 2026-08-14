@@ -1344,3 +1344,12 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
   font-size: 1.1rem; color: #8a927f; }
 .meer-sociaal { margin-top: 10px; }
 @media (min-width: 861px) { .tab-meer, .meer-paneel { display: none !important; } }
+
+/* Aanvinkregel met een volzin (patch 234): .chip is een korte pil en breekt
+   lelijk bij twee regels tekst. Dit lijnt het vinkje netjes uit naast de zin. */
+.keuze-regel { display: flex; gap: 10px; align-items: flex-start;
+  padding: 10px 12px; border: 1.5px solid var(--lijn); border-radius: 14px;
+  cursor: pointer; }
+.keuze-regel:hover { border-color: var(--groen); }
+.keuze-regel input { margin-top: 3px; flex: none; width: 18px; height: 18px; }
+.keuze-regel .hint { display: block; margin-top: 2px; }

@@ -7,6 +7,27 @@
   <strong>toevoegen als gezinslid</strong> (via Instellingen op hun profiel)
   in plaats van zelf een nieuw profiel te maken — zo sparen jullie samen
   ravotpunten op één Ravotpas.</p>
+<div class="card voordelen-card">
+  <h2 style="margin-top:0">Wat krijg je met een gezinsprofiel? 🦊</h2>
+  <ul class="voordelen">
+    <li><b>🎁 Ravotpunten &amp; beloningen</b> — elke bijdrage levert punten op:
+      +{{ pw().geweest }} voor een bevestigd bezoek, +{{ pw().review }} voor een
+      Ravotscore, +{{ pw().foto }} voor een foto. Spaar ze voor een cadeaubon.</li>
+    <li><b>👑 De Ravotpas</b> — je kinderen verzamelen stempels en badges en
+      klimmen door de vosjes-niveaus, van Welpje tot Vossenkoning.</li>
+    <li><b>📍 Op maat van jullie gezin</b> — tips gesorteerd op jullie postcode,
+      de leeftijd van de kinderen en de afstand.</li>
+    <li><b>🗺️ Routes meenemen</b> — GPX, printblad en de fietsbingo voor
+      onderweg.</li>
+    <li><b>💾 Bewaren &amp; plannen</b> — favorieten opslaan en daguitstappen
+      samenstellen.{% if feestjes_aan %} Of een verjaardagsfeestje regelen.{% endif %}</li>
+    <li><b>✉️ De weekmail</b> — elke week de leukste uitstappen in jullie buurt.</li>
+  </ul>
+  <p class="hint">Gratis, zonder wachtwoord en zonder reclame. We vragen enkel
+    je e-mailadres; de rest is optioneel —
+    <a href="{{ url_for('public.privacy') }}">zo gaan we met je gegevens om</a>.</p>
+</div>
+
 <div class="card">
   <p>Geen wachtwoord nodig. Vul je e-mailadres in en je krijgt een inlogcode van 6 cijfers in je mailbox.</p>
   {% if google_aan %}
@@ -28,22 +49,5 @@
   <p class="hint">Nieuw bij Ravot? Zelfde weg: na je eerste code stel je in één minuut je gezin in.</p>
 </div>
 
-<div class="card voordelen-card">
-  <h2 style="margin-top:0">Wat krijg je met een gezinsprofiel? 🦊</h2>
-  <ul class="voordelen">
-    <li><b>🎁 Ravotpunten &amp; beloningen</b> — elke bijdrage levert punten op:
-      +{{ pw().geweest }} voor een bevestigd bezoek, +{{ pw().review }} voor een
-      Ravotscore, +{{ pw().foto }} voor een foto. Spaar ze voor een cadeaubon.</li>
-    <li><b>👑 De Ravotpas</b> — je kinderen verzamelen stempels en badges en
-      klimmen door de vosjes-niveaus, van Welpje tot Vossenkoning.</li>
-    <li><b>📍 Op maat van jullie gezin</b> — tips gesorteerd op jullie postcode,
-      de leeftijd van de kinderen en de afstand.</li>
-    <li><b>💾 Bewaren &amp; plannen</b> — favorieten opslaan, daguitstappen
-      samenstellen en een verjaardagsfeestje regelen.</li>
-    <li><b>✉️ De weekmail</b> — elke week de leukste uitstappen in jullie buurt.</li>
-  </ul>
-  <p class="hint">Gratis, zonder wachtwoord en zonder reclame. We vragen enkel
-    je e-mailadres, postcode en de geboortejaren van je kinderen —
-    <a href="{{ url_for('public.privacy') }}">zo gaan we met je gegevens om</a>.</p>
-</div>
+
 {% endblock %}
