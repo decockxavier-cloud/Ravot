@@ -46,8 +46,14 @@ def test_dashboard_toont_aanvulbeweging(client, app):
     h = client.get("/beheer/", follow_redirects=True).get_data(as_text=True)
     assert "Gezinnen vullen aan" in h
     blok = h[h.index("Gezinnen vullen aan"):][:2000]
+    # p231 voegde twee tegels toe (gezin/anoniem), dus lezen we op label:
+    labels = re.findall(r'stat-label">([^<]+)<', blok)
     cijfers = re.findall(r'stat-cijfer">(\d+)<', blok)
-    assert cijfers[:4] == ["3", "4", "2", "1"]      # vandaag, week, bijdr., foto's
+    per_label = dict(zip(labels, cijfers))
+    assert per_label["Antwoorden vandaag"] == "3"
+    assert per_label["Deze week"] == "4"
+    assert per_label["Bijdragers"] == "2"      # stemmer "1" en "anon:x"
+    assert per_label["Foto's deze week"] == "1"
     assert "op 2 fiches" in blok
     labels = re.findall(r'badge">([^<]+)</span>', blok)
     assert any("toilet" in x for x in labels)       # leesbare veldnamen

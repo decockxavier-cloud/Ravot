@@ -136,9 +136,19 @@
       <span class="stat-sub">op {{ aanvul.fiches_week }} fiche{{ '' if aanvul.fiches_week == 1 else 's' }}</span>
     </div>
     <div class="stat-tegel">
+      <span class="stat-cijfer">{{ aanvul.gezin_week }}</span>
+      <span class="stat-label">Door gezinnen</span>
+      <span class="stat-sub">met profiel · {{ aanvul.gezin_vandaag }} vandaag</span>
+    </div>
+    <div class="stat-tegel">
+      <span class="stat-cijfer">{{ aanvul.anon_week }}</span>
+      <span class="stat-label">Anoniem</span>
+      <span class="stat-sub">zonder account · {{ aanvul.anon_vandaag }} vandaag</span>
+    </div>
+    <div class="stat-tegel">
       <span class="stat-cijfer">{{ aanvul.stemmers_week }}</span>
       <span class="stat-label">Bijdragers</span>
-      <span class="stat-sub">gezinnen + anoniem, 7 dagen</span>
+      <span class="stat-sub">unieke stemmers, 7 dagen</span>
     </div>
     <div class="stat-tegel">
       <span class="stat-cijfer">{{ aanvul_fotos }}</span>

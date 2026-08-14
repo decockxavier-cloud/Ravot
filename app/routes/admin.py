@@ -250,6 +250,22 @@ def dashboard():
                                  VeldStem.stemmer != "bron")
                          .distinct().count(),
     }
+    # Opsplitsing gezin versus anoniem (patch 231): anonieme stemmers hebben
+    # het voorvoegsel "anon:". Dit vertelt of het anoniem stemmen (p182) echt
+    # bijdraagt, of dat vooral ingelogde gezinnen het werk doen.
+    def _tel(vanaf, alleen=None):
+        q = (db.session.query(db.func.count(VeldStem.id))
+             .filter(VeldStem.created_at >= vanaf, VeldStem.stemmer != "bron"))
+        if alleen == "anon":
+            q = q.filter(VeldStem.stemmer.like("anon:%"))
+        elif alleen == "gezin":
+            q = q.filter(~VeldStem.stemmer.like("anon:%"))
+        return int(q.scalar() or 0)
+
+    aanvul["gezin_week"] = _tel(zeven, "gezin")
+    aanvul["anon_week"] = _tel(zeven, "anon")
+    aanvul["gezin_vandaag"] = _tel(dag_start, "gezin")
+    aanvul["anon_vandaag"] = _tel(dag_start, "anon")
     aanvul_velden = (db.session.query(VeldStem.veld,
                                       db.func.count(VeldStem.id).label("n"))
                      .filter(VeldStem.created_at >= zeven,

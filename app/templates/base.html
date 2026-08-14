@@ -114,7 +114,25 @@
        class="{{ 'on' if active=='profiel' }}">
       <span class="tab-ico">{{ '🦊' if family else '👋' }}</span>
       <span class="tab-tekst">{{ 'Mijn Ravot' if family else 'Aanmelden' }}</span></a>
+    {# Alles wat op desktop in de balk past, moet in de app ook bereikbaar zijn
+       (patch 231): feestjes, kampen, uitbaters- en beheertoegang zaten alleen
+       bovenaan en waren in de PWA dus onvindbaar. #}
+    <label for="meer-open" class="tab-meer">
+      <span class="tab-ico">⋯</span><span class="tab-tekst">Meer</span></label>
   </nav>
+  <input type="checkbox" id="meer-open" class="meer-schakel" hidden>
+  <div class="meer-paneel">
+    <label for="meer-open" class="meer-sluit" aria-label="Sluiten">✕</label>
+    <p class="hint" style="margin:0 0 4px">Meer op Ravot</p>
+    {% if feestjes_aan %}<a href="{{ url_for('public.feestjes_info') }}">🎂 Verjaardagsfeestje</a>{% endif %}
+    {% if kampen_aan %}<a href="{{ url_for('public.kampen') }}">⛺ Vakantiekampen</a>{% endif %}
+    <a href="{{ url_for('public.hoe_werkt_het') }}">💡 Zo werkt het</a>
+    <a href="{{ url_for('public.score_uitleg') }}">🦊 Ravotscore & punten</a>
+    {% if is_uitbater %}<a href="{{ url_for('uitbater.dashboard') }}">🏪 Mijn zaken</a>
+    {% elif not family %}<a href="{{ url_for('uitbater.login') }}">🏪 Ik ben uitbater</a>{% endif %}
+    {% if is_admin %}<a href="{{ url_for('admin.dashboard') }}">⚙️ Beheer</a>{% endif %}
+    <div class="meer-sociaal">{% include "public/_sociaal.html" %}</div>
+  </div>
 
   <footer class="foot">
     {% if uit_actief %}
