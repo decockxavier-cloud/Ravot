@@ -19,7 +19,7 @@
                       'route-voorstellen', 'bingo'],
           'bronnen': ['horeca-import', 'verbindingen', 'feeds', 'verrijk'],
           'gezinnen': ['families', 'partners', 'feestjes', 'feestprospecten',
-                       'beloningen', 'verkopers', 'simulator'],
+                       'beloningen', 'verkopers', 'simulator', 'uitbaters'],
           'beheer': ['facturatie', 'paginas', 'mails', 'instellingen', 'status',
                      'partner-log', 'team', 'illustraties'],
         } %}
@@ -47,7 +47,8 @@
         <details class="admin-groep" {{ 'open' if active in sectie.gezinnen }}>
           <summary>Gezinnen &amp; partners</summary>
           {% if mag_gezinnen %}<a href="{{ url_for('admin.families') }}" class="{{ 'on' if active=='families' }}">Gezinnen</a>{% endif %}
-          {% if admin_rol == 'admin' %}<a href="{{ url_for('admin.partners') }}" class="{{ 'on' if active=='partners' }}">Partners</a>{% endif %}
+          {% if admin_rol == 'admin' %}<a href="{{ url_for('admin.partners') }}" class="{{ 'on' if active=='partners' }}">Partners</a>
+        <a href="{{ url_for('admin.uitbaters') }}" class="{{ 'on' if active=='uitbaters' }}">Uitbaters</a>{% endif %}
         {% if admin_rol == 'admin' %}<a href="{{ url_for('admin.verkopers') }}" class="{{ 'on' if active=='verkopers' }}">Verkopers</a>
         <a href="{{ url_for('admin.simulator') }}" class="{{ 'on' if active=='simulator' }}">Simulator</a>{% endif %}
           <a href="{{ url_for('admin.feestjes') }}" class="{{ 'on' if active=='feestjes' }}">Feestjes &amp; kampen</a>

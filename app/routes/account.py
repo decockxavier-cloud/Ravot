@@ -62,15 +62,13 @@ def onboarding():
     if request.method == "POST":
         jaren = _geboortejaren(request.form)
         postcode = re.sub(r"\D", "", request.form.get("postcode", ""))[:4]
-        # Geboortejaren zijn optioneel (patch 226): ze verfijnen de tips, maar
-        # ze eisen bij de eerste stap kost meer registraties dan het oplevert.
-        # Je kunt ze later toevoegen in je profiel.
+        # Niets is verplicht bij registratie (patch 229). Wie al gezocht heeft
+        # gaf zijn postcode al als gast: die nemen we stil over. Wie niets
+        # invult, krijgt de vraag later — op het moment dat ze iets oplevert,
+        # in plaats van als tolpoort vóór de eerste ervaring.
         if len(postcode) != 4:
-            flash("Vul je postcode in — daarmee tonen we plekken in jouw buurt.",
-                  "error")
-            return render_template("account/onboarding.html", categories=CATEGORIES,
-                                   current_year=datetime.now(timezone.utc).year,
-                                   title="Welkom bij Ravot", family=None, active=None)
+            from ..routes.public import guest_profile
+            postcode = (guest_profile().get("postcode") or "")[:4]
         from ..trechter import tel_stap
         tel_stap("account", eenmalig=False)
         fam = Family(
@@ -1366,3 +1364,35 @@ def route_review(route_id):
     return render_template("account/route_review.html", r=r, family=fam,
                            existing=existing,
                            title=f"Ravotscore voor {r.titel}", active=None)
+
+
+@bp.route("/postcode", methods=["POST"])
+@login_required
+def postcode_zetten():
+    """Postcode (en optioneel geboortejaren) achteraf invullen (patch 229).
+
+    Sinds de registratie niets meer verplicht stelt, vragen we dit pas wanneer
+    het nut zichtbaar is: nadat iemand gezocht heeft.
+    """
+    import re as _re
+    fam = me()
+    if fam is None:
+        return redirect(url_for("auth.login"))
+    pc = _re.sub(r"\D", "", request.form.get("postcode", ""))[:4]
+    if len(pc) == 4:
+        fam.postcode = pc
+        jaren = [int(j) for j in _re.findall(r"\b(?:19|20)\d{2}\b",
+                                             request.form.get("jaren", ""))]
+        if jaren and not fam.children:
+            from ..models import Child
+            for j in jaren[:6]:
+                db.session.add(Child(family_id=fam.id, birth_year=j))
+        db.session.commit()
+        flash("Bedankt! We tonen nu afstanden vanaf jullie thuis. 🦊", "ok")
+    else:
+        flash("Dat leek geen geldige postcode — probeer het later opnieuw.",
+              "error")
+    terug = (request.form.get("terug") or "").strip()
+    if terug == "ontdek":
+        return redirect(url_for("public.ontdek"))
+    return redirect(url_for("public.vandaag"))

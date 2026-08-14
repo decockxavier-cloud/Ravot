@@ -3177,3 +3177,54 @@ def route_voorstel_gpx(vid):
     return send_file(io.BytesIO("\n".join(regels).encode()),
                      mimetype="application/gpx+xml", as_attachment=True,
                      download_name=f"ravot-voorstel-{v.id}.gpx")
+
+
+@bp.route("/uitbaters")
+@medewerker_required
+def uitbaters():
+    """Alle geregistreerde uitbaters (patch 229).
+
+    De partnerpagina toont wie bétaalt; deze toont wie zich registreerde. Dat
+    verschil is verkoopwerk waard: een uitbater die zelf een account maakte en
+    zijn zaak claimde is de warmste prospect die er bestaat.
+    """
+    from ..models import Operator, OperatorClaim, PartnerPayment
+    nu = datetime.utcnow()
+    sorteer = (request.args.get("sorteer") or "").strip()
+    omlaag = request.args.get("omlaag") == "1"
+
+    claims = {}
+    for c, ev in (db.session.query(OperatorClaim, Event)
+                  .join(Event, OperatorClaim.event_id == Event.id).all()):
+        claims.setdefault(c.operator_id, []).append((c.status, ev))
+    betaald = dict(db.session.query(PartnerPayment.operator_id,
+                                    db.func.count(PartnerPayment.id))
+                   .filter(PartnerPayment.status == "paid")
+                   .group_by(PartnerPayment.operator_id).all())
+
+    rijen = []
+    for op in Operator.query.all():
+        eigen = claims.get(op.id, [])
+        goedgekeurd = [ev for st, ev in eigen if st == "approved"]
+        wacht = sum(1 for st, _ in eigen if st == "pending")
+        actief_partner = any(ev.partner_until and ev.partner_until > nu
+                             for ev in goedgekeurd)
+        rijen.append({
+            "op": op, "zaken": goedgekeurd, "wacht": wacht,
+            "partner": actief_partner, "betalingen": betaald.get(op.id, 0),
+        })
+
+    sleutels = {
+        "naam": lambda r: (r["op"].bedrijfsnaam or r["op"].email or "").lower(),
+        "zaken": lambda r: len(r["zaken"]),
+        "status": lambda r: (0 if r["partner"] else 1, 0 if r["wacht"] else 1),
+        "nieuw": lambda r: r["op"].id,
+    }
+    rijen.sort(key=sleutels.get(sorteer, sleutels["nieuw"]),
+               reverse=omlaag if sorteer else True)
+    return render_template("admin/uitbaters.html", rijen=rijen,
+                           sorteer=sorteer, omlaag=omlaag,
+                           n_partner=sum(1 for r in rijen if r["partner"]),
+                           n_prospect=sum(1 for r in rijen
+                                          if not r["partner"] and r["zaken"]),
+                           title="Uitbaters", family=None, active="uitbaters")

@@ -1316,3 +1316,13 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
   border-radius: 999px; padding: 10px 20px; font-weight: 700;
   text-decoration: none; }
 .btn-google:hover { background: #f8f9fa; border-color: #c6cacd; }
+
+/* Gemeentepagina met foto's (patch 228): een overzichtspagina moet er ook
+   uitzien als een gids, niet als een linkenlijst. */
+.gem-kaart { display: flex; gap: 12px; align-items: center; padding: 10px; }
+.gem-beeld { width: 88px; height: 72px; border-radius: 10px; flex: none;
+  overflow: hidden; background: #eef1e9; }
+.gem-beeld img { width: 100%; height: 100%; object-fit: cover; }
+.gem-tekst { min-width: 0; }
+.kruimels { margin: 0 0 6px; }
+.kruimels a { color: inherit; }

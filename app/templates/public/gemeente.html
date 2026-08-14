@@ -1,7 +1,13 @@
 {% extends "base.html" %}
 {% block body_class %}met-sfeer{% endblock %}
 {% block content %}
-<h1>Wat te doen met kinderen in {{ gemeente }}{% if facet %} — {{ facets[facet] }}{% endif %}?</h1>
+<nav class="kruimels hint" aria-label="Kruimelpad">
+  <a href="{{ url_for('public.home') }}">Ravot</a> ›
+  {% if facet %}<a href="/{{ gemeente|lower }}">{{ gemeente }}</a> › {{ facets[facet] }}
+  {% else %}{{ gemeente }}{% endif %}
+</nav>
+
+<h1>Activiteiten met kinderen in {{ gemeente }}{% if facet %} — {{ facets[facet] }}{% endif %}</h1>
 <p class="answer">{{ answer }}</p>
 
 {% if partners %}
@@ -14,22 +20,44 @@
   {% endfor %}
 </div>
 {% endif %}
+
 <div class="badges">
   <a class="badge" href="/{{ gemeente|lower }}">dit weekend</a>
   {% for f, label in facets.items() %}<a class="badge" href="/{{ gemeente|lower }}/{{ f }}">{{ label }}</a>{% endfor %}
 </div>
-{% for e in events %}
-<article class="card">
-  <h3><a href="{{ url_for('public.event', slug=e.slug) }}">{{ e.title }}</a></h3>
-  <p class="meta">{% set t = activiteit_type(e) %}<span class="badge badge-type">{{ t.emoji }} {{ t.label }}</span>
-    {% if e.start %} · 🕐 {{ event_datum(e) }}{% endif %}{% if leeftijd_badge(e) %} · {{ leeftijd_badge(e) }}{% endif %}{% if e.is_free %} · <strong>gratis</strong>{% endif %}</p>
+
+{% macro plek_kaart(e) %}
+<article class="card gem-kaart">
+  <div class="gem-beeld"><img src="{{ poi_image(e) }}" alt="" loading="lazy"></div>
+  <div class="gem-tekst">
+    <h3 style="margin:0 0 4px"><a href="{{ url_for('public.event', slug=e.slug) }}">{{ e.title }}</a></h3>
+    <p class="meta" style="margin:0">{% set t = activiteit_type(e) %}<span class="badge badge-type">{{ t.emoji }} {{ t.label }}</span>
+      {% if e.start %} · 🕐 {{ event_datum(e) }}{% endif %}{% if leeftijd_badge(e) %} · {{ leeftijd_badge(e) }}{% endif %}{% if e.is_free %} · <strong>gratis</strong>{% endif %}</p>
+    {% if e.description %}
+    <p class="hint" style="margin:4px 0 0">{{ e.description|striptags|truncate(120) }}</p>
+    {% endif %}
+  </div>
 </article>
+{% endmacro %}
+
+{% set gevulde_groepen = groepen | selectattr(3) | list if groepen else [] %}
+{% if gevulde_groepen %}
+  {% for sleutel, kop, emoji, rijen in gevulde_groepen %}
+  <h2 id="{{ sleutel }}">{{ emoji }} {{ kop }}
+    <span class="hint">({{ rijen|length }})</span></h2>
+  {% for e in rijen %}{{ plek_kaart(e) }}{% endfor %}
+  {% endfor %}
 {% else %}
-<div class="card"><p>Momenteel niets gevonden. Bekijk de buurgemeenten hieronder of <a href="{{ url_for('public.verkennen') }}">verken de kaart</a>.</p></div>
-{% endfor %}
+  {% for e in events %}{{ plek_kaart(e) }}{% else %}
+  <div class="card"><p>Momenteel niets gevonden. Bekijk de buurgemeenten hieronder of
+    <a href="{{ url_for('public.verkennen') }}">verken de kaart</a>.</p></div>
+  {% endfor %}
+{% endif %}
+
 {% if buren %}
 <h2>Ook dichtbij</h2>
 <div class="badges">{% for b in buren %}<a class="badge" href="/{{ b|lower }}">{{ b }}</a>{% endfor %}</div>
 {% endif %}
+
 <p class="hint">{% if bron_vermeldingen %}Met open data van {% for b in bron_vermeldingen %}{{ b.naam }}{% if not loop.last %}, {% endif %}{% endfor %}; {% endif %}Ravotscores en kostindicaties door gezinnen zelf.</p>
 {% endblock %}

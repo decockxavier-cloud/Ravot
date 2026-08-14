@@ -963,7 +963,10 @@ def ontdek():
     aantal_actief = ((1 if filter_type else 0) + (1 if cat else 0)
                      + (1 if soort else 0) + len(ouder_filters)
                      + (1 if lft else 0) + (1 if sort == "score" else 0))
-    return render_template("public/ontdek.html", lft=lft, leeftijden=LEEFTIJDEN, rows=pagina_rows, uitgelichte_partners=uitgelichte_partners, partner_zonder_locatie=partner_zonder_locatie, sort=sort, zoek=zoek, wanneer=wanneer, cat=cat, verberg_sp=verberg_sp, toon_alles=toon_alles, curatie_aan=_gb("enkel_gecureerd"), ouder_filters=ouder_filters, weer=weer, soort=soort, groep=groep, soorten=TYPES, flink=_ontdek_url, aantal_actief=aantal_actief, gast_actief=gast_actief(),
+    # Zachte vraag om de postcode (patch 229): pas nadat iemand gezocht heeft,
+    # want dán is het nut zichtbaar ("hoe ver is dit van ons?").
+    vraag_postcode = bool(fam and not fam.postcode and (zoek or cat or soort))
+    return render_template("public/ontdek.html", vraag_postcode=vraag_postcode, lft=lft, leeftijden=LEEFTIJDEN, rows=pagina_rows, uitgelichte_partners=uitgelichte_partners, partner_zonder_locatie=partner_zonder_locatie, sort=sort, zoek=zoek, wanneer=wanneer, cat=cat, verberg_sp=verberg_sp, toon_alles=toon_alles, curatie_aan=_gb("enkel_gecureerd"), ouder_filters=ouder_filters, weer=weer, soort=soort, groep=groep, soorten=TYPES, flink=_ontdek_url, aantal_actief=aantal_actief, gast_actief=gast_actief(),
                            wissel_lijst=_ontdek_url(), wissel_kaart=_ontdek_url("public.verkennen"),
                            wis_url=url_for("public.ontdek", wanneer=wanneer, q=zoek),
                            zoek_endpoint="public.ontdek", weergave="lijst", toon_sorteer=True, kaart=False,
@@ -1521,6 +1524,30 @@ def gemeente_page(gemeente, facet=None):
         Event.gemeente.isnot(None), db.func.lower(Event.gemeente) != gemeente.lower()
     ).group_by(Event.gemeente).limit(6).all()]
     faq = seo.faq_jsonld([(f"Wat is er {scope} te doen in {naam} met kinderen?", answer)])
+    # Groeperen per soort (patch 228): een platte lijst van namen zegt Google
+    # (en een ouder) weinig. Met eigen koppen per soort vangt één pagina ook
+    # de specifiekere zoekvragen op — "speeltuinen Roeselare", "eten met
+    # kinderen Roeselare" — in plaats van alleen de brede vraag.
+    from ..types import groep_van
+    _emmers = {"ravotten": [], "smullen": [], "beleven": []}
+    for e in events:
+        g = groep_van(e)
+        if g in _emmers:
+            _emmers[g].append(e)
+    groepen = [
+        ("ravotten", f"Spelen en ravotten in {naam}", "🛝", _emmers["ravotten"]),
+        ("beleven", f"Beleven en ontdekken in {naam}", "🎭", _emmers["beleven"]),
+        ("smullen", f"Eten en drinken met kinderen in {naam}", "🍦",
+         _emmers["smullen"]),
+    ]
+    lijst_jsonld = seo.itemlist_jsonld(
+        [(e.title, f"{current_app.config['SITE_URL']}/e/{e.slug}")
+         for e in events[:50]])
+    kruimels = seo.breadcrumb_jsonld([
+        ("Ravot", current_app.config["SITE_URL"]),
+        (naam, f"{current_app.config['SITE_URL']}/{gemeente.lower()}"),
+    ] + ([(FACETS[facet], f"{current_app.config['SITE_URL']}/"
+           f"{gemeente.lower()}/{facet}")] if facet else []))
     # Partnerblok: max. 2 betalende partners in deze gemeente, duidelijk gelabeld.
     # Bewust een APART blok — partners krijgen nooit een betere plek in de lijst.
     partners = bron_filter(Event.query).filter(
@@ -1530,9 +1557,10 @@ def gemeente_page(gemeente, facet=None):
     ).order_by(Event.partner_until.desc()).limit(2).all()
     return render_template("public/gemeente.html", gemeente=naam, facet=facet,
                            facets=FACETS, events=events, answer=answer, buren=buren,
-                           partners=partners,
+                           partners=partners, groepen=groepen,
                            noindex=noindex, meta_title=title, meta_desc=desc,
-                           jsonld=[faq], family=current_family(), active=None,
+                           jsonld=[faq, lijst_jsonld, kruimels],
+                           family=current_family(), active=None,
                            title=title)
 
 

@@ -30,6 +30,27 @@
    zitten in de zijbalk (pc) of het uitschuifpaneel (mobiel). #}
 {% include "public/_filters_kop.html" %}
 
+{% if vraag_postcode %}
+{# Nu pas vragen (patch 229): iemand die zoekt, ziet meteen wat het oplevert. #}
+<div class="card" style="border-color:var(--zon)">
+  <p style="margin:0 0 8px"><strong>📍 Waar wonen jullie?</strong>
+    <span class="hint">Dan zetten we afstanden bij elke plek en tonen we eerst
+      wat dichtbij ligt.</span></p>
+  <form method="post" action="{{ url_for('account.postcode_zetten') }}"
+        class="acties" style="gap:8px;flex-wrap:wrap">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="terug" value="ontdek">
+    <input type="text" name="postcode" inputmode="numeric" maxlength="4"
+           placeholder="bv. 8800" required style="max-width:9em">
+    <input type="text" name="jaren" inputmode="numeric"
+           placeholder="geboortejaren, bv. 2018 2021" style="max-width:16em">
+    <button class="btn btn-klein btn-zon" type="submit">Bewaren</button>
+    <a class="btn btn-klein btn-stil"
+       href="{{ url_for('public.ontdek', pc_later=1) }}">Later</a>
+  </form>
+</div>
+{% endif %}
+
 <div class="ontdek-layout">
   {% include "public/_filters_zij.html" %}
 
@@ -101,4 +122,19 @@
     {% endif %}
   </div>
 </div>
+
+{% if rows %}
+{# Gemeentelinks onderaan (patch 228): elke overzichtspagina verdient interne
+   links, anders vindt Google ze alleen via de sitemap. #}
+{% set gemeenten = rows | map(attribute='event') | map(attribute='gemeente')
+     | select | unique | sort | list %}
+{% if gemeenten %}
+<div class="card" style="margin-top:14px">
+  <p class="hint" style="margin:0 0 6px"><strong>Activiteiten per gemeente</strong></p>
+  <div class="badges">
+    {% for g in gemeenten[:24] %}<a class="badge" href="/{{ g|lower }}">{{ g }}</a>{% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endif %}
 {% endblock %}

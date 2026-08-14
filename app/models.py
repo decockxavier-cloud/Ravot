@@ -21,7 +21,9 @@ class Family(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(255), unique=True, nullable=False, index=True)
     display_name = db.Column(db.String(80))            # optioneel, enkel vrienden
-    postcode = db.Column(db.String(4), nullable=False)
+    # Mag leeg zijn sinds patch 229: we vragen de postcode pas wanneer ze
+    # iets oplevert (afstanden, weekendmail), niet als tolpoort bij registratie.
+    postcode = db.Column(db.String(4))
     radius_km = db.Column(db.Integer, default=25, nullable=False)
     budget_pref = db.Column(db.String(10), default="all")  # all|free|low
     # Hoogste punten-totaal ooit: bepaalt het vosjes-niveau, zodat dat nooit

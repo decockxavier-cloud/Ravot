@@ -765,6 +765,10 @@ def register_cli(app):
                     "start_adres VARCHAR(200)"))
                 added.append("fietsroutes.start_adres")
         db.create_all()          # nieuwe tabellen (o.a. trechter_tellers)
+        if "families" in insp.get_table_names():
+            db.session.execute(text(
+                "ALTER TABLE families ALTER COLUMN postcode DROP NOT NULL"))
+            added.append("families.postcode nullable")
         if "knooppunten" in insp.get_table_names():
             kn_cols = {c["name"] for c in insp.get_columns("knooppunten")}
             if "straat" not in kn_cols:

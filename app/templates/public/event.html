@@ -227,9 +227,18 @@
 </div>
 {% endif %}
 
+{% if ev.gemeente %}
+{# Interne link naar de overzichtspagina (patch 228): goed voor de bezoeker én
+   het sterkste signaal dat we Google kunnen geven dat die pagina telt. Staat
+   bewust buiten het buurt-blok, zodat hij er altijd is. #}
+<p style="margin:12px 0"><a href="/{{ ev.gemeente|lower }}">
+  📍 Alle activiteiten met kinderen in {{ ev.gemeente }} →</a></p>
+{% endif %}
+
 {% if in_de_buurt %}
 <section class="card buurt-tips">
   <h2 style="margin-top:0">🧭 Ook leuk in de buurt</h2>
+
   <div class="buurt-raster">
     {% for t in in_de_buurt %}
     <a class="buurt-kaart{{ ' partner' if t.partner }}"

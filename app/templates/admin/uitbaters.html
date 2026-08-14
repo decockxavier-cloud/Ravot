@@ -1,0 +1,47 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<h1>🧑‍🍳 Geregistreerde uitbaters</h1>
+<p class="hint">Wie een account maakte en zijn zaak claimde — óók wie (nog)
+  niet betaalt. Die tweede groep is je warmste verkooplijst:
+  <strong>{{ n_partner }}</strong> actieve partner{{ '' if n_partner == 1 else 's' }},
+  <strong>{{ n_prospect }}</strong> met een goedgekeurde zaak maar zonder
+  lopend partnerschap.</p>
+
+{% if rijen %}
+<table class="tabel">
+  {% macro kop(sleutel, label) -%}
+    {%- set actief = sorteer == sleutel -%}
+    <th><a class="sorteer-kop{{ ' aan' if actief }}"
+       href="{{ url_for('admin.uitbaters', sorteer=sleutel,
+                        omlaag='1' if (actief and not omlaag) else None) }}">{{ label }}{% if actief %} {{ '▼' if omlaag else '▲' }}{% endif %}</a></th>
+  {%- endmacro %}
+  <tr>{{ kop('naam', 'Uitbater') }}<th>Contact</th>{{ kop('zaken', 'Zaken') }}{{ kop('status', 'Status') }}<th></th></tr>
+  {% for r in rijen %}
+  <tr>
+    <td><strong>{{ r.op.bedrijfsnaam or r.op.display_name or '—' }}</strong>
+      {% if r.op.btw_nummer %}<div class="hint">{{ r.op.btw_nummer }}</div>{% endif %}
+      {% if not r.op.active %}<span class="badge">inactief</span>{% endif %}</td>
+    <td><a href="mailto:{{ r.op.email }}">{{ r.op.email }}</a>
+      {% if r.op.telefoon %}<div class="hint">{{ r.op.telefoon }}</div>{% endif %}
+      {% if r.op.gemeente %}<div class="hint">{{ r.op.gemeente }}</div>{% endif %}</td>
+    <td>
+      {% for ev in r.zaken %}
+      <div><a href="{{ url_for('admin.activiteit_bewerk', event_id=ev.id) }}">{{ ev.title }}</a></div>
+      {% else %}<span class="hint">geen goedgekeurde zaak</span>{% endfor %}
+      {% if r.wacht %}<div class="hint">⏳ {{ r.wacht }} claim(s) in nazicht</div>{% endif %}
+    </td>
+    <td>
+      {% if r.partner %}<span class="badge" style="background:#F4B233">⭐ partner</span>
+      {% elif r.zaken %}<span class="badge">prospect</span>
+      {% else %}<span class="hint">nog niets geclaimd</span>{% endif %}
+      {% if r.betalingen %}<div class="hint">{{ r.betalingen }}× betaald</div>{% endif %}
+    </td>
+    <td style="white-space:nowrap">
+      <a class="btn btn-klein btn-stil" href="mailto:{{ r.op.email }}">✉ Mail</a></td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="hint">Nog geen uitbaters geregistreerd.</p>
+{% endif %}
+{% endblock %}

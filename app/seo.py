@@ -237,3 +237,30 @@ def route_jsonld(r, cover=None, score=None):
                                   "bestRating": 5,
                                   "ratingCount": score["n"]}
     return json.dumps(uit, ensure_ascii=False)
+
+
+def itemlist_jsonld(items):
+    """ItemList voor een overzichtspagina (patch 228): zo begrijpt Google dat
+    dit een lijst van plekken is en niet één lange lap tekst."""
+    return json.dumps({
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "numberOfItems": len(items),
+        "itemListElement": [
+            {"@type": "ListItem", "position": i + 1, "name": naam, "url": url}
+            for i, (naam, url) in enumerate(items)
+        ],
+    }, ensure_ascii=False)
+
+
+def breadcrumb_jsonld(paden):
+    """Kruimelpad: helpt Google de hiërarchie zien en levert vaak een mooiere
+    weergave in de zoekresultaten."""
+    return json.dumps({
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {"@type": "ListItem", "position": i + 1, "name": naam, "item": url}
+            for i, (naam, url) in enumerate(paden)
+        ],
+    }, ensure_ascii=False)

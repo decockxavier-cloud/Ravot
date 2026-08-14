@@ -69,13 +69,16 @@ def test_geboortejaren_zijn_optioneel(client, app):
         assert fam.postcode == "8800"
 
 
-def test_postcode_blijft_wel_nodig(client, app):
+def test_registratie_zonder_postcode(client, app):
+    """p229 keert p226 om: ook de postcode is geen tolpoort meer. We vragen
+    hem pas nadat iemand gezocht heeft — zie test_registratie_229."""
     with client.session_transaction() as s:
         s["pending_email"] = "geen-pc@test.be"
-    r = client.post("/mijn/start", data={}, follow_redirects=True)
-    assert "postcode" in r.get_data(as_text=True).lower()
+    client.post("/mijn/start", data={}, follow_redirects=True)
     with app.app_context():
-        assert Family.query.filter_by(email="geen-pc@test.be").first() is None
+        fam = Family.query.filter_by(email="geen-pc@test.be").first()
+        assert fam is not None
+        assert not fam.postcode
 
 
 def test_uitbater_google_vraagt_bestaand_account(client, app):
