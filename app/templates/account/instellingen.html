@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
+<a href="{{ url_for('account.profiel') }}" class="terug-link">← Mijn Ravot</a>
 <h1>Gezinsinstellingen ⚙️</h1>
+<p class="hint">Alles wat jullie gezin aangaat staat hier bij elkaar: waar je
+  woont, wie er meedoet, en welke mails je wilt.</p>
 <p><a class="hint" href="{{ url_for("account.profiel") }}">← Terug naar Mijn Ravot</a></p>
 <div class="card">
   <h2 style="margin-top:0">Ons gezin</h2>
@@ -39,7 +42,8 @@
     </select>
     <label for="dn">Naam voor je vrienden</label>
     <input id="dn" type="text" name="display_name" value="{{ family.display_name or '' }}" maxlength="80">
-    <label class="chip"><input type="checkbox" name="newsletter" {{ 'checked' if family.newsletter_opt_in }}><span>📬 Weekendmail (donderdag)</span></label>
+    <h3 style="margin:14px 0 6px">Mails van Ravot</h3>
+    <label class="chip"><input type="checkbox" name="newsletter" {{ 'checked' if family.newsletter_opt_in }}><span>📬 Weekendmail (donderdag) — uitstappen in jullie buurt</span></label>
     <label class="chip"><input type="checkbox" name="monday" {{ 'checked' if family.monday_opt_in }}><span>😄 Maandagvraag na een uitstap</span></label>
     <div class="acties"><button class="btn" type="submit">Bewaar</button></div>
   </form>

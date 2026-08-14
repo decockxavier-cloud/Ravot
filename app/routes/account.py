@@ -162,7 +162,10 @@ def profiel():
         .order_by(Interaction.created_at.desc()).limit(20).all()
 
     pas_totaal = pas.totaal(fam.id)
+    from ..models import get_bool
     return render_template("account/mijn_ravot.html", family=fam,
+                           feestjes_aan=get_bool("feestjes_aan"),
+                           kampen_aan=get_bool("kampen_aan"),
                            weggeklikt=weggeklikt,
                            pas_totaal=pas_totaal,
                            pas_niveau=pas.niveau(pas.niveau_punten(fam.id)),

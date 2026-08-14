@@ -34,6 +34,9 @@
   </div>
 </section>
 
+{# Alleen tonen wat effectief vrijgegeven is (patch 232): een gezin dat
+   "Plan een feestje" aanklikt terwijl de functie uitstaat, botst op een 404. #}
+{% if feestjes_aan %}
 <section class="dash-sectie dash-feest">
   <div class="dash-sectie-kop">
     <h2>🎂 Verjaardagsfeestje</h2>
@@ -53,14 +56,25 @@
   </div>
   {% endif %}
 </section>
+{% endif %}
 
 <section class="dash-sectie">
-  <div class="dash-sectie-kop"><h2>👨‍👩‍👧 Jullie gezin</h2></div>
+  <div class="dash-sectie-kop">
+    <h2>👨‍👩‍👧 Jullie gezin</h2>
+    <a class="btn btn-klein btn-stil" href="{{ url_for('account.instellingen') }}">⚙️ Instellingen</a>
+  </div>
+  {# Eén ingang voor alles wat het gezin aangaat (patch 232): postcode,
+     kinderen, mails, gezinsleden en vrienden staan sámen op de
+     instellingenpagina — niet half hier, half daar. #}
   <div class="dash-snel">
     <a class="dash-tegel" href="{{ url_for('account.friends') }}"><span class="dash-emoji">🤝</span>
       <span class="dash-cijfer">{{ aantal_vrienden }}</span><span>vrienden</span></a>
-    <a class="dash-tegel" href="{{ url_for('account.instellingen') }}"><span class="dash-emoji">⚙️</span>
-      <span>instellingen</span></a>
+    <a class="dash-tegel" href="{{ url_for('account.instellingen') }}"><span class="dash-emoji">📍</span>
+      <span>{{ family.postcode or "postcode" }}</span><span>& straal</span></a>
+    <a class="dash-tegel" href="{{ url_for('account.instellingen') }}"><span class="dash-emoji">🧒</span>
+      <span class="dash-cijfer">{{ family.children|length }}</span><span>kinderen</span></a>
+    <a class="dash-tegel" href="{{ url_for('account.instellingen') }}"><span class="dash-emoji">📬</span>
+      <span>{{ 'aan' if family.newsletter_opt_in else 'uit' }}</span><span>weekmail</span></a>
   </div>
   {% if not aantal_vrienden %}
   <div class="kaartje vrienden-uitnodiging">
