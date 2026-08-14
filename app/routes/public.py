@@ -1614,14 +1614,35 @@ def health():
 @bp.route("/manifest.webmanifest")
 def manifest():
     import json
+    from ..models import get_bool
+    snelkoppelingen = [
+        {"name": "Wat doen we vandaag?", "short_name": "Vandaag",
+         "url": "/vandaag"},
+        {"name": "Op de kaart", "short_name": "Kaart", "url": "/verkennen"},
+    ]
+    if get_bool("routes_in_menu"):
+        snelkoppelingen.append({"name": "Gezinsfietsroutes",
+                                "short_name": "Fietsroutes",
+                                "url": "/fietsroutes"})
     return Response(json.dumps({
+        # 'id' vastzetten (patch 227) zodat een geïnstalleerde app bij een
+        # latere wijziging van start_url niet als tweede app verschijnt.
+        "id": "/", "scope": "/",
         "name": "Ravot", "short_name": "Ravot",
         "description": "Waar gaan we vandaag ravotten?",
         "start_url": "/", "display": "standalone",
         "background_color": "#FAF7F0", "theme_color": "#2E7D46",
+        "lang": "nl-BE", "dir": "ltr", "orientation": "portrait",
+        "categories": ["lifestyle", "travel", "education"],
+        # Snelkoppelingen bij lang indrukken op het app-icoon.
+        "shortcuts": [{**s, "icons": [{"src": "/static/img/icon-192.png",
+                                       "sizes": "192x192"}]}
+                      for s in snelkoppelingen],
         "icons": [
             {"src": "/static/img/icon-192.png", "sizes": "192x192", "type": "image/png"},
             {"src": "/static/img/icon-512.png", "sizes": "512x512", "type": "image/png"},
+            {"src": "/static/img/icon-512.png", "sizes": "512x512",
+             "type": "image/png", "purpose": "maskable"},
         ],
     }), mimetype="application/manifest+json")
 
