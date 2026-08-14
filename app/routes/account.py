@@ -71,11 +71,14 @@ def onboarding():
             postcode = (guest_profile().get("postcode") or "")[:4]
         from ..trechter import tel_stap
         tel_stap("account", eenmalig=False)
+        # Straal en budget staan niet meer op het welkomstscherm (patch 233):
+        # ze verfijnen het portaal, en daar zoeken mensen zelf. Ze blijven
+        # instelbaar in de gezinsinstellingen; hier gelden de standaarden.
         fam = Family(
             email=email,
             postcode=postcode,
-            radius_km=int(request.form.get("radius", 25)),
-            budget_pref=request.form.get("budget", "all"),
+            radius_km=int(request.form.get("radius", 25) or 25),
+            budget_pref=request.form.get("budget", "all") or "all",
             newsletter_opt_in=request.form.get("newsletter") == "on",  # expliciete opt-in
             display_name=(request.form.get("display_name") or "").strip()[:80] or None,
         )

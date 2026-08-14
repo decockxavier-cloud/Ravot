@@ -487,7 +487,10 @@ def test_kindveld_neemt_bestaand_veld_over(app):
     assert "cloneNode(true)" in js and "wrap.querySelector(\"input\")" in js
     # beide formulieren vragen nu het geboortejaar (patch 117)
     assert "geboortejaar" in open("app/templates/public/proberen.html").read()
-    assert "geboortejaar" in open("app/templates/account/onboarding.html").read()
+    # p233: het welkomstscherm vraagt alleen nog de postcode; de kindvelden
+    # (met dezelfde kloon-logica) staan nu in de gezinsinstellingen.
+    assert "geboortejaar" in open(
+        "app/templates/account/instellingen.html").read()
 
 
 def test_zoekvak_op_vandaag_zoekt_echt(app):

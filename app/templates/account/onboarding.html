@@ -1,46 +1,48 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Welkom bij Ravot 🎉</h1>
-<p class="hint">Eén minuut, beloofd. We vragen bewust zo weinig mogelijk: geen namen van je kinderen, geen adres.</p>
-<div class="card">
+<h1>Welkom bij Ravot 🦊</h1>
+<p class="hint">Je profiel staat klaar. Nog één ding — of sla het over en begin
+  meteen.</p>
+
+<div class="card" style="max-width:520px">
   <form method="post">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <label>In welk jaar zijn je kinderen geboren?
-      <span class="hint">(optioneel — je kunt dit later invullen)</span></label>
-    <div id="kinderen">
-      <div class="kind-rij">
-        <input type="number" name="birth_year" min="{{ current_year - 17 }}" max="{{ current_year }}"
-               placeholder="geboortejaar (bv. {{ current_year - 6 }})" inputmode="numeric">
-        <button type="button" class="kind-weg" aria-label="verwijder">×</button>
-      </div>
+
+    {# Eén vraag (patch 233): de postcode is het enige dat we écht nodig hebben
+       om de weekmail en afstanden te laten werken. Al de rest — straal,
+       categorieën, budget, weergavenaam — verfijnt vooral het portaal, en daar
+       zoeken mensen toch zelf. Dat staat nu in de instellingen. #}
+    <label for="pc" style="font-weight:700">📍 Waar wonen jullie?</label>
+    <p class="hint" style="margin:2px 0 8px">Zo tonen we hoe ver elke plek van
+      jullie ligt — en sturen we je de juiste tips.</p>
+    <input id="pc" type="text" name="postcode" data-plaatsen data-zelf="postcode"
+           inputmode="numeric" maxlength="30" autofocus
+           placeholder="Postcode of gemeente, bv. 8800">
+
+    <label class="chip" style="margin-top:14px">
+      {# Bewust NIET vooraangevinkt: onder de GDPR is toestemming pas geldig
+         bij een actieve handeling — een vooraangevinkt vakje telt niet
+         (Planet49-arrest). Bovendien past stilzwijgend inschrijven niet bij
+         "geen gedoe, geen reclame". #}
+      <input type="checkbox" name="newsletter">
+      <span><strong>📬 Ja, stuur me donderdags de weekendmail</strong> met
+        uitstappen in onze buurt
+        <span class="hint">(altijd met één klik uitschrijfbaar)</span></span></label>
+
+    <div class="acties" style="margin-top:16px">
+      <button class="btn btn-zon" type="submit">Klaar — toon activiteiten</button>
+      <button class="btn btn-stil" type="submit" name="overslaan" value="1">Sla over</button>
     </div>
-    <button type="button" class="kind-toevoegen" data-add-kind>+ nog een kind</button>
-    <p class="hint">We bewaren alleen het geboortejaar — geen namen, geen geboortedatum.
-    Maximale privacy, en de leeftijd groeit elk jaar vanzelf mee.</p>
-    <label for="pc">Postcode</label>
-    <input id="pc" type="text" name="postcode" data-plaatsen data-zelf="postcode" inputmode="numeric" maxlength="30" required placeholder="Postcode of gemeente, bv. 8800">
-    <label for="rad">Hoe ver willen jullie rijden?</label>
-    <select id="rad" name="radius">
-      <option value="10">tot 10 km</option>
-      <option value="25" selected>tot 25 km</option>
-      <option value="50">tot 50 km</option>
-    </select>
-    <label>Waar worden jullie blij van?</label>
-    <div class="chips">
-      {% for cat in categories %}
-      <label class="chip"><input type="checkbox" name="interest" value="{{ cat }}"><span>{{ cat }}</span></label>
-      {% endfor %}
-    </div>
-    <label for="bud">Budget</label>
-    <select id="bud" name="budget">
-      <option value="all" selected>alles mag</option>
-      <option value="low">liefst goedkoop</option>
-      <option value="free">enkel gratis</option>
-    </select>
-    <label for="dn">Naam voor je vrienden <span class="hint" style="display:inline">(optioneel)</span></label>
-    <input id="dn" type="text" name="display_name" maxlength="80" placeholder="Familie Jansens">
-    <label class="chip" style="margin-top:14px"><input type="checkbox" name="newsletter" checked><span>📬 Stuur me donderdags de weekendmail (altijd 1-klik uitschrijfbaar)</span></label>
-    <div class="acties"><button class="btn" type="submit">Klaar — toon activiteiten</button></div>
   </form>
 </div>
+
+<p class="hint" style="max-width:520px">
+  🦊 <strong>Wat levert je profiel op?</strong> Je spaart ravotpunten met elke
+  bijdrage — een bezoek bevestigen, een score geven, een foto insturen — en
+  wisselt ze in voor cadeaubonnen. En je krijgt elke week uitstappen in jullie
+  buurt in je mailbox.<br>
+  <span style="opacity:.8">Kinderen, straal en budget invullen kan later in
+    <a href="{{ url_for('account.instellingen') }}">de instellingen</a>; dat
+    verfijnt de tips.</span>
+</p>
 {% endblock %}
