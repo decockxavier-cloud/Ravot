@@ -1593,6 +1593,7 @@ def llms():
 def sitemap():
     site = current_app.config["SITE_URL"]
     urls = [f"{site}/", f"{site}/weekend", f"{site}/verkennen"]
+    lastmods = {}
     # Enkel publiek zichtbare fiches: geen pending (detail geeft 404, dus
     # Google zou dode links crawlen) en geen hidden dubbels (duplicate content).
     from ..models import Artikel, FietsRoute
@@ -1616,17 +1617,27 @@ def sitemap():
             for facet in FACETS:
                 urls.append(f"{site}/{g_.lower()}/{facet}")
     # Permanente plekken (start=NULL) zijn de evergreen-pagina's: altijd mee.
-    for (slug,) in db.session.query(Event.slug).filter(
+    for slug, gewijzigd in db.session.query(Event.slug, Event.updated_at).filter(
             *publiek, Event.slug.isnot(None),
             db.or_(Event.is_permanent.is_(True),
                    Event.start >= datetime.utcnow() - timedelta(days=1))).all():
-        urls.append(f"{site}/e/{slug}")
+        u = f"{site}/e/{slug}"
+        urls.append(u)
+        if gewijzigd:
+            lastmods[u] = gewijzigd.strftime("%Y-%m-%d")
     from ..models import EditionSeries
     for (slug,) in db.session.query(EditionSeries.slug).all():
         urls.append(f"{site}/uitstap/{slug}")
+    # lastmod erbij (patch 235): zonder wijzigingsdatum moet Google gokken
+    # welke van je duizenden pagina's het opnieuw moet bekijken. Met een datum
+    # herkent het gerichter wat er veranderd is — belangrijk nu de fiches en
+    # gemeentepagina's inhoudelijk zijn bijgewerkt.
+    vandaag = datetime.utcnow().strftime("%Y-%m-%d")
     xml = ['<?xml version="1.0" encoding="UTF-8"?>',
            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
-    xml += [f"<url><loc>{u}</loc></url>" for u in urls]
+    for u in urls:
+        xml.append(f"<url><loc>{u}</loc>"
+                   f"<lastmod>{lastmods.get(u, vandaag)}</lastmod></url>")
     xml.append("</urlset>")
     return Response("".join(xml), mimetype="application/xml")
 
