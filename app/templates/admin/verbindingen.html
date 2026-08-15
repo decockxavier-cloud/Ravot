@@ -115,6 +115,21 @@ elke nacht automatisch een sync (cron).</p>
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="acties"><button class="btn btn-stil" type="submit">Stuur testmail naar mezelf</button></div>
   </form>
+
+  {# Echte mails proefdraaien (patch 250): zo zie je precies wat een gezin
+     krijgt, zonder datums te moeten vervalsen. Het gezin zelf krijgt niets. #}
+  <p class="hint" style="margin:12px 0 4px"><strong>Echte mails testen</strong> —
+    opgebouwd met de gegevens van een bestaand gezin, verstuurd naar jouw adres:</p>
+  <div class="acties">
+    <form method="post" action="{{ url_for('admin.test_mail', soort='welkom') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-klein" type="submit">🦊 Welkomstmail</button>
+    </form>
+    <form method="post" action="{{ url_for('admin.test_mail', soort='weekend') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-klein" type="submit">📬 Weekendmail</button>
+    </form>
+  </div>
 </div>
 
 <div class="card">

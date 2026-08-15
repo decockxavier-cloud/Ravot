@@ -3592,3 +3592,53 @@ def gemeentecontacten_ophalen():
                       f"{': ' + ', '.join(namen) if namen else ''}.")
     flash(boodschap, "ok")
     return redirect(url_for("admin.gemeentecontacten"))
+
+
+@bp.route("/test-mail/<soort>", methods=["POST"])
+@medewerker_required
+@limiter.limit("10/hour")
+def test_mail(soort):
+    """Stuur een échte mail naar je eigen adres, met echte inhoud (patch 250).
+
+    Zo zie je de weekendmail of welkomstmail precies zoals een gezin ze krijgt,
+    zonder datums te moeten vervalsen. Het gezin dat als voorbeeld dient wordt
+    niet aangeraakt: we sturen alleen naar de ingelogde beheerder.
+    """
+    from ..models import Family
+    from ..services.magic import send_mail
+    if soort not in ("welkom", "weekend"):
+        abort(404)
+    admin = db.session.get(Admin, session["admin_id"])
+    if not admin or not admin.email:
+        flash("Geen e-mailadres bij je beheerdersaccount.", "error")
+        return redirect(url_for("admin.verbindingen"))
+
+    # Een gezin als voorbeeld: liefst een met postcode, anders het eerste.
+    fam = (Family.query.filter(Family.postcode.isnot(None))
+           .order_by(Family.id.desc()).first()
+           or Family.query.order_by(Family.id.desc()).first())
+    if fam is None:
+        flash("Nog geen enkel gezin in de databank — maak er eerst één aan.",
+              "error")
+        return redirect(url_for("admin.verbindingen"))
+
+    try:
+        if soort == "welkom":
+            from ..services.welkomstmail import bouw
+            onderwerp, html, tekst = bouw(fam)
+        elif soort == "weekend":
+            from ..services.weekendmail import bouw_weekendmail
+            html, tekst, picks = bouw_weekendmail(fam)
+            if not html:
+                flash("Geen activiteiten gevonden voor dit gezin — de "
+                      "weekendmail zou nu ook niet vertrekken.", "error")
+                return redirect(url_for("admin.verbindingen"))
+            onderwerp = "Dit weekend in jullie buurt"
+        send_mail(admin.email, f"[TEST] {onderwerp}", html, text=tekst)
+    except Exception as exc:
+        flash(f"Testmail mislukte: {str(exc)[:160]}", "error")
+        return redirect(url_for("admin.verbindingen"))
+    audit(f"testmail '{soort}' verstuurd naar {admin.email}")
+    flash(f"Testmail verstuurd naar {admin.email} — opgebouwd met de gegevens "
+          f"van gezin #{fam.id}. Het gezin zelf kreeg niets.", "ok")
+    return redirect(url_for("admin.verbindingen"))
