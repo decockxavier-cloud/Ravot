@@ -2,6 +2,22 @@
 {% block admin_content %}
 <a href="{{ url_for('admin.gemeentecontacten') }}" class="terug-link">← Gemeentecontacten</a>
 <h1>📥 Contacten importeren</h1>
+
+<div class="card" style="border-color:var(--groen)">
+  <h2 style="margin-top:0">🇧🇪 Uit de open data van Toerisme Vlaanderen</h2>
+  <p class="hint">De officiële dataset met toeristische infokantoren
+    (Modellicentie Gratis Hergebruik). Eén klik en de lijst staat er —
+    handmatig verzamelen hoeft niet meer. Adressen die je zelf invulde blijven
+    ongemoeid.</p>
+  <form method="post" action="{{ url_for('admin.gemeentecontacten_ophalen') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-zon" type="submit">Ophalen bij Toerisme Vlaanderen</button>
+  </form>
+  <p class="hint" style="margin:8px 0 0">Duurt enkele seconden. Je kunt dit
+    later herhalen om de lijst te verversen.</p>
+</div>
+
+<h2>Of een eigen bestand</h2>
 <p class="hint">Laad een lijst met toeristische diensten in. Verwachte kolommen
   (eerste rij = koppen): <code>Provincie · Gemeente · Dienst · E-mail ·
   Telefoon · Plaats · Bron · Opmerking</code>. Zowel .xlsx als .csv werkt.</p>

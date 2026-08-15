@@ -1554,6 +1554,23 @@ def register_cli(app):
             db.session.commit()
             raise
 
+    @app.cli.command("haal-infokantoren")
+    def haal_infokantoren():
+        """Toeristische infokantoren ophalen uit de open data van Toerisme
+        Vlaanderen en koppelen aan de gemeentecontacten."""
+        from .models import Event
+        from .routes.admin import _gemeente_token
+        from .services import infokantoren
+        bekend = {}
+        for (g,) in db.session.query(Event.gemeente).filter(
+                Event.gemeente.isnot(None)).distinct().all():
+            if g:
+                bekend[g.strip().lower()] = g.strip()
+        nieuw, aangevuld, overgeslagen, onbekend, namen = \
+            infokantoren.importeer(bekend, _gemeente_token)
+        click.echo(f"{nieuw} nieuw, {aangevuld} aangevuld, "
+                   f"{overgeslagen} overgeslagen, {onbekend} niet gekoppeld.")
+
     @app.cli.command("send-welkomstmail")
     def send_welkomstmail():
         """Welkomstmail, één dag na registratie (cron: dagelijks)."""
