@@ -112,3 +112,53 @@ def test_storing_bij_de_bron_hindert_niet(client, app):
         h = client.post("/beheer/gemeentecontacten/ophalen",
                         follow_redirects=True).get_data(as_text=True)
     assert "Ophalen mislukt" in h
+
+
+def test_schrijfwijzeverschillen_koppelen_toch(client, app):
+    """Patch 251: Sint-Truiden werd gemeld als 'geen aanbod' terwijl er 152
+    fiches stonden — de brondata schrijft gemeenten net anders."""
+    from app.models import GemeenteContact
+    varianten = {"data": [
+        {"name": "Toerisme Sint-Truiden", "main_city_name": "Sint Truiden",
+         "city_name": "Sint-Truiden", "email": "toerisme@sint-truiden.be"},
+        {"name": "Visit Schilde", "main_city_name": "Schilde",
+         "city_name": "'s Gravenwezel", "email": "toerisme@schilde.be"},
+        {"name": "Toerisme Hoegaarden", "main_city_name": "HOEGAARDEN",
+         "email": "toerisme@hoegaarden.be"},
+        {"name": "Elders", "main_city_name": "Verweggistan", "email": "x@v.be"},
+    ]}
+
+    class _V:
+        status_code = 200
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return varianten
+
+    with app.app_context():
+        db.session.add(Admin(email="ik251@r.be",
+                             pw_hash=PasswordHasher().hash("x"), role="admin",
+                             totp_secret="JBSWY3DPEHPK3PXP",
+                             totp_confirmed=True))
+        for gem in ("Sint-Truiden", "'s Gravenwezel", "Hoegaarden"):
+            db.session.add(Event(title="S", slug=f"ik251-{gem}", source="osm",
+                                 ext_id=f"ik251-{gem}", is_permanent=True,
+                                 pending=False, hidden=False, lat=51.0,
+                                 lng=3.5, gemeente=gem, subtype="playground"))
+        db.session.commit()
+        aid = Admin.query.filter_by(email="ik251@r.be").first().id
+    with client.session_transaction() as s:
+        s["admin_id"] = aid
+        s["admin_2fa_ok"] = True
+        s["admin_rol"] = "admin"
+    from app.services import infokantoren as IK
+    with patch.object(IK.requests, "get", return_value=_V()):
+        h = client.post("/beheer/gemeentecontacten/ophalen",
+                        follow_redirects=True).get_data(as_text=True)
+    with app.app_context():
+        assert db.session.get(GemeenteContact, "sint-truiden") is not None
+        assert db.session.get(GemeenteContact, "'s gravenwezel") is not None
+        assert db.session.get(GemeenteContact, "hoegaarden") is not None
+    assert "Verweggistan" in h            # echt onbekend blijft gemeld

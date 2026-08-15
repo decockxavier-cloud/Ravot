@@ -41,16 +41,38 @@ def haal_records(max_paginas=20):
     return records
 
 
+def normaliseer(naam):
+    """Gemeentenaam vergelijkbaar maken (patch 251).
+
+    Sint-Truiden werd gemeld als 'geen aanbod' terwijl er 152 fiches staan:
+    de brondata schrijft gemeenten net anders (koppeltekens, apostroffen,
+    hoofdletters, dubbele spaties). Voor de vergelijking strippen we dat weg —
+    de echte naam uit Ravot blijft leidend voor wat we tonen.
+    """
+    import unicodedata
+    tekst = unicodedata.normalize("NFKD", (naam or "").strip().lower())
+    tekst = "".join(c for c in tekst if not unicodedata.combining(c))
+    for teken in ("'", "\u2019", "-", ".", ","):
+        tekst = tekst.replace(teken, " ")
+    return " ".join(tekst.split())
+
+
 def naar_contacten(records):
-    """Records omzetten naar (gemeente, dienst, email, notitie), ontdubbeld."""
+    """Records omzetten naar (gemeente, dienst, email, notitie), ontdubbeld.
+
+    We houden beide plaatsnamen bij: main_city_name is de fusiegemeente,
+    city_name de deelgemeente. Ravot kent er soms maar één van, dus proberen
+    we ze allebei bij het koppelen.
+    """
     uit = []
     gezien = set()
     for rec in records:
         if str(rec.get("deleted", "0")) == "1":
             continue
         naam = (rec.get("name") or "").strip()
-        gemeente = (rec.get("main_city_name")
-                    or rec.get("city_name") or "").strip()
+        hoofd = (rec.get("main_city_name") or "").strip()
+        deel = (rec.get("city_name") or "").strip()
+        gemeente = hoofd or deel
         email = (rec.get("email") or "").strip()
         if not naam or not gemeente or "@" not in email:
             continue
@@ -69,6 +91,7 @@ def naar_contacten(records):
             notitie.append(f"bron bijgewerkt {gewijzigd}")
         uit.append({
             "gemeente": gemeente,
+            "namen": [n for n in (hoofd, deel) if n],
             "dienst": naam[:160],
             "email": email[:255],
             "notitie": " · ".join(notitie)[:4000] or None,
@@ -88,9 +111,24 @@ def importeer(bekende_gemeenten, maak_token):
     contacten = naar_contacten(records)
     nieuw = aangevuld = overgeslagen = onbekend = 0
     onbekende_namen = []
+    # Zoektabel op genormaliseerde naam, zodat schrijfwijzeverschillen
+    # (Sint-Truiden / Sint Truiden / 's Gravenwezel) toch koppelen.
+    genormaliseerd = {normaliseer(echt): sleutel
+                      for sleutel, echt in bekende_gemeenten.items()}
+    genormaliseerd.update({normaliseer(s): s for s in bekende_gemeenten})
+
     for c in contacten:
-        sleutel = c["gemeente"].strip().lower()
-        if sleutel not in bekende_gemeenten:
+        sleutel = None
+        for kandidaat in c["namen"] or [c["gemeente"]]:
+            direct = kandidaat.strip().lower()
+            if direct in bekende_gemeenten:
+                sleutel = direct
+                break
+            gevonden = genormaliseerd.get(normaliseer(kandidaat))
+            if gevonden:
+                sleutel = gevonden
+                break
+        if sleutel is None:
             onbekend += 1
             if len(onbekende_namen) < 25:
                 onbekende_namen.append(c["gemeente"])
