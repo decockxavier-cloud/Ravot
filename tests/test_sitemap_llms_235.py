@@ -32,7 +32,7 @@ def test_fiche_krijgt_zijn_eigen_wijzigingsdatum(client, app):
         ev.updated_at = oud
         db.session.commit()
         verwacht = oud.strftime("%Y-%m-%d")
-    h = client.get("/sitemap.xml").get_data(as_text=True)
+    h = client.get("/sitemap-fiches.xml").get_data(as_text=True)
     blok = re.search(r"<url><loc>[^<]*/e/sm235-oud</loc><lastmod>([^<]+)", h)
     assert blok and blok.group(1) == verwacht
 
@@ -46,8 +46,9 @@ def test_fietsroutes_staan_in_de_sitemap(client, app):
                                   gemeente="Roeselare", regio="Leiestreek",
                                   start_lat=50.94, start_lng=3.12))
         db.session.commit()
-    h = client.get("/sitemap.xml").get_data(as_text=True)
-    assert "/fietsroutes<" in h and "sm235-route" in h
+    kern = client.get("/sitemap-kern.xml").get_data(as_text=True)
+    routes = client.get("/sitemap-routes.xml").get_data(as_text=True)
+    assert "/fietsroutes<" in kern and "sm235-route" in routes
 
 
 def test_llms_txt_kent_de_fietsroutes(client, app):

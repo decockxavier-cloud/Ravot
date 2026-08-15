@@ -47,9 +47,12 @@ def test_sitemap_lists_gemeente_above_threshold(client, seed):
                          start=e.start, end=e.end, gemeente="Roeselare", postcode="8800",
                          lat=50.94, lng=3.12, age_min=2, age_max=10, is_free=True))
     db.session.commit()
-    xml = client.get("/sitemap.xml").get_data(as_text=True)
+    # p236: gemeentepagina's hebben een eigen deelsitemap
+    xml = client.get("/sitemap-gemeenten.xml").get_data(as_text=True)
     assert "/roeselare</loc>" in xml
-    assert "/uitstap/kinderboerderij-roeselare" in xml  # permanente reekspagina
+    # p236: reekspagina's staan bij de fiches, niet bij de gemeenten
+    fiches = client.get("/sitemap-fiches.xml").get_data(as_text=True)
+    assert "/uitstap/kinderboerderij-roeselare" in fiches
 
 
 def test_past_event_redirects_to_series(client, seed):

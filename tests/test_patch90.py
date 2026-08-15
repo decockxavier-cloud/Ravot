@@ -21,7 +21,8 @@ def test_sitemap_weert_pending_en_hidden(client, app):
         _event(uit_id="s1", slug="zichtbaar-ev", title="Zichtbaar")
         _event(uit_id="s2", slug="pending-ev", title="Pending", pending=True)
         _event(uit_id="s3", slug="hidden-ev", title="Hidden", hidden=True)
-    xml = client.get("/sitemap.xml").data
+    # p236: fiches staan in hun eigen deelsitemap
+    xml = client.get("/sitemap-fiches.xml").data
     assert b"/e/zichtbaar-ev" in xml
     assert b"/e/pending-ev" not in xml
     assert b"/e/hidden-ev" not in xml
@@ -31,7 +32,8 @@ def test_sitemap_bevat_permanente_plekken(client, app):
     with app.app_context():
         _event(uit_id="s4", slug="perma-speeltuin", title="Speeltuin",
                is_permanent=True, start=None, end=None)
-    xml = client.get("/sitemap.xml").data
+    # p236: fiches staan in hun eigen deelsitemap
+    xml = client.get("/sitemap-fiches.xml").data
     assert b"/e/perma-speeltuin" in xml
 
 

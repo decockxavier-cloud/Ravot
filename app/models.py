@@ -533,6 +533,8 @@ SETTING_DEFS = {
                               "dus een plafond voorkomt eindeloos doorklikken)", "text"),
     "social_facebook": ("", "Facebook-pagina van Ravot (volledige URL, leeg = geen knop)", "text"),
     "social_instagram": ("", "Instagram-pagina van Ravot (volledige URL, leeg = geen knop)", "text"),
+    "sitemap_min_per_gemeente": ("3", "Sitemap: minimum aantal activiteiten "
+                                "voor een gemeentepagina", "int"),
     "tv_max": ("2000", "Toerisme Vlaanderen: maximum aantal items per sync", "text"),
     "social_tiktok": ("", "TikTok-pagina van Ravot (volledige URL, leeg = geen knop)", "text"),
     "netwerk_bron_url": ("", "Routegenerator: GeoJSON-URL van het "

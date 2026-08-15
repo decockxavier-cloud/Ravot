@@ -1589,57 +1589,134 @@ def llms():
     return Response(txt, mimetype="text/plain")
 
 
+def _sitemap_xml(rijen):
+    """Bouw één sitemap-bestand uit [(url, lastmod), ...]."""
+    xml = ['<?xml version="1.0" encoding="UTF-8"?>',
+           '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    for u, lm in rijen:
+        xml.append(f"<url><loc>{u}</loc><lastmod>{lm}</lastmod></url>")
+    xml.append("</urlset>")
+    return Response("".join(xml), mimetype="application/xml")
+
+
+def _fiche_verdient_indexering(ev):
+    """Heeft deze fiche genoeg eigen inhoud om te kunnen ranken? (patch 236)
+
+    Google besteedt aan een jong domein maar beperkt crawlbudget. Met bijna
+    40.000 URL's ging dat op aan kale OSM-punten ("Speeltuin — Kerkstraat",
+    geen foto, geen tekst, geen score) — waardoor de gemeentepagina's, die
+    wél kunnen ranken, nooit gecrawld werden.
+
+    Een fiche komt in de sitemap als ze iets eigens heeft: een beschrijving,
+    een foto, een gezinsscore, een claim van de uitbater, of een deftige
+    kwaliteitsscore. Alle fiches blijven gewoon bereikbaar en gelinkt — ze
+    staan alleen niet in de sitemap.
+    """
+    if ev.partner_until:
+        return True                      # partner: altijd indexeerbaar
+    # Onder de lijstdrempel is een fiche op de site zélf nergens gelinkt (ze
+    # valt uit gemeentepagina's en /ontdek). Zulke pagina's in de sitemap
+    # zetten leverde Google verweesde URL's op: gecrawld, nergens naartoe.
+    drempel = get_int("kwaliteit_min_lijst", 30)
+    if ev.quality is not None and ev.quality < drempel:
+        return False
+    # Geen kwaliteitsscore = de site toont de fiche ook (zie bron_filter):
+    # dat zijn doorgaans events uit UiTdatabank mét eigen inhoud. De sitemap
+    # volgt de site — anders zetten we pagina's in de sitemap die nergens
+    # gelinkt zijn, of omgekeerd.
+    return True
+
+
 @bp.route("/sitemap.xml")
 def sitemap():
+    """Sitemap-index (patch 236).
+
+    Eén bestand met 40.000 URL's liet Google zijn crawlbudget opgaan aan kale
+    fiches, waardoor de gemeentepagina's nooit gecrawld werden. Nu drie
+    bestanden, met de pagina's die kúnnen ranken eerst.
+    """
     site = current_app.config["SITE_URL"]
-    urls = [f"{site}/", f"{site}/weekend", f"{site}/verkennen"]
-    lastmods = {}
-    # Enkel publiek zichtbare fiches: geen pending (detail geeft 404, dus
-    # Google zou dode links crawlen) en geen hidden dubbels (duplicate content).
-    from ..models import Artikel, FietsRoute
-    urls.append(f"{site}/blog")
-    urls.append(f"{site}/fietsroutes")
+    vandaag = datetime.utcnow().strftime("%Y-%m-%d")
+    delen = ["kern", "gemeenten", "routes", "fiches"]
+    xml = ['<?xml version="1.0" encoding="UTF-8"?>',
+           '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    for d in delen:
+        xml.append(f"<sitemap><loc>{site}/sitemap-{d}.xml</loc>"
+                   f"<lastmod>{vandaag}</lastmod></sitemap>")
+    xml.append("</sitemapindex>")
+    return Response("".join(xml), mimetype="application/xml")
+
+
+@bp.route("/sitemap-kern.xml")
+def sitemap_kern():
+    site = current_app.config["SITE_URL"]
+    vandaag = datetime.utcnow().strftime("%Y-%m-%d")
+    from ..models import Artikel
+    urls = [f"{site}/", f"{site}/weekend", f"{site}/verkennen",
+            f"{site}/ontdek", f"{site}/blog", f"{site}/fietsroutes",
+            f"{site}/hoe-werkt-het", f"{site}/ravotscore"]
+    rijen = [(u, vandaag) for u in urls]
+    for a in Artikel.query.filter(Artikel.gepubliceerd.is_(True)).all():
+        lm = (a.publicatie_datum or datetime.utcnow()).strftime("%Y-%m-%d")
+        rijen.append((f"{site}/blog/{a.slug}", lm))
+    return _sitemap_xml(rijen)
+
+
+@bp.route("/sitemap-gemeenten.xml")
+def sitemap_gemeenten():
+    """De pagina's die overzichtszoektermen moeten winnen — apart, zodat ze
+    niet ondersneeuwen tussen de fiches."""
+    site = current_app.config["SITE_URL"]
+    vandaag = datetime.utcnow().strftime("%Y-%m-%d")
+    publiek = [Event.pending.is_(False), Event.hidden.is_(False)]
+    rijen = []
+    tellingen = (db.session.query(Event.gemeente, db.func.count(Event.id))
+                 .filter(*publiek, Event.gemeente.isnot(None))
+                 .group_by(Event.gemeente).all())
+    drempel = get_int("sitemap_min_per_gemeente", 3)
+    for gemeente, n in tellingen:
+        if not gemeente or n < drempel:
+            continue        # te dun: zo'n pagina rankt toch niet
+        pad = gemeente.strip().lower()
+        rijen.append((f"{site}/{pad}", vandaag))
+        for facet in FACETS:
+            rijen.append((f"{site}/{pad}/{facet}", vandaag))
+    return _sitemap_xml(rijen)
+
+
+@bp.route("/sitemap-routes.xml")
+def sitemap_routes():
+    site = current_app.config["SITE_URL"]
+    vandaag = datetime.utcnow().strftime("%Y-%m-%d")
+    from ..models import FietsRoute
+    rijen = []
     for r in FietsRoute.query.filter_by(pending=False, hidden=False).all():
-        urls.append(f"{site}/fietsroutes/{r.slug}")
-    for a in Artikel.query.filter_by(gepubliceerd=True).all():
-        urls.append(f"{site}/blog/{a.slug}")
-    publiek = [Event.hidden.is_(False), Event.pending.is_(False)]
-    from ..models import get_bool
-    if not get_bool("uit_zichtbaar"):
-        publiek.append(Event.source != "uit")
-    publiek = tuple(publiek)
-    gemeenten = db.session.query(Event.gemeente, db.func.count(Event.id)) \
-        .filter(Event.gemeente.isnot(None), *publiek) \
-        .group_by(Event.gemeente).all()
-    for g_, n in gemeenten:
-        if n >= current_app.config["NOINDEX_MIN_EVENTS"]:
-            urls.append(f"{site}/{g_.lower()}")
-            for facet in FACETS:
-                urls.append(f"{site}/{g_.lower()}/{facet}")
-    # Permanente plekken (start=NULL) zijn de evergreen-pagina's: altijd mee.
-    for slug, gewijzigd in db.session.query(Event.slug, Event.updated_at).filter(
+        lm = (r.updated_at or datetime.utcnow()).strftime("%Y-%m-%d") \
+            if hasattr(r, "updated_at") and r.updated_at else vandaag
+        rijen.append((f"{site}/fietsroutes/{r.slug}", lm))
+    return _sitemap_xml(rijen)
+
+
+@bp.route("/sitemap-fiches.xml")
+def sitemap_fiches():
+    """Alleen fiches met eigen inhoud: kale OSM-punten kosten crawlbudget en
+    ranken toch nooit. Ze blijven wel gewoon bereikbaar en gelinkt."""
+    site = current_app.config["SITE_URL"]
+    vandaag = datetime.utcnow().strftime("%Y-%m-%d")
+    from ..models import EditionSeries
+    publiek = [Event.pending.is_(False), Event.hidden.is_(False)]
+    rijen = []
+    for ev in Event.query.filter(
             *publiek, Event.slug.isnot(None),
             db.or_(Event.is_permanent.is_(True),
                    Event.start >= datetime.utcnow() - timedelta(days=1))).all():
-        u = f"{site}/e/{slug}"
-        urls.append(u)
-        if gewijzigd:
-            lastmods[u] = gewijzigd.strftime("%Y-%m-%d")
-    from ..models import EditionSeries
+        if not _fiche_verdient_indexering(ev):
+            continue
+        lm = ev.updated_at.strftime("%Y-%m-%d") if ev.updated_at else vandaag
+        rijen.append((f"{site}/e/{ev.slug}", lm))
     for (slug,) in db.session.query(EditionSeries.slug).all():
-        urls.append(f"{site}/uitstap/{slug}")
-    # lastmod erbij (patch 235): zonder wijzigingsdatum moet Google gokken
-    # welke van je duizenden pagina's het opnieuw moet bekijken. Met een datum
-    # herkent het gerichter wat er veranderd is — belangrijk nu de fiches en
-    # gemeentepagina's inhoudelijk zijn bijgewerkt.
-    vandaag = datetime.utcnow().strftime("%Y-%m-%d")
-    xml = ['<?xml version="1.0" encoding="UTF-8"?>',
-           '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
-    for u in urls:
-        xml.append(f"<url><loc>{u}</loc>"
-                   f"<lastmod>{lastmods.get(u, vandaag)}</lastmod></url>")
-    xml.append("</urlset>")
-    return Response("".join(xml), mimetype="application/xml")
+        rijen.append((f"{site}/uitstap/{slug}", vandaag))
+    return _sitemap_xml(rijen)
 
 
 @bp.route("/health")
