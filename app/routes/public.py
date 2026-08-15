@@ -2552,15 +2552,44 @@ def gemeente_bijdrage(token):
         abort(404)
     naam = c.gemeente.title()
     tekst = db.session.get(GemeenteTekst, c.gemeente)
-    plekken = (Event.query
-               .filter(Event.pending.is_(False), Event.hidden.is_(False),
-                       db.func.lower(Event.gemeente) == c.gemeente)
-               .order_by(Event.image_url.is_(None).desc(), Event.title)
-               .limit(400).all())
-    zonder_foto = [e for e in plekken if not e.image_url]
+    from ..types import groep_van
+
+    basis = Event.query.filter(Event.pending.is_(False),
+                               Event.hidden.is_(False),
+                               db.func.lower(Event.gemeente) == c.gemeente)
+    # Tellers per soort (patch 242): een dienst toerisme wil zijn speeltuinen
+    # kunnen kiezen zonder eerst tweehonderd frituren voorbij te scrollen.
+    alles = basis.all()
+    per_groep = {"ravotten": 0, "beleven": 0, "smullen": 0}
+    zonder_foto_totaal = 0
+    for e in alles:
+        g = groep_van(e)
+        if g in per_groep:
+            per_groep[g] += 1
+        if not e.image_url:
+            zonder_foto_totaal += 1
+
+    groep = (request.args.get("groep") or "").strip()
+    enkel_zonder = request.args.get("alles") != "1"
+    rijen = [e for e in alles
+             if (not groep or groep_van(e) == groep)
+             and (not enkel_zonder or not e.image_url)]
+    rijen.sort(key=lambda e: ((e.image_url is not None), (e.title or "").lower()))
+
+    # Paginering: Brussel heeft er duizenden, 400 afkappen verbergt werk.
+    per_pagina = 100
+    pagina = max(1, int(request.args.get("p", 1) or 1))
+    totaal = len(rijen)
+    paginas = max(1, (totaal + per_pagina - 1) // per_pagina)
+    pagina = min(pagina, paginas)
+    plekken = rijen[(pagina - 1) * per_pagina:pagina * per_pagina]
+
     return render_template("public/gemeente_bijdrage.html", c=c, naam=naam,
-                           tekst=tekst, plekken=plekken,
-                           zonder_foto=zonder_foto, token=token,
+                           tekst=tekst, plekken=plekken, token=token,
+                           groep=groep, enkel_zonder=enkel_zonder,
+                           per_groep=per_groep, totaal_alles=len(alles),
+                           zonder_foto_totaal=zonder_foto_totaal,
+                           totaal=totaal, pagina=pagina, paginas=paginas,
                            family=None, active=None, noindex=True,
                            title=f"Ravot & {naam}")
 

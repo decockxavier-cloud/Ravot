@@ -769,6 +769,16 @@ def register_cli(app):
             db.session.execute(text(
                 "ALTER TABLE families ALTER COLUMN postcode DROP NOT NULL"))
             added.append("families.postcode nullable")
+        # Nieuwe kolommen op bestaande tabellen: create_all() voegt die niet
+        # toe, alleen ontbrekende tabellen (patch 241).
+        if "gemeente_teksten" in insp.get_table_names():
+            gt_cols = {c["name"] for c in insp.get_columns("gemeente_teksten")}
+            for kolom in ("van_gemeente", "pending"):
+                if kolom not in gt_cols:
+                    db.session.execute(text(
+                        f"ALTER TABLE gemeente_teksten ADD COLUMN IF NOT EXISTS "
+                        f"{kolom} BOOLEAN DEFAULT FALSE NOT NULL"))
+                    added.append(f"gemeente_teksten.{kolom}")
         if "knooppunten" in insp.get_table_names():
             kn_cols = {c["name"] for c in insp.get_columns("knooppunten")}
             if "straat" not in kn_cols:

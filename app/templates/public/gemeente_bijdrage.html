@@ -4,15 +4,19 @@
   <h1 style="margin-top:0">🦊 Ravot &amp; {{ naam }}</h1>
   <p>Ravot is een gratis gezinsgids voor Vlaanderen: ouders zoeken hier waar ze
     met hun kinderen naartoe kunnen. Voor {{ naam }} staan er
-    <strong>{{ plekken|length }}</strong> plekken en activiteiten in —
-    {% if zonder_foto %}<strong>{{ zonder_foto|length }}</strong> daarvan nog
-    zonder foto.{% else %}allemaal met foto.{% endif %}</p>
+    <strong>{{ totaal_alles }}</strong> plekken en activiteiten in —
+    {% if zonder_foto_totaal %}<strong>{{ zonder_foto_totaal }}</strong> daarvan
+    nog zonder foto.{% else %}allemaal met foto.{% endif %}</p>
   <p class="hint">Met deze pagina kunt u meehelpen: schrijf een korte tekst
     over uitstappen met kinderen in {{ naam }}, en voeg foto's toe bij de
     plekken die u kent. Geen account nodig. Alles wordt nagekeken door onze
     redactie voor het online komt. De link blijft een jaar geldig.</p>
-  <p class="hint">Gratis, geen reclame, geen kosten — voor u noch voor de
-    plekken die erop staan.</p>
+  <p class="hint">Meedoen is gratis, voor u en voor de plekken die u aanvult.
+    Ravot is voor bezoekers gratis en zonder pop-ups of bannerreclame.
+    <strong>Wel eerlijk vermeld:</strong> uitbaters kunnen een betaald
+    partnerschap nemen waardoor hun zaak uitgelicht wordt — altijd zichtbaar
+    gelabeld als "Partner", en zonder invloed op scores of volgorde. Wat u
+    aanlevert komt niet achter een betaalmuur.</p>
 </div>
 
 <h2>✍️ Tekst over {{ naam }}</h2>
@@ -43,8 +47,36 @@
 </div>
 
 <h2>📷 Foto's toevoegen</h2>
-<p class="hint">Eén goede foto maakt een plek meteen aantrekkelijker. Plekken
-  zonder foto staan bovenaan.</p>
+<p class="hint">Eén goede foto maakt een plek meteen aantrekkelijker.
+  {{ zonder_foto_totaal }} van de {{ totaal_alles }} plekken in {{ naam }}
+  heeft er nog geen. U hoeft er zeker niet alles mee te doen — kies gerust
+  alleen wat u kent.</p>
+
+{# Filters (patch 242): een dienst toerisme wil zijn speelterreinen kunnen
+   kiezen zonder eerst honderden eetzaken voorbij te scrollen. #}
+<div class="filterrij">
+  <span class="filterrij-label">Soort</span>
+  <a class="chip {{ 'aan' if not groep }}"
+     href="{{ url_for('public.gemeente_bijdrage', token=token, alles='1' if not enkel_zonder else None) }}">Alles</a>
+  {% for sleutel, label, emoji in [('ravotten', 'Spelen', '🛝'),
+                                   ('beleven', 'Beleven', '🎭'),
+                                   ('smullen', 'Eten & drinken', '🍦')] %}
+  {% if per_groep[sleutel] %}
+  <a class="chip {{ 'aan' if groep == sleutel else 'uit' }}"
+     href="{{ url_for('public.gemeente_bijdrage', token=token, groep=sleutel, alles='1' if not enkel_zonder else None) }}">{{ emoji }} {{ label }} ({{ per_groep[sleutel] }})</a>
+  {% endif %}
+  {% endfor %}
+</div>
+<div class="filterrij">
+  <span class="filterrij-label">Tonen</span>
+  <a class="chip {{ 'aan' if enkel_zonder else 'uit' }}"
+     href="{{ url_for('public.gemeente_bijdrage', token=token, groep=groep or None) }}">Enkel zonder foto</a>
+  <a class="chip {{ 'aan' if not enkel_zonder else 'uit' }}"
+     href="{{ url_for('public.gemeente_bijdrage', token=token, groep=groep or None, alles='1') }}">Alles tonen</a>
+</div>
+<p class="hint">{{ totaal }} plek{{ '' if totaal == 1 else 'ken' }} in deze
+  selectie{% if paginas > 1 %} · pagina {{ pagina }} van {{ paginas }}{% endif %}.</p>
+
 {% for e in plekken %}
 <div class="card" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
   <div style="flex:1;min-width:220px">
@@ -62,6 +94,18 @@
   </form>
 </div>
 {% endfor %}
+
+{% if paginas > 1 %}
+<div class="filterrij" style="justify-content:center">
+  {% if pagina > 1 %}
+  <a class="chip" href="{{ url_for('public.gemeente_bijdrage', token=token, groep=groep or None, alles='1' if not enkel_zonder else None, p=pagina-1) }}">← vorige</a>
+  {% endif %}
+  <span class="hint">pagina {{ pagina }} van {{ paginas }}</span>
+  {% if pagina < paginas %}
+  <a class="chip" href="{{ url_for('public.gemeente_bijdrage', token=token, groep=groep or None, alles='1' if not enkel_zonder else None, p=pagina+1) }}">volgende →</a>
+  {% endif %}
+</div>
+{% endif %}
 
 <p class="hint">Vragen of iets aan te passen dat hier niet lukt? Mail ons via
   <a href="{{ url_for('public.contact') }}">de contactpagina</a>.</p>
