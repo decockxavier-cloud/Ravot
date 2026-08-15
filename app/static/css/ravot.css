@@ -1353,3 +1353,8 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 .keuze-regel:hover { border-color: var(--groen); }
 .keuze-regel input { margin-top: 3px; flex: none; width: 18px; height: 18px; }
 .keuze-regel .hint { display: block; margin-top: 2px; }
+
+/* Redactionele gemeentetekst (patch 237) */
+.gemeente-intro { border-left: 4px solid var(--zon); }
+.gemeente-intro p:first-child { margin-top: 0; }
+.gemeente-intro p:last-child, .gemeente-slot p:last-child { margin-bottom: 0; }

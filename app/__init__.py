@@ -764,7 +764,7 @@ def register_cli(app):
                     "ALTER TABLE fietsroutes ADD COLUMN IF NOT EXISTS "
                     "start_adres VARCHAR(200)"))
                 added.append("fietsroutes.start_adres")
-        db.create_all()          # nieuwe tabellen (o.a. trechter_tellers)
+        db.create_all()          # nieuwe tabellen (trechter, gemeente_teksten)
         if "families" in insp.get_table_names():
             db.session.execute(text(
                 "ALTER TABLE families ALTER COLUMN postcode DROP NOT NULL"))

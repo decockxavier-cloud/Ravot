@@ -1,0 +1,29 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<h1>✍️ Gemeenteteksten</h1>
+<p class="hint">Een gemeentepagina zonder eigen woorden is een lijst; met een
+  goede intro is het een gids. Hier zie je waar het loont om te schrijven —
+  gesorteerd op aanbod. <strong>{{ n_klaar }}</strong> van {{ rijen|length }}
+  gemeenten heeft al tekst.</p>
+<p class="hint">💡 Schrijf (of laat schrijven) wat een lijst niet kan zeggen:
+  welke speeltuin overdekt is, waar je bij regen terechtkunt, wat de leukste
+  combinatie is voor een halve dag. Generieke tekst over "de gezellige stad"
+  helpt niet — Google herkent vulling.</p>
+
+<table class="tabel">
+  <tr><th>Gemeente</th><th>Activiteiten</th><th>Routes</th><th>Tekst</th><th></th></tr>
+  {% for r in rijen %}
+  <tr>
+    <td><strong>{{ r.gemeente }}</strong>
+      <div class="hint"><a href="/{{ r.gemeente|lower }}" target="_blank">pagina bekijken ↗</a></div></td>
+    <td>{{ r.aantal }}</td>
+    <td>{{ r.routes or '—' }}</td>
+    <td>{% if r.klaar %}<span class="badge" style="background:#4CA362;color:#fff">✅ klaar</span>
+      {% if r.tekst.auteur %}<div class="hint">{{ r.tekst.auteur }}</div>{% endif %}
+      {% else %}<span class="hint">nog niets</span>{% endif %}</td>
+    <td><a class="btn btn-klein" href="{{ url_for('admin.gemeentetekst_bewerk', gemeente=r.gemeente|lower) }}">
+      {{ 'Bewerken' if r.klaar else 'Schrijven' }}</a></td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

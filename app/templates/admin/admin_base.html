@@ -15,7 +15,7 @@
         {# Elke admin-pagina hoort in precies één sectie: staat een 'active'
            hier niet in, dan klapt het menu dicht bij het openen (patch 208). #}
         {% set sectie = {
-          'content': ['activiteiten', 'nazicht', 'types', 'artikels', 'routes',
+          'content': ['activiteiten', 'nazicht', 'types', 'artikels', 'gemeenteteksten', 'routes',
                       'route-voorstellen', 'bingo'],
           'bronnen': ['horeca-import', 'verbindingen', 'feeds', 'verrijk'],
           'gezinnen': ['families', 'partners', 'feestjes', 'feestprospecten',
@@ -33,6 +33,7 @@
           <a href="{{ url_for('admin.nazicht') }}" class="{{ 'on' if active=='nazicht' }}">Nazicht</a>
           <a href="{{ url_for('admin.types_beheer') }}" class="{{ 'on' if active=='types' }}">Types</a>
           <a href="{{ url_for('admin.artikels') }}" class="{{ 'on' if active=='artikels' }}">Artikels</a>
+        <a href="{{ url_for('admin.gemeenteteksten') }}" class="{{ 'on' if active=='gemeenteteksten' }}">Gemeenteteksten</a>
         <a href="{{ url_for('admin.routes') }}" class="{{ 'on' if active=='routes' }}">Fietsroutes</a>
         </details>
 

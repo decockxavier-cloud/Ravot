@@ -1,0 +1,36 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<a href="{{ url_for('admin.gemeenteteksten') }}" class="terug-link">← Alle gemeenteteksten</a>
+<h1>✍️ {{ gemeente }}</h1>
+<p class="hint">{{ aantal }} activiteiten in Ravot ·
+  <a href="/{{ sleutel }}" target="_blank">pagina bekijken ↗</a></p>
+
+<form method="post" class="kaart-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <div class="veld">
+    <label for="intro">Intro <span class="hint">(bovenaan de pagina — dit
+      leest Google, en een ouder als eerste)</span></label>
+    <textarea id="intro" name="intro_md" rows="10"
+              placeholder="Bv. In Roeselare ravot je het best in het Bergmolenbos: een groot speelbos met de Blob-zoektocht, en bij regen zit je binnen tien minuten in KOERS…">{{ (t.intro_md if t else '') or '' }}</textarea>
+    <span class="hint">Markdown mag. Richtlijn: 150–300 woorden, concreet, met
+      namen van plekken die er echt zijn.</span>
+  </div>
+
+  <div class="veld">
+    <label for="slot">Slotblok <span class="hint">(onderaan — praktische tips,
+      optioneel)</span></label>
+    <textarea id="slot" name="slot_md" rows="6"
+              placeholder="Bv. Parkeren doe je gratis aan…">{{ (t.slot_md if t else '') or '' }}</textarea>
+  </div>
+
+  <div class="veld">
+    <label for="auteur">Geschreven door <span class="hint">(intern, niet
+      publiek — handig om bij te houden wie wat schreef)</span></label>
+    <input id="auteur" type="text" name="auteur" maxlength="120"
+           value="{{ (t.auteur if t else '') or '' }}">
+  </div>
+
+  <div class="acties"><button class="btn btn-zon" type="submit">Bewaren</button></div>
+</form>
+{% endblock %}

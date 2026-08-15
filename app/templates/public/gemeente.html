@@ -10,6 +10,13 @@
 <h1>Activiteiten met kinderen in {{ gemeente }}{% if facet %} — {{ facets[facet] }}{% endif %}</h1>
 <p class="answer">{{ answer }}</p>
 
+{% if intro_html %}
+{# Redactionele tekst (patch 237): wat een gegenereerde lijst niet kan zeggen —
+   welke speeltuin overdekt is, wat een goede combinatie is voor een halve dag.
+   Dit is het verschil met een stadsdienst die vooral over zichzelf schrijft. #}
+<div class="card gemeente-intro">{{ intro_html|safe }}</div>
+{% endif %}
+
 {% if partners %}
 <div class="card partnerblok">
   <p class="hint" style="margin-top:0">⭐ <strong>Partners in {{ gemeente }}</strong>
@@ -52,6 +59,10 @@
   <div class="card"><p>Momenteel niets gevonden. Bekijk de buurgemeenten hieronder of
     <a href="{{ url_for('public.verkennen') }}">verken de kaart</a>.</p></div>
   {% endfor %}
+{% endif %}
+
+{% if slot_html %}
+<div class="card gemeente-slot">{{ slot_html|safe }}</div>
 {% endif %}
 
 {% if buren %}

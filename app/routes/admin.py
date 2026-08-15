@@ -3244,3 +3244,66 @@ def uitbaters():
                            n_prospect=sum(1 for r in rijen
                                           if not r["partner"] and r["zaken"]),
                            title="Uitbaters", family=None, active="uitbaters")
+
+
+@bp.route("/gemeenteteksten")
+@medewerker_required
+def gemeenteteksten():
+    """Werklijst: waar loont het om een tekst te laten schrijven? (patch 237)
+
+    Gesorteerd op aanbod, want een gemeente met veel activiteiten en routes
+    verdient de eerste euro's van een copywriter.
+    """
+    from ..models import FietsRoute, GemeenteTekst
+    tellingen = dict(db.session.query(Event.gemeente, db.func.count(Event.id))
+                     .filter(Event.pending.is_(False), Event.hidden.is_(False),
+                             Event.gemeente.isnot(None))
+                     .group_by(Event.gemeente).all())
+    routes = dict(db.session.query(FietsRoute.gemeente,
+                                   db.func.count(FietsRoute.id))
+                  .filter(FietsRoute.pending.is_(False),
+                          FietsRoute.hidden.is_(False),
+                          FietsRoute.gemeente.isnot(None))
+                  .group_by(FietsRoute.gemeente).all())
+    teksten = {t.gemeente: t for t in GemeenteTekst.query.all()}
+    rijen = []
+    for gemeente, n in tellingen.items():
+        if not gemeente:
+            continue
+        t = teksten.get(gemeente.strip().lower())
+        rijen.append({
+            "gemeente": gemeente, "aantal": n,
+            "routes": routes.get(gemeente, 0),
+            "tekst": t, "klaar": bool(t and t.heeft_tekst),
+        })
+    rijen.sort(key=lambda r: (-r["aantal"], r["gemeente"]))
+    return render_template("admin/gemeenteteksten.html", rijen=rijen,
+                           n_klaar=sum(1 for r in rijen if r["klaar"]),
+                           title="Gemeenteteksten", family=None,
+                           active="gemeenteteksten")
+
+
+@bp.route("/gemeenteteksten/<gemeente>", methods=["GET", "POST"])
+@medewerker_required
+def gemeentetekst_bewerk(gemeente):
+    from ..models import GemeenteTekst
+    sleutel = gemeente.strip().lower()[:80]
+    t = db.session.get(GemeenteTekst, sleutel)
+    if request.method == "POST":
+        if t is None:
+            t = GemeenteTekst(gemeente=sleutel)
+            db.session.add(t)
+        t.intro_md = (request.form.get("intro_md") or "").strip()[:8000] or None
+        t.slot_md = (request.form.get("slot_md") or "").strip()[:8000] or None
+        t.auteur = (request.form.get("auteur") or "").strip()[:120] or None
+        db.session.commit()
+        audit(f"gemeentetekst {sleutel} bijgewerkt")
+        flash(f"Tekst voor {gemeente.title()} bewaard.", "ok")
+        return redirect(url_for("admin.gemeenteteksten"))
+    aantal = Event.query.filter(Event.pending.is_(False),
+                                Event.hidden.is_(False),
+                                db.func.lower(Event.gemeente) == sleutel).count()
+    return render_template("admin/gemeentetekst_bewerk.html", t=t,
+                           gemeente=gemeente.title(), sleutel=sleutel,
+                           aantal=aantal, title=f"Tekst {gemeente.title()}",
+                           family=None, active="gemeenteteksten")

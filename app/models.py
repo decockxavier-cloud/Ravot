@@ -875,6 +875,30 @@ class RouteVoorstel(db.Model):
     created_at = db.Column(db.DateTime, default=utcnow)
 
 
+class GemeenteTekst(db.Model):
+    """Redactionele tekst per gemeente (patch 237).
+
+    Gemeentepagina's werden tot nu toe volledig afgeleid uit de fiches: een
+    lijst zonder eigen woorden. Dat is precies waar een stadsdienst of een
+    gevestigde gids het wint. Hier komt de menselijke laag bij — geschreven
+    door iemand die er geweest is.
+
+    Bewust twee velden: een intro (bovenaan, wat Google leest en een ouder als
+    eerste ziet) en een slotblok (onderaan, voor praktische tips). Beide
+    optioneel; een lege gemeente toont gewoon de gegenereerde pagina.
+    """
+    __tablename__ = "gemeente_teksten"
+    gemeente = db.Column(db.String(80), primary_key=True)   # kleine letters
+    intro_md = db.Column(db.Text)
+    slot_md = db.Column(db.Text)
+    auteur = db.Column(db.String(120))        # wie schreef het (intern)
+    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
+
+    @property
+    def heeft_tekst(self):
+        return bool((self.intro_md or "").strip() or (self.slot_md or "").strip())
+
+
 class TrechterTeller(db.Model):
     """Dagtellers voor de conversietrechter (patch 223).
 

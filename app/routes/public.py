@@ -1558,7 +1558,14 @@ def gemeente_page(gemeente, facet=None):
         Event.partner_until.isnot(None), Event.partner_until > datetime.utcnow(),
         Event.hidden.is_(False), Event.pending.is_(False),
     ).order_by(Event.partner_until.desc()).limit(2).all()
+    from ..content import render_markdown
+    from ..models import GemeenteTekst
+    tekst = db.session.get(GemeenteTekst, gemeente.strip().lower())
     return render_template("public/gemeente.html", gemeente=naam, facet=facet,
+                           intro_html=(render_markdown(tekst.intro_md)
+                                       if tekst and tekst.intro_md else None),
+                           slot_html=(render_markdown(tekst.slot_md)
+                                      if tekst and tekst.slot_md else None),
                            facets=FACETS, events=events, answer=answer, buren=buren,
                            partners=partners, groepen=groepen,
                            noindex=noindex, meta_title=title, meta_desc=desc,
@@ -1673,10 +1680,17 @@ def sitemap_gemeenten():
     tellingen = (db.session.query(Event.gemeente, db.func.count(Event.id))
                  .filter(*publiek, Event.gemeente.isnot(None))
                  .group_by(Event.gemeente).all())
+    from ..models import GemeenteTekst
+    met_tekst = {t.gemeente for t in GemeenteTekst.query.all() if t.heeft_tekst}
     drempel = get_int("sitemap_min_per_gemeente", 3)
     for gemeente, n in tellingen:
-        if not gemeente or n < drempel:
-            continue        # te dun: zo'n pagina rankt toch niet
+        if not gemeente:
+            continue
+        # Een gemeente met eigen redactionele tekst hoort er altijd bij
+        # (patch 237): daar is bewust in geïnvesteerd, ook als het aanbod
+        # nog klein is.
+        if n < drempel and gemeente.strip().lower() not in met_tekst:
+            continue        # te dun én geen tekst: zo'n pagina rankt toch niet
         pad = gemeente.strip().lower()
         rijen.append((f"{site}/{pad}", vandaag))
         for facet in FACETS:
