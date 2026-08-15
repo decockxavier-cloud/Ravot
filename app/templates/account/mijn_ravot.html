@@ -58,6 +58,16 @@
 </section>
 {% endif %}
 
+{% if bewaarde_routes %}
+<section class="dash-sectie">
+  <div class="dash-sectie-kop"><h2>🚴 Bewaarde fietsroutes</h2></div>
+  {% for s in bewaarde_routes %}
+  <p style="margin:4px 0"><a href="{{ url_for('public.fietsroute', slug=s.route.slug) }}">
+    {{ s.route.titel }}</a> <span class="hint">{{ s.route.afstand_km }} km{% if s.route.regio %} · {{ s.route.regio }}{% endif %}</span></p>
+  {% endfor %}
+</section>
+{% endif %}
+
 <section class="dash-sectie">
   <div class="dash-sectie-kop">
     <h2>👨‍👩‍👧 Jullie gezin</h2>

@@ -25,6 +25,7 @@
         } %}
         <a href="{{ url_for('admin.dashboard') }}" class="{{ 'on' if active=='dashboard' }}">Dashboard</a>
         <a href="{{ url_for('admin.herkomst') }}" class="{{ 'on' if active=='herkomst' }}">Herkomst</a>
+    <a href="{{ url_for('admin.bereik') }}" class="{{ 'on' if active=='bereik' }}">Bereik</a>
         <a href="{{ url_for('admin.redactie') }}" class="{{ 'on' if active=='redactie' }}">Redactie</a>
 
         <details class="admin-groep" {{ 'open' if active in sectie.content }}>

@@ -1,0 +1,52 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<h1>📈 Bereik</h1>
+<p class="hint">Waar wordt er effectief gekeken — het cijfer dat een partner
+  wil horen. <strong>{{ totaal }}</strong> fichebezoeken in de laatste
+  {{ maanden }} maand{{ '' if maanden == 1 else 'en' }}.</p>
+<div class="badges">
+  {% for m in (1, 3, 6, 12) %}
+  <a class="badge {{ 'aan' if maanden == m }}" href="{{ url_for('admin.bereik', maanden=m) }}">{{ m }} maand{{ '' if m == 1 else 'en' }}</a>
+  {% endfor %}
+</div>
+
+<h2>Per streek</h2>
+{% if streken %}
+<table class="tabel">
+  <tr><th>Streek</th><th>Bezoeken</th><th>Fiches bekeken</th><th>Gemeenten</th></tr>
+  {% for s in streken %}
+  <tr><td><strong>{{ s.streek }}</strong></td><td>{{ s.bezoeken }}</td>
+    <td>{{ s.fiches }}</td><td>{{ s.gemeenten }}</td></tr>
+  {% endfor %}
+</table>
+{% else %}<p class="hint">Nog geen bezoeken gemeten.</p>{% endif %}
+
+<h2>Per gemeente</h2>
+{% if gemeenten %}
+<table class="tabel">
+  <tr><th>Gemeente</th><th>Bezoeken</th><th>Fiches bekeken</th><th></th></tr>
+  {% for g in gemeenten[:60] %}
+  <tr><td><strong>{{ g.gemeente }}</strong></td><td>{{ g.bezoeken }}</td>
+    <td>{{ g.fiches }}</td>
+    <td><a class="btn btn-klein btn-stil" href="/{{ g.gemeente|lower }}" target="_blank">pagina ↗</a></td></tr>
+  {% endfor %}
+</table>
+{% else %}<p class="hint">Nog geen bezoeken gemeten.</p>{% endif %}
+
+<h2>Fietsroutes</h2>
+<p class="hint">Meenames = GPX, printblad en bingo samen. Dat is de sterkste
+  maat voor "wordt deze route echt gereden".</p>
+{% if routes %}
+<table class="tabel">
+  <tr><th>Route</th><th>Bekeken</th><th>GPX</th><th>Printblad</th><th>Bingo</th><th>Meenames</th></tr>
+  {% for r in routes[:40] %}
+  <tr>
+    <td><a href="{{ url_for('admin.route_bewerk', rid=r.route.id) }}">{{ r.route.titel }}</a>
+      <div class="hint">{{ r.route.regio or r.route.gemeente or '' }}</div></td>
+    <td>{{ r.bekeken }}</td><td>{{ r.gpx }}</td><td>{{ r.print }}</td>
+    <td>{{ r.bingo }}</td><td><strong>{{ r.meenames }}</strong></td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}<p class="hint">Nog geen routes.</p>{% endif %}
+{% endblock %}

@@ -11,6 +11,14 @@
       {% if score %} · <strong>{{ "😞😕😐😄🤩"[(score.kid | round | int) - 1] }} {{ score.kid }}</strong>
       <span class="hint">({{ score.n }} gezin{{ 'nen' if score.n != 1 }})</span>{% endif %}</p>
   </div>
+  {% if family %}
+  <form method="post" action="{{ url_for('account.route_bewaar', route_id=r.id) }}" style="display:inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn" type="submit">{{ '💚 Bewaard' if route_bewaard else '🤍 Bewaar' }}</button>
+  </form>
+  {% else %}
+  <a class="btn" href="{{ url_for('auth.login', terug=r.slug) }}">🤍 Bewaar</a>
+  {% endif %}
   <button type="button" class="deel-knop btn" data-titel="{{ r.titel }}"
           data-url="{{ request.url }}">📤 Deel</button>
 </div>

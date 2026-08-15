@@ -1324,6 +1324,8 @@ def event(slug):
     from ..trechter import tel_fiche_bezoek
     tel_fiche_bezoek()
     ev = bron_filter(Event.query).filter_by(slug=slug).first_or_404()
+    from ..statistiek import tel_fiche
+    tel_fiche(ev.id)
     # Nog niet gemodereerde gebruikersbijdrage: niet publiek tonen.
     # (Enkel de indiener zelf mag meekijken; geen indiener bekend => niemand.)
     if ev.pending and (ev.submitted_by is None
@@ -2145,6 +2147,14 @@ def fietsroute(slug):
     r = FietsRoute.query.filter_by(slug=slug).first_or_404()
     if (r.pending or r.hidden) and not session.get("admin_id"):
         abort(404)
+    from ..statistiek import tel_route
+    tel_route(r.id, "bekeken")
+    fam_nu = current_family()
+    route_bewaard = False
+    if fam_nu:
+        from ..models import SavedRoute
+        route_bewaard = SavedRoute.query.filter_by(
+            family_id=fam_nu.id, route_id=r.id).first() is not None
     from ..services.routes_gis import zichtbare_buurt
     buurt = zichtbare_buurt(r.id)
     partners = [b for b in buurt if partner_zichtbaar(b.event)]
@@ -2233,7 +2243,8 @@ def fietsroute(slug):
         ("beleven", "Beleven", "🎭", _emmers["beleven"]),
         ("smullen", "Smullen", "🍦", _emmers["smullen"]),
     ]
-    return render_template("public/fietsroute.html", r=r, buurt=buurt,
+    return render_template("public/fietsroute.html", r=r,
+                           route_bewaard=route_bewaard, buurt=buurt,
                            buurt_groepen=buurt_groepen,
                            start_km=start_km, pauzeplan=pauzeplan,
                            beschrijving_html=beschrijving_html,
@@ -2253,7 +2264,7 @@ def fietsroute_gpx(slug):
     r = FietsRoute.query.filter_by(slug=slug).first_or_404()
     if r.pending or r.hidden or not r.gpx_bestand:
         abort(404)
-    slot = _vraagt_profiel(r, "GPX-bestand")
+    slot = _vraagt_profiel(r, "GPX-bestand", "gpx")
     if slot is not None:
         return slot
     from ..services.route_generator import gpx_map
@@ -2336,7 +2347,7 @@ def anon_veld_stem(event_id, veld, waarde):
     return redirect(request.referrer or url_for("public.event", slug=ev.slug))
 
 
-def _vraagt_profiel(r, wat):
+def _vraagt_profiel(r, wat, soort=None):
     """Toon een uitnodiging i.p.v. de download voor wie nog geen profiel heeft
     (patch 226).
 
@@ -2345,6 +2356,15 @@ def _vraagt_profiel(r, wat):
     vóór de vraag komt. Alleen de meeneem-extra's vragen een gratis profiel:
     dat is waar de inspanning van Ravot zit, en het is een eerlijke ruil.
     """
+    from ..statistiek import tel_route
+    if soort:
+        tel_route(r.id, soort)
+    # Schakelbaar (patch 238): staat de muur uit, dan mag iedereen downloaden.
+    # Bereik telt zwaarder dan registraties zolang partners op bezoekers
+    # afgerekend willen worden.
+    from ..models import get_bool
+    if not get_bool("routes_login_vereist"):
+        return None
     if current_family() is not None:
         return None
     from ..trechter import tel_stap
@@ -2362,7 +2382,7 @@ def fietsbingo(slug):
     r = FietsRoute.query.filter_by(slug=slug).first_or_404()
     if (r.pending or r.hidden) and not session.get("admin_id"):
         abort(404)
-    slot = _vraagt_profiel(r, "Fietsbingo")
+    slot = _vraagt_profiel(r, "Fietsbingo", "bingo")
     if slot is not None:
         return slot
     nu = utcnow()
@@ -2422,7 +2442,7 @@ def fietsroute_print(slug):
     r = FietsRoute.query.filter_by(slug=slug).first_or_404()
     if (r.pending or r.hidden) and not session.get("admin_id"):
         abort(404)
-    slot = _vraagt_profiel(r, "Printblad")
+    slot = _vraagt_profiel(r, "Printblad", "print")
     if slot is not None:
         return slot
     knooppunten = []

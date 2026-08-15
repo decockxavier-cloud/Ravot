@@ -165,8 +165,11 @@ def profiel():
         .order_by(Interaction.created_at.desc()).limit(20).all()
 
     pas_totaal = pas.totaal(fam.id)
-    from ..models import get_bool
+    from ..models import SavedRoute, get_bool
+    bewaarde_routes = (SavedRoute.query.filter_by(family_id=fam.id)
+                       .order_by(SavedRoute.created_at.desc()).limit(12).all())
     return render_template("account/mijn_ravot.html", family=fam,
+                           bewaarde_routes=bewaarde_routes,
                            feestjes_aan=get_bool("feestjes_aan"),
                            kampen_aan=get_bool("kampen_aan"),
                            weggeklikt=weggeklikt,
@@ -1402,3 +1405,25 @@ def postcode_zetten():
     if terug == "ontdek":
         return redirect(url_for("public.ontdek"))
     return redirect(url_for("public.vandaag"))
+
+
+@bp.route("/route-bewaar/<int:route_id>", methods=["POST"])
+def route_bewaar(route_id):
+    """Fietsroute bewaren voor later (patch 238) — dezelfde belofte als bij
+    plekken, en voor wie routes verzamelt de reden om een profiel te maken."""
+    from ..models import FietsRoute, SavedRoute
+    fam = me()
+    if fam is None:
+        return redirect(url_for("auth.login"))
+    r = db.session.get(FietsRoute, route_id) or abort(404)
+    bestaand = SavedRoute.query.filter_by(family_id=fam.id,
+                                          route_id=r.id).first()
+    if bestaand:
+        db.session.delete(bestaand)
+        db.session.commit()
+        flash("Route uit je bewaarde lijst gehaald.", "ok")
+    else:
+        db.session.add(SavedRoute(family_id=fam.id, route_id=r.id))
+        db.session.commit()
+        flash("Route bewaard — je vindt hem terug bij Mijn Ravot. 🦊", "ok")
+    return redirect(url_for("public.fietsroute", slug=r.slug))

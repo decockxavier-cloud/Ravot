@@ -3307,3 +3307,23 @@ def gemeentetekst_bewerk(gemeente):
                            gemeente=gemeente.title(), sleutel=sleutel,
                            aantal=aantal, title=f"Tekst {gemeente.title()}",
                            family=None, active="gemeenteteksten")
+
+
+@bp.route("/bereik")
+@medewerker_required
+def bereik():
+    """Waar wordt er gekeken? (patch 238)
+
+    Het cijfer voor je verkoopgesprek: hoeveel fichebezoeken per gemeente en
+    per streek, en welke fietsroutes effectief meegenomen worden. Geen
+    persoonsgegevens — enkel maandtotalen.
+    """
+    from ..statistiek import per_gemeente, per_streek, route_cijfers
+    maanden = max(1, min(12, int(request.args.get("maanden", 3) or 3)))
+    gemeenten = per_gemeente(maanden)
+    streken = per_streek(maanden)
+    routes = route_cijfers(maanden)
+    return render_template("admin/bereik.html", gemeenten=gemeenten,
+                           streken=streken, routes=routes, maanden=maanden,
+                           totaal=sum(g["bezoeken"] for g in gemeenten),
+                           title="Bereik", family=None, active="bereik")

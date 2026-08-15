@@ -533,6 +533,9 @@ SETTING_DEFS = {
                               "dus een plafond voorkomt eindeloos doorklikken)", "text"),
     "social_facebook": ("", "Facebook-pagina van Ravot (volledige URL, leeg = geen knop)", "text"),
     "social_instagram": ("", "Instagram-pagina van Ravot (volledige URL, leeg = geen knop)", "text"),
+    "routes_login_vereist": ("1", "Fietsroutes: GPX, printblad en bingo enkel "
+                            "voor ingelogde gezinnen (uit = vrij te downloaden)",
+                            "bool"),
     "sitemap_min_per_gemeente": ("3", "Sitemap: minimum aantal activiteiten "
                                 "voor een gemeentepagina", "int"),
     "tv_max": ("2000", "Toerisme Vlaanderen: maximum aantal items per sync", "text"),
@@ -897,6 +900,49 @@ class GemeenteTekst(db.Model):
     @property
     def heeft_tekst(self):
         return bool((self.intro_md or "").strip() or (self.slot_md or "").strip())
+
+
+class FicheBezoek(db.Model):
+    """Bezoeken per fiche per maand (patch 238).
+
+    Bewust geaggregeerd op maand in plaats van per bezoek gelogd: dat is
+    genoeg om te weten wat populair is, het groeit niet oneindig, en er zit
+    geen enkel persoonsgegeven in. Via de gemeente van de fiche rolt dit op
+    naar cijfers per stad en streek — precies wat een verkoopgesprek nodig
+    heeft ("uw zaak staat in Roeselare, daar keken deze maand X gezinnen").
+    """
+    __tablename__ = "fiche_bezoeken"
+    event_id = db.Column(db.Integer, db.ForeignKey("events.id"),
+                         primary_key=True, index=True)
+    maand = db.Column(db.Integer, primary_key=True)          # YYYYMM
+    aantal = db.Column(db.Integer, default=0, nullable=False)
+    event = db.relationship("Event")
+
+
+class RouteActie(db.Model):
+    """Wat gezinnen met een route dóén (patch 238): bekeken, GPX gedownload,
+    printblad of bingo gehaald. Zo zie je welke routes werken en welke niet."""
+    __tablename__ = "route_acties"
+    route_id = db.Column(db.Integer, db.ForeignKey("fietsroutes.id"),
+                         primary_key=True, index=True)
+    maand = db.Column(db.Integer, primary_key=True)          # YYYYMM
+    soort = db.Column(db.String(12), primary_key=True)       # bekeken|gpx|print|bingo
+    aantal = db.Column(db.Integer, default=0, nullable=False)
+    route = db.relationship("FietsRoute")
+
+
+class SavedRoute(db.Model):
+    """Bewaarde fietsroute — de reden om een profiel te maken als je een lus
+    voor later wilt onthouden (patch 238)."""
+    __tablename__ = "saved_routes"
+    id = db.Column(db.Integer, primary_key=True)
+    family_id = db.Column(db.Integer, db.ForeignKey("families.id"),
+                          nullable=False, index=True)
+    route_id = db.Column(db.Integer, db.ForeignKey("fietsroutes.id"),
+                         nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=utcnow)
+    __table_args__ = (db.UniqueConstraint("family_id", "route_id"),)
+    route = db.relationship("FietsRoute")
 
 
 class TrechterTeller(db.Model):
