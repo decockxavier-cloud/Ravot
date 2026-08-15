@@ -33,6 +33,8 @@ class Family(db.Model):
     ref_code = db.Column(db.String(12), unique=True)
     invited_by = db.Column(db.Integer, db.ForeignKey("families.id"))
     newsletter_opt_in = db.Column(db.Boolean, default=False, nullable=False)
+    # Wanneer de welkomstmail vertrok (patch 248): leeg = nog niet verstuurd.
+    welkomstmail_op = db.Column(db.DateTime)
     monday_opt_in = db.Column(db.Boolean, default=True, nullable=False)
     active = db.Column(db.Boolean, default=True, nullable=False)  # admin kan deactiveren
     # Eénmalige nakijk-vraag na de overstap naar geboortejaren. Nieuwe gezinnen
@@ -536,6 +538,8 @@ SETTING_DEFS = {
     "routes_login_vereist": ("1", "Fietsroutes: GPX, printblad en bingo enkel "
                             "voor ingelogde gezinnen (uit = vrij te downloaden)",
                             "bool"),
+    "welkomstmail_aan": ("1", "Welkomstmail: één dag na registratie versturen",
+                        "bool"),
     "sitemap_min_per_gemeente": ("3", "Sitemap: minimum aantal activiteiten "
                                 "voor een gemeentepagina", "int"),
     "tv_max": ("2000", "Toerisme Vlaanderen: maximum aantal items per sync", "text"),

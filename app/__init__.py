@@ -771,6 +771,13 @@ def register_cli(app):
             added.append("families.postcode nullable")
         # Nieuwe kolommen op bestaande tabellen: create_all() voegt die niet
         # toe, alleen ontbrekende tabellen (patch 241).
+        if "families" in insp.get_table_names():
+            fam_cols = {c["name"] for c in insp.get_columns("families")}
+            if "welkomstmail_op" not in fam_cols:
+                db.session.execute(text(
+                    "ALTER TABLE families ADD COLUMN IF NOT EXISTS "
+                    "welkomstmail_op TIMESTAMP"))
+                added.append("families.welkomstmail_op")
         if "gemeente_teksten" in insp.get_table_names():
             gt_cols = {c["name"] for c in insp.get_columns("gemeente_teksten")}
             for kolom in ("van_gemeente", "pending"):
@@ -1543,6 +1550,28 @@ def register_cli(app):
             click.echo(f"Weekendmail verstuurd naar {n} gezinnen.")
         except Exception as e:
             db.session.add(MailLog(soort="weekendmail", aantal=0, ok=False,
+                                   detail=str(e)[:280]))
+            db.session.commit()
+            raise
+
+    @app.cli.command("send-welkomstmail")
+    def send_welkomstmail():
+        """Welkomstmail, één dag na registratie (cron: dagelijks)."""
+        from .models import get_bool, db, MailLog
+        if not get_bool("welkomstmail_aan"):
+            click.echo("Welkomstmail staat uit in de instellingen.")
+            return
+        from .services.magic import send_mail
+        from .services.welkomstmail import send_all
+        try:
+            with app.test_request_context(base_url=app.config["SITE_URL"]):
+                n = send_all(send_mail)
+            db.session.add(MailLog(soort="welkomstmail", aantal=n, ok=True,
+                                   detail=f"verstuurd naar {n} gezinnen"))
+            db.session.commit()
+            click.echo(f"Welkomstmail verstuurd naar {n} gezinnen.")
+        except Exception as e:
+            db.session.add(MailLog(soort="welkomstmail", aantal=0, ok=False,
                                    detail=str(e)[:280]))
             db.session.commit()
             raise

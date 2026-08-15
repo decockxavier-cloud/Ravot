@@ -211,3 +211,31 @@ def google_terug():
     if doel and doel.startswith("/") and not doel.startswith("//"):
         return redirect(doel)
     return redirect(url_for("public.vandaag"))
+
+
+@bp.route("/weekendmail-aan/<token>")
+@limiter.limit("30/hour")
+def weekendmail_aan(token):
+    """Weekendmail aanzetten met één klik uit de welkomstmail (patch 248).
+
+    Eén klik is een geldige, ondubbelzinnige toestemming: de bezoeker doet een
+    actieve handeling en het token bewijst dat de link naar zijn eigen adres
+    ging. Uitschrijven blijft even makkelijk.
+    """
+    from ..models import Family
+    from ..services.weekendmail import parse_aanzet_token
+    fid = parse_aanzet_token(token)
+    if not fid:
+        flash("Die link is niet meer geldig. Je kunt de weekendmail aanzetten "
+              "in je instellingen.", "error")
+        return redirect(url_for("auth.login"))
+    fam = db.session.get(Family, fid)
+    if fam is None:
+        return redirect(url_for("auth.login"))
+    fam.newsletter_opt_in = True
+    db.session.commit()
+    session["family_id"] = fam.id          # klikken = ingelogd, scheelt gedoe
+    session.permanent = True
+    flash("Top! Vanaf donderdag krijg je uitstappen in jullie buurt in je "
+          "mailbox. Uitschrijven kan altijd met één klik. 🦊", "ok")
+    return redirect(url_for("public.vandaag"))

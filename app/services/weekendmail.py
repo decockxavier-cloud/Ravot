@@ -20,6 +20,22 @@ def unsubscribe_token(family_id, kind="newsletter"):
     return s.dumps({"f": family_id, "k": kind})
 
 
+def maak_aanzet_token(family_id):
+    """Ondertekend token om de weekendmail met één klik aan te zetten
+    (patch 248). Zelfde mechaniek als het uitschrijftoken: geen extra kolom,
+    niet te raden, en de handtekening bewijst dat wij de link maakten."""
+    s = URLSafeSerializer(current_app.config["SECRET_KEY"], salt="mailaan")
+    return s.dumps(family_id)
+
+
+def parse_aanzet_token(token):
+    s = URLSafeSerializer(current_app.config["SECRET_KEY"], salt="mailaan")
+    try:
+        return s.loads(token)
+    except Exception:
+        return None
+
+
 def parse_unsubscribe_token(token):
     s = URLSafeSerializer(current_app.config["SECRET_KEY"], salt="unsub")
     try:

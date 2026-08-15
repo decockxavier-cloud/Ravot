@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="nl"><body style="margin:0;padding:0;background:#FAF7F0;
+  font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#3F4A3C">
+<div style="max-width:560px;margin:0 auto;padding:24px 18px">
+
+  <p style="font-size:1.6rem;margin:0 0 4px">🦊</p>
+  <h1 style="font-size:1.4rem;margin:0 0 10px;color:#2E7D46">Welkom bij Ravot!</h1>
+  <p style="margin:0 0 18px">Je profiel staat klaar. Drie dingen die meteen de
+    moeite zijn — en waarmee je Ravot beter maakt voor elk gezin na jou.</p>
+
+  <div style="background:#fff;border-radius:14px;padding:16px;margin-bottom:12px">
+    <p style="margin:0 0 6px"><strong>🎁 Spaar ravotpunten</strong></p>
+    <p style="margin:0;font-size:.95rem">
+      +{{ punten.geweest }} als je bevestigt dat je ergens was,
+      +{{ punten.review }} voor een Ravotscore,
+      +{{ punten.foto }} voor een foto. Spaar ze op voor een cadeaubon.</p>
+  </div>
+
+  <div style="background:#fff;border-radius:14px;padding:16px;margin-bottom:12px">
+    <p style="margin:0 0 6px"><strong>🧩 Help een fiche completer maken</strong></p>
+    <p style="margin:0;font-size:.95rem">Op elke plek staan kleine vragen:
+      is er een toilet? Is het speelterrein omheind? Kun je er picknicken?
+      Eén tik volstaat — en de volgende ouder weet het wél. Dat is precies
+      wat Ravot anders maakt dan een gewone lijst: de informatie komt van
+      gezinnen die er stonden.</p>
+  </div>
+
+  <div style="background:#fff;border-radius:14px;padding:16px;margin-bottom:18px">
+    <p style="margin:0 0 6px"><strong>🎯 Tips op maat van jullie gezin</strong></p>
+    <p style="margin:0 0 10px;font-size:.95rem">
+      {% if heeft_postcode and heeft_kinderen %}
+      Je postcode en de leeftijden staan ingevuld — we tonen dus al wat bij
+      jullie past. Bijsturen kan altijd.
+      {% elif heeft_postcode %}
+      Vul nog de geboortejaren van je kinderen in, dan sorteren we op wat bij
+      hun leeftijd past — een kleuter wil iets anders dan een tienjarige.
+      {% else %}
+      Vul je postcode in (en eventueel de geboortejaren van je kinderen), dan
+      tonen we hoe ver elke plek van jullie ligt en wat bij hun leeftijd past.
+      {% endif %}</p>
+    <a href="{{ profiel }}" style="display:inline-block;background:#4CA362;
+      color:#fff;text-decoration:none;padding:9px 16px;border-radius:999px;
+      font-weight:700;font-size:.95rem">Profiel aanvullen</a>
+  </div>
+
+  {% if tips %}
+  <p style="margin:0 0 8px"><strong>Dichtbij jullie:</strong></p>
+  {% for t in tips %}
+  <p style="margin:0 0 6px;font-size:.95rem">
+    📍 <a href="{{ url_for('public.event', slug=t.ev.slug, _external=True) }}"
+       style="color:#2E7D46">{{ t.ev.title }}</a>
+    <span style="color:#6B7364">· {{ t.km }} km</span></p>
+  {% endfor %}
+  <p style="margin:12px 0 18px"></p>
+  {% endif %}
+
+  <div style="background:#FDF6E6;border-radius:14px;padding:16px;
+    border:1.5px solid #F4B233">
+    <p style="margin:0 0 8px"><strong>📬 Elke donderdag tips in je mailbox?</strong></p>
+    <p style="margin:0 0 10px;font-size:.95rem">De leukste uitstappen in jullie
+      buurt, op maat van de leeftijd van je kinderen. Eén klik, en uitschrijven
+      kan altijd even makkelijk.</p>
+    <a href="{{ aanzet }}" style="display:inline-block;background:#F4B233;
+      color:#3A2F10;text-decoration:none;padding:10px 18px;border-radius:999px;
+      font-weight:700">Ja, stuur me de weekendmail</a>
+  </div>
+
+  <p style="margin:18px 0 0;font-size:.85rem;color:#8A927F">
+    Je krijgt deze mail één keer, omdat je net een Ravot-profiel maakte.
+    Ravot is gratis en zonder pop-ups of bannerreclame.<br>
+    Ravot.be — YAMY BV, Klaproosstraat 36, 8800 Roeselare</p>
+</div>
+</body></html>
