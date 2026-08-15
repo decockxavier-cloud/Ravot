@@ -3470,3 +3470,95 @@ def gemeentecontact(gemeente):
                            aantal=aantal, zonder_foto=zonder_foto, link=link,
                            title=f"Contact {gemeente.title()}", family=None,
                            active="gemeentecontacten")
+
+
+@bp.route("/gemeentecontacten/import", methods=["GET", "POST"])
+@medewerker_required
+def gemeentecontacten_import():
+    """Contactgegevens invoeren uit een lijst (patch 247).
+
+    Verwacht kolommen: Provincie, Gemeente, Dienst, E-mail, Telefoon, Plaats,
+    Bron, Opmerking. Bestaande adressen worden NIET overschreven — wat jij zelf
+    invulde of corrigeerde weegt zwaarder dan een lijst.
+    """
+    from ..models import GemeenteContact
+    if request.method == "POST":
+        bestand = request.files.get("bestand")
+        if not bestand or not bestand.filename.lower().endswith((".xlsx", ".csv")):
+            flash("Stuur een .xlsx- of .csv-bestand.", "error")
+            return redirect(url_for("admin.gemeentecontacten_import"))
+        rijen = []
+        try:
+            if bestand.filename.lower().endswith(".csv"):
+                import csv
+                import io
+                tekst = bestand.read().decode("utf-8-sig")
+                for r in csv.reader(io.StringIO(tekst)):
+                    rijen.append(r)
+            else:
+                try:
+                    import openpyxl
+                except ImportError:
+                    flash("Excel-invoer vereist openpyxl. Bewaar je bestand "
+                          "als .csv en probeer opnieuw.", "error")
+                    return redirect(url_for("admin.gemeentecontacten_import"))
+                wb = openpyxl.load_workbook(bestand, read_only=True)
+                ws = wb.worksheets[0]
+                for r in ws.iter_rows(values_only=True):
+                    rijen.append(list(r))
+        except Exception as fout:
+            flash(f"Kon het bestand niet lezen: {fout}", "error")
+            return redirect(url_for("admin.gemeentecontacten_import"))
+
+        # Gemeenten die we kennen (met aanbod), voor de koppeling
+        bekend = {}
+        for (g,) in db.session.query(Event.gemeente).filter(
+                Event.gemeente.isnot(None)).distinct().all():
+            if g:
+                bekend[g.strip().lower()] = g.strip()
+
+        nieuw = bijgewerkt = overgeslagen = onbekend = 0
+        onbekende_namen = []
+        for r in rijen[1:]:                    # eerste rij = koppen
+            if not r or len(r) < 4:
+                continue
+            gemeente = str(r[1] or "").strip()
+            email = str(r[3] or "").strip()
+            if not gemeente or "@" not in email:
+                continue
+            sleutel = gemeente.lower()
+            if sleutel not in bekend:
+                onbekend += 1
+                if len(onbekende_namen) < 25:
+                    onbekende_namen.append(gemeente)
+                continue
+            c = db.session.get(GemeenteContact, sleutel)
+            if c is None:
+                c = GemeenteContact(gemeente=sleutel)
+                db.session.add(c)
+                nieuw += 1
+            elif c.email:
+                overgeslagen += 1              # eigen invoer wint
+                continue
+            else:
+                bijgewerkt += 1
+            c.email = email[:255]
+            c.dienst = (str(r[2] or "").strip() or None)
+            opmerking = str(r[7] or "").strip() if len(r) > 7 else ""
+            telefoon = str(r[4] or "").strip() if len(r) > 4 else ""
+            stukjes = [x for x in (telefoon, opmerking) if x]
+            if stukjes and not c.notitie:
+                c.notitie = " · ".join(stukjes)[:4000]
+            _gemeente_token(c)
+        db.session.commit()
+        audit(f"gemeentecontacten geïmporteerd: {nieuw} nieuw, {bijgewerkt} aangevuld")
+        boodschap = (f"{nieuw} nieuwe contacten, {bijgewerkt} aangevuld, "
+                     f"{overgeslagen} overgeslagen (had al een adres).")
+        if onbekend:
+            boodschap += (f" {onbekend} gemeenten niet gevonden in Ravot"
+                          f"{': ' + ', '.join(onbekende_namen) if onbekende_namen else ''}.")
+        flash(boodschap, "ok")
+        return redirect(url_for("admin.gemeentecontacten"))
+    return render_template("admin/gemeentecontacten_import.html",
+                           title="Contacten importeren", family=None,
+                           active="gemeentecontacten")

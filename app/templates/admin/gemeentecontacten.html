@@ -7,6 +7,8 @@
   <strong>{{ n_verstuurd }}</strong> aangeschreven,
   <strong>{{ n_verrijkt }}</strong> leverden al iets aan.</p>
 
+<p><a class="btn btn-klein" href="{{ url_for('admin.gemeentecontacten_import') }}">📥 Contacten importeren</a></p>
+
 <div class="badges">
   <a class="badge {{ 'aan' if not sorteer }}" href="{{ url_for('admin.gemeentecontacten') }}">meeste aanbod</a>
   <a class="badge {{ 'aan' if sorteer == 'opfrissen' }}" href="{{ url_for('admin.gemeentecontacten', sorteer='opfrissen') }}">tijd voor opfrissing</a>

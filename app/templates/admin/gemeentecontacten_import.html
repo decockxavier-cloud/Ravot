@@ -1,0 +1,23 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<a href="{{ url_for('admin.gemeentecontacten') }}" class="terug-link">← Gemeentecontacten</a>
+<h1>📥 Contacten importeren</h1>
+<p class="hint">Laad een lijst met toeristische diensten in. Verwachte kolommen
+  (eerste rij = koppen): <code>Provincie · Gemeente · Dienst · E-mail ·
+  Telefoon · Plaats · Bron · Opmerking</code>. Zowel .xlsx als .csv werkt.</p>
+<p class="hint">Adressen die je zelf al invulde worden <strong>niet</strong>
+  overschreven — wat jij corrigeerde weegt zwaarder dan een lijst. Gemeenten
+  die niet in Ravot voorkomen worden overgeslagen en apart gemeld.</p>
+
+<div class="card">
+  <form method="post" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="file" name="bestand" accept=".xlsx,.csv" required>
+    <div class="acties" style="margin-top:10px">
+      <button class="btn btn-zon" type="submit">Importeren</button></div>
+  </form>
+</div>
+
+<p class="hint">💡 Telefoonnummer en opmerking komen in de interne notitie
+  terecht — handig bij adressen die nog verificatie vragen.</p>
+{% endblock %}
