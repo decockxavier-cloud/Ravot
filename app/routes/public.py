@@ -2558,33 +2558,22 @@ def gemeente_bijdrage(token):
     # van "Wintermarkt 2024" of een concert van vorige maand slaat nergens op
     # — die evenementen zijn voorbij, en hun fiche is intussen weg. Wat blijft
     # staan is wat er altijd is: speeltuinen, musea, parken, eetzaken.
-    # bron_filter erbij (patch 245): staat de UiT-laag publiek uit, dan geeft
-    # zo'n fiche een 404. Iemand een lijst voorschotelen met links die niet
-    # werken, is het snelste manier om vertrouwen te verliezen.
+    # Alleen speelplekken (patch 246). Evenementen en horeca cureert
+    # UiTdatabank of de uitbater zelf; een dienst toerisme daarmee lastigvallen
+    # levert niets op en schrikt af. Eén vraag, één lijst: foto's van de
+    # speelterreinen in de gemeente.
+    from ..types import groep_van
     basis = bron_filter(Event.query).filter(
         Event.pending.is_(False), Event.hidden.is_(False),
         Event.is_permanent.is_(True),
         db.func.lower(Event.gemeente) == c.gemeente)
-    # Tellers per soort (patch 242): een dienst toerisme wil zijn speeltuinen
-    # kunnen kiezen zonder eerst tweehonderd frituren voorbij te scrollen.
-    alles = basis.all()
-    per_groep = {"ravotten": 0, "beleven": 0, "smullen": 0}
-    zonder_foto_totaal = 0
-    for e in alles:
-        g = groep_van(e)
-        if g in per_groep:
-            per_groep[g] += 1
-        if not e.image_url:
-            zonder_foto_totaal += 1
+    alles = [e for e in basis.all() if groep_van(e) == "ravotten"]
+    zonder_foto_totaal = sum(1 for e in alles if not e.image_url)
 
-    groep = (request.args.get("groep") or "").strip()
     enkel_zonder = request.args.get("alles") != "1"
-    rijen = [e for e in alles
-             if (not groep or groep_van(e) == groep)
-             and (not enkel_zonder or not e.image_url)]
+    rijen = [e for e in alles if not enkel_zonder or not e.image_url]
     rijen.sort(key=lambda e: ((e.image_url is not None), (e.title or "").lower()))
 
-    # Paginering: Brussel heeft er duizenden, 400 afkappen verbergt werk.
     per_pagina = 100
     pagina = max(1, int(request.args.get("p", 1) or 1))
     totaal = len(rijen)
@@ -2594,8 +2583,7 @@ def gemeente_bijdrage(token):
 
     return render_template("public/gemeente_bijdrage.html", c=c, naam=naam,
                            tekst=tekst, plekken=plekken, token=token,
-                           groep=groep, enkel_zonder=enkel_zonder,
-                           per_groep=per_groep, totaal_alles=len(alles),
+                           enkel_zonder=enkel_zonder, totaal_alles=len(alles),
                            zonder_foto_totaal=zonder_foto_totaal,
                            totaal=totaal, pagina=pagina, paginas=paginas,
                            family=None, active=None, noindex=True,

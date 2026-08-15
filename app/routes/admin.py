@@ -3455,13 +3455,15 @@ def gemeentecontact(gemeente):
         db.session.add(c)
         _gemeente_token(c)
         db.session.commit()
-    aantal = Event.query.filter(Event.pending.is_(False),
-                                Event.hidden.is_(False),
-                                db.func.lower(Event.gemeente) == sleutel).count()
-    zonder_foto = Event.query.filter(
+    # Tel wat we effectief vragen (patch 246): speelplekken, niet alles.
+    from ..types import groep_van
+    speelplekken = [e for e in Event.query.filter(
         Event.pending.is_(False), Event.hidden.is_(False),
-        Event.image_url.is_(None),
-        db.func.lower(Event.gemeente) == sleutel).count()
+        Event.is_permanent.is_(True),
+        db.func.lower(Event.gemeente) == sleutel).all()
+        if groep_van(e) == "ravotten"]
+    aantal = len(speelplekken)
+    zonder_foto = sum(1 for e in speelplekken if not e.image_url)
     link = url_for("public.gemeente_bijdrage", token=c.token, _external=True)
     return render_template("admin/gemeentecontact.html", c=c,
                            gemeente=gemeente.title(), sleutel=sleutel,

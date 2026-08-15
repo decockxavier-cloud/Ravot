@@ -1,8 +1,8 @@
-"""Patch 242: de bijdragepagina schaalt naar Brussel én laat kiezen.
+"""Patch 242: de bijdragepagina schaalt naar Brussel.
 
-Twee problemen: de lijst kapte af op 400 (Brussel heeft er duizenden), en een
-dienst toerisme moest honderden eetzaken voorbij scrollen om bij zijn eigen
-speelterreinen te komen.
+De lijst kapte af op 400 terwijl Brussel er duizenden heeft. De soortfilters
+uit deze patch zijn in p246 vervangen door één vaste selectie (alleen
+speelplekken) — zie test_gemeente_spelen_246.
 """
 import re
 
@@ -23,7 +23,7 @@ def _token(app, client):
                 ext_id=f"gf-h{n}", is_permanent=True, pending=False,
                 hidden=False, lat=50.85, lng=4.35, gemeente="Brussel",
                 subtype="horeca", indoor=True, quality=50))
-        for n in range(30):
+        for n in range(150):
             db.session.add(Event(
                 title=f"Speeltuin {n}", slug=f"gf-s{n}", source="osm",
                 ext_id=f"gf-s{n}", is_permanent=True, pending=False,
@@ -46,43 +46,16 @@ def _token(app, client):
     return re.search(r"gemeente-bijdrage/([\w\-]+)", det).group(1)
 
 
-def test_filters_per_soort_met_tellers(client, app):
-    token = _token(app, client)
-    h = client.get(f"/gemeente-bijdrage/{token}").get_data(as_text=True)
-    assert "Spelen (30)" in h
-    assert "Eten &amp; drinken (250)" in h
-    assert "Beleven (10)" in h
-
-
-def test_filteren_op_speelterreinen(client, app):
-    """Een dienst toerisme kiest zijn speeltuinen zonder door frituren te
-    scrollen."""
-    token = _token(app, client)
-    h = client.get(f"/gemeente-bijdrage/{token}?groep=ravotten").get_data(as_text=True)
-    assert h.count('name="fotos"') == 30
-    assert "Frituur" not in h
-
-
-def test_standaard_enkel_zonder_foto(client, app):
-    token = _token(app, client)
-    h = client.get(f"/gemeente-bijdrage/{token}?groep=beleven").get_data(as_text=True)
-    assert h.count('name="fotos"') == 5          # 5 van de 10 hebben al een foto
-    alles = client.get(
-        f"/gemeente-bijdrage/{token}?groep=beleven&alles=1").get_data(as_text=True)
-    assert alles.count('name="fotos"') == 10
-
-
 def test_paginering_verbergt_geen_werk(client, app):
-    """De oude limiet van 400 verborg in Brussel honderden plekken."""
+    """De oude limiet van 400 verborg werk; nu tonen we per 100 met navigatie."""
     token = _token(app, client)
-    h = client.get(f"/gemeente-bijdrage/{token}").get_data(as_text=True)
-    assert h.count('name="fotos"') == 100        # per pagina
+    h = client.get(f"/gemeente-bijdrage/{token}?alles=1").get_data(as_text=True)
     assert "pagina 1 van" in h
-    p3 = client.get(f"/gemeente-bijdrage/{token}?p=3").get_data(as_text=True)
-    assert "pagina 3 van" in p3
+    p2 = client.get(f"/gemeente-bijdrage/{token}?alles=1&p=2").get_data(as_text=True)
+    assert "pagina 2 van" in p2
 
 
 def test_niemand_moet_alles_doen(client, app):
     token = _token(app, client)
     h = client.get(f"/gemeente-bijdrage/{token}").get_data(as_text=True)
-    assert "zeker niet alles" in h               # geruststelling in de tekst
+    assert "zeker niet alles" in h

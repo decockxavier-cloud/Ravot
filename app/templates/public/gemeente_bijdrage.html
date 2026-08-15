@@ -4,7 +4,7 @@
   <h1 style="margin-top:0">🦊 Ravot &amp; {{ naam }}</h1>
   <p>Ravot is een gratis gezinsgids voor Vlaanderen: ouders zoeken hier waar ze
     met hun kinderen naartoe kunnen. Voor {{ naam }} staan er
-    <strong>{{ totaal_alles }}</strong> plekken en activiteiten in —
+    <strong>{{ totaal_alles }}</strong> speelplekken in —
     {% if zonder_foto_totaal %}<strong>{{ zonder_foto_totaal }}</strong> daarvan
     nog zonder foto.{% else %}allemaal met foto.{% endif %}</p>
   <p class="hint">Met deze pagina kunt u meehelpen: schrijf een korte tekst
@@ -46,33 +46,20 @@
   </form>
 </div>
 
-<h2>📷 Foto's toevoegen</h2>
-<p class="hint">Eén goede foto maakt een plek meteen aantrekkelijker.
-  {{ zonder_foto_totaal }} van de {{ totaal_alles }} plekken in {{ naam }}
-  heeft er nog geen. U hoeft er zeker niet alles mee te doen — kies gerust
-  alleen wat u kent.</p>
+<h2>📷 Foto's van jullie speelterreinen</h2>
+<p class="hint">Dit is waar we uw hulp het meest bij kunnen gebruiken. Van de
+  <strong>{{ totaal_alles }}</strong> speelplekken in {{ naam }} hebben er
+  <strong>{{ zonder_foto_totaal }}</strong> nog geen foto — een ouder ziet dan
+  alleen een pictogram en weet niet of het de moeite is.</p>
+<p class="hint">U hoeft er zeker niet alles mee te doen: elke foto helpt.
+  Evenementen en eetzaken laten we hier bewust weg — die worden elders al
+  bijgehouden.</p>
 
-{# Filters (patch 242): een dienst toerisme wil zijn speelterreinen kunnen
-   kiezen zonder eerst honderden eetzaken voorbij te scrollen. #}
 <div class="filterrij">
-  <span class="filterrij-label">Soort</span>
-  <a class="chip {{ 'aan' if not groep }}"
-     href="{{ url_for('public.gemeente_bijdrage', token=token, alles='1' if not enkel_zonder else None) }}">Alles</a>
-  {% for sleutel, label, emoji in [('ravotten', 'Spelen', '🛝'),
-                                   ('beleven', 'Beleven', '🎭'),
-                                   ('smullen', 'Eten & drinken', '🍦')] %}
-  {% if per_groep[sleutel] %}
-  <a class="chip {{ 'aan' if groep == sleutel else 'uit' }}"
-     href="{{ url_for('public.gemeente_bijdrage', token=token, groep=sleutel, alles='1' if not enkel_zonder else None) }}">{{ emoji }} {{ label }} ({{ per_groep[sleutel] }})</a>
-  {% endif %}
-  {% endfor %}
-</div>
-<div class="filterrij">
-  <span class="filterrij-label">Tonen</span>
   <a class="chip {{ 'aan' if enkel_zonder else 'uit' }}"
-     href="{{ url_for('public.gemeente_bijdrage', token=token, groep=groep or None) }}">Enkel zonder foto</a>
+     href="{{ url_for('public.gemeente_bijdrage', token=token) }}">Enkel zonder foto</a>
   <a class="chip {{ 'aan' if not enkel_zonder else 'uit' }}"
-     href="{{ url_for('public.gemeente_bijdrage', token=token, groep=groep or None, alles='1') }}">Alles tonen</a>
+     href="{{ url_for('public.gemeente_bijdrage', token=token, alles='1') }}">Alle speelplekken</a>
 </div>
 <p class="hint">{{ totaal }} plek{{ '' if totaal == 1 else 'ken' }} in deze
   selectie{% if paginas > 1 %} · pagina {{ pagina }} van {{ paginas }}{% endif %}.</p>
@@ -98,11 +85,11 @@
 {% if paginas > 1 %}
 <div class="filterrij" style="justify-content:center">
   {% if pagina > 1 %}
-  <a class="chip" href="{{ url_for('public.gemeente_bijdrage', token=token, groep=groep or None, alles='1' if not enkel_zonder else None, p=pagina-1) }}">← vorige</a>
+  <a class="chip" href="{{ url_for('public.gemeente_bijdrage', token=token, alles='1' if not enkel_zonder else None, p=pagina-1) }}">← vorige</a>
   {% endif %}
   <span class="hint">pagina {{ pagina }} van {{ paginas }}</span>
   {% if pagina < paginas %}
-  <a class="chip" href="{{ url_for('public.gemeente_bijdrage', token=token, groep=groep or None, alles='1' if not enkel_zonder else None, p=pagina+1) }}">volgende →</a>
+  <a class="chip" href="{{ url_for('public.gemeente_bijdrage', token=token, alles='1' if not enkel_zonder else None, p=pagina+1) }}">volgende →</a>
   {% endif %}
 </div>
 {% endif %}
