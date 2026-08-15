@@ -2554,9 +2554,17 @@ def gemeente_bijdrage(token):
     tekst = db.session.get(GemeenteTekst, c.gemeente)
     from ..types import groep_van
 
-    basis = Event.query.filter(Event.pending.is_(False),
-                               Event.hidden.is_(False),
-                               db.func.lower(Event.gemeente) == c.gemeente)
+    # Alleen vaste plekken (patch 245): een dienst toerisme vragen om een foto
+    # van "Wintermarkt 2024" of een concert van vorige maand slaat nergens op
+    # — die evenementen zijn voorbij, en hun fiche is intussen weg. Wat blijft
+    # staan is wat er altijd is: speeltuinen, musea, parken, eetzaken.
+    # bron_filter erbij (patch 245): staat de UiT-laag publiek uit, dan geeft
+    # zo'n fiche een 404. Iemand een lijst voorschotelen met links die niet
+    # werken, is het snelste manier om vertrouwen te verliezen.
+    basis = bron_filter(Event.query).filter(
+        Event.pending.is_(False), Event.hidden.is_(False),
+        Event.is_permanent.is_(True),
+        db.func.lower(Event.gemeente) == c.gemeente)
     # Tellers per soort (patch 242): een dienst toerisme wil zijn speeltuinen
     # kunnen kiezen zonder eerst tweehonderd frituren voorbij te scrollen.
     alles = basis.all()
