@@ -1,0 +1,87 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<a href="{{ url_for('admin.gemeentecontacten') }}" class="terug-link">← Alle gemeentecontacten</a>
+<h1>🏛️ {{ gemeente }}</h1>
+<p class="hint">{{ aantal }} plekken in Ravot, waarvan {{ zonder_foto }} zonder foto ·
+  <a href="/{{ sleutel }}" target="_blank">pagina bekijken ↗</a></p>
+
+<div class="card">
+  <h2 style="margin-top:0">Contactgegevens</h2>
+  <form method="post" class="kaart-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="veld"><label>E-mailadres</label>
+      <input type="email" name="email" value="{{ c.email or '' }}" maxlength="255"></div>
+    <div class="veld"><label>Dienst</label>
+      <input type="text" name="dienst" value="{{ c.dienst or '' }}" maxlength="160"
+             placeholder="Dienst Vrije Tijd / Toerisme"></div>
+    <div class="veld"><label>Contactpersoon</label>
+      <input type="text" name="contactnaam" value="{{ c.contactnaam or '' }}" maxlength="120"></div>
+    <div class="veld"><label>Notitie <span class="hint">(intern)</span></label>
+      <textarea name="notitie" rows="3">{{ c.notitie or '' }}</textarea></div>
+    <div class="acties"><button class="btn" type="submit">Bewaren</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">De link voor {{ gemeente }}</h2>
+  <p class="hint">Geldig tot <strong>{{ c.token_tot.strftime('%d/%m/%Y') if c.token_tot else '—' }}</strong>.
+    Wie deze link heeft, kan tekst schrijven en foto's toevoegen voor
+    {{ gemeente }} — meer niet. Alles gaat via nazicht.</p>
+  <p><input type="text" readonly value="{{ link }}" style="width:100%"
+            onfocus="this.select()"></p>
+  <form method="post" style="display:inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="actie" value="nieuwe_link">
+    <button class="btn btn-klein btn-stil" type="submit">🔄 Nieuwe link (oude vervalt)</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">📧 Mailtekst</h2>
+  <p class="hint">Kopieer dit in je eigen mailprogramma. We versturen bewust
+    niet vanuit Ravot: je hebt geen toestemming van deze diensten, en dan is
+    bulkmail juridisch spam.</p>
+  <p><strong>Onderwerp:</strong>
+    <input type="text" readonly style="width:70%" onfocus="this.select()"
+           value="Uitstappen met kinderen in {{ gemeente }} — mogen we uw hulp vragen?"></p>
+  <textarea rows="22" readonly onfocus="this.select()" style="width:100%">Beste{% if c.contactnaam %} {{ c.contactnaam }}{% endif %},
+
+Ravot (ravot.be) is een gratis gids voor gezinnen met kinderen tot 12 jaar in Vlaanderen. Ouders zoeken er waar ze met hun kinderen naartoe kunnen: speeltuinen, musea, kinderboerderijen, fietsroutes en kindvriendelijke eetadresjes.
+
+Voor {{ gemeente }} staan er op dit moment {{ aantal }} plekken en activiteiten op Ravot. {{ zonder_foto }} daarvan hebben nog geen foto, en er is nog geen tekst die vertelt wat {{ gemeente }} leuk maakt voor gezinnen.
+
+Daar kunt u ons mee helpen — en uw aanbod wordt er meteen beter van zichtbaar:
+
+{{ link }}
+
+Via die link (geen account nodig) kunt u:
+- een korte tekst schrijven over uitstappen met kinderen in {{ gemeente }};
+- foto's toevoegen bij de plekken die u kent.
+
+Alles wordt door onze redactie nagekeken voor het online komt. De link blijft een jaar geldig, dus u kunt er in meerdere keren aan werken.
+
+Enkele dingen die we graag vooraf duidelijk maken: Ravot is en blijft gratis, er staat geen reclame op, en er zijn geen kosten — niet voor u, en niet voor de plekken die erop staan. We verkopen uw gegevens niet en u krijgt van ons geen nieuwsbrieven.
+
+Alvast bedankt,
+
+Xavier De Cock
+Ravot.be — YAMY BV
+Klaproosstraat 36, 8800 Roeselare</textarea>
+  <form method="post" style="margin-top:10px">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="actie" value="verstuurd">
+    <button class="btn btn-zon" type="submit">✅ Ik heb deze mail verstuurd</button>
+    {% if c.laatst_verstuurd %}<span class="hint">laatst verstuurd op
+      {{ c.laatst_verstuurd.strftime('%d/%m/%Y') }}</span>{% endif %}
+  </form>
+</div>
+
+{% if c.laatst_verrijkt %}
+<div class="card">
+  <h2 style="margin-top:0">✅ Aangeleverd</h2>
+  <p>{{ gemeente }} leverde {{ c.aantal_bijdragen }} bijdrage(n), laatst op
+    {{ c.laatst_verrijkt.strftime('%d/%m/%Y') }}.
+    <a href="{{ url_for('admin.nazicht') }}">Naar het nazicht →</a></p>
+</div>
+{% endif %}
+{% endblock %}

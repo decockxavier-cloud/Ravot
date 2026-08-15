@@ -18,7 +18,8 @@
       <div class="hint"><a href="/{{ r.gemeente|lower }}" target="_blank">pagina bekijken ↗</a></div></td>
     <td>{{ r.aantal }}</td>
     <td>{{ r.routes or '—' }}</td>
-    <td>{% if r.klaar %}<span class="badge" style="background:#4CA362;color:#fff">✅ klaar</span>
+    <td>{% if r.tekst and r.tekst.pending %}<span class="badge" style="background:#F4B233">⏳ in nazicht{% if r.tekst.van_gemeente %} · van de gemeente{% endif %}</span>
+      {% elif r.klaar %}<span class="badge" style="background:#4CA362;color:#fff">✅ klaar</span>
       {% if r.tekst.auteur %}<div class="hint">{{ r.tekst.auteur }}</div>{% endif %}
       {% else %}<span class="hint">nog niets</span>{% endif %}</td>
     <td><a class="btn btn-klein" href="{{ url_for('admin.gemeentetekst_bewerk', gemeente=r.gemeente|lower) }}">

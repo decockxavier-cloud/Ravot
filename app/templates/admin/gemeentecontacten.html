@@ -1,0 +1,39 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
+<h1>🏛️ Gemeentecontacten</h1>
+<p class="hint">Toeristische diensten hebben er zelf belang bij dat hun aanbod
+  goed getoond wordt. Met een jaarlijkse link leveren ze tekst en foto's aan —
+  zonder account, alles via nazicht.
+  <strong>{{ n_verstuurd }}</strong> aangeschreven,
+  <strong>{{ n_verrijkt }}</strong> leverden al iets aan.</p>
+
+<div class="badges">
+  <a class="badge {{ 'aan' if not sorteer }}" href="{{ url_for('admin.gemeentecontacten') }}">meeste aanbod</a>
+  <a class="badge {{ 'aan' if sorteer == 'opfrissen' }}" href="{{ url_for('admin.gemeentecontacten', sorteer='opfrissen') }}">tijd voor opfrissing</a>
+  <a class="badge {{ 'aan' if sorteer == 'verstuurd' }}" href="{{ url_for('admin.gemeentecontacten', sorteer='verstuurd') }}">recent verstuurd</a>
+</div>
+
+<table class="tabel">
+  <tr><th>Gemeente</th><th>Aanbod</th><th>Contact</th><th>Verstuurd</th>
+    <th>Aangeleverd</th><th></th></tr>
+  {% for r in rijen[:200] %}
+  <tr>
+    <td><strong>{{ r.gemeente }}</strong>
+      {% if r.tekst and r.tekst.pending %}<span class="badge">⏳ tekst in nazicht</span>{% endif %}</td>
+    <td>{{ r.aantal }}<div class="hint">{{ r.zonder_foto }} zonder foto</div></td>
+    <td>{% if r.contact and r.contact.email %}<a href="mailto:{{ r.contact.email }}">{{ r.contact.email }}</a>
+      {% if r.contact.dienst %}<div class="hint">{{ r.contact.dienst }}</div>{% endif %}
+      {% else %}<span class="hint">nog geen adres</span>{% endif %}</td>
+    <td>{% if r.contact and r.contact.laatst_verstuurd %}
+      {{ r.contact.laatst_verstuurd.strftime('%d/%m/%Y') }}
+      {% if r.contact.vraagt_opfrissing %}<div class="hint">🔔 tijd om opnieuw te vragen</div>{% endif %}
+      {% else %}<span class="hint">—</span>{% endif %}</td>
+    <td>{% if r.contact and r.contact.laatst_verrijkt %}
+      ✅ {{ r.contact.laatst_verrijkt.strftime('%d/%m/%Y') }}
+      <div class="hint">{{ r.contact.aantal_bijdragen }} bijdrage(n)</div>
+      {% else %}<span class="hint">—</span>{% endif %}</td>
+    <td><a class="btn btn-klein" href="{{ url_for('admin.gemeentecontact', gemeente=r.sleutel) }}">Openen</a></td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

@@ -895,6 +895,9 @@ class GemeenteTekst(db.Model):
     intro_md = db.Column(db.Text)
     slot_md = db.Column(db.Text)
     auteur = db.Column(db.String(120))        # wie schreef het (intern)
+    # Aangeleverd via de gemeentelink (patch 240)? Dan wacht het op nazicht.
+    van_gemeente = db.Column(db.Boolean, default=False, nullable=False)
+    pending = db.Column(db.Boolean, default=False, nullable=False)
     updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
 
     @property
@@ -943,6 +946,48 @@ class SavedRoute(db.Model):
     created_at = db.Column(db.DateTime, default=utcnow)
     __table_args__ = (db.UniqueConstraint("family_id", "route_id"),)
     route = db.relationship("FietsRoute")
+
+
+class GemeenteContact(db.Model):
+    """Contact met de toeristische dienst van een gemeente (patch 240).
+
+    Een dienst vrije tijd of toerisme heeft er zelf belang bij dat het aanbod
+    in zijn stad goed getoond wordt. Met een jaarlijkse, deelbare link kan die
+    dienst tekst schrijven en foto's aanleveren zonder account — alles komt in
+    de gewone moderatiewachtrij, gemarkeerd als afkomstig van de gemeente.
+
+    We houden bij wanneer we vroegen en wanneer ze leverden, zodat een
+    jaarlijkse opfrisvraag geen giswerk is.
+    """
+    __tablename__ = "gemeente_contacten"
+    gemeente = db.Column(db.String(80), primary_key=True)     # kleine letters
+    email = db.Column(db.String(255))
+    contactnaam = db.Column(db.String(120))
+    dienst = db.Column(db.String(160))          # bv. "Dienst Vrije Tijd"
+    token = db.Column(db.String(64), unique=True, index=True)
+    token_tot = db.Column(db.Date)              # geldig tot (standaard 1 jaar)
+    laatst_verstuurd = db.Column(db.DateTime)
+    laatst_verrijkt = db.Column(db.DateTime)    # wanneer zij iets aanleverden
+    aantal_bijdragen = db.Column(db.Integer, default=0, nullable=False)
+    notitie = db.Column(db.Text)                # intern: wat afgesproken is
+    created_at = db.Column(db.DateTime, default=utcnow)
+
+    @property
+    def token_geldig(self):
+        from datetime import date
+        return bool(self.token and self.token_tot and self.token_tot >= date.today())
+
+    @property
+    def dagen_sinds_verstuurd(self):
+        if not self.laatst_verstuurd:
+            return None
+        return (utcnow().replace(tzinfo=None) - self.laatst_verstuurd).days
+
+    @property
+    def vraagt_opfrissing(self):
+        """Een jaar na de laatste vraag mag het opnieuw."""
+        d = self.dagen_sinds_verstuurd
+        return d is not None and d >= 330
 
 
 class TrechterTeller(db.Model):

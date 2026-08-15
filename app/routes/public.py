@@ -1563,6 +1563,8 @@ def gemeente_page(gemeente, facet=None):
     from ..content import render_markdown
     from ..models import GemeenteTekst
     tekst = db.session.get(GemeenteTekst, gemeente.strip().lower())
+    if tekst is not None and tekst.pending:
+        tekst = None        # wacht op nazicht (patch 240)
     return render_template("public/gemeente.html", gemeente=naam, facet=facet,
                            intro_html=(render_markdown(tekst.intro_md)
                                        if tekst and tekst.intro_md else None),
@@ -2523,3 +2525,99 @@ def fietsroute_kaartje(slug):
            f'</svg>')
     from flask import Response
     return Response(svg, mimetype="image/svg+xml")
+
+
+def _gemeente_via_token(token):
+    """Gemeentecontact bij een geldig token, of None (patch 240)."""
+    from ..models import GemeenteContact
+    if not token or len(token) < 20:
+        return None
+    c = GemeenteContact.query.filter_by(token=token).first()
+    if c is None or not c.token_geldig:
+        return None
+    return c
+
+
+@bp.route("/gemeente-bijdrage/<token>")
+@limiter.limit("60/hour")
+def gemeente_bijdrage(token):
+    """Bijdragepagina voor een toeristische dienst — geen account nodig.
+
+    Geeft toegang tot bijdragen, niet tot de databank: alles wat hier binnenkomt
+    gaat naar de gewone moderatiewachtrij, gemarkeerd als 'van de gemeente'.
+    """
+    from ..models import GemeenteTekst
+    c = _gemeente_via_token(token)
+    if c is None:
+        abort(404)
+    naam = c.gemeente.title()
+    tekst = db.session.get(GemeenteTekst, c.gemeente)
+    plekken = (Event.query
+               .filter(Event.pending.is_(False), Event.hidden.is_(False),
+                       db.func.lower(Event.gemeente) == c.gemeente)
+               .order_by(Event.image_url.is_(None).desc(), Event.title)
+               .limit(400).all())
+    zonder_foto = [e for e in plekken if not e.image_url]
+    return render_template("public/gemeente_bijdrage.html", c=c, naam=naam,
+                           tekst=tekst, plekken=plekken,
+                           zonder_foto=zonder_foto, token=token,
+                           family=None, active=None, noindex=True,
+                           title=f"Ravot & {naam}")
+
+
+@bp.route("/gemeente-bijdrage/<token>/tekst", methods=["POST"])
+@limiter.limit("20/hour")
+def gemeente_bijdrage_tekst(token):
+    from ..models import GemeenteTekst, utcnow
+    c = _gemeente_via_token(token)
+    if c is None:
+        abort(404)
+    t = db.session.get(GemeenteTekst, c.gemeente)
+    if t is None:
+        t = GemeenteTekst(gemeente=c.gemeente)
+        db.session.add(t)
+    t.intro_md = (request.form.get("intro_md") or "").strip()[:8000] or None
+    t.slot_md = (request.form.get("slot_md") or "").strip()[:8000] or None
+    t.auteur = (request.form.get("auteur") or c.dienst or naam_van(c))[:120]
+    t.van_gemeente = True
+    t.pending = True            # eerst nazicht: één promotionele tekst en de toon is weg
+    c.laatst_verrijkt = utcnow().replace(tzinfo=None)
+    c.aantal_bijdragen = (c.aantal_bijdragen or 0) + 1
+    db.session.commit()
+    flash("Bedankt! Je tekst is doorgestuurd — we kijken hem na en zetten hem "
+          "dan online.", "ok")
+    return redirect(url_for("public.gemeente_bijdrage", token=token))
+
+
+def naam_van(c):
+    return c.dienst or f"Gemeente {c.gemeente.title()}"
+
+
+@bp.route("/gemeente-bijdrage/<token>/foto/<int:event_id>", methods=["POST"])
+@limiter.limit("120/hour")
+def gemeente_bijdrage_foto(token, event_id):
+    from ..fotos import verwerk_upload
+    from ..models import GemeenteTekst, Photo, utcnow
+    c = _gemeente_via_token(token)
+    if c is None:
+        abort(404)
+    ev = db.session.get(Event, event_id) or abort(404)
+    # Alleen plekken in de eigen gemeente: een token geeft geen toegang tot
+    # de rest van Vlaanderen.
+    if (ev.gemeente or "").strip().lower() != c.gemeente:
+        abort(403)
+    n = 0
+    for bestand in request.files.getlist("fotos")[:5]:
+        naam = verwerk_upload(bestand)
+        if naam:
+            db.session.add(Photo(event_id=ev.id, filename=naam,
+                                 soort="gemeente", status="pending"))
+            n += 1
+    if n:
+        c.laatst_verrijkt = utcnow().replace(tzinfo=None)
+        c.aantal_bijdragen = (c.aantal_bijdragen or 0) + n
+        db.session.commit()
+        flash(f"{n} foto('s) ontvangen voor {ev.title} — dank je wel!", "ok")
+    else:
+        flash("Dat lukte niet: stuur een jpg, png of webp.", "error")
+    return redirect(url_for("public.gemeente_bijdrage", token=token))

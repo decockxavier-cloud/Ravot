@@ -3296,6 +3296,7 @@ def gemeentetekst_bewerk(gemeente):
         t.intro_md = (request.form.get("intro_md") or "").strip()[:8000] or None
         t.slot_md = (request.form.get("slot_md") or "").strip()[:8000] or None
         t.auteur = (request.form.get("auteur") or "").strip()[:120] or None
+        t.pending = False        # opslaan in het beheer = goedgekeurd
         db.session.commit()
         audit(f"gemeentetekst {sleutel} bijgewerkt")
         flash(f"Tekst voor {gemeente.title()} bewaard.", "ok")
@@ -3352,3 +3353,118 @@ def routes_herkoppel():
     flash(f"{len(routes)} routes opnieuw gekoppeld op {meter} m — "
           f"{totaal} plekken 'leuk onderweg'.", "ok")
     return redirect(url_for("admin.routes"))
+
+
+def _gemeente_token(c):
+    """Zorg voor een geldig token; vernieuw als het verlopen is (patch 240)."""
+    import secrets
+    from datetime import date, timedelta
+    if not c.token or not c.token_geldig:
+        c.token = secrets.token_urlsafe(24)
+        c.token_tot = date.today() + timedelta(days=365)
+    return c.token
+
+
+@bp.route("/gemeentecontacten")
+@medewerker_required
+def gemeentecontacten():
+    """Wie hebben we aangeschreven, wie leverde er iets? (patch 240)"""
+    from ..models import GemeenteContact, GemeenteTekst
+    tellingen = dict(db.session.query(Event.gemeente, db.func.count(Event.id))
+                     .filter(Event.pending.is_(False), Event.hidden.is_(False),
+                             Event.gemeente.isnot(None))
+                     .group_by(Event.gemeente).all())
+    zonder_foto = dict(
+        db.session.query(Event.gemeente, db.func.count(Event.id))
+        .filter(Event.pending.is_(False), Event.hidden.is_(False),
+                Event.image_url.is_(None), Event.gemeente.isnot(None))
+        .group_by(Event.gemeente).all())
+    contacten = {c.gemeente: c for c in GemeenteContact.query.all()}
+    teksten = {t.gemeente: t for t in GemeenteTekst.query.all()}
+    rijen = []
+    for gemeente, n in tellingen.items():
+        if not gemeente:
+            continue
+        sleutel = gemeente.strip().lower()
+        c = contacten.get(sleutel)
+        rijen.append({
+            "gemeente": gemeente, "sleutel": sleutel, "aantal": n,
+            "zonder_foto": zonder_foto.get(gemeente, 0),
+            "contact": c, "tekst": teksten.get(sleutel),
+        })
+    sorteer = (request.args.get("sorteer") or "").strip()
+    if sorteer == "opfrissen":
+        rijen.sort(key=lambda r: (not (r["contact"] and
+                                       r["contact"].vraagt_opfrissing),
+                                  -r["aantal"]))
+    elif sorteer == "verstuurd":
+        rijen.sort(key=lambda r: (r["contact"].laatst_verstuurd
+                                  if r["contact"] and r["contact"].laatst_verstuurd
+                                  else datetime.min), reverse=True)
+    else:
+        rijen.sort(key=lambda r: -r["aantal"])
+    return render_template("admin/gemeentecontacten.html", rijen=rijen,
+                           sorteer=sorteer,
+                           n_verstuurd=sum(1 for r in rijen if r["contact"]
+                                           and r["contact"].laatst_verstuurd),
+                           n_verrijkt=sum(1 for r in rijen if r["contact"]
+                                          and r["contact"].laatst_verrijkt),
+                           title="Gemeentecontacten", family=None,
+                           active="gemeentecontacten")
+
+
+@bp.route("/gemeentecontacten/<gemeente>", methods=["GET", "POST"])
+@medewerker_required
+def gemeentecontact(gemeente):
+    """Contactgegevens, de deelbare link en een klaargezette mailtekst."""
+    from ..models import GemeenteContact
+    sleutel = gemeente.strip().lower()[:80]
+    c = db.session.get(GemeenteContact, sleutel)
+    if request.method == "POST":
+        if c is None:
+            c = GemeenteContact(gemeente=sleutel)
+            db.session.add(c)
+        actie = request.form.get("actie")
+        if actie == "verstuurd":
+            # Jij verstuurt de mail zelf (geen bulkmail vanuit Ravot: we hebben
+            # geen toestemming van die diensten). Hier leggen we alleen vast
+            # dát het gebeurd is, zodat de opfrisvraag geen giswerk wordt.
+            c.laatst_verstuurd = datetime.utcnow()
+            _gemeente_token(c)
+            db.session.commit()
+            flash("Genoteerd als verstuurd.", "ok")
+            return redirect(url_for("admin.gemeentecontact", gemeente=sleutel))
+        if actie == "nieuwe_link":
+            c.token = None
+            _gemeente_token(c)
+            db.session.commit()
+            audit(f"gemeentelink vernieuwd: {sleutel}")
+            flash("Nieuwe link aangemaakt — de oude werkt niet meer.", "ok")
+            return redirect(url_for("admin.gemeentecontact", gemeente=sleutel))
+        c.email = (request.form.get("email") or "").strip()[:255] or None
+        c.contactnaam = (request.form.get("contactnaam") or "").strip()[:120] or None
+        c.dienst = (request.form.get("dienst") or "").strip()[:160] or None
+        c.notitie = (request.form.get("notitie") or "").strip()[:4000] or None
+        _gemeente_token(c)
+        db.session.commit()
+        flash("Bewaard.", "ok")
+        return redirect(url_for("admin.gemeentecontact", gemeente=sleutel))
+
+    if c is None:
+        c = GemeenteContact(gemeente=sleutel)
+        db.session.add(c)
+        _gemeente_token(c)
+        db.session.commit()
+    aantal = Event.query.filter(Event.pending.is_(False),
+                                Event.hidden.is_(False),
+                                db.func.lower(Event.gemeente) == sleutel).count()
+    zonder_foto = Event.query.filter(
+        Event.pending.is_(False), Event.hidden.is_(False),
+        Event.image_url.is_(None),
+        db.func.lower(Event.gemeente) == sleutel).count()
+    link = url_for("public.gemeente_bijdrage", token=c.token, _external=True)
+    return render_template("admin/gemeentecontact.html", c=c,
+                           gemeente=gemeente.title(), sleutel=sleutel,
+                           aantal=aantal, zonder_foto=zonder_foto, link=link,
+                           title=f"Contact {gemeente.title()}", family=None,
+                           active="gemeentecontacten")
