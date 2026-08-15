@@ -2243,8 +2243,10 @@ def fietsroute(slug):
         ("beleven", "Beleven", "🎭", _emmers["beleven"]),
         ("smullen", "Smullen", "🍦", _emmers["smullen"]),
     ]
+    from ..models import get_bool as _gb2
     return render_template("public/fietsroute.html", r=r,
-                           route_bewaard=route_bewaard, buurt=buurt,
+                           route_bewaard=route_bewaard,
+                           routes_login_vereist=_gb2("routes_login_vereist"), buurt=buurt,
                            buurt_groepen=buurt_groepen,
                            start_km=start_km, pauzeplan=pauzeplan,
                            beschrijving_html=beschrijving_html,

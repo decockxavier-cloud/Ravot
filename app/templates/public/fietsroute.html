@@ -71,20 +71,23 @@
     {% if r.gemeente and r.start_adres and r.gemeente not in r.start_adres %}
     ({{ r.gemeente }}){% endif %}</p>
   {% endif %}
-  {% if not family %}
+  {# Alleen een slot tonen als er écht een slot is (patch 239): sinds de
+     schakelaar routes_login_vereist kan downloaden ook vrij zijn. #}
+  {% set op_slot = routes_login_vereist and not family %}
+  {% if op_slot %}
   <p class="hint" style="margin:8px 0 0">🔒 Met een gratis Ravotpas neem je de
     GPX, het printblad en de fietsbingo mee.</p>
   {% endif %}
   <div class="acties" style="margin-top:10px">
     {% if r.gpx_bestand %}
-    <a class="btn" href="{{ url_for('public.fietsroute_gpx', slug=r.slug) }}">⬇ GPX downloaden{% if not family %} 🔒{% endif %}</a>
+    <a class="btn" href="{{ url_for('public.fietsroute_gpx', slug=r.slug) }}">⬇ GPX downloaden{% if op_slot %} 🔒{% endif %}</a>
     {% endif %}
     {% if r.start_lat %}
     <a class="btn btn-klein" target="_blank" rel="noopener"
        href="https://www.google.com/maps/dir/?api=1&destination={{ r.start_lat }},{{ r.start_lng }}">🧭 Naar het startpunt</a>
     {% endif %}
-    <a class="btn btn-klein" href="{{ url_for('public.fietsroute_print', slug=r.slug) }}">🖨️ Printblad (PDF){% if not family %} 🔒{% endif %}</a>
-    <a class="btn btn-klein" href="{{ url_for('public.fietsbingo', slug=r.slug) }}">🎯 Fietsbingo (printen){% if not family %} 🔒{% endif %}</a>
+    <a class="btn btn-klein" href="{{ url_for('public.fietsroute_print', slug=r.slug) }}">🖨️ Printblad (PDF){% if op_slot %} 🔒{% endif %}</a>
+    <a class="btn btn-klein" href="{{ url_for('public.fietsbingo', slug=r.slug) }}">🎯 Fietsbingo (printen){% if op_slot %} 🔒{% endif %}</a>
     {% if family and not mijn_review %}
     <a class="btn btn-klein" href="{{ url_for('account.route_review', route_id=r.id) }}">😄 Geef een Ravotscore</a>
     {% endif %}

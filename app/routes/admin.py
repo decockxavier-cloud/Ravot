@@ -3327,3 +3327,28 @@ def bereik():
                            streken=streken, routes=routes, maanden=maanden,
                            totaal=sum(g["bezoeken"] for g in gemeenten),
                            title="Bereik", family=None, active="bereik")
+
+
+@bp.route("/routes/herkoppel", methods=["POST"])
+@medewerker_required
+def routes_herkoppel():
+    """Alle routes opnieuw koppelen aan hun buurt (patch 239).
+
+    De koppelafstand ('leuk onderweg' in meter) wordt alleen toegepast op het
+    moment dat een route gekoppeld wordt — bij promotie. Wie de instelling
+    achteraf wijzigt, zag niets veranderen: de opgeslagen buurt bleef staan.
+    Deze knop herberekent alles in één keer.
+    """
+    from ..models import FietsRoute, get_int
+    from ..services import routes_gis
+    routes = FietsRoute.query.filter_by(hidden=False).all()
+    totaal = 0
+    for r in routes:
+        if r.geometrie:
+            totaal += routes_gis.koppel_route(r)
+    db.session.commit()
+    meter = get_int("route_buurt_meter", 400) or 400
+    audit(f"routes herkoppeld op {meter} m ({len(routes)} routes)")
+    flash(f"{len(routes)} routes opnieuw gekoppeld op {meter} m — "
+          f"{totaal} plekken 'leuk onderweg'.", "ok")
+    return redirect(url_for("admin.routes"))
