@@ -3564,36 +3564,6 @@ def gemeentecontacten_import():
                            active="gemeentecontacten")
 
 
-@bp.route("/gemeentecontacten/ophalen", methods=["POST"])
-@medewerker_required
-def gemeentecontacten_ophalen():
-    """Contacten ophalen uit de open data van Toerisme Vlaanderen (patch 249).
-
-    Officiële dataset onder Modellicentie Gratis Hergebruik — geen handmatig
-    verzamelwerk meer, en één klik volstaat om ze te verversen.
-    """
-    from ..services import infokantoren
-    bekend = {}
-    for (g,) in db.session.query(Event.gemeente).filter(
-            Event.gemeente.isnot(None)).distinct().all():
-        if g:
-            bekend[g.strip().lower()] = g.strip()
-    try:
-        nieuw, aangevuld, overgeslagen, onbekend, namen = \
-            infokantoren.importeer(bekend, _gemeente_token)
-    except Exception as fout:
-        flash(f"Ophalen mislukt: {fout}", "error")
-        return redirect(url_for("admin.gemeentecontacten_import"))
-    audit(f"infokantoren opgehaald: {nieuw} nieuw, {aangevuld} aangevuld")
-    boodschap = (f"{nieuw} nieuwe contacten, {aangevuld} aangevuld, "
-                 f"{overgeslagen} overgeslagen (had al een adres).")
-    if onbekend:
-        boodschap += (f" {onbekend} niet gekoppeld — geen aanbod in Ravot"
-                      f"{': ' + ', '.join(namen) if namen else ''}.")
-    flash(boodschap, "ok")
-    return redirect(url_for("admin.gemeentecontacten"))
-
-
 @bp.route("/test-mail/<soort>", methods=["POST"])
 @medewerker_required
 @limiter.limit("10/hour")
