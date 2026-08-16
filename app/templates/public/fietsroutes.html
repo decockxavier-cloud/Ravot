@@ -34,6 +34,31 @@
 </div>
 {% endif %}
 
+{# Routefilters (patch 257): afstand is voor een gezin de belangrijkste keuze
+   — met een zesjarige zoek je 10 km, geen 30. #}
+{% set basis = {'regio': regio or none, 'provincie': provincie or none,
+                'lengte': lengte or none, 'vlak': vlakheid or none,
+                'buggy': '1' if buggy_aan else none} %}
+<div class="filterrij">
+  <span class="filterrij-label">Afstand</span>
+  <a class="chip {{ 'aan' if not lengte }}"
+     href="{{ url_for('public.fietsroutes', **dict(basis, lengte=none)) }}">Alle</a>
+  {% for code, label in [('kort','tot 15 km'), ('middel','15–30 km'), ('lang','30 km +')] %}
+  <a class="chip {{ 'aan' if lengte == code else 'uit' }}"
+     href="{{ url_for('public.fietsroutes', **dict(basis, lengte=none if lengte == code else code)) }}">{{ label }}</a>
+  {% endfor %}
+</div>
+
+<div class="filterrij">
+  <span class="filterrij-label">Onderweg</span>
+  <a class="chip {{ 'aan' if buggy_aan else 'uit' }}"
+     href="{{ url_for('public.fietsroutes', **dict(basis, buggy=none if buggy_aan else '1')) }}">👶 Vlot met de buggy</a>
+  <a class="chip {{ 'aan' if vlakheid == 'vlak' else 'uit' }}"
+     href="{{ url_for('public.fietsroutes', **dict(basis, vlak=none if vlakheid == 'vlak' else 'vlak')) }}">🛣️ Vlak</a>
+  <a class="chip {{ 'aan' if vlakheid == 'heuvels' else 'uit' }}"
+     href="{{ url_for('public.fietsroutes', **dict(basis, vlak=none if vlakheid == 'heuvels' else 'heuvels')) }}">⛰️ Heuvels</a>
+</div>
+
 {% if kaartdata %}
 <div id="routes-kaart" style="height:300px;border-radius:16px;margin:12px 0"
      data-routes='{{ kaartdata|tojson }}'

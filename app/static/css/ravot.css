@@ -1365,3 +1365,17 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 .route-pijl { color: #b8541c; font-size: 13px; line-height: 1;
   text-shadow: 0 0 3px #fff, 0 0 3px #fff; pointer-events: none; }
 .route-pijl span { display: inline-block; }
+
+/* Overzichtskaart routes (patch 257): streekbellen met telling i.p.v. een
+   stapel losse pins, en een eigen fietspin bij het inzoomen. */
+.streek-bel { display: flex !important; align-items: center; gap: 6px;
+  width: auto !important; white-space: nowrap; background: var(--groen);
+  color: #fff; padding: 4px 6px 4px 11px; border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .28); cursor: pointer;
+  font: 700 .82rem Inter, sans-serif; transform: translate(-50%, -50%); }
+.streek-bel:hover { background: #256a3a; }
+.streek-naam { line-height: 1; }
+.streek-tel { background: rgba(255, 255, 255, .22); border-radius: 999px;
+  min-width: 20px; padding: 2px 6px; text-align: center; line-height: 1.1; }
+.route-pin { font-size: 20px; line-height: 1; text-align: center;
+  text-shadow: 0 0 4px #fff, 0 0 4px #fff; }

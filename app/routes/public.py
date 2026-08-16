@@ -2061,6 +2061,25 @@ def fietsroutes():
                      .filter(FietsRoute.regio.isnot(None),
                              FietsRoute.pending.is_(False),
                              FietsRoute.hidden.is_(False)).all()})
+    # Filters op de route zelf (patch 257). Afstand is voor een gezin het
+    # belangrijkste: met een zesjarige zoek je 10 km, geen 30. Buggy en
+    # heuvels zijn harde eisen, geen voorkeur.
+    lengte = (request.args.get("lengte") or "").strip()
+    if lengte == "kort":
+        q = q.filter(FietsRoute.afstand_km <= 15)
+    elif lengte == "middel":
+        q = q.filter(FietsRoute.afstand_km > 15, FietsRoute.afstand_km <= 30)
+    elif lengte == "lang":
+        q = q.filter(FietsRoute.afstand_km > 30)
+    if request.args.get("buggy") == "1":
+        q = q.filter(FietsRoute.buggyvriendelijk.is_(True))
+    vlakheid = (request.args.get("vlak") or "").strip()
+    if vlakheid == "vlak":
+        # Leeg = niet gemeten; die tonen we hier niet, anders beloven we
+        # "vlak" over een route waarvan we het niet weten.
+        q = q.filter(FietsRoute.hoogte_m.isnot(None), FietsRoute.hoogte_m <= 100)
+    elif vlakheid == "heuvels":
+        q = q.filter(FietsRoute.hoogte_m > 100)
     if regio:
         q = q.filter(FietsRoute.regio.ilike(regio))
     elif provincie:
@@ -2121,12 +2140,15 @@ def fietsroutes():
                   "km": r.afstand_km, "regio": r.regio or "",
                   "url": url_for("public.fietsroute", slug=r.slug)}
                  for r in rijen if r.start_lat is not None]
+    # Streekbellen met een telling (patch 257): uitgezoomd stapelden 62 losse
+    # markers tot een onleesbare berg en lagen alle streeknamen over elkaar.
+    # Nu één bel per streek; de losse routes verschijnen bij inzoomen.
     regio_labels = []
     for reg in regios:
         pts = [k for k in kaartdata if k["regio"] == reg]
         if pts:
             regio_labels.append({
-                "regio": reg,
+                "regio": reg, "aantal": len(pts),
                 "lat": sum(p["lat"] for p in pts) / len(pts),
                 "lng": sum(p["lng"] for p in pts) / len(pts),
                 "url": url_for("public.fietsroutes", regio=reg)})
@@ -2137,6 +2159,8 @@ def fietsroutes():
                        for r in regios}
     return render_template("public/fietsroutes.html", rijen=rijen, regios=regios,
                            regio=regio, provincie=provincie,
+                           lengte=lengte, vlakheid=vlakheid,
+                           buggy_aan=request.args.get("buggy") == "1",
                            provincies=provincies,
                            regio_provincie=regio_provincie,
                            afstanden=afstanden,
