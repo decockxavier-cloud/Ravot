@@ -1002,11 +1002,11 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 /* Gemeente-bolletjes op de uitgezoomde kaart (patch 113) */
 .gemeente-bol { background: none; border: 0; }
 .gemeente-bol span { display: block; width: 46px; height: 46px; line-height: 46px;
-  margin: 0 auto; border-radius: 50%; background: var(--oranje); color: #fff;
+  margin: 0 auto; border-radius: 50%; background: #EE8035; color: #fff;
   font-weight: 800; text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,.25);
   border: 3px solid var(--zon); }
 .gemeente-bol small { display: block; text-align: center; font-size: 11px;
-  font-weight: 700; color: var(--donker); text-shadow: 0 1px 3px #FAF7F0,
+  font-weight: 700; color: var(--gras-donker); text-shadow: 0 1px 3px #FAF7F0,
   0 -1px 3px #FAF7F0, 1px 0 3px #FAF7F0, -1px 0 3px #FAF7F0; margin-top: 2px;
   white-space: nowrap; }
 
@@ -1152,8 +1152,8 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
   vertical-align: middle; }
 .sociaal-knop { display: inline-flex; align-items: center; justify-content: center;
   width: 42px; height: 42px; border-radius: 50%; color: #fff;
-  background: var(--groen); transition: transform .15s, background .15s; }
-.sociaal-knop:hover { background: var(--oranje); transform: translateY(-1px); }
+  background: var(--gras); transition: transform .15s, background .15s; }
+.sociaal-knop:hover { background: #EE8035; transform: translateY(-1px); }
 .sociaal-knop svg { width: 26px; height: 26px; }
 @media (max-width: 720px) {
   .sociaal-knop { width: 46px; height: 46px; }
@@ -1188,7 +1188,7 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 .pas-lijst li { display: flex; justify-content: space-between; align-items: center;
   gap: 10px; padding: 7px 2px; font-size: .95rem; }
 .pas-lijst li + li { border-top: 1px dashed #ECE6D8; }
-.pas-lijst b { color: var(--groen); font-size: 1.05rem; white-space: nowrap; }
+.pas-lijst b { color: var(--gras); font-size: 1.05rem; white-space: nowrap; }
 .pas-ladder { text-align: center; font-size: .82rem; font-weight: 600;
   color: #4a5a48; margin: 10px 0 4px; line-height: 1.9; }
 .pas-ladder span { color: #c8c0ae; font-weight: 400; padding: 0 2px; }
@@ -1204,12 +1204,12 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 .route-chip { background: #fff; border: 1px solid var(--lijn);
   border-radius: 999px; padding: 5px 12px; font-size: .9rem;
   text-decoration: none; }
-.route-chip:hover { border-color: var(--groen); }
+.route-chip:hover { border-color: var(--gras); }
 .route-gezinslaag { display: flex; gap: 10px; align-items: center;
   flex-wrap: wrap; margin: 8px 0 12px; }
 
 /* Routekaart-streeklabels (patch 198) */
-.regio-label a { background: var(--groen); color: #fff; padding: 3px 10px;
+.regio-label a { background: var(--gras); color: #fff; padding: 3px 10px;
   border-radius: 999px; font-size: .8rem; font-weight: 700;
   text-decoration: none; white-space: nowrap; box-shadow: 0 1px 4px
   rgba(0,0,0,.25); }
@@ -1222,7 +1222,7 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 /* Sorteerbare tabelkoppen in het beheer (patch 208) */
 .sorteer-kop { color: inherit; text-decoration: none; white-space: nowrap; }
 .sorteer-kop:hover { text-decoration: underline; }
-.sorteer-kop.aan { color: var(--groen); }
+.sorteer-kop.aan { color: var(--gras); }
 
 /* Filterchips streken/provincies (patch 211): de actieve keuze is een gele
    knop (accentkleur, springt eruit), de rest is een leesbare witte pil met
@@ -1278,7 +1278,7 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 .trechter-label { min-width: 210px; font-size: .9rem; }
 .trechter-balk { flex: 1; height: 20px; background: #efece1;
   border-radius: 999px; overflow: hidden; }
-.trechter-vul { display: block; height: 100%; background: var(--groen);
+.trechter-vul { display: block; height: 100%; background: var(--gras);
   border-radius: 999px; }
 .trechter-cijfer { min-width: 92px; text-align: right; font-weight: 700; }
 @media (max-width: 640px) {
@@ -1293,7 +1293,7 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 .buurt-kaart { display: flex; gap: 10px; align-items: center;
   padding: 8px; border: 1.5px solid var(--lijn); border-radius: 14px;
   text-decoration: none; color: inherit; background: #fff; }
-.buurt-kaart:hover { border-color: var(--groen); }
+.buurt-kaart:hover { border-color: var(--gras); }
 .buurt-kaart.partner { border-color: var(--zon); background: #fffdf6; }
 .buurt-beeld { width: 64px; height: 64px; border-radius: 10px; flex: none;
   overflow: hidden; background: #eef1e9; }
@@ -1307,7 +1307,7 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 .trechter-balk { display: block; flex: 1; min-width: 60px; height: 20px;
   background: #efece1; border-radius: 999px; overflow: hidden; }
 .trechter-vul { display: block; height: 100%; min-width: 3px;
-  background: var(--groen); border-radius: 999px; }
+  background: var(--gras); border-radius: 999px; }
 
 /* Inloggen met Google (patch 225): herkenbaar volgens Google's richtlijnen —
    witte knop, grijze rand, officieel logo. */
@@ -1350,7 +1350,7 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 .keuze-regel { display: flex; gap: 10px; align-items: flex-start;
   padding: 10px 12px; border: 1.5px solid var(--lijn); border-radius: 14px;
   cursor: pointer; }
-.keuze-regel:hover { border-color: var(--groen); }
+.keuze-regel:hover { border-color: var(--gras); }
 .keuze-regel input { margin-top: 3px; flex: none; width: 18px; height: 18px; }
 .keuze-regel .hint { display: block; margin-top: 2px; }
 
@@ -1361,30 +1361,34 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 
 /* Onderweg-knoppen en richtingspijlen op de routekaart (patch 256) */
 .kaart-acties { margin: 8px 0 0; flex-wrap: wrap; }
-#mijn-positie.aan { background: var(--groen); color: #fff; border-color: var(--groen); }
+#mijn-positie.aan { background: var(--gras); color: #fff; border-color: var(--gras); }
 .route-pijl { color: #b8541c; font-size: 13px; line-height: 1;
   text-shadow: 0 0 3px #fff, 0 0 3px #fff; pointer-events: none; }
 .route-pijl span { display: inline-block; }
 
 /* Overzichtskaart routes (patch 257): streekbellen met telling i.p.v. een
    stapel losse pins, en een eigen fietspin bij het inzoomen. */
+/* Vaste kleur i.p.v. een variabele (patch 259): één verkeerde variabelenaam
+   liet de achtergrond wegvallen, waardoor er witte tekst op een bleke kaart
+   overbleef. Een bel op een kaart moet altijd leesbaar zijn. */
 .streek-bel { display: flex !important; align-items: center; gap: 6px;
-  width: auto !important; white-space: nowrap; background: var(--groen);
-  color: #fff; padding: 4px 6px 4px 11px; border-radius: 999px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, .28); cursor: pointer;
+  width: auto !important; white-space: nowrap; background: #2E7D46;
+  color: #fff !important; padding: 5px 7px 5px 12px; border-radius: 999px;
+  border: 2px solid #fff; cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .45); text-decoration: none;
   font: 700 .82rem Inter, sans-serif; transform: translate(-50%, -50%); }
-.streek-bel:hover { background: #256a3a; }
+.streek-bel:hover, .streek-bol:hover { background: #1F3A2A; }
 .streek-naam { line-height: 1; }
-.streek-tel { background: rgba(255, 255, 255, .22); border-radius: 999px;
+.streek-tel { background: rgba(255, 255, 255, .28); border-radius: 999px;
   min-width: 20px; padding: 2px 6px; text-align: center; line-height: 1.1; }
 .route-pin { font-size: 20px; line-height: 1; text-align: center;
   text-shadow: 0 0 4px #fff, 0 0 4px #fff; }
 /* Smal scherm: enkel het aantal. Vijftien namen naast elkaar past niet op
    een telefoon — dan lezen ze geen van alle. */
 .streek-bol { display: flex !important; align-items: center;
-  justify-content: center; width: 30px !important; height: 30px !important;
-  background: var(--groen); color: #fff; border: 2px solid #fff;
-  border-radius: 50%; box-shadow: 0 2px 6px rgba(0, 0, 0, .35);
-  font: 700 .85rem Inter, sans-serif; cursor: pointer;
+  justify-content: center; width: 32px !important; height: 32px !important;
+  background: #2E7D46; color: #fff !important; border: 2px solid #fff;
+  border-radius: 50%; box-shadow: 0 2px 10px rgba(0, 0, 0, .45);
+  font: 700 .9rem Inter, sans-serif; cursor: pointer;
   transform: translate(-50%, -50%); }
 .streek-bol:hover { background: #256a3a; }
