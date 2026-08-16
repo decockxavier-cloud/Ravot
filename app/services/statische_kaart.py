@@ -42,6 +42,31 @@ def _kies_zoom(punten):
     return 6
 
 
+def _teken_pijlen(tekenaar, lijn, aantal=14):
+    """Rijrichting op het printblad (patch 262).
+
+    Op papier heb je geen app die meedraait: zonder pijl weet je bij een lus
+    niet welke kant je op moet. We tekenen ze als driehoekjes op de lijn zelf,
+    met een witte rand zodat ze ook op een drukke kaart leesbaar blijven.
+    """
+    if len(lijn) < 3:
+        return
+    stap = max(1, len(lijn) // aantal)
+    for i in range(stap, len(lijn) - 1, stap):
+        (x0, y0), (x1, y1) = lijn[i - 1], lijn[i]
+        dx, dy = x1 - x0, y1 - y0
+        lengte = math.hypot(dx, dy)
+        if lengte < 1:
+            continue
+        ux, uy = dx / lengte, dy / lengte          # richting
+        px, py = -uy, ux                            # loodrecht
+        punt = (x1 + ux * 9, y1 + uy * 9)
+        links = (x1 - ux * 5 + px * 6, y1 - uy * 5 + py * 6)
+        rechts = (x1 - ux * 5 - px * 6, y1 - uy * 5 - py * 6)
+        tekenaar.polygon([punt, links, rechts], fill="#b8541c",
+                         outline="#ffffff")
+
+
 def kaart_bestand(route, map_=None, forceer=False):
     """Pad naar de kaart-PNG van een route; maakt hem aan als hij ontbreekt.
     Retourneert None als er geen geometrie is of de tegels niet opgehaald
@@ -108,6 +133,7 @@ def kaart_bestand(route, map_=None, forceer=False):
     # witte onderlijn zodat de route ook op drukke kaarten leesbaar blijft
     tekenaar.line(lijn, fill="#ffffff", width=11, joint="curve")
     tekenaar.line(lijn, fill="#EE8035", width=6, joint="curve")
+    _teken_pijlen(tekenaar, lijn)
     sx, sy = lijn[0]
     tekenaar.ellipse([sx - 11, sy - 11, sx + 11, sy + 11],
                      fill="#4CA362", outline="#ffffff", width=4)

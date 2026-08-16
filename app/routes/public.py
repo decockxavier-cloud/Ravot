@@ -2545,11 +2545,31 @@ def fietsroute_kaartje(slug):
         return f"{x:.1f},{y:.1f}"
     pad = " ".join(xy(p) for p in punten)
     start = xy(punten[0])
+    # Rijrichting ook op de kale terugvalkaart (patch 262): zonder pijl weet
+    # je bij een lus niet welke kant je op moet, en op papier draait er geen
+    # app mee die het toont.
+    pijlen = []
+    stap = max(1, len(punten) // 14)
+    for i in range(stap, len(punten) - 1, stap):
+        x0, y0 = (float(v) for v in xy(punten[i - 1]).split(","))
+        x1, y1 = (float(v) for v in xy(punten[i]).split(","))
+        dx, dy = x1 - x0, y1 - y0
+        lengte = math.hypot(dx, dy)
+        if lengte < 1:
+            continue
+        ux, uy = dx / lengte, dy / lengte
+        px, py = -uy, ux
+        driehoek = (f"{x1 + ux * 11:.1f},{y1 + uy * 11:.1f} "
+                    f"{x1 - ux * 6 + px * 7:.1f},{y1 - uy * 6 + py * 7:.1f} "
+                    f"{x1 - ux * 6 - px * 7:.1f},{y1 - uy * 6 - py * 7:.1f}")
+        pijlen.append(f'<polygon points="{driehoek}" fill="#b8541c" '
+                      f'stroke="#ffffff" stroke-width="2"/>')
     svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" '
            f'width="{W}" height="{H}">'
            f'<rect width="{W}" height="{H}" fill="#fdfaf2"/>'
            f'<polyline points="{pad}" fill="none" stroke="#EE8035" '
            f'stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/>'
+           + "".join(pijlen) +
            f'<circle cx="{start.split(",")[0]}" cy="{start.split(",")[1]}" '
            f'r="13" fill="#4CA362" stroke="#fff" stroke-width="4"/>'
            f'</svg>')
