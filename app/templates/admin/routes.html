@@ -8,6 +8,16 @@
   <span class="hint">na het wijzigen van de koppelafstand ("leuk onderweg" in
     meter) — anders blijft de opgeslagen buurt staan</span>
 </form>
+
+<form method="post" action="{{ url_for('admin.routes_meet_ondergrond') }}"
+      style="margin:8px 0">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button class="btn btn-klein btn-stil" type="submit">🛤️ Wegdek meten (nieuwe)</button>
+  <button class="btn btn-klein btn-stil" type="submit" name="alles" value="1">🛤️ Alles opnieuw meten</button>
+  <span class="hint">verhard/onverhard en autovrij uit de open data van
+    Toerisme Vlaanderen — die wordt wekelijks vernieuwd, dus af en toe
+    opnieuw meten houdt bestaande routes juist</span>
+</form>
 <p><a class="btn btn-klein" href="{{ url_for('admin.route_voorstellen') }}">🧪 Voorstellen van de generator</a></p>
 <p class="hint">Kant-en-klare gezinslussen invoeren: GPX uploaden (uit een
   knooppuntenplanner of van een bestaande route) en de rest — afstand, lus,

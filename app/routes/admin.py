@@ -3642,3 +3642,32 @@ def test_mail(soort):
     flash(f"Testmail verstuurd naar {admin.email} — opgebouwd met de gegevens "
           f"van gezin #{fam.id}. Het gezin zelf kreeg niets.", "ok")
     return redirect(url_for("admin.verbindingen"))
+
+
+@bp.route("/routes/meet-ondergrond", methods=["POST"])
+@medewerker_required
+def routes_meet_ondergrond():
+    """Wegdek en verkeersdrukte (bij)meten voor bestaande routes (patch 252).
+
+    Bestaande routes moeten mee-evolueren: de open data wordt wekelijks
+    vernieuwd, en routes van vóór deze patch hebben nog geen meting.
+    """
+    from ..models import FietsRoute
+    from ..services.route_generator import meet_ondergrond
+    alleen_lege = request.form.get("alles") != "1"
+    routes = FietsRoute.query.filter_by(hidden=False).all()
+    gemeten = overgeslagen = 0
+    for r in routes:
+        if not r.geometrie:
+            continue
+        if alleen_lege and r.verhard_pct is not None:
+            overgeslagen += 1
+            continue
+        meet_ondergrond(r, r.geometrie)
+        gemeten += 1
+    db.session.commit()
+    audit(f"ondergrond gemeten voor {gemeten} routes")
+    flash(f"{gemeten} routes gemeten op wegdek en verkeersdrukte"
+          f"{f', {overgeslagen} overgeslagen (al gemeten)' if overgeslagen else ''}.",
+          "ok")
+    return redirect(url_for("admin.routes"))

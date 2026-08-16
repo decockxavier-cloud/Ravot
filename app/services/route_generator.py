@@ -408,6 +408,29 @@ def genereer_voorstellen(gemeente, top=8):
 
 
 
+def meet_ondergrond(route, geometrie):
+    """Wegdek en verkeersdrukte meten uit de open data (patch 252).
+
+    Verhard/onverhard vulden we tot nu toe met de hand; autovrij was er
+    helemaal niet. Beide staan per netwerksegment in de WFS van Toerisme
+    Vlaanderen. Lukt de meting niet, dan blijft het veld leeg — geen data is
+    eerlijker dan een gok, zeker bij een badge als "buggyvriendelijk".
+    """
+    from .wegdek import betrouwbaar, meet_autovrij, meet_wegdek
+    if not geometrie or len(geometrie) < 2:
+        return
+    verhard, dek_v = meet_wegdek(geometrie)
+    if verhard is not None and betrouwbaar(dek_v):
+        route.verhard_pct = verhard
+        # Buggy's willen verharding: vanaf 80% noemen we het buggyvriendelijk.
+        route.buggyvriendelijk = verhard >= 80
+    autovrij, dek_a = meet_autovrij(geometrie)
+    # De verkeerslaag dekt maar een deel van het netwerk; zonder deftige
+    # dekking is een percentage misleidend.
+    if autovrij is not None and betrouwbaar(dek_a):
+        route.autovrij_pct = autovrij
+
+
 def meet_klimmeters(geometrie, stap_km=0.5):
     """Echte klimmeters van een route via de gratis Open-Meteo hoogte-API
     (patch 194). Bemonstert de lijn om de ~500 m, telt de positieve
@@ -732,6 +755,7 @@ def promoveer(voorstel):
         # Let op: None triggert de kolomdefault "vlak" — en dat is nu net de
         # aanname die we niet willen maken. Leeg = "weten we niet".
         route.moeilijkheid = ""
+    meet_ondergrond(route, voorstel.geometrie)
     db.session.add(route)
     db.session.flush()
     koppel_route(route)

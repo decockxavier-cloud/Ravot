@@ -58,6 +58,12 @@
   {% if r.buggyvriendelijk %}<span class="badge">👶 buggy ✓</span>{% endif %}
   {% if r.autovrij_pct is not none %}<span class="badge">{{ r.autovrij_pct }}% autovrij</span>{% endif %}
   {% if r.verhard_pct is not none %}<span class="badge">{{ r.verhard_pct }}% verhard</span>{% endif %}
+  {# Autovrij (patch 252): waar een ouder met een fietsend kind wakker van
+     ligt. Alleen getoond als de open data genoeg dekking had. #}
+  {% if r.autovrij_pct is not none %}<span class="badge"
+    style="background:{{ '#4CA362' if r.autovrij_pct >= 70 else '#efece1' }};
+           color:{{ '#fff' if r.autovrij_pct >= 70 else 'inherit' }}">
+    🚗 {{ r.autovrij_pct }}% autovrij</span>{% endif %}
   {% if r.hoogte_m %}<span class="badge">{{ r.hoogte_m }} hoogtemeters</span>{% endif %}
   {% if r.bron_naam %}
   <p class="hint" style="margin:8px 0 0">🧭 Route van
