@@ -297,6 +297,25 @@ def _in_bediend_gebied(lat, lng, tags=None):
         return True     # bij twijfel niet blokkeren: liever te veel dan stil falen
 
 
+def _rolstoel(tags):
+    """Toegankelijkheid uit OSM (patch 254) — op één plek.
+
+    "yes" en "no" zijn allebei een bewust oordeel van de karteerder en dus
+    bruikbaar; "no" bespaart een gezin een vergeefse rit. "limited" laten we
+    leeg: dat is precies het soort onzekerheid waar we niet op willen gokken.
+
+    Let op: het speeloppervlak (surface=sand/grass) zegt hier niets over. Bij
+    een speeltuin duw je de buggy enkele meters en zet je hem aan de kant —
+    dat oppervlak is geen maat voor bereikbaarheid.
+    """
+    waarde = (tags.get("wheelchair") or "").strip().lower()
+    if waarde == "yes":
+        return {"toegankelijk": True, "buggy_ok": True}
+    if waarde == "no":
+        return {"toegankelijk": False}
+    return {}
+
+
 def normalise(el):
     tags = el.get("tags") or {}
     # Gesloten/verlaten/voormalige plekken weren (bestaan niet meer).
@@ -376,8 +395,7 @@ def normalise(el):
     uit.update(_contact(tags))
     uit.update(_voorzieningen(tags))
     uit.update(_horeca_extra(tags))
-    if tags.get("wheelchair") == "yes":
-        uit["toegankelijk"] = True
+    uit.update(_rolstoel(tags))
     if kind == "playground":
         toestellen = sorted({TOESTEL_NL[k.split(":", 1)[1]]
                              for k, v in tags.items()
@@ -460,9 +478,7 @@ def _normalise_horeca(el, tags):
     # Ouder-filters rechtstreeks uit OSM (enkel positieve signalen):
     if signalen.get("changing_table"):
         uit["verzorgingstafel"] = True
-    if tags.get("wheelchair") == "yes":
-        uit["buggy_ok"] = True
-        uit["toegankelijk"] = True
+    uit.update(_rolstoel(tags))
     uit.update(_contact(tags))
     uit.update(_horeca_extra(tags))
     return uit
@@ -616,8 +632,7 @@ def importeer_horeca(ext_ids_met_soort):
                 data["postcode"] = data["postcode"] or buurman.postcode
         if "changing_table" in signalen:
             data["verzorgingstafel"] = True
-        if tags.get("wheelchair") == "yes":
-            data["buggy_ok"] = True
+        data.update(_rolstoel(tags))
         if "highchair" in signalen:
             data["kinderstoel"] = True
         if "kids_area" in signalen or "playground" in signalen:

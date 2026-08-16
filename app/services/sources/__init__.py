@@ -49,6 +49,11 @@ def _set_status(source, state, result=None, error=None):
             row.last_result = str(result)[:200]
         if error is not None:
             row.last_error = str(error)[:300]
+        elif state == "done":
+            # Een geslaagde run wist de vorige fout (patch 254). Anders blijft
+            # een oude melding maandenlang zichtbaar en lijkt een bron kapot
+            # terwijl hij vannacht nog gewoon draaide.
+            row.last_error = None
         db.session.add(row)
         db.session.commit()
     except Exception:

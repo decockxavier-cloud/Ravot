@@ -52,7 +52,8 @@
   {% if ev.reserveren %}<span class="badge">🗓️ reserveren aangeraden</span>{% endif %}
   {% if ev.overdekt_terras %}<span class="badge">⛱️ overdekt terras</span>{% endif %}
   {% if ev.parking %}<span class="badge">🅿️ parking</span>{% endif %}
-  {% if ev.toegankelijk %}<span class="badge">♿ toegankelijk</span>{% endif %}
+  {% if ev.toegankelijk %}<span class="badge">♿ toegankelijk</span>
+  {% elif ev.toegankelijk is false %}<span class="badge" title="volgens OpenStreetMap">♿ niet toegankelijk</span>{% endif %}
   {% if ev.allergievriendelijk %}<span class="badge">🌾 allergievriendelijk</span>{% endif %}
   {% if ev.babyvoeding %}<span class="badge">🍼 babyvoeding opwarmen</span>{% endif %}
   {% if ev.huisdieren %}<span class="badge">🐕 huisdieren welkom</span>{% endif %}
