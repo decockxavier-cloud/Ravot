@@ -75,9 +75,13 @@ def test_kaart_krijgt_streektellingen(client, app):
     assert '"aantal": 2' in regios or '&#34;aantal&#34;: 2' in regios
 
 
-def test_kaartscript_schakelt_op_zoom(client, app):
+def test_kaartscript_blijft_leesbaar(client, app):
+    """Op een telefoon passen vijftien streeknamen niet naast elkaar; dan
+    tonen we enkel het aantal, en voegen we bellen samen die tóch overlappen."""
     with open("app/static/js/routes_kaart.js", encoding="utf-8") as f:
         src = f.read()
     assert "streek-bel" in src            # bellen i.p.v. losse labels
-    assert "zoomend" in src               # detailniveau volgt de zoom
+    assert "streek-bol" in src            # smal scherm: enkel het aantal
+    assert "samengevoegd" in src          # overlappende bellen optellen
+    assert "zoomend" in src and "moveend" in src
     assert "DREMPEL" in src

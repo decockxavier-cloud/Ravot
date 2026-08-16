@@ -23,21 +23,59 @@
   var streeklaag = L.layerGroup().addTo(kaart);
   var routelaag = L.layerGroup();
 
-  regios.forEach(function (g) {
-    L.marker([g.lat, g.lng], {
+  // Op een telefoon is er geen plaats voor vijftien namen naast elkaar: dan
+  // tonen we enkel het aantal in een rond bolletje. Aantikken geeft de naam.
+  var smal = el.clientWidth < 520;
+
+  // Streken die op het scherm te dicht bij elkaar vallen, samenvoegen tot één
+  // bol met de som. Anders overlappen ze alsnog — precies het probleem dat we
+  // wilden oplossen.
+  function samengevoegd() {
+    var min_px = smal ? 46 : 150;
+    var uit = [];
+    regios.slice().sort(function (a, b) { return b.aantal - a.aantal; })
+      .forEach(function (g) {
+        var p = kaart.latLngToContainerPoint([g.lat, g.lng]);
+        for (var i = 0; i < uit.length; i++) {
+          var q = kaart.latLngToContainerPoint([uit[i].lat, uit[i].lng]);
+          if (Math.abs(p.x - q.x) < min_px && Math.abs(p.y - q.y) < 34) {
+            uit[i].aantal += g.aantal;
+            uit[i].namen.push(g.regio);
+            return;
+          }
+        }
+        uit.push({ lat: g.lat, lng: g.lng, aantal: g.aantal,
+                   regio: g.regio, namen: [g.regio] });
+      });
+    return uit;
+  }
+
+  function tekenStreken() {
+    streeklaag.clearLayers();
+    samengevoegd().forEach(maakBel);
+  }
+
+  function maakBel(g) {
+    var naam = g.regio.split("/")[0].trim();     // "Meetjesland / Gentse rand"
+    var bel = L.marker([g.lat, g.lng], {
       icon: L.divIcon({
-        className: "streek-bel",
-        html: '<span class="streek-naam">' + g.regio + "</span>" +
-              '<span class="streek-tel">' + g.aantal + "</span>",
+        className: smal ? "streek-bol" : "streek-bel",
+        html: smal ? String(g.aantal)
+          : '<span class="streek-naam">' + naam + "</span>" +
+            '<span class="streek-tel">' + g.aantal + "</span>",
         iconSize: null,
       }),
       title: g.regio + ": " + g.aantal + " route(s)",
-    }).addTo(streeklaag).on("click", function () {
-      // Inzoomen op de streek in plaats van meteen wegnavigeren: zo blijft
-      // de bezoeker op de kaart en ziet hij de routes verschijnen.
-      kaart.setView([g.lat, g.lng], DREMPEL + 1);
+      zIndexOffset: g.aantal,        // grootste aanbod bovenop bij overlap
+    }).addTo(streeklaag);
+    bel.bindTooltip((g.namen || [g.regio]).join(" · ") + " — " + g.aantal
+                    + " route(s)", { direction: "top" });
+    bel.on("click", function () {
+      // Inzoomen in plaats van meteen wegnavigeren: zo blijft de bezoeker op
+      // de kaart en ziet hij de bellen uit elkaar vallen.
+      kaart.setView([g.lat, g.lng], Math.min(kaart.getZoom() + 2, DREMPEL + 1));
     });
-  });
+  }
 
   var grenzen = [];
   routes.forEach(function (r) {
@@ -60,10 +98,12 @@
       kaart.removeLayer(routelaag);
     }
   }
-  kaart.on("zoomend", pasNiveauAan);
+  kaart.on("zoomend", function () { pasNiveauAan(); tekenStreken(); });
+  kaart.on("moveend", tekenStreken);
 
   // Strak op de selectie passen: bij één streek zoomt hij vanzelf diep genoeg
   // in, waardoor de losse routes meteen zichtbaar zijn.
   kaart.fitBounds(grenzen, { padding: [30, 30], maxZoom: 12 });
+  tekenStreken();
   pasNiveauAan();
 })();
