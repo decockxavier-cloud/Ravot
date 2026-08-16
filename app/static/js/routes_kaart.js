@@ -81,7 +81,7 @@
   routes.forEach(function (r) {
     grenzen.push([r.lat, r.lng]);
     L.marker([r.lat, r.lng], {
-      icon: L.divIcon({ className: "route-pin", html: "🚲", iconSize: [26, 26] }),
+      icon: L.divIcon({ className: "route-pin", html: "🚲", iconSize: null }),
       title: r.titel,
     }).addTo(routelaag).bindPopup(
       '<strong><a href="' + r.url + '">' + r.titel + "</a></strong><br>" +

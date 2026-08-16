@@ -37,3 +37,13 @@ def test_kaartbellen_hebben_gegarandeerd_contrast():
         assert "#2E7D46" in blok               # vaste donkergroene achtergrond
         assert "solid #fff" in blok            # witte rand tegen de kaart
         assert "color: #fff !important" in blok
+
+
+def test_routepin_komt_los_van_de_kaart():
+    """Een emoji met witte gloed verdrinkt tussen wegen en plaatsnamen;
+    een cirkel met rand niet."""
+    css = _css()
+    blok = css[css.index(".route-pin {"):css.index(".route-pin {") + 400]
+    assert "background: #fff" in blok
+    assert "border: 2.5px solid" in blok
+    assert "border-radius: 50%" in blok
