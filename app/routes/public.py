@@ -798,12 +798,16 @@ def ontdek():
         q = q.filter(db.or_(Event.subtype.is_(None), Event.subtype.notin_(niet)))
     else:
         groep = ""
-    soort = request.args.get("soort") or ""
-    if soort in TYPES:
-        q = q.filter(Event.subtype == soort)
+    # Meerdere soorten tegelijk (patch 255): dit was als enige filter beperkt
+    # tot één keuze, terwijl je hier juist wilt combineren ("speeltuin OF
+    # kinderboerderij"). Eén waarde blijft werken: oude links breken niet.
+    soorten_gekozen = [s for s in request.args.getlist("soort") if s in TYPES]
+    soort = soorten_gekozen[0] if len(soorten_gekozen) == 1 else ""
+    if soorten_gekozen:
+        q = q.filter(Event.subtype.in_(soorten_gekozen))
     # Seizoensgebonden types (zomer-/winterbar) buiten hun seizoen weglaten —
     # tenzij er expliciet op gefilterd wordt (dan wil je ze bewust zien).
-    if soort not in ("zomerbar", "winterbar"):
+    if not ({"zomerbar", "winterbar"} & set(soorten_gekozen)):
         q = q.filter(db.or_(Event.subtype.is_(None),
                             ~Event.subtype.in_([t for t in ("zomerbar", "winterbar")
                                                 if not in_seizoen(t)])))
@@ -842,8 +846,8 @@ def ontdek():
         partner_q = partner_q.filter(db.or_(
             Event.is_permanent.is_(True),
             db.and_(Event.start <= _we, (Event.end >= _ws) | (Event.start >= _ws))))
-    if soort in TYPES:
-        partner_q = partner_q.filter(Event.subtype == soort)
+    if soorten_gekozen:
+        partner_q = partner_q.filter(Event.subtype.in_(soorten_gekozen))
     if groep == "smullen":
         partner_q = partner_q.filter(Event.subtype.in_(list(GROEP_SMULLEN)))
     elif groep == "beleven":
@@ -952,7 +956,8 @@ def ontdek():
         paginering bij elke filterwissel. Met _endpoint wisselt dezelfde
         selectie naadloos tussen lijst (ontdek) en kaart (verkennen)."""
         params = {"wanneer": wanneer, "sort": sort, "filter": filter_type,
-                  "cat": cat, "q": zoek, "soort": soort, "groep": groep, "lft": lft,
+                  "cat": cat, "q": zoek, "soort": soorten_gekozen,
+                  "groep": groep, "lft": lft,
                   "ouder": sorted(ouder_filters)}
         params.update(wijzig)
         params = {k: v for k, v in params.items() if v}
@@ -963,12 +968,13 @@ def ontdek():
         return url_for(_endpoint, **params)
 
     aantal_actief = ((1 if filter_type else 0) + (1 if cat else 0)
-                     + (1 if soort else 0) + len(ouder_filters)
+                     + len(soorten_gekozen) + len(ouder_filters)
                      + (1 if lft else 0) + (1 if sort == "score" else 0))
     # Zachte vraag om de postcode (patch 229): pas nadat iemand gezocht heeft,
     # want dán is het nut zichtbaar ("hoe ver is dit van ons?").
-    vraag_postcode = bool(fam and not fam.postcode and (zoek or cat or soort))
-    return render_template("public/ontdek.html", vraag_postcode=vraag_postcode, lft=lft, leeftijden=LEEFTIJDEN, rows=pagina_rows, uitgelichte_partners=uitgelichte_partners, partner_zonder_locatie=partner_zonder_locatie, sort=sort, zoek=zoek, wanneer=wanneer, cat=cat, verberg_sp=verberg_sp, toon_alles=toon_alles, curatie_aan=_gb("enkel_gecureerd"), ouder_filters=ouder_filters, weer=weer, soort=soort, groep=groep, soorten=TYPES, flink=_ontdek_url, aantal_actief=aantal_actief, gast_actief=gast_actief(),
+    vraag_postcode = bool(fam and not fam.postcode
+                          and (zoek or cat or soorten_gekozen))
+    return render_template("public/ontdek.html", vraag_postcode=vraag_postcode, lft=lft, leeftijden=LEEFTIJDEN, rows=pagina_rows, uitgelichte_partners=uitgelichte_partners, partner_zonder_locatie=partner_zonder_locatie, sort=sort, zoek=zoek, wanneer=wanneer, cat=cat, verberg_sp=verberg_sp, toon_alles=toon_alles, curatie_aan=_gb("enkel_gecureerd"), ouder_filters=ouder_filters, weer=weer, soort=soort, soorten_gekozen=soorten_gekozen, groep=groep, soorten=TYPES, flink=_ontdek_url, aantal_actief=aantal_actief, gast_actief=gast_actief(),
                            wissel_lijst=_ontdek_url(), wissel_kaart=_ontdek_url("public.verkennen"),
                            wis_url=url_for("public.ontdek", wanneer=wanneer, q=zoek),
                            zoek_endpoint="public.ontdek", weergave="lijst", toon_sorteer=True, kaart=False,
@@ -1030,9 +1036,9 @@ def verkennen():
     # een zeldzaam type (zomerbar, rommelmarkt) verdrongen worden door de 500
     # best-scorende speeltuinen en lijkt de filter "kapot".
     from ..types import TYPES as _TYPES
-    _soort_vooraf = request.args.get("soort") or ""
-    if _soort_vooraf in _TYPES:
-        perm_basis = perm_basis.filter(Event.subtype == _soort_vooraf)
+    _soorten_vooraf = [x for x in request.args.getlist("soort") if x in _TYPES]
+    if _soorten_vooraf:
+        perm_basis = perm_basis.filter(Event.subtype.in_(_soorten_vooraf))
     # Gezocht op een plaats? Knijp de buurt AL in de databank (rechthoek van
     # ~30 km) vóór de contingenten toeslaan. Anders vullen de 300 best
     # scorende eetplekken van héél Vlaanderen het contingent en blijft er van
@@ -1068,9 +1074,8 @@ def verkennen():
     cat = request.args.get("cat", "")
     verberg_sp = request.args.get("sp") == "0"   # gewone speeltuinen weg
     from ..types import verborgen_type_codes, type_code, TYPES, in_seizoen
-    soort = request.args.get("soort") or ""
-    if soort not in TYPES:
-        soort = ""
+    soorten_gekozen = [s for s in request.args.getlist("soort") if s in TYPES]
+    soort = soorten_gekozen[0] if len(soorten_gekozen) == 1 else ""
     ouder_filters = {f for f in request.args.getlist("ouder")
                      if f in ("omheind", "verzorgingstafel", "buggy_ok",
                               "kinderstoel", "speelhoek", "kindermenu",
@@ -1216,9 +1221,10 @@ def api_kaart():
     elif groep == "ravotten":
         niet = list(GROEP_SMULLEN | GROEP_BELEVEN)
         q = q.filter(db.or_(Event.subtype.is_(None), Event.subtype.notin_(niet)))
-    soort = request.args.get("soort") or ""
-    if soort in TYPES:
-        q = q.filter(Event.subtype == soort)
+    kaart_soorten = [s for s in request.args.getlist("soort") if s in TYPES]
+    soort = kaart_soorten[0] if len(kaart_soorten) == 1 else ""
+    if kaart_soorten:
+        q = q.filter(Event.subtype.in_(kaart_soorten))
     ft = request.args.get("filter") or ""
     if ft == "gratis":
         q = q.filter(Event.is_free.is_(True))

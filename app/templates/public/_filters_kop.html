@@ -1,7 +1,7 @@
 {# Gedeelde kop voor Ontdek (lijst) en Verkennen (kaart): zoekbalk,
    weergave-schakelaar, wanneer-chips en de mobiele filterknop.
    Verwacht: zoek_endpoint, weergave ('lijst'|'kaart'), wissel_lijst,
-   wissel_kaart, flink, wanneer, filter_type, cat, soort, ouder_filters,
+   wissel_kaart, flink, wanneer, filter_type, cat, soort, soorten_gekozen, ouder_filters,
    zoek, aantal_actief, (optioneel) sort. #}
 <div class="ontdek-kop">
   <form method="get" action="{{ url_for(zoek_endpoint) }}" class="zoekrij">
@@ -14,7 +14,7 @@
       {% if filter_type %}<input type="hidden" name="filter" value="{{ filter_type }}">{% endif %}
       {% if cat %}<input type="hidden" name="cat" value="{{ cat }}">{% endif %}
       {% for o in ouder_filters %}<input type="hidden" name="ouder" value="{{ o }}">{% endfor %}
-      {% if soort %}<input type="hidden" name="soort" value="{{ soort }}">{% endif %}
+      {% for s in soorten_gekozen or [] %}<input type="hidden" name="soort" value="{{ s }}">{% endfor %}
       {% if groep is defined and groep %}<input type="hidden" name="groep" value="{{ groep }}">{% endif %}
       {% if lft %}<input type="hidden" name="lft" value="{{ lft }}">{% endif %}
       <button class="zoek-knop" type="submit">Zoek</button>

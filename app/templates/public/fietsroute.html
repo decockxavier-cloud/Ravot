@@ -52,6 +52,22 @@
 <div id="route-kaart" class="prik-kaart" style="height:340px"></div>
 <script type="application/json" id="route-data">{{ kaartdata|tojson|safe }}</script>
 
+{# Onderweg-knoppen (patch 256): dit stond verstopt onder "Praktisch", ver
+   onder de kaart. Wie op de fiets zit, wil hier weten waar hij is en hoe hij
+   aan de start geraakt. De positie blijft in de browser. #}
+<div class="acties kaart-acties">
+  <button type="button" id="mijn-positie" class="btn btn-klein">📍 Waar ben ik?</button>
+  {% if r.start_lat %}
+  <a class="btn btn-klein" target="_blank" rel="noopener"
+     href="https://www.google.com/maps/dir/?api=1&destination={{ r.start_lat }},{{ r.start_lng }}&travelmode=bicycling">🧭 Naar de start (Google Maps)</a>
+  <a class="btn btn-klein" target="_blank" rel="noopener"
+     href="https://maps.apple.com/?daddr={{ r.start_lat }},{{ r.start_lng }}&dirflg=b">🍏 Apple Kaarten</a>
+  {% endif %}
+</div>
+<p class="hint" style="margin:4px 0 0">De pijltjes op de lijn tonen de
+  rijrichting. “Waar ben ik?” gebruikt de gps van je toestel — die positie
+  blijft op je telefoon en gaat nooit naar ons.</p>
+
 <div class="card">
   <h2 style="margin-top:0">Praktisch</h2>
   <span class="badge">{{ r.age_min }}-{{ r.age_max }} jaar</span>
@@ -87,10 +103,6 @@
   <div class="acties" style="margin-top:10px">
     {% if r.gpx_bestand %}
     <a class="btn" href="{{ url_for('public.fietsroute_gpx', slug=r.slug) }}">⬇ GPX downloaden{% if op_slot %} 🔒{% endif %}</a>
-    {% endif %}
-    {% if r.start_lat %}
-    <a class="btn btn-klein" target="_blank" rel="noopener"
-       href="https://www.google.com/maps/dir/?api=1&destination={{ r.start_lat }},{{ r.start_lng }}">🧭 Naar het startpunt</a>
     {% endif %}
     <a class="btn btn-klein" href="{{ url_for('public.fietsroute_print', slug=r.slug) }}">🖨️ Printblad (PDF){% if op_slot %} 🔒{% endif %}</a>
     <a class="btn btn-klein" href="{{ url_for('public.fietsbingo', slug=r.slug) }}">🎯 Fietsbingo (printen){% if op_slot %} 🔒{% endif %}</a>

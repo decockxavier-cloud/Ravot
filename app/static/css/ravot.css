@@ -1358,3 +1358,10 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 .gemeente-intro { border-left: 4px solid var(--zon); }
 .gemeente-intro p:first-child { margin-top: 0; }
 .gemeente-intro p:last-child, .gemeente-slot p:last-child { margin-bottom: 0; }
+
+/* Onderweg-knoppen en richtingspijlen op de routekaart (patch 256) */
+.kaart-acties { margin: 8px 0 0; flex-wrap: wrap; }
+#mijn-positie.aan { background: var(--groen); color: #fff; border-color: var(--groen); }
+.route-pijl { color: #b8541c; font-size: 13px; line-height: 1;
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff; pointer-events: none; }
+.route-pijl span { display: inline-block; }

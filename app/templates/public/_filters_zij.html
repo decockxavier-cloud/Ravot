@@ -30,14 +30,18 @@
     {% endfor %}
   </details>
 
-  <details class="zij-groep" {{ "open" if soort }}>
-    <summary class="zij-titel">Soort plek{% if soort %} <b>·</b>{% endif %}</summary>
-    <select data-nav aria-label="Soort plek">
-      <option value="{{ flink(soort='') }}">alle soorten</option>
-      {% for code, t in soorten.items() if t[2] %}
-      <option value="{{ flink(soort=code) }}" {{ 'selected' if soort == code }}>{{ t[0] }} {{ t[1] }}</option>
-      {% endfor %}
-    </select>
+  {# Meerdere soorten tegelijk (patch 255): dit was als enige filter een
+     keuzelijst met één optie, terwijl je hier juist wilt combineren —
+     "speeltuin OF kinderboerderij". Nu chips zoals bij alle andere filters. #}
+  <details class="zij-groep" {{ "open" if soorten_gekozen }}>
+    <summary class="zij-titel">Soort plek{% if soorten_gekozen %} <b>·</b> {{ soorten_gekozen|length }}{% endif %}</summary>
+    {% if soorten_gekozen %}
+    <a class="filterchip" href="{{ flink(soort=[]) }}">✕ alle soorten</a>
+    {% endif %}
+    {% for code, t in soorten.items() if t[2] %}
+      {% set nieuw = soorten_gekozen | reject('equalto', code) | list if code in soorten_gekozen else (soorten_gekozen | list) + [code] %}
+      <a class="filterchip {{ 'aan' if code in soorten_gekozen }}" href="{{ flink(soort=nieuw) }}">{{ t[0] }} {{ t[1] }}</a>
+    {% endfor %}
   </details>
 
   <details class="zij-groep" {{ "open" if ouder_filters }}>

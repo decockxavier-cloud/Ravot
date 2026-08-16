@@ -29,6 +29,70 @@
     }).addTo(kaart);
   }
 
+  // Richtingspijltjes op het tracé (patch 256): een lus zonder richting laat
+  // je twijfelen welke kant je op moet bij het startpunt.
+  (function pijlen() {
+    var punten = data.route;
+    var stap = Math.max(1, Math.floor(punten.length / 12));
+    for (var i = stap; i < punten.length - 1; i += stap) {
+      var a = punten[i - 1], b = punten[i];
+      var hoek = Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / Math.PI;
+      L.marker(b, {
+        interactive: false,
+        icon: L.divIcon({
+          className: "route-pijl",
+          html: '<span style="transform:rotate(' + (90 - hoek) + 'deg)">➤</span>',
+          iconSize: [16, 16],
+        }),
+      }).addTo(kaart);
+    }
+  })();
+
+  // "Waar ben ik?" (patch 256): ouders willen tijdens het fietsen zien waar ze
+  // op de lus zitten. Blijft volledig in de browser — de positie gaat nooit
+  // naar de server.
+  (function positie() {
+    var knop = document.getElementById("mijn-positie");
+    if (!knop || !navigator.geolocation) {
+      if (knop) knop.hidden = true;
+      return;
+    }
+    var stip = null, kring = null, kijken = null;
+    function toon(pos) {
+      var p = [pos.coords.latitude, pos.coords.longitude];
+      if (!stip) {
+        stip = L.circleMarker(p, { radius: 7, color: "#fff", weight: 2,
+                                   fillColor: "#2E7D46", fillOpacity: 1 }).addTo(kaart);
+        kring = L.circle(p, { radius: pos.coords.accuracy || 30, color: "#2E7D46",
+                              weight: 1, fillOpacity: 0.10 }).addTo(kaart);
+        kaart.setView(p, Math.max(kaart.getZoom(), 15));
+      } else {
+        stip.setLatLng(p);
+        kring.setLatLng(p).setRadius(pos.coords.accuracy || 30);
+      }
+      knop.textContent = "📍 Volgen aan";
+      knop.classList.add("aan");
+    }
+    function mis() {
+      knop.textContent = "📍 Positie niet gelukt";
+      knop.disabled = true;
+    }
+    knop.addEventListener("click", function () {
+      if (kijken !== null) {
+        navigator.geolocation.clearWatch(kijken);
+        kijken = null;
+        if (stip) { kaart.removeLayer(stip); kaart.removeLayer(kring); stip = null; }
+        knop.textContent = "📍 Waar ben ik?";
+        knop.classList.remove("aan");
+        return;
+      }
+      knop.textContent = "📍 Zoeken…";
+      kijken = navigator.geolocation.watchPosition(toon, mis, {
+        enableHighAccuracy: true, maximumAge: 5000, timeout: 20000,
+      });
+    });
+  })();
+
   // Eén Leaflet-laag per groep, zodat de filters gewoon lagen tonen/verbergen.
   var lagen = { beleven: L.layerGroup(), ravotten: L.layerGroup(),
                 smullen: L.layerGroup() };
