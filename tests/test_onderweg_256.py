@@ -59,3 +59,61 @@ def test_kaartscript_kent_richting_en_positie():
     assert "route-pijl" in src                  # rijrichting op het tracé
     assert "watchPosition" in src               # live positie
     assert "clearWatch" in src                  # en netjes weer uitzetten
+
+
+def test_pijlen_wijzen_de_juiste_kant_op():
+    """p261: met de oude formule (90 - hoek) wezen noord en zuid precies
+    verkeerd om — erger dan geen pijl, want je stuurt iemand de andere kant
+    uit. ➤ wijst standaard naar oost, dus de rotatie is kompas - 90."""
+    import math
+    with open("app/static/js/route-kaart.js", encoding="utf-8") as f:
+        src = f.read()
+    assert "kompas - 90" in src
+    assert "Math.cos(a[0]" in src               # lengtegraadcorrectie
+
+    def rotatie(a, b):
+        k = math.cos(math.radians(a[0]))
+        kompas = math.degrees(math.atan2((b[1] - a[1]) * k, b[0] - a[0]))
+        return round((kompas - 90) % 360)
+
+    assert rotatie((51, 3), (51, 4)) == 0       # oost
+    assert rotatie((51, 3), (52, 3)) == 270     # noord
+    assert rotatie((51, 3), (51, 2)) == 180     # west
+    assert rotatie((51, 3), (50, 3)) == 90      # zuid
+
+
+def test_pijl_komt_los_van_de_kaart():
+    with open("app/static/css/ravot.css", encoding="utf-8") as f:
+        css = f.read()
+    blok = css[css.index(".route-pijl {"):css.index(".route-pijl {") + 400]
+    assert "background: #fff" in blok
+    assert "border-radius: 50%" in blok
+
+
+def test_pijlen_wijzen_de_juiste_kant_op():
+    """p261: met de oude formule (90 - hoek) wezen noord en zuid precies
+    verkeerd om — erger dan geen pijl, want je stuurt iemand de andere kant
+    uit. ➤ wijst standaard naar oost, dus de rotatie is kompas - 90."""
+    import math
+    with open("app/static/js/route-kaart.js", encoding="utf-8") as f:
+        src = f.read()
+    assert "kompas - 90" in src
+    assert "Math.cos(a[0]" in src               # lengtegraadcorrectie
+
+    def rotatie(a, b):
+        k = math.cos(math.radians(a[0]))
+        kompas = math.degrees(math.atan2((b[1] - a[1]) * k, b[0] - a[0]))
+        return round((kompas - 90) % 360)
+
+    assert rotatie((51, 3), (51, 4)) == 0       # oost
+    assert rotatie((51, 3), (52, 3)) == 270     # noord
+    assert rotatie((51, 3), (51, 2)) == 180     # west
+    assert rotatie((51, 3), (50, 3)) == 90      # zuid
+
+
+def test_pijl_komt_los_van_de_kaart():
+    with open("app/static/css/ravot.css", encoding="utf-8") as f:
+        css = f.read()
+    blok = css[css.index(".route-pijl {"):css.index(".route-pijl {") + 400]
+    assert "background: #fff" in blok
+    assert "border-radius: 50%" in blok

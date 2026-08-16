@@ -29,20 +29,28 @@
     }).addTo(kaart);
   }
 
-  // Richtingspijltjes op het tracé (patch 256): een lus zonder richting laat
-  // je twijfelen welke kant je op moet bij het startpunt.
+  // Richtingspijltjes op het tracé (patch 256, hersteld in 261): een lus zonder
+  // richting laat je twijfelen welke kant je op moet bij het startpunt.
+  //
+  // De hoek moest twee keer bijgesteld worden. Ten eerste wijst ➤ standaard
+  // naar rechts (oost), dus de rotatie is de kompasrichting min 90 graden —
+  // met de oude formule (90 - hoek) wezen noord en zuid precies verkeerd om.
+  // Ten tweede zijn lengtegraden op onze breedte smaller dan breedtegraden;
+  // zonder die correctie staat de pijl schuin ten opzichte van de lijn.
   (function pijlen() {
     var punten = data.route;
-    var stap = Math.max(1, Math.floor(punten.length / 12));
+    var stap = Math.max(1, Math.floor(punten.length / 14));
     for (var i = stap; i < punten.length - 1; i += stap) {
       var a = punten[i - 1], b = punten[i];
-      var hoek = Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / Math.PI;
+      var k = Math.cos(a[0] * Math.PI / 180);
+      var kompas = Math.atan2((b[1] - a[1]) * k, b[0] - a[0]) * 180 / Math.PI;
       L.marker(b, {
         interactive: false,
+        zIndexOffset: 400,
         icon: L.divIcon({
           className: "route-pijl",
-          html: '<span style="transform:rotate(' + (90 - hoek) + 'deg)">➤</span>',
-          iconSize: [16, 16],
+          html: '<span style="transform:rotate(' + (kompas - 90) + 'deg)">➤</span>',
+          iconSize: null,
         }),
       }).addTo(kaart);
     }

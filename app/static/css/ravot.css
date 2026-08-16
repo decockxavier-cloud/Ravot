@@ -1362,9 +1362,15 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 /* Onderweg-knoppen en richtingspijlen op de routekaart (patch 256) */
 .kaart-acties { margin: 8px 0 0; flex-wrap: wrap; }
 #mijn-positie.aan { background: var(--gras); color: #fff; border-color: var(--gras); }
-.route-pijl { color: #b8541c; font-size: 13px; line-height: 1;
-  text-shadow: 0 0 3px #fff, 0 0 3px #fff; pointer-events: none; }
-.route-pijl span { display: inline-block; }
+/* Richtingspijl (patch 261): een oranje teken met witte gloed verdwijnt in
+   de kaart, net als de routepins. Een witte schijf met rand blijft staan. */
+.route-pijl { display: flex !important; align-items: center;
+  justify-content: center; width: 22px !important; height: 22px !important;
+  background: #fff; border: 2px solid #EE8035; border-radius: 50%;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, .3); pointer-events: none;
+  transform: translate(-50%, -50%); }
+.route-pijl span { display: block; color: #b8541c; font-size: 11px;
+  line-height: 1; }
 
 /* Overzichtskaart routes (patch 257): streekbellen met telling i.p.v. een
    stapel losse pins, en een eigen fietspin bij het inzoomen. */
