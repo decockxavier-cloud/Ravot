@@ -1150,10 +1150,19 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
 /* Volgknoppen sociale media (patch 168) */
 .sociaal-knoppen { display: inline-flex; gap: 8px; margin-left: 12px;
   vertical-align: middle; }
+/* Sociale knoppen (patch 264). Twee dingen die samen misgingen:
+   de achtergrond stond op een niet-bestaande variabele en viel dus weg
+   (hersteld in p259), en `.desktop-nav a` zet een grijsgroene tekstkleur die
+   specifieker is dan deze regel — het icoon werd daardoor grijsgroen op
+   groen. Vandaar hier expliciet !important op de kleur: dit icoon moet altijd
+   contrasteren met zijn eigen knop, ongeacht waar de knop staat. */
 .sociaal-knop { display: inline-flex; align-items: center; justify-content: center;
-  width: 42px; height: 42px; border-radius: 50%; color: #fff;
-  background: var(--gras); transition: transform .15s, background .15s; }
-.sociaal-knop:hover { background: #EE8035; transform: translateY(-1px); }
+  width: 42px; height: 42px; border-radius: 50%; color: #fff !important;
+  background: #2E7D46; transition: transform .15s, background .15s;
+  text-decoration: none; padding: 0 !important; }
+.sociaal-knop:hover { background: #EE8035; transform: translateY(-1px);
+  color: #fff !important; }
+.sociaal-knop svg path { fill: currentColor; }
 .sociaal-knop svg { width: 26px; height: 26px; }
 @media (max-width: 720px) {
   .sociaal-knop { width: 46px; height: 46px; }

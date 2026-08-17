@@ -766,10 +766,34 @@ def toevoegen():
         else:
             flash("Bedankt! Je plek is ingediend en verschijnt zodra we ze "
                   "nagekeken hebben.", "ok")
+        # Kwam je vanaf een fietsroute (patch 263), dan ga je daarheen terug —
+        # je zit midden in een tocht en wil verder, niet op de homepage.
+        vandaan = (request.form.get("route") or "").strip()[:80]
+        if vandaan and vandaan.replace("-", "").isalnum():
+            from ..models import FietsRoute
+            if FietsRoute.query.filter_by(slug=vandaan).first():
+                return redirect(url_for("public.fietsroute", slug=vandaan))
         return redirect(url_for("public.vandaag"))
     from ..types import TYPES
+    # Meegegeven coördinaten (patch 263): wie tijdens een fietstocht een
+    # speeltuin ontdekt die er nog niet op staat, komt vanaf de routekaart
+    # binnen met zijn gps-positie al ingevuld. Scheelt prikken op een
+    # telefoonscherm terwijl je aan de kant van de weg staat.
+    def _coord(naam, ondergrens, bovengrens):
+        try:
+            waarde = float(request.args.get(naam, ""))
+        except (TypeError, ValueError):
+            return None
+        return waarde if ondergrens <= waarde <= bovengrens else None
+
+    start_lat = _coord("lat", 49.0, 52.5)      # ruim rond België
+    start_lng = _coord("lng", 2.0, 7.0)
+    terug = (request.args.get("route") or "").strip()[:80]
     return render_template("account/toevoegen.html", categories=CATEGORIES,
                            soorten=TYPES,
+                           start_lat=start_lat, start_lng=start_lng,
+                           terug_route=terug if terug.replace("-", "").isalnum()
+                           else "",
                            family=fam, active=None, title="Plek toevoegen")
 
 

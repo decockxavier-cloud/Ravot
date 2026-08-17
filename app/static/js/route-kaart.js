@@ -66,8 +66,22 @@
       return;
     }
     var stip = null, kring = null, kijken = null;
+    var plekknop = document.getElementById("plek-hier");
+
+    function werkPlekknopBij(p) {
+      // Plek toevoegen vanaf de route (patch 263): wie onderweg een speeltuin
+      // ontdekt die er nog niet op staat, wil die kunnen melden zonder eerst
+      // een adres te zoeken. We geven de gps-positie mee aan het formulier.
+      if (!plekknop) return;
+      var basis = plekknop.dataset.basis || "";
+      plekknop.href = basis + (basis.indexOf("?") >= 0 ? "&" : "?") +
+        "lat=" + p[0].toFixed(5) + "&lng=" + p[1].toFixed(5);
+      plekknop.hidden = false;
+    }
+
     function toon(pos) {
       var p = [pos.coords.latitude, pos.coords.longitude];
+      werkPlekknopBij(p);
       if (!stip) {
         stip = L.circleMarker(p, { radius: 7, color: "#fff", weight: 2,
                                    fillColor: "#2E7D46", fillOpacity: 1 }).addTo(kaart);
@@ -92,6 +106,7 @@
         if (stip) { kaart.removeLayer(stip); kaart.removeLayer(kring); stip = null; }
         knop.textContent = "📍 Waar ben ik?";
         knop.classList.remove("aan");
+        if (plekknop) plekknop.hidden = true;
         return;
       }
       knop.textContent = "📍 Zoeken…";

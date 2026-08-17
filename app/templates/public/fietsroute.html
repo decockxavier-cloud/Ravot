@@ -57,6 +57,10 @@
    aan de start geraakt. De positie blijft in de browser. #}
 <div class="acties kaart-acties">
   <button type="button" id="mijn-positie" class="btn btn-klein">📍 Waar ben ik?</button>
+  {# Verschijnt zodra de positie bekend is (patch 263): onderweg een nieuwe
+     speeltuin gevonden? Dan staat de speld meteen goed. #}
+  <a id="plek-hier" class="btn btn-klein btn-zon" hidden
+     data-basis="{{ url_for('account.toevoegen', route=r.slug) if family else url_for('auth.login', terug=r.slug) }}">➕ Plek hier toevoegen</a>
   {% if r.start_lat %}
   <a class="btn btn-klein" target="_blank" rel="noopener"
      href="https://www.google.com/maps/dir/?api=1&destination={{ r.start_lat }},{{ r.start_lng }}&travelmode=bicycling">🧭 Naar de start (Google Maps)</a>

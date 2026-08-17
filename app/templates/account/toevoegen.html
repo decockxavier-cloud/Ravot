@@ -64,11 +64,17 @@
     <span class="hint" style="font-weight:normal">Tik op de juiste plaats —
     de speld mag je verslepen. Gemeente en postcode vullen we dan zelf in.</span>
   </label>
-  <div id="prik-kaart" class="prik-kaart"></div>
+  <div id="prik-kaart" class="prik-kaart"
+       {% if start_lat and start_lng %}data-lat="{{ start_lat }}" data-lng="{{ start_lng }}"{% endif %}></div>
+  {% if start_lat and start_lng %}
+  <p class="hint" style="margin:4px 0 0">📍 We zetten de speld al op de plek
+    waar je stond. Klopt hij niet helemaal? Versleep hem gerust.</p>
+  {% endif %}
   <div class="acties" style="margin:6px 0 10px">
     <button type="button" class="btn btn-stil btn-klein" id="prik-hier">📍 Gebruik mijn locatie</button>
     <span class="hint" id="prik-status">nog geen speld gezet</span>
   </div>
+  {% if terug_route %}<input type="hidden" name="route" value="{{ terug_route }}">{% endif %}
   <input type="hidden" name="lat" id="prik-lat">
   <input type="hidden" name="lng" id="prik-lng">
   <label style="display:none">
