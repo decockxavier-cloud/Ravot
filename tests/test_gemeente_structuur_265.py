@@ -271,3 +271,63 @@ def test_gemeentestem_vervuilt_gezinspols_niet(client, app):
     import re as _re
     cijfers = _re.findall(r'stat-cijfer">(\d+)<', gezinsblok)
     assert cijfers[0] == "0" and cijfers[1] == "0"   # vandaag/week: geen gezinsstem
+
+
+# ── 7. Mailtekst in het contactdetail (patch 269) ───────────────────────────
+
+def test_mailtekst_dekt_alle_bijdragemogelijkheden(client, app):
+    """De klaargezette mail noemt de vier dingen die de link nu kan — en de
+    oude 'we vragen bewust niet meer'-belofte (die evenementen uitsloot) is
+    weg, want die klopt niet meer."""
+    _token(app, client)                     # zet admin-sessie + contact klaar
+    h = client.get("/beheer/gemeentecontacten/brussel").get_data(as_text=True)
+    assert "korte vragen beantwoorden" in h
+    assert "evenementen voor gezinnen doorgeven" in h
+    assert "foto's toevoegen" in h and "korte tekst schrijven" in h
+    assert "weegt bij ons het zwaarst" in h          # ankerbelofte, eerlijk
+    assert "zet hem niet op uw website" in h         # privélink-waarschuwing
+    assert "We vragen bewust niet meer dan dat" not in h
+    assert "Evenementen halen we al uit UiTdatabank" not in h
+    # Het open-vragencijfer staat in de kop (2 speelplekken → vragen open).
+    assert "open vragen" in h
+
+
+# ── 8. Rijker evenementformulier (patch 270) ────────────────────────────────
+
+def test_evenement_met_uren_locatie_organisator_en_foto(client, app):
+    """Uren komen in start/eind, locatienaam vóór het adres, organisator in
+    de beschrijving, en de foto landt pending in de fotowachtrij."""
+    import io
+    from app.models import Photo
+    token = _token(app, client)
+    png = (b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00"
+           b"\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9c"
+           b"c\x00\x01\x00\x00\x05\x00\x01\r\n\x2d\xb4\x00\x00\x00\x00IEND"
+           b"\xaeB`\x82")
+    r = client.post(f"/gemeente-bijdrage/{token}/evenement", data={
+        "titel": "Voorleesuurtje", "beschrijving": "Verhalen voor kleuters.",
+        "datum_start": "2027-09-04", "uur_start": "14:00", "uur_eind": "16:30",
+        "locatienaam": "Bibliotheek Muntpunt", "adres": "Munt 6",
+        "organisator": "Dienst Vrije Tijd", "gratis": "1",
+        "foto_akkoord": "1",
+        "fotos": (io.BytesIO(png), "affiche.png")},
+        content_type="multipart/form-data")
+    assert r.status_code == 302
+    with app.app_context():
+        ev = Event.query.filter_by(title="Voorleesuurtje").first()
+        assert ev is not None and ev.pending is True
+        assert ev.start.hour == 14 and ev.end.hour == 16 and ev.end.minute == 30
+        assert ev.adres == "Bibliotheek Muntpunt, Munt 6"
+        assert "Georganiseerd door Dienst Vrije Tijd." in ev.description
+        f = Photo.query.filter_by(event_id=ev.id).first()
+        assert f is not None and f.status == "pending" and f.soort == "gemeente"
+
+
+def test_evenement_zonder_uren_blijft_hele_dag(client, app):
+    """Geen uren ingevuld → 00:00–23:59, zoals voorheen."""
+    token = _token(app, client)
+    client.post(f"/gemeente-bijdrage/{token}/evenement", data={
+        "titel": "Kindermarkt", "datum_start": "2027-09-05", "gratis": "1"})
+    with app.app_context():
+        ev = Event.query.filter_by(title="Kindermarkt").first()
+        assert ev.start.hour == 0 and ev.end.hour == 23 and ev.end.minute == 59

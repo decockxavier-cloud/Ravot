@@ -3508,10 +3508,22 @@ def gemeentecontact(gemeente):
         if groep_van(e) == "ravotten"]
     aantal = len(speelplekken)
     zonder_foto = sum(1 for e in speelplekken if not e.image_url)
+    # Open veldvragen (patch 269): zelfde telling als op de bijdragepagina,
+    # zodat de mail een concreet en kloppend cijfer kan noemen.
+    from .. import stemmen as _stemmen
+    _statussen = _stemmen.veldstatussen_batch([e.id for e in speelplekken])
+    open_vragen = 0
+    for e in speelplekken:
+        st = _statussen.get(e.id, {})
+        for v in _stemmen.relevante_velden(e):
+            s = st.get(v)
+            if s is None or s["toestand"] != "bevestigd":
+                open_vragen += 1
     link = url_for("public.gemeente_bijdrage", token=c.token, _external=True)
     return render_template("admin/gemeentecontact.html", c=c,
                            gemeente=gemeente.title(), sleutel=sleutel,
-                           aantal=aantal, zonder_foto=zonder_foto, link=link,
+                           aantal=aantal, zonder_foto=zonder_foto,
+                           open_vragen=open_vragen, link=link,
                            title=f"Contact {gemeente.title()}", family=None,
                            active="gemeentecontacten")
 

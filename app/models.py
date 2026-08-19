@@ -957,8 +957,9 @@ class GemeenteContact(db.Model):
 
     Een dienst vrije tijd of toerisme heeft er zelf belang bij dat het aanbod
     in zijn stad goed getoond wordt. Met een jaarlijkse, deelbare link kan die
-    dienst tekst schrijven en foto's aanleveren zonder account — alles komt in
-    de gewone moderatiewachtrij, gemarkeerd als afkomstig van de gemeente.
+    dienst zonder account veldvragen beantwoorden, foto's en tekst aanleveren
+    en evenementen doorgeven — alles komt in de gewone moderatiewachtrij,
+    gemarkeerd als afkomstig van de gemeente.
 
     We houden bij wanneer we vroegen en wanneer ze leverden, zodat een
     jaarlijkse opfrisvraag geen giswerk is.

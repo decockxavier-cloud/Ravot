@@ -2868,6 +2868,19 @@ def gemeente_bijdrage_evenement(token):
         hi = max(lo, min(99, int(request.form.get("age_max") or 12)))
     except ValueError:
         lo, hi = 0, 12
+    # Uren (patch 270): optioneel; zonder uren blijft het een hele-dag-event.
+    u1 = u2 = None
+    try:
+        if (request.form.get("uur_start") or "").strip():
+            u1 = _time.fromisoformat(request.form.get("uur_start").strip())
+        if (request.form.get("uur_eind") or "").strip():
+            u2 = _time.fromisoformat(request.form.get("uur_eind").strip())
+    except ValueError:
+        u1 = u2 = None
+    start_dt = _dt.combine(d1, u1 or _time(0, 0))
+    eind_dt = _dt.combine(d2, u2 or _time(23, 59))
+    if eind_dt <= start_dt:                 # bv. einduur vóór beginuur
+        eind_dt = _dt.combine(d2, _time(23, 59))
     postcode = (request.form.get("postcode") or "").strip()[:10] or None
     coord = postcode_coord(postcode) if postcode else None
     gratis = bool(request.form.get("gratis"))
@@ -2879,15 +2892,26 @@ def gemeente_bijdrage_evenement(token):
                 price_info = [{"name": "basis", "price": p}]
         except ValueError:
             pass
+    # Locatienaam vóór het adres (patch 270): "Sporthal De Wielewaal, Grote
+    # Markt 1" — geen migratie nodig en overal leesbaar waar het adres staat.
+    adres = (request.form.get("adres") or "").strip()[:255] or None
+    locatienaam = (request.form.get("locatienaam") or "").strip()[:120] or None
+    if locatienaam:
+        adres = f"{locatienaam}, {adres}" if adres else locatienaam
+        adres = adres[:255]
+    beschrijving = (request.form.get("beschrijving") or "").strip()[:2000]
+    organisator = (request.form.get("organisator") or "").strip()[:120] or None
+    if organisator:
+        beschrijving = (beschrijving + ("\n\n" if beschrijving else "")
+                        + f"Georganiseerd door {organisator}.")[:2000]
     ev = Event(
         source="gemeente", pending=True, hidden=False,
         is_permanent=False, is_kamp=False,
-        start=_dt.combine(d1, _time(0, 0)),
-        end=_dt.combine(d2, _time(23, 59)),
+        start=start_dt, end=eind_dt,
         title=titel,
-        description=(request.form.get("beschrijving") or "").strip()[:2000],
+        description=beschrijving,
         gemeente=naam, postcode=postcode,
-        adres=(request.form.get("adres") or "").strip()[:255] or None,
+        adres=adres,
         lat=coord[0] if coord else None, lng=coord[1] if coord else None,
         age_min=lo, age_max=hi, categories=[],
         is_free=gratis, price_info=price_info,
@@ -2896,11 +2920,28 @@ def gemeente_bijdrage_evenement(token):
         slug=f"{_slugify(titel)}-g{secrets.token_hex(3)}",
     )
     db.session.add(ev)
+    db.session.flush()
+    # Foto of affichebeeld (patch 270): zelfde pijplijn als overal — EXIF-
+    # strip via verwerk_upload, moderatiewachtrij, gemarkeerd als gemeente.
+    n_fotos = 0
+    if request.form.get("foto_akkoord"):
+        from ..fotos import verwerk_upload
+        from ..models import Photo
+        for bestand in request.files.getlist("fotos")[:3]:
+            fnaam = verwerk_upload(bestand)
+            if fnaam:
+                db.session.add(Photo(event_id=ev.id, filename=fnaam,
+                                     soort="gemeente", status="pending"))
+                n_fotos += 1
     c.laatst_verrijkt = utcnow().replace(tzinfo=None)
-    c.aantal_bijdragen = (c.aantal_bijdragen or 0) + 1
+    c.aantal_bijdragen = (c.aantal_bijdragen or 0) + 1 + n_fotos
     db.session.commit()
-    flash("Bedankt! Uw evenement is doorgestuurd — we kijken het na en "
-          "zetten het dan online.", "ok")
+    if n_fotos:
+        flash(f"Bedankt! Uw evenement en {n_fotos} foto('s) zijn doorgestuurd "
+              "— we kijken alles na en zetten het dan online.", "ok")
+    else:
+        flash("Bedankt! Uw evenement is doorgestuurd — we kijken het na en "
+              "zetten het dan online.", "ok")
     return redirect(url_for("public.gemeente_bijdrage", token=token))
 
 

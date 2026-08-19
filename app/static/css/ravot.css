@@ -76,7 +76,8 @@ a { color: var(--gras); }
 /* Formulieren */
 label { display: block; font-weight: 600; margin: 12px 0 4px; }
 input[type=text], input[type=email], input[type=number], input[type=url],
-input[type=search], input[type=password], input[type=tel], select, textarea {
+input[type=search], input[type=password], input[type=tel],
+input[type=date], input[type=time], select, textarea {
   width: 100%; min-height: 46px; padding: 10px 12px; border: 1.5px solid var(--lijn);
   border-radius: 12px; background: var(--wit); font: inherit; }
 textarea { min-height: 110px; resize: vertical; line-height: 1.5; }

@@ -72,4 +72,7 @@ def test_mail_telt_speelplekken_en_stelt_gerust(client, app):
     _, det = _token(app, client)
     assert "12 speelterreinen" in det          # niet 262
     assert "Van 9 daarvan" in det
-    assert "eetzaken houden de uitbaters" in det
+    # Sinds patch 269 sluit de mail evenementen niet meer uit (de link kan ze
+    # nu ontvangen); de geruststelling zit in "elk beetje telt", en eetzaken
+    # worden nog altijd nergens gevraagd.
+    assert "elk beetje telt" in det

@@ -2,7 +2,8 @@
 {% block admin_content %}
 <a href="{{ url_for('admin.gemeentecontacten') }}" class="terug-link">← Alle gemeentecontacten</a>
 <h1>🏛️ {{ gemeente }}</h1>
-<p class="hint">{{ aantal }} plekken in Ravot, waarvan {{ zonder_foto }} zonder foto ·
+<p class="hint">{{ aantal }} plekken in Ravot, waarvan {{ zonder_foto }} zonder foto
+  · {{ open_vragen }} open vra{{ 'ag' if open_vragen == 1 else 'gen' }} ·
   <a href="/{{ sleutel }}" target="_blank">pagina bekijken ↗</a></p>
 
 <div class="card">
@@ -25,8 +26,9 @@
 <div class="card">
   <h2 style="margin-top:0">De link voor {{ gemeente }}</h2>
   <p class="hint">Geldig tot <strong>{{ c.token_tot.strftime('%d/%m/%Y') if c.token_tot else '—' }}</strong>.
-    Wie deze link heeft, kan tekst schrijven en foto's toevoegen voor
-    {{ gemeente }} — meer niet. Alles gaat via nazicht.</p>
+    Wie deze link heeft, kan voor {{ gemeente }} veldvragen beantwoorden,
+    foto's toevoegen, evenementen doorgeven en tekst schrijven — meer niet.
+    Alles gaat via nazicht.</p>
   <p><input type="text" readonly value="{{ link }}" style="width:100%"
             onfocus="this.select()"></p>
   <form method="post" style="display:inline">
@@ -47,27 +49,29 @@
   <p><strong>Onderwerp:</strong>
     <input type="text" readonly style="width:70%" onfocus="this.select()"
            value="Uitstappen met kinderen in {{ gemeente }} — mogen we uw hulp vragen?"></p>
-  <textarea rows="22" readonly onfocus="this.select()" style="width:100%">Beste{% if c.contactnaam %} {{ c.contactnaam }}{% endif %},
+  <textarea rows="26" readonly onfocus="this.select()" style="width:100%">Beste{% if c.contactnaam %} {{ c.contactnaam }}{% endif %},
 
 Ravot (ravot.be) is een gratis gids voor gezinnen met kinderen tot 12 jaar in Vlaanderen. Ouders zoeken er waar ze met hun kinderen naartoe kunnen: speeltuinen, musea, kinderboerderijen, fietsroutes en kindvriendelijke eetadresjes.
 
-Voor {{ gemeente }} staan er {{ aantal }} speelterreinen en speelplekken op Ravot. Van {{ zonder_foto }} daarvan hebben we geen foto — ouders zien dan enkel een pictogram en weten niet of het de moeite is voor hun kinderen.
+Voor {{ gemeente }} staan er {{ aantal }} speelterreinen en speelplekken op Ravot.{% if zonder_foto %} Van {{ zonder_foto }} daarvan hebben we geen foto — ouders zien dan enkel een pictogram en weten niet of het de moeite is voor hun kinderen.{% endif %}{% if open_vragen %} Daarnaast staan er nog {{ open_vragen }} korte vragen open, zoals: is er parking, is er een toilet, is het terrein omheind?{% endif %}
 
 Daar kunt u ons mee helpen, met deze link (geen account nodig):
 
 {{ link }}
 
-Twee dingen kunnen daar:
-- foto's toevoegen bij uw speelterreinen (dat is waar we het meest aan hebben);
+Dit kan daar allemaal, en elk beetje telt:
+- korte vragen beantwoorden over uw speelterreinen (parking, toilet, omheind, …) — één klik per vraag, en uw antwoord weegt bij ons het zwaarst;
+- foto's toevoegen bij de plekken die u kent;
+- evenementen voor gezinnen doorgeven (een speelstraat, buitenspeeldag, kindermarkt, …);
 - een korte tekst schrijven over uitstappen met kinderen in {{ gemeente }}.
 
-We vragen bewust niet meer dan dat. Evenementen halen we al uit UiTdatabank, en eetzaken houden de uitbaters zelf bij — u hoeft zich daar dus niets van aan te trekken.
-
-Alles wordt door onze redactie nagekeken voor het online komt. De link blijft een jaar geldig, dus u kunt er in meerdere keren aan werken — en één foto is al een hulp.
+Alles wordt door onze redactie nagekeken voor het online komt. De link blijft een jaar geldig, dus u kunt er in meerdere keren aan werken — één foto of één beantwoorde vraag is al een hulp. Bovenaan de pagina ziet u de voortgang voor {{ gemeente }}.
 
 Voor alle duidelijkheid, zodat u weet waar u aan begint: meedoen is gratis en er zijn geen kosten aan verbonden — niet voor u, en niet voor de plekken die u aanvult. Ravot is voor bezoekers gratis en zonder pop-ups of bannerreclame.
 
 Wel eerlijk vermeld: uitbaters kunnen bij ons een betaald partnerschap nemen, waardoor hun zaak uitgelicht wordt in de resultaten. Dat is altijd zichtbaar gelabeld als "Partner" en het heeft nooit invloed op de scores of de gewone volgorde. Wat u aanlevert komt dus niet achter een betaalmuur en wordt niet gebruikt om iemand te laten betalen.
+
+De link is persoonlijk voor uw dienst: deel hem gerust met collega's, maar zet hem niet op uw website of in openbare verslagen.
 
 We verkopen uw gegevens niet en u krijgt van ons geen nieuwsbrieven.
 

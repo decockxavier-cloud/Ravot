@@ -15,7 +15,7 @@
 {% endif %}
 
 <div class="card">
-  <form method="post"
+  <form method="post" enctype="multipart/form-data"
         action="{{ url_for('public.gemeente_bijdrage_evenement', token=token) }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     {# Honeypot: onzichtbaar voor mensen, onweerstaanbaar voor bots. #}
@@ -47,7 +47,25 @@
 
     <div class="veldrij" style="margin-top:12px">
       <div>
-        <label for="adres">Adres of locatie</label>
+        <label for="uur_start">Beginuur <span class="hint">(optioneel)</span></label>
+        <input id="uur_start" type="time" name="uur_start"
+               value="{{ form.get('uur_start', '') }}">
+      </div>
+      <div>
+        <label for="uur_eind">Einduur <span class="hint">(optioneel)</span></label>
+        <input id="uur_eind" type="time" name="uur_eind"
+               value="{{ form.get('uur_eind', '') }}">
+      </div>
+    </div>
+
+    <label for="locatienaam" style="margin-top:12px">Naam van de locatie
+      <span class="hint">(bv. Sporthal De Wielewaal, Grote Markt)</span></label>
+    <input id="locatienaam" type="text" name="locatienaam" maxlength="120"
+           value="{{ form.get('locatienaam', '') }}">
+
+    <div class="veldrij" style="margin-top:12px">
+      <div>
+        <label for="adres">Adres</label>
         <input id="adres" type="text" name="adres" maxlength="255"
                value="{{ form.get('adres', '') }}" placeholder="Grote Markt 1">
       </div>
@@ -57,6 +75,12 @@
                value="{{ form.get('postcode', '') }}" inputmode="numeric">
       </div>
     </div>
+
+    <label for="organisator" style="margin-top:12px">Wie organiseert?
+      <span class="hint">(dienst, vereniging of school)</span></label>
+    <input id="organisator" type="text" name="organisator" maxlength="120"
+           value="{{ form.get('organisator', c.dienst or '') }}"
+           placeholder="{{ c.dienst or 'Dienst Vrije Tijd ' + naam }}">
 
     <div class="veldrij" style="margin-top:12px">
       <div>
@@ -89,6 +113,16 @@
       <span class="hint">(optioneel)</span></label>
     <input id="website" type="url" name="website" maxlength="500"
            value="{{ form.get('website', '') }}" placeholder="https://…">
+
+    <div class="veld" style="margin-top:12px">
+      <label>📷 Foto of affichebeeld <span class="hint">(tot 3, optioneel —
+        jpg, png of webp)</span></label>
+      <input type="file" name="fotos" accept="image/jpeg,image/png,image/webp" multiple>
+      <label class="check"><input type="checkbox" name="foto_akkoord" value="1">
+        Wij hebben de rechten op dit beeld en delen het met Ravot
+        <span class="hint">(verborgen gegevens zoals GPS-locatie halen we er
+        automatisch af)</span></label>
+    </div>
 
     <div class="acties" style="margin-top:16px">
       <button class="btn btn-zon" type="submit">Evenement doorsturen</button>
