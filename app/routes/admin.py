@@ -236,18 +236,20 @@ def dashboard():
     from ..models import Photo as _Photo, VeldStem
     dag_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     zeven = now - timedelta(days=7)
+    # Gemeentestemmen (patch 268) horen niet in deze gezinspols — die hebben
+    # hun eigen blok hieronder.
+    _geen_bron = db.and_(VeldStem.stemmer != "bron",
+                         ~VeldStem.stemmer.like("gemeente:%"))
     aanvul = {
         "vandaag": VeldStem.query.filter(VeldStem.created_at >= dag_start,
-                                         VeldStem.stemmer != "bron").count(),
+                                         _geen_bron).count(),
         "week": VeldStem.query.filter(VeldStem.created_at >= zeven,
-                                      VeldStem.stemmer != "bron").count(),
+                                      _geen_bron).count(),
         "fiches_week": db.session.query(VeldStem.event_id)
-                       .filter(VeldStem.created_at >= zeven,
-                               VeldStem.stemmer != "bron")
+                       .filter(VeldStem.created_at >= zeven, _geen_bron)
                        .distinct().count(),
         "stemmers_week": db.session.query(VeldStem.stemmer)
-                         .filter(VeldStem.created_at >= zeven,
-                                 VeldStem.stemmer != "bron")
+                         .filter(VeldStem.created_at >= zeven, _geen_bron)
                          .distinct().count(),
     }
     # Opsplitsing gezin versus anoniem (patch 231): anonieme stemmers hebben
@@ -255,7 +257,7 @@ def dashboard():
     # bijdraagt, of dat vooral ingelogde gezinnen het werk doen.
     def _tel(vanaf, alleen=None):
         q = (db.session.query(db.func.count(VeldStem.id))
-             .filter(VeldStem.created_at >= vanaf, VeldStem.stemmer != "bron"))
+             .filter(VeldStem.created_at >= vanaf, _geen_bron))
         if alleen == "anon":
             q = q.filter(VeldStem.stemmer.like("anon:%"))
         elif alleen == "gezin":
@@ -268,12 +270,53 @@ def dashboard():
     aanvul["anon_vandaag"] = _tel(dag_start, "anon")
     aanvul_velden = (db.session.query(VeldStem.veld,
                                       db.func.count(VeldStem.id).label("n"))
-                     .filter(VeldStem.created_at >= zeven,
-                             VeldStem.stemmer != "bron")
+                     .filter(VeldStem.created_at >= zeven, _geen_bron)
                      .group_by(VeldStem.veld)
                      .order_by(db.text("n DESC")).limit(6).all())
     aanvul_fotos = (_Photo.query.filter(_Photo.created_at >= zeven).count()
                     if hasattr(_Photo, "created_at") else 0)
+
+    # Gemeenten werken mee (patch 268): hoeveel diensten kregen een link, wie
+    # levert effectief, en wát — veldantwoorden, foto's, evenementen, teksten.
+    from ..models import GemeenteContact, GemeenteTekst
+    _contacten = GemeenteContact.query.all()
+    _stem_per = {}
+    for stemmer, n in (db.session.query(VeldStem.stemmer,
+                                        db.func.count(VeldStem.id))
+                       .filter(VeldStem.stemmer.like("gemeente:%"))
+                       .group_by(VeldStem.stemmer).all()):
+        _stem_per[stemmer[len("gemeente:"):]] = int(n)
+    _foto_per = {(g or "").lower(): int(n) for g, n in (
+        db.session.query(Event.gemeente, db.func.count(_Photo.id))
+        .join(Event, _Photo.event_id == Event.id)
+        .filter(_Photo.soort == "gemeente")
+        .group_by(Event.gemeente).all())}
+    _event_per = {(g or "").lower(): int(n) for g, n in (
+        db.session.query(Event.gemeente, db.func.count(Event.id))
+        .filter(Event.source == "gemeente")
+        .group_by(Event.gemeente).all())}
+    _tekst_van = {t.gemeente for t in GemeenteTekst.query.filter_by(
+        van_gemeente=True).all() if t.heeft_tekst or t.pending}
+    gem_rijen = []
+    for c in _contacten:
+        g = c.gemeente
+        rij = {"gemeente": g, "stemmen": _stem_per.get(g, 0),
+               "fotos": _foto_per.get(g, 0), "events": _event_per.get(g, 0),
+               "tekst": g in _tekst_van, "laatst": c.laatst_verrijkt,
+               "verstuurd": c.laatst_verstuurd, "token": bool(c.token)}
+        rij["totaal"] = (rij["stemmen"] + rij["fotos"] + rij["events"]
+                         + (1 if rij["tekst"] else 0))
+        gem_rijen.append(rij)
+    gem_rijen.sort(key=lambda r: (-r["totaal"], r["gemeente"]))
+    gemeenten_mee = {
+        "links": sum(1 for r in gem_rijen if r["token"]),
+        "actief": sum(1 for r in gem_rijen if r["totaal"] > 0),
+        "stemmen": sum(r["stemmen"] for r in gem_rijen),
+        "fotos": sum(r["fotos"] for r in gem_rijen),
+        "events": sum(r["events"] for r in gem_rijen),
+        "teksten": sum(1 for r in gem_rijen if r["tekst"]),
+    }
+    gem_rijen = gem_rijen[:10]
 
     # Conversietrechter (patch 223): waar haken bezoekers af op weg naar
     # een profiel? Cijfers over 14 dagen, zodat één rustige dag niets zegt.
@@ -349,6 +392,7 @@ def dashboard():
                            trechter=trechter, methodes=methodes,
                            aanvul=aanvul, aanvul_velden=aanvul_velden,
                            aanvul_fotos=aanvul_fotos, stats=stats,
+                           gemeenten_mee=gemeenten_mee, gem_rijen=gem_rijen,
                            top_gemeenten=top_gemeenten, nieuwste_gezinnen=nieuwste_gezinnen,
                            reviews=recent_reviews, taken=taken,
                            taken_totaal=taken_totaal, systeem=systeem,

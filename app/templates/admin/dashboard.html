@@ -165,6 +165,66 @@
   {% endif %}
 </section>
 
+<section class="card">
+  <h2 style="margin-top:0">🏛️ Gemeenten werken mee</h2>
+  <p class="hint">Diensten toerisme en vrije tijd met een bijdragelink — wie
+    levert er effectief, en wat? <a
+    href="{{ url_for('admin.gemeentecontacten') }}">Alle gemeentecontacten →</a></p>
+  <div class="stat-raster">
+    <div class="stat-tegel">
+      <span class="stat-cijfer">{{ gemeenten_mee.links }}</span>
+      <span class="stat-label">Links actief</span>
+      <span class="stat-sub">gemeenten met bijdragelink</span>
+    </div>
+    <div class="stat-tegel">
+      <span class="stat-cijfer">{{ gemeenten_mee.actief }}</span>
+      <span class="stat-label">Werken mee</span>
+      <span class="stat-sub">leverden al iets aan</span>
+    </div>
+    <div class="stat-tegel">
+      <span class="stat-cijfer">{{ gemeenten_mee.stemmen }}</span>
+      <span class="stat-label">Veldantwoorden</span>
+      <span class="stat-sub">parking, toilet, …</span>
+    </div>
+    <div class="stat-tegel">
+      <span class="stat-cijfer">{{ gemeenten_mee.fotos }}</span>
+      <span class="stat-label">Foto's</span>
+      <span class="stat-sub">van hun speelplekken</span>
+    </div>
+    <div class="stat-tegel">
+      <span class="stat-cijfer">{{ gemeenten_mee.events }}</span>
+      <span class="stat-label">Evenementen</span>
+      <span class="stat-sub">doorgegeven via de link</span>
+    </div>
+    <div class="stat-tegel">
+      <span class="stat-cijfer">{{ gemeenten_mee.teksten }}</span>
+      <span class="stat-label">Teksten</span>
+      <span class="stat-sub">over hun gemeente</span>
+    </div>
+  </div>
+  {% if gem_rijen and gemeenten_mee.actief %}
+  <table class="admin-tabel" style="margin-top:10px">
+    <tr><th>Gemeente</th><th>Antwoorden</th><th>Foto's</th><th>Evenementen</th>
+        <th>Tekst</th><th>Laatst actief</th></tr>
+    {% for r in gem_rijen if r.totaal %}
+    <tr>
+      <td><a href="{{ url_for('admin.gemeentecontact', gemeente=r.gemeente) }}">{{ r.gemeente|title }}</a></td>
+      <td>{{ r.stemmen or '—' }}</td>
+      <td>{{ r.fotos or '—' }}</td>
+      <td>{{ r.events or '—' }}</td>
+      <td>{{ '✓' if r.tekst else '—' }}</td>
+      <td>{{ r.laatst.strftime('%d/%m/%Y') if r.laatst else '—' }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% elif gemeenten_mee.links %}
+  <p class="hint" style="margin:10px 0 0">Nog geen bijdragen — de links zijn
+    verstuurd, het wachten is op de eerste dienst die invult.</p>
+  {% else %}
+  <p class="hint" style="margin:10px 0 0">Nog geen gemeentelinks aangemaakt.</p>
+  {% endif %}
+</section>
+
 <div class="admin-kolommen">
   <section class="card">
     <h2 style="margin-top:0">Populairste gemeenten</h2>

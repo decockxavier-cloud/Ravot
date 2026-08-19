@@ -238,3 +238,36 @@ def test_gemeentelink_niet_crawlbaar(client, app):
         s = client.get(pad)
         if s.status_code == 200:
             assert "gemeente-bijdrage" not in s.get_data(as_text=True)
+
+
+# ── 6. Dashboardblok "Gemeenten werken mee" (patch 268) ─────────────────────
+
+def test_dashboard_toont_meewerkende_gemeenten(client, app):
+    """Na een veldantwoord en een doorgegeven evenement toont het dashboard
+    Brussel als meewerkende gemeente, met de juiste tellers."""
+    token = _token(app, client)
+    eid = _event_id(app, "gs265-1")
+    client.post(f"/gemeente-bijdrage/{token}/stem/{eid}/toilet/ja")
+    client.post(f"/gemeente-bijdrage/{token}/evenement", data={
+        "titel": "Speelstraat", "datum_start": "2027-07-01", "gratis": "1"})
+    h = client.get("/beheer/").get_data(as_text=True)
+    assert "Gemeenten werken mee" in h
+    assert "Brussel" in h                            # in de meewerk-tabel
+    # Tellers: 1 link actief, 1 werkt mee, 1 veldantwoord, 1 evenement.
+    import re as _re
+    blok = h[h.index("Gemeenten werken mee"):]
+    cijfers = _re.findall(r'stat-cijfer">(\d+)<', blok)[:6]
+    assert cijfers[:5] == ["1", "1", "1", "0", "1"]  # links/mee/stemmen/fotos/events
+
+
+def test_gemeentestem_vervuilt_gezinspols_niet(client, app):
+    """Het blok 'Gezinnen vullen aan' blijft zuiver: een gemeentestem telt
+    daar niet mee (die heeft zijn eigen blok)."""
+    token = _token(app, client)
+    eid = _event_id(app, "gs265-1")
+    client.post(f"/gemeente-bijdrage/{token}/stem/{eid}/toilet/ja")
+    h = client.get("/beheer/").get_data(as_text=True)
+    gezinsblok = h[h.index("Gezinnen vullen aan"):h.index("Gemeenten werken mee")]
+    import re as _re
+    cijfers = _re.findall(r'stat-cijfer">(\d+)<', gezinsblok)
+    assert cijfers[0] == "0" and cijfers[1] == "0"   # vandaag/week: geen gezinsstem
