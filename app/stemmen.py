@@ -196,11 +196,15 @@ def leg_stem_vast(event_id, veld, waarde, family=None, gewicht=None,
     return rij
 
 
-# Stem van een toeristische dienst via de gemeentelink (patch 265). Zwaarder
-# dan een gewone stem — de dienst kent zijn eigen terreinen — maar bewust onder
-# VERTROUWEN_MAX: één administratieve vergissing mag door gezinnen ter plaatse
-# bijgestuurd kunnen worden.
-GEMEENTE_GEWICHT = 2.0
+# Stem van een toeristische dienst via de gemeentelink (patch 265/267). Geen
+# absolute kortsluiting maar een zwaar ANKER in de gewone weging: één gezin
+# (max VERTROUWEN_MAX = 2.5) kan een gemeentestem nooit kantelen, meerdere
+# gezinnen samen wél — wie ter plaatse staat en iets mist, meldt dat snel, en
+# negatieve meldingen komen sneller dan positieve. De gemeentestem veroudert
+# bovendien mee met de halfwaardetijd van het veld, zodat een gewijzigde
+# voorziening niet eeuwig vastzit aan een oud antwoord; de jaarlijkse
+# opfrislink is het moment om opnieuw te bevestigen.
+GEMEENTE_GEWICHT = 3.5
 
 
 def leg_gemeente_stem_vast(event_id, veld, waarde, gemeente):
@@ -264,11 +268,15 @@ def _weeg(stemmen, veld, nu=None, vertrouwen_cache=None):
     cache = vertrouwen_cache if vertrouwen_cache is not None else {}
     ja = nee = 0.0
     for s in stemmen:
-        if s.stemmer not in cache:
-            cache[s.stemmer] = stemmer_vertrouwen(s.stemmer, nu)
-        vertrouwen = cache[s.stemmer]
-        # de bronstem heeft zijn gewicht al in s.gewicht; niet dubbel wegen
-        basis = s.gewicht if s.stemmer == "bron" else vertrouwen
+        if s.stemmer == "bron" or (s.stemmer or "").startswith("gemeente:"):
+            # Bron- en gemeentestemmen dragen hun gewicht in de rij zelf
+            # (patch 267): het anker van de dienst mag niet afhangen van een
+            # live-berekende geschiedenis.
+            basis = s.gewicht
+        else:
+            if s.stemmer not in cache:
+                cache[s.stemmer] = stemmer_vertrouwen(s.stemmer, nu)
+            basis = cache[s.stemmer]
         g = basis * _verval_factor(veld, s, nu)
         if s.waarde:
             ja += g
@@ -294,27 +302,14 @@ def veld_status(event_id, veld, stemmen=None, nu=None, vertrouwen_cache=None):
         return {"waarde": None, "ja": 0.0, "nee": 0.0, "herkomst": "geen",
                 "toestand": "onbekend", "meerderheid_pct": None}
 
-    # Gemeentevoorrang (patch 266): heeft de toeristische dienst zelf
-    # geantwoord, dan wint dát antwoord — altijd, zonder verval en zonder
-    # tegenweging. Een dienst kent zijn eigen terreinen en vult waarheids-
-    # getrouw in; hij kan zijn antwoord ook gewoon wijzigen of intrekken.
-    # Andere stemmen blijven in het grootboek staan (auditeerbaar, en het
-    # normale telwerk herneemt vanzelf als de gemeentestem wordt ingetrokken).
-    gemeente_stemmen = [s for s in stemmen
-                        if (s.stemmer or "").startswith("gemeente:")]
-    if gemeente_stemmen:
-        g = max(gemeente_stemmen,
-                key=lambda s: s.updated_at or s.created_at or datetime.min)
-        return {"waarde": bool(g.waarde),
-                "ja": GEMEENTE_GEWICHT if g.waarde else 0.0,
-                "nee": 0.0 if g.waarde else GEMEENTE_GEWICHT,
-                "herkomst": "gemeente", "toestand": "bevestigd",
-                "meerderheid_pct": None}
-
     nu = nu or datetime.utcnow()
     ja, nee = _weeg(stemmen, veld, nu, vertrouwen_cache)
     heeft_gebruiker = any(s.stemmer != "bron" for s in stemmen)
     herkomst = "bezoekers" if heeft_gebruiker else "bron"
+    # Staat het gemeente-anker aan de winnende kant, benoem dat (patch 267).
+    gem = [s for s in stemmen if (s.stemmer or "").startswith("gemeente:")]
+    if gem and ja != nee and any(s.waarde == (ja > nee) for s in gem):
+        herkomst = "gemeente"
 
     if ja == nee:
         bron = next((s for s in stemmen if s.stemmer == "bron"), None)

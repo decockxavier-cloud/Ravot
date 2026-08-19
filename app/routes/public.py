@@ -2653,8 +2653,18 @@ def gemeente_bijdrage(token):
             velden_totaal += 1
             vraag = VOORZIENING_VRAAG.get(v, VOORZIENING_LABELS.get(v, v) + "?")
             if mijn is not None:
-                beantwoord_totaal += 1               # door de dienst zelf
-                vragen.append((v, vraag, None, None, mijn))
+                # Tegenspraak (patch 267): kantelden de gezinsstemmen de
+                # uitkomst tóch, dan is dat een signaal om te herbekijken —
+                # toon het en tel het als open in plaats van beantwoord.
+                afwijkend = (s is not None and s["waarde"] is not None
+                             and s["waarde"] != mijn)
+                if afwijkend:
+                    n_open += 1
+                    vragen.append((v, vraag, s["waarde"],
+                                   s["meerderheid_pct"], mijn))
+                else:
+                    beantwoord_totaal += 1
+                    vragen.append((v, vraag, None, None, mijn))
                 continue
             if s is not None and s["toestand"] == "bevestigd":
                 beantwoord_totaal += 1

@@ -96,7 +96,7 @@ def test_gemeente_stem_telt_en_is_intrekbaar(client, app):
         s = VeldStem.query.filter_by(event_id=eid, veld="toilet",
                                      stemmer="gemeente:brussel").first()
         assert s is not None and s.waarde is True
-        assert s.gewicht == 2.0                      # GEMEENTE_GEWICHT
+        assert s.gewicht == 3.5                      # GEMEENTE_GEWICHT (anker)
         assert db.session.get(Event, eid).toilet is True   # boolean loopt mee
     # Nogmaals hetzelfde antwoord = intrekken (zoals de anonieme stemmen).
     client.post(f"/gemeente-bijdrage/{token}/stem/{eid}/toilet/ja")
@@ -167,30 +167,49 @@ def test_honeypot_vangt_bots(client, app):
 
 # ── 5. Gemeentevoorrang & crawlbescherming (patch 266) ──────────────────────
 
-def test_gemeentestem_wint_van_alle_andere_stemmen(client, app):
-    """De dienst zegt 'nee', vijf gezinnen zeggen 'ja' → het blijft nee,
-    zonder verval. Trekt de dienst zijn antwoord in, dan herneemt het
-    gewone telwerk vanzelf."""
+def test_gemeentestem_is_anker_maar_geen_dictaat(client, app):
+    """Eén gezin kan de gemeente nooit overrulen (VERTROUWEN_MAX 2.5 < anker
+    3.5); genoeg gezinnen samen wél — als iets niet klopt, zeggen ze het.
+    Trekt de dienst zijn antwoord in, dan herneemt het gewone telwerk."""
+    from app import stemmen as _stemmen
+    # Structurele garantie: het anker ligt boven wat één stemmer ooit kan wegen.
+    assert _stemmen.GEMEENTE_GEWICHT > _stemmen.VERTROUWEN_MAX
+    token = _token(app, client)
+    eid = _event_id(app, "gs265-1")
+    client.post(f"/gemeente-bijdrage/{token}/stem/{eid}/parking/nee")
+    with app.app_context():
+        # Zes anonieme tegenstemmen (6 × 0.5 = 3.0 < 3.5): anker houdt stand.
+        for i in range(6):
+            _stemmen.leg_stem_vast(eid, "parking", True, anon_id=f"g267-{i}")
+        db.session.commit()
+        st = _stemmen.veld_status(eid, "parking")
+        assert st["waarde"] is False and st["herkomst"] == "gemeente"
+        # Twee erbij (8 × 0.5 = 4.0 > 3.5): de terreinwaarheid kantelt het.
+        for i in range(6, 8):
+            _stemmen.leg_stem_vast(eid, "parking", True, anon_id=f"g267-{i}")
+        db.session.commit()
+        assert _stemmen.veld_status(eid, "parking")["waarde"] is True
+    # Intrekken kan nog altijd; daarna tellen enkel de bezoekersstemmen.
+    client.post(f"/gemeente-bijdrage/{token}/stem/{eid}/parking/nee")
+    with app.app_context():
+        assert _stemmen.veld_status(eid, "parking")["waarde"] is True
+        assert VeldStem.query.filter_by(event_id=eid, veld="parking",
+                                        stemmer="gemeente:brussel").count() == 0
+
+
+def test_tegenspraak_zichtbaar_voor_de_dienst(client, app):
+    """Kantelen de bezoekers een gemeente-antwoord, dan ziet de dienst dat op
+    zijn pagina als open punt met een herbekijk-waarschuwing."""
     from app import stemmen as _stemmen
     token = _token(app, client)
     eid = _event_id(app, "gs265-1")
+    client.post(f"/gemeente-bijdrage/{token}/stem/{eid}/parking/nee")
     with app.app_context():
-        for i in range(5):
-            _stemmen.leg_stem_vast(eid, "parking", True,
-                                   anon_id=f"gezin{i}")
+        for i in range(8):
+            _stemmen.leg_stem_vast(eid, "parking", True, anon_id=f"t267-{i}")
         db.session.commit()
-        assert _stemmen.veld_status(eid, "parking")["waarde"] is True
-    client.post(f"/gemeente-bijdrage/{token}/stem/{eid}/parking/nee")
-    with app.app_context():
-        st = _stemmen.veld_status(eid, "parking")
-        assert st["waarde"] is False                 # gemeente wint
-        assert st["toestand"] == "bevestigd"
-        assert st["herkomst"] == "gemeente"
-        assert db.session.get(Event, eid).parking is False
-    # Intrekken → de gezinsstemmen tellen weer.
-    client.post(f"/gemeente-bijdrage/{token}/stem/{eid}/parking/nee")
-    with app.app_context():
-        assert _stemmen.veld_status(eid, "parking")["waarde"] is True
+    h = client.get(f"/gemeente-bijdrage/{token}").get_data(as_text=True)
+    assert "herbekijken" in h
 
 
 def test_beantwoord_veld_blijft_wijzigbaar_op_de_pagina(client, app):

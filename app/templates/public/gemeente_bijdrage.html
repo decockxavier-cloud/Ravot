@@ -83,8 +83,12 @@
       <div class="veldvraag">
         <span class="veldvraag-tekst">{{ vraag }}
           {% if mijn is not none %}<span class="hint">— u antwoordde
-            <strong>{{ 'ja' if mijn else 'nee' }}</strong> (dat telt als het
-            juiste antwoord; klik nogmaals om in te trekken)</span>
+            <strong>{{ 'ja' if mijn else 'nee' }}</strong> (weegt het zwaarst;
+            klik nogmaals om in te trekken)</span>
+            {% if waarde is not none %}<span class="hint gem-tegenspraak">⚠️
+              bezoekers melden intussen overwegend
+              <strong>{{ 'ja' if waarde else 'nee' }}</strong>{% if pct %}
+              ({{ pct }}%){% endif %} — even herbekijken?</span>{% endif %}
           {% elif waarde is not none %}<span class="hint">(tot nu:
             {{ 'meestal ja' if waarde else 'meestal nee' }}{% if pct %}, {{ pct }}%{% endif %})</span>{% endif %}
         </span>
