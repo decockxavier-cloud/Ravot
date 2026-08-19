@@ -163,3 +163,59 @@ def test_honeypot_vangt_bots(client, app):
     assert r.status_code == 302
     with app.app_context():
         assert Event.query.filter_by(title="Spam Event").count() == 0
+
+
+# ── 5. Gemeentevoorrang & crawlbescherming (patch 266) ──────────────────────
+
+def test_gemeentestem_wint_van_alle_andere_stemmen(client, app):
+    """De dienst zegt 'nee', vijf gezinnen zeggen 'ja' → het blijft nee,
+    zonder verval. Trekt de dienst zijn antwoord in, dan herneemt het
+    gewone telwerk vanzelf."""
+    from app import stemmen as _stemmen
+    token = _token(app, client)
+    eid = _event_id(app, "gs265-1")
+    with app.app_context():
+        for i in range(5):
+            _stemmen.leg_stem_vast(eid, "parking", True,
+                                   anon_id=f"gezin{i}")
+        db.session.commit()
+        assert _stemmen.veld_status(eid, "parking")["waarde"] is True
+    client.post(f"/gemeente-bijdrage/{token}/stem/{eid}/parking/nee")
+    with app.app_context():
+        st = _stemmen.veld_status(eid, "parking")
+        assert st["waarde"] is False                 # gemeente wint
+        assert st["toestand"] == "bevestigd"
+        assert st["herkomst"] == "gemeente"
+        assert db.session.get(Event, eid).parking is False
+    # Intrekken → de gezinsstemmen tellen weer.
+    client.post(f"/gemeente-bijdrage/{token}/stem/{eid}/parking/nee")
+    with app.app_context():
+        assert _stemmen.veld_status(eid, "parking")["waarde"] is True
+
+
+def test_beantwoord_veld_blijft_wijzigbaar_op_de_pagina(client, app):
+    """Na een antwoord verdwijnt de vraag niet: de dienst ziet zijn eigen
+    antwoord staan en kan het wijzigen of intrekken."""
+    token = _token(app, client)
+    eid = _event_id(app, "gs265-1")
+    client.post(f"/gemeente-bijdrage/{token}/stem/{eid}/toilet/ja")
+    h = client.get(f"/gemeente-bijdrage/{token}").get_data(as_text=True)
+    assert "u antwoordde" in h and "in te trekken" in h
+
+
+def test_gemeentelink_niet_crawlbaar(client, app):
+    """Drie sloten: meta-noindex, X-Robots-Tag én robots.txt — ook voor de
+    AI-bots die verder overal welkom zijn."""
+    token = _token(app, client)
+    r = client.get(f"/gemeente-bijdrage/{token}")
+    assert "noindex" in r.get_data(as_text=True)                 # meta
+    assert "noindex" in (r.headers.get("X-Robots-Tag") or "")    # header
+    r2 = client.get(f"/gemeente-bijdrage/{token}/evenement")
+    assert "noindex" in (r2.headers.get("X-Robots-Tag") or "")
+    robots = client.get("/robots.txt").get_data(as_text=True)
+    assert robots.count("Disallow: /gemeente-bijdrage/") >= 5    # elke UA-sectie
+    # En hij staat vanzelfsprekend in geen enkele sitemap.
+    for pad in ("/sitemap.xml", "/sitemap-gemeenten.xml"):
+        s = client.get(pad)
+        if s.status_code == 200:
+            assert "gemeente-bijdrage" not in s.get_data(as_text=True)

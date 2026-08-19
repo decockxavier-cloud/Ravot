@@ -79,14 +79,14 @@
     {% set vragen = vragen_per_plek.get(e.id, []) %}
     {% if vragen %}
     <div class="gem-vragen">
-      {% for veld, vraag, waarde, pct in vragen %}
-      {% set mijn = mijn_stemmen.get(e.id, {}).get(veld) %}
+      {% for veld, vraag, waarde, pct, mijn in vragen %}
       <div class="veldvraag">
         <span class="veldvraag-tekst">{{ vraag }}
-          {% if waarde is not none %}<span class="hint">(tot nu:
+          {% if mijn is not none %}<span class="hint">— u antwoordde
+            <strong>{{ 'ja' if mijn else 'nee' }}</strong> (dat telt als het
+            juiste antwoord; klik nogmaals om in te trekken)</span>
+          {% elif waarde is not none %}<span class="hint">(tot nu:
             {{ 'meestal ja' if waarde else 'meestal nee' }}{% if pct %}, {{ pct }}%{% endif %})</span>{% endif %}
-          {% if mijn is not none %}<span class="hint">— u zei
-            {{ 'ja' if mijn else 'nee' }} (klik nogmaals om in te trekken)</span>{% endif %}
         </span>
         <span class="veldvraag-knoppen">
           <form method="post" action="{{ url_for('public.gemeente_bijdrage_stem', token=token, event_id=e.id, veld=veld, waarde='ja') }}">

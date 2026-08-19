@@ -294,6 +294,23 @@ def veld_status(event_id, veld, stemmen=None, nu=None, vertrouwen_cache=None):
         return {"waarde": None, "ja": 0.0, "nee": 0.0, "herkomst": "geen",
                 "toestand": "onbekend", "meerderheid_pct": None}
 
+    # Gemeentevoorrang (patch 266): heeft de toeristische dienst zelf
+    # geantwoord, dan wint dát antwoord — altijd, zonder verval en zonder
+    # tegenweging. Een dienst kent zijn eigen terreinen en vult waarheids-
+    # getrouw in; hij kan zijn antwoord ook gewoon wijzigen of intrekken.
+    # Andere stemmen blijven in het grootboek staan (auditeerbaar, en het
+    # normale telwerk herneemt vanzelf als de gemeentestem wordt ingetrokken).
+    gemeente_stemmen = [s for s in stemmen
+                        if (s.stemmer or "").startswith("gemeente:")]
+    if gemeente_stemmen:
+        g = max(gemeente_stemmen,
+                key=lambda s: s.updated_at or s.created_at or datetime.min)
+        return {"waarde": bool(g.waarde),
+                "ja": GEMEENTE_GEWICHT if g.waarde else 0.0,
+                "nee": 0.0 if g.waarde else GEMEENTE_GEWICHT,
+                "herkomst": "gemeente", "toestand": "bevestigd",
+                "meerderheid_pct": None}
+
     nu = nu or datetime.utcnow()
     ja, nee = _weeg(stemmen, veld, nu, vertrouwen_cache)
     heeft_gebruiker = any(s.stemmer != "bron" for s in stemmen)

@@ -14,7 +14,8 @@ import re
 import json
 from datetime import datetime, timedelta
 
-from flask import (Blueprint, abort, current_app, flash, g, jsonify, redirect,
+from flask import (Blueprint, abort, current_app, flash, g, jsonify,
+                   make_response, redirect,
                    render_template, request, session, url_for, Response)
 
 from ..extensions import db, limiter
@@ -1588,13 +1589,15 @@ def gemeente_page(gemeente, facet=None):
 
 @bp.route("/robots.txt")
 def robots():
-    # AI-crawlers expliciet welkom (GEO §5)
+    # AI-crawlers expliciet welkom (GEO §5) — behalve op de gemeentelink:
+    # dat zijn privépagina's met een token in de URL (patch 266).
+    prive = "Disallow: /gemeente-bijdrage/"
     lines = [
-        "User-agent: *", "Allow: /", "",
-        "User-agent: GPTBot", "Allow: /", "",
-        "User-agent: ClaudeBot", "Allow: /", "",
-        "User-agent: PerplexityBot", "Allow: /", "",
-        "User-agent: Google-Extended", "Allow: /", "",
+        "User-agent: *", "Allow: /", prive, "",
+        "User-agent: GPTBot", "Allow: /", prive, "",
+        "User-agent: ClaudeBot", "Allow: /", prive, "",
+        "User-agent: PerplexityBot", "Allow: /", prive, "",
+        "User-agent: Google-Extended", "Allow: /", prive, "",
         f"Sitemap: {current_app.config['SITE_URL']}/sitemap.xml",
     ]
     return Response("\n".join(lines), mimetype="text/plain")
@@ -2627,25 +2630,43 @@ def gemeente_bijdrage(token):
     from ..models import VOORZIENING_LABELS, VOORZIENING_VRAAG, VeldStem
     from ..types import activiteit_type as _atype
     from .. import stemmen as _stemmen
-    statussen = _stemmen.veldstatussen_batch([e.id for e in alles])
-    vragen_per_plek = {}          # id -> [(veld, vraag, waarde|None, pct|None)]
+    alle_ids = [e.id for e in alles]
+    statussen = _stemmen.veldstatussen_batch(alle_ids)
+    # Eigen antwoorden van de dienst (patch 266): die winnen altijd, maar
+    # blijven op deze pagina zichtbaar en wijzigbaar/intrekbaar.
+    gem_map = {}
+    if alle_ids:
+        for s in VeldStem.query.filter(
+                VeldStem.stemmer == f"gemeente:{c.gemeente}"[:40],
+                VeldStem.event_id.in_(alle_ids)).all():
+            gem_map.setdefault(s.event_id, {})[s.veld] = s.waarde
+    vragen_per_plek = {}     # id -> [(veld, vraag, waarde|None, pct|None, mijn)]
+    open_per_plek = {}       # id -> aantal écht open vragen
     velden_totaal = beantwoord_totaal = 0
     for e in alles:
         st = statussen.get(e.id, {})
         vragen = []
+        n_open = 0
         for v in _stemmen.relevante_velden(e):
             s = st.get(v)
+            mijn = gem_map.get(e.id, {}).get(v)
             velden_totaal += 1
+            vraag = VOORZIENING_VRAAG.get(v, VOORZIENING_LABELS.get(v, v) + "?")
+            if mijn is not None:
+                beantwoord_totaal += 1               # door de dienst zelf
+                vragen.append((v, vraag, None, None, mijn))
+                continue
             if s is not None and s["toestand"] == "bevestigd":
                 beantwoord_totaal += 1
                 continue
-            vraag = VOORZIENING_VRAAG.get(v, VOORZIENING_LABELS.get(v, v) + "?")
+            n_open += 1
             if s is None or s["toestand"] == "onbekend":
-                vragen.append((v, vraag, None, None))
+                vragen.append((v, vraag, None, None, None))
             else:                                   # voorlopig → bevestig-vraag
-                vragen.append((v, vraag, s["waarde"], s["meerderheid_pct"]))
+                vragen.append((v, vraag, s["waarde"], s["meerderheid_pct"], None))
         vragen_per_plek[e.id] = vragen
-    open_vragen_totaal = sum(len(v) for v in vragen_per_plek.values())
+        open_per_plek[e.id] = n_open
+    open_vragen_totaal = sum(open_per_plek.values())
     pct_foto = round(100 * (len(alles) - zonder_foto_totaal) / len(alles)) if alles else 0
     pct_vragen = round(100 * beantwoord_totaal / velden_totaal) if velden_totaal else 0
 
@@ -2676,28 +2697,23 @@ def gemeente_bijdrage(token):
         g = groepen[-1]
         g["plekken"].append(e)
         g["zonder_foto"] += 0 if e.image_url else 1
-        g["open_vragen"] += len(vragen_per_plek.get(e.id, []))
+        g["open_vragen"] += open_per_plek.get(e.id, 0)
 
-    # Wat de dienst zelf al antwoordde — zichtbaar en intrekbaar.
-    mijn_stemmen = {}
-    pagina_ids = [e.id for e in plekken]
-    if pagina_ids:
-        for s in VeldStem.query.filter(
-                VeldStem.stemmer == f"gemeente:{c.gemeente}"[:40],
-                VeldStem.event_id.in_(pagina_ids)).all():
-            mijn_stemmen.setdefault(s.event_id, {})[s.veld] = s.waarde
-
-    return render_template("public/gemeente_bijdrage.html", c=c, naam=naam,
+    resp = make_response(render_template(
+                           "public/gemeente_bijdrage.html", c=c, naam=naam,
                            tekst=tekst, plekken=plekken, token=token,
                            groepen=groepen, vragen_per_plek=vragen_per_plek,
-                           mijn_stemmen=mijn_stemmen,
                            open_vragen_totaal=open_vragen_totaal,
                            pct_foto=pct_foto, pct_vragen=pct_vragen,
                            enkel_zonder=enkel_zonder, totaal_alles=len(alles),
                            zonder_foto_totaal=zonder_foto_totaal,
                            totaal=totaal, pagina=pagina, paginas=paginas,
                            family=None, active=None, noindex=True,
-                           title=f"Ravot & {naam}")
+                           title=f"Ravot & {naam}"))
+    # Riem én bretellen naast de meta-noindex: ook de header zegt het,
+    # zodat zelfs niet-HTML-antwoorden nooit geïndexeerd raken (patch 266).
+    resp.headers["X-Robots-Tag"] = "noindex, nofollow"
+    return resp
 
 
 @bp.route("/gemeente-bijdrage/<token>/tekst", methods=["POST"])
@@ -2795,11 +2811,14 @@ def gemeente_bijdrage_evenement(token):
     naam = c.gemeente.title()
 
     def _formulier(fouten=None):
-        return render_template("public/gemeente_evenement.html", c=c,
+        resp = make_response(render_template(
+                               "public/gemeente_evenement.html", c=c,
                                naam=naam, token=token, form=request.form,
                                fouten=fouten or [], vandaag=date.today(),
                                family=None, active=None, noindex=True,
-                               title=f"Evenement doorgeven · {naam}")
+                               title=f"Evenement doorgeven · {naam}"))
+        resp.headers["X-Robots-Tag"] = "noindex, nofollow"
+        return resp
 
     if request.method != "POST":
         return _formulier()
