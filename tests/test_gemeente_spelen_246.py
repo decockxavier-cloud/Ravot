@@ -51,7 +51,12 @@ def test_alleen_speelplekken_in_de_lijst(client, app):
     h = client.get(f"/gemeente-bijdrage/{token}").get_data(as_text=True)
     assert "Speeltuin 3" in h
     assert "Frituur" not in h and "Museum" not in h
-    assert h.count('name="fotos"') == 9        # 12 minus 3 die al een foto hebben
+    # Sinds patch 265 toont de standaardweergave ALLE speelplekken (ook die
+    # mét foto — daar staan nu de veldvragen); de fotofilter blijft bestaan
+    # als 'zonder=1' en geeft nog steeds exact de plekken zonder foto.
+    assert h.count('name="fotos"') == 12
+    h2 = client.get(f"/gemeente-bijdrage/{token}?zonder=1").get_data(as_text=True)
+    assert h2.count('name="fotos"') == 9       # 12 minus 3 die al een foto hebben
 
 
 def test_geen_soortfilters_meer(client, app):

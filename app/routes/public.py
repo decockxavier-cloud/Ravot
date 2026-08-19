@@ -2620,9 +2620,43 @@ def gemeente_bijdrage(token):
     alles = [e for e in basis.all() if groep_van(e) == "ravotten"]
     zonder_foto_totaal = sum(1 for e in alles if not e.image_url)
 
-    enkel_zonder = request.args.get("alles") != "1"
+    # Herstructurering (patch 265): niet langer één vlakke fotolijst, maar een
+    # dashboard in drie lagen — voortgang bovenaan, werk per plektype in
+    # uitklapbare groepen, en per plek naast foto's ook de open veldvragen
+    # (zelfde VeldStem-teller als op de fiches, dus zelfcorrigerend).
+    from ..models import VOORZIENING_LABELS, VOORZIENING_VRAAG, VeldStem
+    from ..types import activiteit_type as _atype
+    from .. import stemmen as _stemmen
+    statussen = _stemmen.veldstatussen_batch([e.id for e in alles])
+    vragen_per_plek = {}          # id -> [(veld, vraag, waarde|None, pct|None)]
+    velden_totaal = beantwoord_totaal = 0
+    for e in alles:
+        st = statussen.get(e.id, {})
+        vragen = []
+        for v in _stemmen.relevante_velden(e):
+            s = st.get(v)
+            velden_totaal += 1
+            if s is not None and s["toestand"] == "bevestigd":
+                beantwoord_totaal += 1
+                continue
+            vraag = VOORZIENING_VRAAG.get(v, VOORZIENING_LABELS.get(v, v) + "?")
+            if s is None or s["toestand"] == "onbekend":
+                vragen.append((v, vraag, None, None))
+            else:                                   # voorlopig → bevestig-vraag
+                vragen.append((v, vraag, s["waarde"], s["meerderheid_pct"]))
+        vragen_per_plek[e.id] = vragen
+    open_vragen_totaal = sum(len(v) for v in vragen_per_plek.values())
+    pct_foto = round(100 * (len(alles) - zonder_foto_totaal) / len(alles)) if alles else 0
+    pct_vragen = round(100 * beantwoord_totaal / velden_totaal) if velden_totaal else 0
+
+    # 'zonder=1' filtert op plekken zonder foto; standaard staat alles open
+    # zodat ook de veldvragen van plekken mét foto zichtbaar zijn. De oude
+    # parameter 'alles=1' blijft werken (verstuurde links veranderen nooit).
+    enkel_zonder = request.args.get("zonder") == "1"
     rijen = [e for e in alles if not enkel_zonder or not e.image_url]
-    rijen.sort(key=lambda e: ((e.image_url is not None), (e.title or "").lower()))
+    rijen.sort(key=lambda e: (_atype(e)["label"],
+                              (e.image_url is not None),
+                              (e.title or "").lower()))
 
     per_pagina = 100
     pagina = max(1, int(request.args.get("p", 1) or 1))
@@ -2631,8 +2665,34 @@ def gemeente_bijdrage(token):
     pagina = min(pagina, paginas)
     plekken = rijen[(pagina - 1) * per_pagina:pagina * per_pagina]
 
+    # Groepeer de pagina-rijen per type (de sortering houdt types aaneengesloten,
+    # ook over paginagrenzen heen).
+    groepen = []
+    for e in plekken:
+        t = _atype(e)
+        if not groepen or groepen[-1]["label"] != t["label"]:
+            groepen.append({"label": t["label"], "emoji": t["emoji"],
+                            "plekken": [], "zonder_foto": 0, "open_vragen": 0})
+        g = groepen[-1]
+        g["plekken"].append(e)
+        g["zonder_foto"] += 0 if e.image_url else 1
+        g["open_vragen"] += len(vragen_per_plek.get(e.id, []))
+
+    # Wat de dienst zelf al antwoordde — zichtbaar en intrekbaar.
+    mijn_stemmen = {}
+    pagina_ids = [e.id for e in plekken]
+    if pagina_ids:
+        for s in VeldStem.query.filter(
+                VeldStem.stemmer == f"gemeente:{c.gemeente}"[:40],
+                VeldStem.event_id.in_(pagina_ids)).all():
+            mijn_stemmen.setdefault(s.event_id, {})[s.veld] = s.waarde
+
     return render_template("public/gemeente_bijdrage.html", c=c, naam=naam,
                            tekst=tekst, plekken=plekken, token=token,
+                           groepen=groepen, vragen_per_plek=vragen_per_plek,
+                           mijn_stemmen=mijn_stemmen,
+                           open_vragen_totaal=open_vragen_totaal,
+                           pct_foto=pct_foto, pct_vragen=pct_vragen,
                            enkel_zonder=enkel_zonder, totaal_alles=len(alles),
                            zonder_foto_totaal=zonder_foto_totaal,
                            totaal=totaal, pagina=pagina, paginas=paginas,
@@ -2666,6 +2726,153 @@ def gemeente_bijdrage_tekst(token):
 
 def naam_van(c):
     return c.dienst or f"Gemeente {c.gemeente.title()}"
+
+
+@bp.route("/gemeente-bijdrage/<token>/stem/<int:event_id>/<veld>/<waarde>",
+          methods=["POST"])
+@limiter.limit("240/hour")
+def gemeente_bijdrage_stem(token, event_id, veld, waarde):
+    """Veldvraag beantwoord door de dienst zelf (patch 265).
+
+    Zelfde stemmenteller als op de fiches: de gemeente is één stemmer (zwaarder
+    gewicht, want ze kennen hun eigen terreinen), gezinnen kunnen ter plaatse
+    blijven bijsturen. Nogmaals hetzelfde antwoord = intrekken, net als bij
+    de anonieme stemmen.
+    """
+    from ..models import VOORZIENING_LABELS, VeldStem, ZACHTE_VELDEN, utcnow
+    from .. import stemmen as _stemmen
+    from .account import _herbereken_boolean
+    c = _gemeente_via_token(token)
+    if c is None:
+        abort(404)
+    if veld not in ZACHTE_VELDEN or waarde not in ("ja", "nee"):
+        abort(400)
+    ev = db.session.get(Event, event_id) or abort(404)
+    if (ev.gemeente or "").strip().lower() != c.gemeente:
+        abort(403)                  # een token geeft enkel de eigen gemeente
+    if veld not in _stemmen.relevante_velden(ev):
+        abort(400)
+    ja = (waarde == "ja")
+    stemmer = f"gemeente:{c.gemeente}"[:40]
+    bestaand = VeldStem.query.filter_by(event_id=ev.id, veld=veld,
+                                        stemmer=stemmer).first()
+    lbl = VOORZIENING_LABELS.get(veld, veld)
+    if bestaand is not None and bestaand.waarde == ja:
+        db.session.delete(bestaand)
+        _herbereken_boolean(ev, veld)
+        db.session.commit()
+        flash(f"Uw antwoord over {lbl} bij {ev.title} is ingetrokken.", "ok")
+    else:
+        _stemmen.leg_gemeente_stem_vast(ev.id, veld, ja, c.gemeente)
+        _herbereken_boolean(ev, veld)
+        c.laatst_verrijkt = utcnow().replace(tzinfo=None)
+        c.aantal_bijdragen = (c.aantal_bijdragen or 0) + 1
+        db.session.commit()
+        flash(f"Genoteerd: {lbl} bij {ev.title}. Dank u wel!", "ok")
+    return redirect((request.referrer
+                     or url_for("public.gemeente_bijdrage", token=token))
+                    + f"#plek-{ev.id}")
+
+
+@bp.route("/gemeente-bijdrage/<token>/evenement", methods=["GET", "POST"])
+@limiter.limit("30/hour", methods=["POST"])
+def gemeente_bijdrage_evenement(token):
+    """Evenement doorgeven via de gemeentelink (patch 265).
+
+    Eigen Ravot-invoer, bewust los van de UiTdatabank: gemeenten mogen
+    aanleveren wat ze willen, ontdubbelen met UiT komt later als dat nodig
+    blijkt. Alles landt als pending in de gewone nazichtwachtrij; het type
+    kent de redactie toe bij goedkeuring (taxonomie blijft bij ons).
+    """
+    from datetime import date, datetime as _dt, time as _time
+    import secrets
+    from ..geo import postcode_coord
+    from ..models import utcnow
+    from .account import _slugify
+    c = _gemeente_via_token(token)
+    if c is None:
+        abort(404)
+    naam = c.gemeente.title()
+
+    def _formulier(fouten=None):
+        return render_template("public/gemeente_evenement.html", c=c,
+                               naam=naam, token=token, form=request.form,
+                               fouten=fouten or [], vandaag=date.today(),
+                               family=None, active=None, noindex=True,
+                               title=f"Evenement doorgeven · {naam}")
+
+    if request.method != "POST":
+        return _formulier()
+
+    # Honeypot: het veld 'website2' is onzichtbaar voor mensen; een bot die
+    # alles invult krijgt een vriendelijke bevestiging en verder niets.
+    if (request.form.get("website2") or "").strip():
+        flash("Bedankt! Uw evenement is doorgestuurd — we kijken het na en "
+              "zetten het dan online.", "ok")
+        return redirect(url_for("public.gemeente_bijdrage", token=token))
+
+    fouten = []
+    titel = (request.form.get("titel") or "").strip()[:160]
+    if not titel:
+        fouten.append("Geef het evenement een naam.")
+    try:
+        d1 = date.fromisoformat(request.form.get("datum_start") or "")
+    except ValueError:
+        d1 = None
+        fouten.append("Kies een geldige startdatum.")
+    try:
+        d2 = date.fromisoformat(request.form.get("datum_eind") or "") \
+            if (request.form.get("datum_eind") or "").strip() else d1
+    except ValueError:
+        d2 = None
+        fouten.append("De einddatum is geen geldige datum.")
+    if d1 and d2:
+        if d2 < d1:
+            fouten.append("De einddatum ligt vóór de startdatum.")
+        elif d2 < date.today():
+            fouten.append("Dat evenement is al voorbij.")
+    if fouten:
+        return _formulier(fouten)
+
+    try:
+        lo = max(0, min(99, int(request.form.get("age_min") or 0)))
+        hi = max(lo, min(99, int(request.form.get("age_max") or 12)))
+    except ValueError:
+        lo, hi = 0, 12
+    postcode = (request.form.get("postcode") or "").strip()[:10] or None
+    coord = postcode_coord(postcode) if postcode else None
+    gratis = bool(request.form.get("gratis"))
+    price_info = None
+    if not gratis:
+        try:
+            p = float((request.form.get("prijs") or "").replace(",", "."))
+            if 0 <= p <= 500:
+                price_info = [{"name": "basis", "price": p}]
+        except ValueError:
+            pass
+    ev = Event(
+        source="gemeente", pending=True, hidden=False,
+        is_permanent=False, is_kamp=False,
+        start=_dt.combine(d1, _time(0, 0)),
+        end=_dt.combine(d2, _time(23, 59)),
+        title=titel,
+        description=(request.form.get("beschrijving") or "").strip()[:2000],
+        gemeente=naam, postcode=postcode,
+        adres=(request.form.get("adres") or "").strip()[:255] or None,
+        lat=coord[0] if coord else None, lng=coord[1] if coord else None,
+        age_min=lo, age_max=hi, categories=[],
+        is_free=gratis, price_info=price_info,
+        source_url=(request.form.get("website") or "").strip()[:500] or None,
+        attribution=f"doorgegeven door {naam_van(c)}",
+        slug=f"{_slugify(titel)}-g{secrets.token_hex(3)}",
+    )
+    db.session.add(ev)
+    c.laatst_verrijkt = utcnow().replace(tzinfo=None)
+    c.aantal_bijdragen = (c.aantal_bijdragen or 0) + 1
+    db.session.commit()
+    flash("Bedankt! Uw evenement is doorgestuurd — we kijken het na en "
+          "zetten het dan online.", "ok")
+    return redirect(url_for("public.gemeente_bijdrage", token=token))
 
 
 @bp.route("/gemeente-bijdrage/<token>/foto/<int:event_id>", methods=["POST"])

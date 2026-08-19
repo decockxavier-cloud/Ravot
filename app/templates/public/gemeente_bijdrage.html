@@ -1,99 +1,163 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="card" style="border-color:var(--zon)">
+{# ── Laag 1: kop met voortgang (patch 265) ─────────────────────────────── #}
+<div class="card gem-kop" style="border-color:var(--zon)">
   <h1 style="margin-top:0">🦊 Ravot &amp; {{ naam }}</h1>
   <p>Ravot is een gratis gezinsgids voor Vlaanderen: ouders zoeken hier waar ze
     met hun kinderen naartoe kunnen. Voor {{ naam }} staan er
-    <strong>{{ totaal_alles }}</strong> speelplekken in —
-    {% if zonder_foto_totaal %}<strong>{{ zonder_foto_totaal }}</strong> daarvan
-    nog zonder foto.{% else %}allemaal met foto.{% endif %}</p>
-  <p class="hint">Met deze pagina kunt u meehelpen: schrijf een korte tekst
-    over uitstappen met kinderen in {{ naam }}, en voeg foto's toe bij de
-    plekken die u kent. Geen account nodig. Alles wordt nagekeken door onze
-    redactie voor het online komt. De link blijft een jaar geldig.</p>
+    <strong>{{ totaal_alles }}</strong> speelplekken in.</p>
+  <div class="gem-stats">
+    <div class="gem-stat">
+      <div class="gem-stat-kop"><strong>📷 Foto's</strong>
+        <span>{{ totaal_alles - zonder_foto_totaal }} van {{ totaal_alles }}</span></div>
+      <div class="voortgang"><div class="voortgang-vulling" style="width:{{ pct_foto }}%"></div></div>
+    </div>
+    <div class="gem-stat">
+      <div class="gem-stat-kop"><strong>❓ Vragen beantwoord</strong>
+        <span>{{ pct_vragen }}%{% if open_vragen_totaal %} · nog {{ open_vragen_totaal }} open{% endif %}</span></div>
+      <div class="voortgang"><div class="voortgang-vulling" style="width:{{ pct_vragen }}%"></div></div>
+    </div>
+  </div>
+  <p class="hint">Met deze pagina kunt u meehelpen: beantwoord korte vragen
+    over de plekken die u kent, voeg foto's toe, schrijf een tekst over
+    {{ naam }} of geef een evenement door. Geen account nodig. Alles wordt
+    nagekeken door onze redactie voor het online komt. De link blijft een
+    jaar geldig.</p>
+</div>
+
+{# ── Evenement doorgeven ───────────────────────────────────────────────── #}
+<div class="card" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+  <div style="flex:1;min-width:220px">
+    <strong>📅 Een evenement in {{ naam }}?</strong>
+    <div class="hint">Speelstraat, buitenspeeldag, kindermarkt… Geef het door
+      en het verschijnt na nazicht in de gezinsagenda.</div>
+  </div>
+  <a class="btn btn-zon" href="{{ url_for('public.gemeente_bijdrage_evenement', token=token) }}">Evenement doorgeven</a>
+</div>
+
+{# ── Laag 2: het werkgedeelte, per plektype ─────────────────────────────── #}
+<h2>🛠️ De speelplekken van {{ naam }}</h2>
+<p class="hint">Per plek ziet u wat wij nog niet weten: open vragen (één klik)
+  en ontbrekende foto's. U hoeft zeker niet alles te doen — elk antwoord en
+  elke foto helpt een gezin verder. Evenementen en eetzaken laten we hier
+  bewust weg: die worden elders al bijgehouden.</p>
+
+<div class="filterrij">
+  <a class="chip {{ 'aan' if not enkel_zonder else 'uit' }}"
+     href="{{ url_for('public.gemeente_bijdrage', token=token) }}">Alle speelplekken</a>
+  <a class="chip {{ 'aan' if enkel_zonder else 'uit' }}"
+     href="{{ url_for('public.gemeente_bijdrage', token=token, zonder='1') }}">Enkel zonder foto</a>
+</div>
+<p class="hint">{{ totaal }} plek{{ '' if totaal == 1 else 'ken' }} in deze
+  selectie{% if paginas > 1 %} · pagina {{ pagina }} van {{ paginas }}{% endif %}.</p>
+
+{% for g in groepen %}
+<details class="gem-groep" {% if groepen|length == 1 %}open{% endif %}>
+  <summary class="gem-groep-titel">{{ g.emoji }} {{ g.label }}
+    <span class="gem-groep-teller">{{ g.plekken|length }}
+      plek{{ '' if g.plekken|length == 1 else 'ken' }}{% if g.zonder_foto %}
+      · {{ g.zonder_foto }} zonder foto{% endif %}{% if g.open_vragen %}
+      · {{ g.open_vragen }} open vra{{ 'ag' if g.open_vragen == 1 else 'gen' }}{% endif %}</span>
+  </summary>
+  {% for e in g.plekken %}
+  <div class="card gem-plek" id="plek-{{ e.id }}">
+    <div class="gem-plek-kop">
+      <div>
+        <strong>{{ e.title }}</strong>
+        {% if not e.image_url %}<span class="badge">geen foto</span>{% endif %}
+        <div class="hint">{% if e.adres %}{{ e.adres }} · {% endif %}<a
+          href="{{ url_for('public.event', slug=e.slug) }}" target="_blank">fiche bekijken ↗</a></div>
+      </div>
+      <form method="post" enctype="multipart/form-data"
+            action="{{ url_for('public.gemeente_bijdrage_foto', token=token, event_id=e.id) }}"
+            class="acties gem-fotoform">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="file" name="fotos" accept="image/jpeg,image/png,image/webp" multiple required>
+        <button class="btn btn-klein" type="submit">📷 Toevoegen</button>
+      </form>
+    </div>
+    {% set vragen = vragen_per_plek.get(e.id, []) %}
+    {% if vragen %}
+    <div class="gem-vragen">
+      {% for veld, vraag, waarde, pct in vragen %}
+      {% set mijn = mijn_stemmen.get(e.id, {}).get(veld) %}
+      <div class="veldvraag">
+        <span class="veldvraag-tekst">{{ vraag }}
+          {% if waarde is not none %}<span class="hint">(tot nu:
+            {{ 'meestal ja' if waarde else 'meestal nee' }}{% if pct %}, {{ pct }}%{% endif %})</span>{% endif %}
+          {% if mijn is not none %}<span class="hint">— u zei
+            {{ 'ja' if mijn else 'nee' }} (klik nogmaals om in te trekken)</span>{% endif %}
+        </span>
+        <span class="veldvraag-knoppen">
+          <form method="post" action="{{ url_for('public.gemeente_bijdrage_stem', token=token, event_id=e.id, veld=veld, waarde='ja') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-klein {{ 'btn-zon' if mijn == True }}" type="submit">✓ ja</button>
+          </form>
+          <form method="post" action="{{ url_for('public.gemeente_bijdrage_stem', token=token, event_id=e.id, veld=veld, waarde='nee') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-klein {{ 'btn-zon' if mijn == False }}" type="submit">✗ nee</button>
+          </form>
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</details>
+{% else %}
+<p class="hint">Geen plekken in deze selectie.</p>
+{% endfor %}
+
+{% if paginas > 1 %}
+<div class="filterrij" style="justify-content:center">
+  {% if pagina > 1 %}
+  <a class="chip" href="{{ url_for('public.gemeente_bijdrage', token=token, zonder='1' if enkel_zonder else None, p=pagina-1) }}">← vorige</a>
+  {% endif %}
+  <span class="hint">pagina {{ pagina }} van {{ paginas }}</span>
+  {% if pagina < paginas %}
+  <a class="chip" href="{{ url_for('public.gemeente_bijdrage', token=token, zonder='1' if enkel_zonder else None, p=pagina+1) }}">volgende →</a>
+  {% endif %}
+</div>
+{% endif %}
+
+{# ── Tekst over de gemeente, ingeklapt ──────────────────────────────────── #}
+<details class="gem-groep">
+  <summary class="gem-groep-titel">✍️ Tekst over {{ naam }}
+    <span class="gem-groep-teller">{% if tekst and tekst.heeft_tekst %}geschreven{% else %}nog leeg{% endif %}</span></summary>
+  <div class="card">
+    {% if tekst and tekst.pending %}
+    <p class="hint">⏳ Uw laatste tekst is doorgestuurd en wacht op nazicht.</p>
+    {% endif %}
+    <form method="post" action="{{ url_for('public.gemeente_bijdrage_tekst', token=token) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label for="intro">Wat maakt {{ naam }} leuk voor gezinnen?</label>
+      <p class="hint">Schrijf wat een lijst niet kan zeggen: welke speeltuin
+        overdekt is, waar je bij regen terechtkunt, wat een fijne combinatie is
+        voor een halve dag. 150–300 woorden volstaat.</p>
+      <textarea id="intro" name="intro_md" rows="10"
+                placeholder="In {{ naam }} ravot je het best in…">{{ (tekst.intro_md if tekst else '') or '' }}</textarea>
+      <label for="slot" style="margin-top:12px">Praktische tips <span class="hint">(optioneel)</span></label>
+      <textarea id="slot" name="slot_md" rows="5"
+                placeholder="Parkeren doe je het best…">{{ (tekst.slot_md if tekst else '') or '' }}</textarea>
+      <label for="auteur" style="margin-top:12px">Uw dienst of naam</label>
+      <input id="auteur" type="text" name="auteur" maxlength="120"
+             value="{{ (tekst.auteur if tekst else '') or c.dienst or '' }}">
+      <div class="acties" style="margin-top:12px">
+        <button class="btn btn-zon" type="submit">Tekst doorsturen</button></div>
+    </form>
+  </div>
+</details>
+
+{# ── Laag 3: over Ravot en contact ──────────────────────────────────────── #}
+<div class="card">
   <p class="hint">Meedoen is gratis, voor u en voor de plekken die u aanvult.
     Ravot is voor bezoekers gratis en zonder pop-ups of bannerreclame.
     <strong>Wel eerlijk vermeld:</strong> uitbaters kunnen een betaald
     partnerschap nemen waardoor hun zaak uitgelicht wordt — altijd zichtbaar
     gelabeld als "Partner", en zonder invloed op scores of volgorde. Wat u
     aanlevert komt niet achter een betaalmuur.</p>
+  <p class="hint">Vragen of iets aan te passen dat hier niet lukt? Mail ons via
+    <a href="{{ url_for('public.contact') }}">de contactpagina</a>.</p>
 </div>
-
-<h2>✍️ Tekst over {{ naam }}</h2>
-<div class="card">
-  {% if tekst and tekst.pending %}
-  <p class="hint">⏳ Uw laatste tekst is doorgestuurd en wacht op nazicht.</p>
-  {% endif %}
-  <form method="post" action="{{ url_for('public.gemeente_bijdrage_tekst', token=token) }}">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <label for="intro">Wat maakt {{ naam }} leuk voor gezinnen?</label>
-    <p class="hint">Schrijf wat een lijst niet kan zeggen: welke speeltuin
-      overdekt is, waar je bij regen terechtkunt, wat een fijne combinatie is
-      voor een halve dag. 150–300 woorden volstaat.</p>
-    <textarea id="intro" name="intro_md" rows="10"
-              placeholder="In {{ naam }} ravot je het best in…">{{ (tekst.intro_md if tekst else '') or '' }}</textarea>
-
-    <label for="slot" style="margin-top:12px">Praktische tips <span class="hint">(optioneel)</span></label>
-    <textarea id="slot" name="slot_md" rows="5"
-              placeholder="Parkeren doe je het best…">{{ (tekst.slot_md if tekst else '') or '' }}</textarea>
-
-    <label for="auteur" style="margin-top:12px">Uw dienst of naam</label>
-    <input id="auteur" type="text" name="auteur" maxlength="120"
-           value="{{ (tekst.auteur if tekst else '') or c.dienst or '' }}">
-
-    <div class="acties" style="margin-top:12px">
-      <button class="btn btn-zon" type="submit">Tekst doorsturen</button></div>
-  </form>
-</div>
-
-<h2>📷 Foto's van jullie speelterreinen</h2>
-<p class="hint">Dit is waar we uw hulp het meest bij kunnen gebruiken. Van de
-  <strong>{{ totaal_alles }}</strong> speelplekken in {{ naam }} hebben er
-  <strong>{{ zonder_foto_totaal }}</strong> nog geen foto — een ouder ziet dan
-  alleen een pictogram en weet niet of het de moeite is.</p>
-<p class="hint">U hoeft er zeker niet alles mee te doen: elke foto helpt.
-  Evenementen en eetzaken laten we hier bewust weg — die worden elders al
-  bijgehouden.</p>
-
-<div class="filterrij">
-  <a class="chip {{ 'aan' if enkel_zonder else 'uit' }}"
-     href="{{ url_for('public.gemeente_bijdrage', token=token) }}">Enkel zonder foto</a>
-  <a class="chip {{ 'aan' if not enkel_zonder else 'uit' }}"
-     href="{{ url_for('public.gemeente_bijdrage', token=token, alles='1') }}">Alle speelplekken</a>
-</div>
-<p class="hint">{{ totaal }} plek{{ '' if totaal == 1 else 'ken' }} in deze
-  selectie{% if paginas > 1 %} · pagina {{ pagina }} van {{ paginas }}{% endif %}.</p>
-
-{% for e in plekken %}
-<div class="card" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-  <div style="flex:1;min-width:220px">
-    <strong>{{ e.title }}</strong>
-    {% if not e.image_url %}<span class="badge">geen foto</span>{% endif %}
-    <div class="hint">{{ activiteit_type(e)["label"] }}{% if e.adres %} · {{ e.adres }}{% endif %}
-      · <a href="{{ url_for('public.event', slug=e.slug) }}" target="_blank">fiche bekijken ↗</a></div>
-  </div>
-  <form method="post" enctype="multipart/form-data"
-        action="{{ url_for('public.gemeente_bijdrage_foto', token=token, event_id=e.id) }}"
-        class="acties" style="gap:6px">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input type="file" name="fotos" accept="image/jpeg,image/png,image/webp" multiple required>
-    <button class="btn btn-klein" type="submit">Toevoegen</button>
-  </form>
-</div>
-{% endfor %}
-
-{% if paginas > 1 %}
-<div class="filterrij" style="justify-content:center">
-  {% if pagina > 1 %}
-  <a class="chip" href="{{ url_for('public.gemeente_bijdrage', token=token, alles='1' if not enkel_zonder else None, p=pagina-1) }}">← vorige</a>
-  {% endif %}
-  <span class="hint">pagina {{ pagina }} van {{ paginas }}</span>
-  {% if pagina < paginas %}
-  <a class="chip" href="{{ url_for('public.gemeente_bijdrage', token=token, alles='1' if not enkel_zonder else None, p=pagina+1) }}">volgende →</a>
-  {% endif %}
-</div>
-{% endif %}
-
-<p class="hint">Vragen of iets aan te passen dat hier niet lukt? Mail ons via
-  <a href="{{ url_for('public.contact') }}">de contactpagina</a>.</p>
 {% endblock %}

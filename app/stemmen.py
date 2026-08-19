@@ -196,6 +196,53 @@ def leg_stem_vast(event_id, veld, waarde, family=None, gewicht=None,
     return rij
 
 
+# Stem van een toeristische dienst via de gemeentelink (patch 265). Zwaarder
+# dan een gewone stem — de dienst kent zijn eigen terreinen — maar bewust onder
+# VERTROUWEN_MAX: één administratieve vergissing mag door gezinnen ter plaatse
+# bijgestuurd kunnen worden.
+GEMEENTE_GEWICHT = 2.0
+
+
+def leg_gemeente_stem_vast(event_id, veld, waarde, gemeente):
+    """Registreer of wijzig de stem van de gemeentedienst zelf (patch 265).
+
+    Eén stem per (gemeente, plek, veld), net als elke andere stemmer; de
+    dedupe-sleutel is 'gemeente:<naam>'. Commit gebeurt door de aanroeper.
+    """
+    stemmer = f"gemeente:{gemeente}"[:40]
+    rij = VeldStem.query.filter_by(event_id=event_id, veld=veld,
+                                   stemmer=stemmer).first()
+    if rij is None:
+        rij = VeldStem(event_id=event_id, veld=veld, stemmer=stemmer,
+                       waarde=bool(waarde), gewicht=GEMEENTE_GEWICHT)
+        db.session.add(rij)
+    else:
+        rij.waarde = bool(waarde)
+        rij.gewicht = GEMEENTE_GEWICHT
+        rij.updated_at = datetime.utcnow()
+    return rij
+
+
+def veldstatussen_batch(event_ids, nu=None):
+    """{event_id: {veld: status-dict}} voor een lijst plekken in ÉÉN query
+    (patch 265). Voor lijstpagina's zoals de gemeentelink: alle_velden() per
+    plek aanroepen zou één query per plek betekenen. Zelfde gedeelde 'nu' en
+    vertrouwen-cache als alle_velden(), dus identieke uitkomsten.
+    """
+    nu = nu or datetime.utcnow()
+    ids = [i for i in event_ids if i]
+    if not ids:
+        return {}
+    per_plek = {}
+    for r in VeldStem.query.filter(VeldStem.event_id.in_(ids)).all():
+        per_plek.setdefault(r.event_id, {}).setdefault(r.veld, []).append(r)
+    cache = {}
+    return {eid: {veld: veld_status(eid, veld, rijen, nu=nu,
+                                    vertrouwen_cache=cache)
+                  for veld, rijen in velden.items()}
+            for eid, velden in per_plek.items()}
+
+
 def _verval_factor(veld, stem, nu=None):
     """Hoeveel weegt deze stem nog, na veroudering? 1.0 vers, → 0 met de tijd.
     Exponentieel verval met een halfwaardetijd die van het veld afhangt."""

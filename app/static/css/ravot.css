@@ -1413,3 +1413,36 @@ h1 + .ravot-label + .open-badge, .ravot-label + .open-badge { margin-left: 6px; 
   font: 700 .9rem Inter, sans-serif; cursor: pointer;
   transform: translate(-50%, -50%); }
 .streek-bol:hover { background: #256a3a; }
+
+/* ── Gemeente-bijdragepagina (patch 265) ─────────────────────────────────── */
+.gem-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 10px 0; }
+.gem-stat-kop { display: flex; justify-content: space-between; align-items: baseline;
+  gap: 8px; font-size: .92rem; margin-bottom: 4px; }
+.voortgang { background: #EFEAE0; border-radius: 99px; height: 10px; overflow: hidden; }
+.voortgang-vulling { background: var(--gras); height: 100%; border-radius: 99px;
+  min-width: 4px; transition: width .3s; }
+details.gem-groep { margin: 0 0 10px; }
+summary.gem-groep-titel { cursor: pointer; list-style: none; display: flex;
+  align-items: center; gap: 8px; flex-wrap: wrap; font-weight: 700;
+  background: #FCF9F2; border: 1px solid #EFEAE0; border-radius: var(--r);
+  padding: 10px 14px; }
+summary.gem-groep-titel::-webkit-details-marker { display: none; }
+summary.gem-groep-titel::after { content: "▾"; margin-left: auto; transition: transform .15s; }
+details.gem-groep[open] > summary.gem-groep-titel::after { transform: rotate(180deg); }
+.gem-groep-teller { font-weight: 400; font-size: .88rem; color: #6b675e; }
+.gem-plek { margin: 8px 0; }
+.gem-plek-kop { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.gem-plek-kop > div:first-child { flex: 1; min-width: 220px; }
+.gem-fotoform { gap: 6px; }
+.gem-vragen { margin-top: 10px; border-top: 1px dashed #EFEAE0; padding-top: 8px;
+  display: flex; flex-direction: column; gap: 6px; }
+.veldvraag { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.veldvraag-tekst { flex: 1; min-width: 200px; font-size: .95rem; }
+.veldvraag-knoppen { display: flex; gap: 6px; }
+.veldvraag-knoppen form { display: inline; }
+.hp-veld { position: absolute; left: -9999px; top: -9999px; height: 0;
+  overflow: hidden; }
+.veldrij { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 560px) {
+  .gem-stats, .veldrij { grid-template-columns: 1fr; }
+}
