@@ -2640,6 +2640,18 @@ def gemeente_bijdrage(token):
                 VeldStem.stemmer == f"gemeente:{c.gemeente}"[:40],
                 VeldStem.event_id.in_(alle_ids)).all():
             gem_map.setdefault(s.event_id, {})[s.veld] = s.waarde
+    # Openstaande eigen meldingen (patch 271): toon "doorgestuurd" in plaats
+    # van nogmaals een meldknop.
+    from ..models import Report as _Report
+    gemeld = set()
+    if alle_ids:
+        for (eid,) in (db.session.query(_Report.event_id)
+                       .filter(_Report.event_id.in_(alle_ids),
+                               _Report.handled.is_(False),
+                               _Report.note.like(
+                                   f"[Gemeente {c.gemeente.title()}]%"))
+                       .distinct().all()):
+            gemeld.add(eid)
     vragen_per_plek = {}     # id -> [(veld, vraag, waarde|None, pct|None, mijn)]
     open_per_plek = {}       # id -> aantal écht open vragen
     velden_totaal = beantwoord_totaal = 0
@@ -2713,6 +2725,7 @@ def gemeente_bijdrage(token):
                            "public/gemeente_bijdrage.html", c=c, naam=naam,
                            tekst=tekst, plekken=plekken, token=token,
                            groepen=groepen, vragen_per_plek=vragen_per_plek,
+                           gemeld=gemeld,
                            open_vragen_totaal=open_vragen_totaal,
                            pct_foto=pct_foto, pct_vragen=pct_vragen,
                            enkel_zonder=enkel_zonder, totaal_alles=len(alles),
@@ -2795,6 +2808,44 @@ def gemeente_bijdrage_stem(token, event_id, veld, waarde):
         c.aantal_bijdragen = (c.aantal_bijdragen or 0) + 1
         db.session.commit()
         flash(f"Genoteerd: {lbl} bij {ev.title}. Dank u wel!", "ok")
+    return redirect((request.referrer
+                     or url_for("public.gemeente_bijdrage", token=token))
+                    + f"#plek-{ev.id}")
+
+
+@bp.route("/gemeente-bijdrage/<token>/meld/<int:event_id>", methods=["POST"])
+@limiter.limit("30/hour")
+def gemeente_bijdrage_meld(token, event_id):
+    """Foutieve fiche melden door de dienst zelf (patch 271).
+
+    Sluit aan op het bestaande Report-systeem, met één verschil dat bij het
+    ankerprincipe past: waar gezinnen met report_drempel (3) moeten zijn om
+    een gecureerde fiche terug naar nazicht te duwen, volstaat één gemeente-
+    melding meteen. Verwijderen blijft een redactiebeslissing in het nazicht —
+    ook een dienst kan zich vergissen van speeltuin.
+    """
+    from ..models import Report, utcnow
+    c = _gemeente_via_token(token)
+    if c is None:
+        abort(404)
+    ev = db.session.get(Event, event_id) or abort(404)
+    if (ev.gemeente or "").strip().lower() != c.gemeente:
+        abort(403)
+    reason = request.form.get("reason")
+    if reason not in ("gesloten", "fout"):
+        reason = "fout"
+    note = (request.form.get("note") or "").strip()[:400]
+    db.session.add(Report(event_id=ev.id, family_id=None, reason=reason,
+                          note=f"[Gemeente {c.gemeente.title()}] {note}".strip()[:500]))
+    if ev.curated:
+        ev.curated = False
+        ev.curated_by = None
+        ev.curated_at = None
+    c.laatst_verrijkt = utcnow().replace(tzinfo=None)
+    c.aantal_bijdragen = (c.aantal_bijdragen or 0) + 1
+    db.session.commit()
+    flash(f"Genoteerd: uw melding over {ev.title} is doorgestuurd naar onze "
+          "redactie. We passen de fiche aan of halen ze offline.", "ok")
     return redirect((request.referrer
                      or url_for("public.gemeente_bijdrage", token=token))
                     + f"#plek-{ev.id}")
@@ -2942,6 +2993,98 @@ def gemeente_bijdrage_evenement(token):
     else:
         flash("Bedankt! Uw evenement is doorgestuurd — we kijken het na en "
               "zetten het dan online.", "ok")
+    return redirect(url_for("public.gemeente_bijdrage", token=token))
+
+
+@bp.route("/gemeente-bijdrage/<token>/plek", methods=["GET", "POST"])
+@limiter.limit("30/hour", methods=["POST"])
+def gemeente_bijdrage_plek(token):
+    """Ontbrekende plek toevoegen via de gemeentelink (patch 272).
+
+    Spiegel van het gezinsformulier (account.toevoegen), maar zonder login en
+    zonder kaartpin — de dienst geeft adres en postcode, het nazicht verfijnt.
+    Landt als pending met source="gemeente"; de OSM-sync raakt deze plekken
+    nooit aan (eigen bron, eigen leven).
+    """
+    from datetime import date
+    import secrets
+    from ..geo import postcode_coord
+    from ..models import utcnow
+    from ..types import TYPES
+    from .account import _slugify
+    c = _gemeente_via_token(token)
+    if c is None:
+        abort(404)
+    naam = c.gemeente.title()
+    soorten = {k: v for k, v in TYPES.items() if v[2]}
+
+    def _formulier(fouten=None):
+        resp = make_response(render_template(
+                               "public/gemeente_plek.html", c=c, naam=naam,
+                               token=token, form=request.form,
+                               soorten=soorten, fouten=fouten or [],
+                               family=None, active=None, noindex=True,
+                               title=f"Plek toevoegen · {naam}"))
+        resp.headers["X-Robots-Tag"] = "noindex, nofollow"
+        return resp
+
+    if request.method != "POST":
+        return _formulier()
+    if (request.form.get("website2") or "").strip():        # honeypot
+        flash("Bedankt! Uw plek is doorgestuurd — we kijken ze na en zetten "
+              "ze dan online.", "ok")
+        return redirect(url_for("public.gemeente_bijdrage", token=token))
+
+    fouten = []
+    titel = (request.form.get("titel") or "").strip()[:255]
+    if not titel:
+        fouten.append("Geef de plek een naam.")
+    soort = request.form.get("soort") or ""
+    if soort not in soorten:
+        fouten.append("Kies wat voor plek het is.")
+    if fouten:
+        return _formulier(fouten)
+
+    postcode = re.sub(r"\D", "", request.form.get("postcode") or "")[:4] or None
+    coord = postcode_coord(postcode) if postcode else None
+    try:
+        lo = max(0, min(99, int(request.form.get("age_min") or 0)))
+        hi = max(lo, min(99, int(request.form.get("age_max") or 12)))
+    except ValueError:
+        lo, hi = 0, 12
+    ev = Event(
+        source="gemeente", pending=True, hidden=False,
+        is_permanent=True, is_kamp=False, subtype=soort,
+        title=titel,
+        description=(request.form.get("beschrijving") or "").strip()[:2000],
+        gemeente=naam, postcode=postcode,
+        adres=(request.form.get("adres") or "").strip()[:255] or None,
+        lat=coord[0] if coord else None, lng=coord[1] if coord else None,
+        age_min=lo, age_max=hi, categories=[],
+        indoor=bool(request.form.get("indoor")),
+        is_free=bool(request.form.get("gratis")),
+        source_url=(request.form.get("website") or "").strip()[:500] or None,
+        attribution=f"doorgegeven door {naam_van(c)}",
+        slug=f"{_slugify(titel)}-g{secrets.token_hex(3)}",
+    )
+    db.session.add(ev)
+    db.session.flush()
+    n_fotos = 0
+    if request.form.get("foto_akkoord"):
+        from ..fotos import verwerk_upload
+        from ..models import Photo
+        for bestand in request.files.getlist("fotos")[:3]:
+            fnaam = verwerk_upload(bestand)
+            if fnaam:
+                db.session.add(Photo(event_id=ev.id, filename=fnaam,
+                                     soort="gemeente", status="pending"))
+                n_fotos += 1
+    c.laatst_verrijkt = utcnow().replace(tzinfo=None)
+    c.aantal_bijdragen = (c.aantal_bijdragen or 0) + 1 + n_fotos
+    db.session.commit()
+    flash("Bedankt! Uw plek is doorgestuurd — we kijken ze na en zetten ze "
+          "dan online." + (f" ({n_fotos} foto('s) mee ontvangen.)"
+                           if n_fotos else ""), "ok")
     return redirect(url_for("public.gemeente_bijdrage", token=token))
 
 

@@ -25,14 +25,17 @@
     jaar geldig.</p>
 </div>
 
-{# ── Evenement doorgeven ───────────────────────────────────────────────── #}
+{# ── Evenement of plek doorgeven ───────────────────────────────────────── #}
 <div class="card" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
   <div style="flex:1;min-width:220px">
-    <strong>📅 Een evenement in {{ naam }}?</strong>
-    <div class="hint">Speelstraat, buitenspeeldag, kindermarkt… Geef het door
-      en het verschijnt na nazicht in de gezinsagenda.</div>
+    <strong>📅 Iets nieuws in {{ naam }}?</strong>
+    <div class="hint">Een speelstraat of buitenspeeldag — of een speeltuin
+      die nog niet op Ravot staat. Geef het door; het verschijnt na nazicht.</div>
   </div>
-  <a class="btn btn-zon" href="{{ url_for('public.gemeente_bijdrage_evenement', token=token) }}">Evenement doorgeven</a>
+  <div class="acties" style="gap:8px">
+    <a class="btn btn-zon" href="{{ url_for('public.gemeente_bijdrage_evenement', token=token) }}">Evenement doorgeven</a>
+    <a class="btn" href="{{ url_for('public.gemeente_bijdrage_plek', token=token) }}">📍 Plek toevoegen</a>
+  </div>
 </div>
 
 {# ── Laag 2: het werkgedeelte, per plektype ─────────────────────────────── #}
@@ -105,6 +108,25 @@
       </div>
       {% endfor %}
     </div>
+    {% endif %}
+    {% if e.id in gemeld %}
+    <p class="hint gem-gemeld">🚩 Uw melding over deze plek is doorgestuurd —
+      onze redactie kijkt ernaar.</p>
+    {% else %}
+    <details class="gem-meld">
+      <summary class="hint">🚩 Klopt deze fiche niet (meer)?</summary>
+      <form method="post" class="gem-meldform"
+            action="{{ url_for('public.gemeente_bijdrage_meld', token=token, event_id=e.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <select name="reason">
+          <option value="gesloten">Bestaat niet meer / is verwijderd</option>
+          <option value="fout">De informatie klopt niet</option>
+        </select>
+        <input type="text" name="note" maxlength="400"
+               placeholder="Korte toelichting (bv. afgebroken in 2025)">
+        <button class="btn btn-klein" type="submit">Melden</button>
+      </form>
+    </details>
     {% endif %}
   </div>
   {% endfor %}

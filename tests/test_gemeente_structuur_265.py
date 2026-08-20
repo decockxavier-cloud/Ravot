@@ -331,3 +331,73 @@ def test_evenement_zonder_uren_blijft_hele_dag(client, app):
     with app.app_context():
         ev = Event.query.filter_by(title="Kindermarkt").first()
         assert ev.start.hour == 0 and ev.end.hour == 23 and ev.end.minute == 59
+
+
+# ── 9. Foutieve fiche melden (patch 271) ────────────────────────────────────
+
+def test_gemeente_meldt_fiche_en_die_gaat_naar_nazicht(client, app):
+    """Eén gemeentemelding volstaat om een gecureerde fiche terug naar het
+    nazicht te sturen (gezinnen hebben er drie nodig) — verwijderen blijft
+    een redactiebeslissing."""
+    from app.models import Report
+    token = _token(app, client)
+    eid = _event_id(app, "gs265-1")
+    with app.app_context():
+        ev = db.session.get(Event, eid)
+        ev.curated = True
+        db.session.commit()
+    r = client.post(f"/gemeente-bijdrage/{token}/meld/{eid}", data={
+        "reason": "gesloten", "note": "Afgebroken in 2025"})
+    assert r.status_code == 302
+    with app.app_context():
+        rap = Report.query.filter_by(event_id=eid, handled=False).first()
+        assert rap is not None and rap.reason == "gesloten"
+        assert rap.note.startswith("[Gemeente Brussel]")
+        assert "Afgebroken in 2025" in rap.note
+        assert db.session.get(Event, eid).curated is False   # terug naar nazicht
+    # De pagina toont nu "doorgestuurd" in plaats van nogmaals de meldknop.
+    h = client.get(f"/gemeente-bijdrage/{token}").get_data(as_text=True)
+    assert "Uw melding over deze plek is doorgestuurd" in h
+
+
+def test_melden_buiten_eigen_gemeente_geweigerd(client, app):
+    token = _token(app, client)
+    eid = _event_id(app, "gs265-3")                  # Gent
+    assert client.post(f"/gemeente-bijdrage/{token}/meld/{eid}",
+                       data={"reason": "gesloten"}).status_code == 403
+
+
+# ── 10. Ontbrekende plek toevoegen (patch 272) ──────────────────────────────
+
+def test_plek_toevoegen_landt_pending_met_type(client, app):
+    token = _token(app, client)
+    assert client.get(f"/gemeente-bijdrage/{token}/plek").status_code == 200
+    r = client.post(f"/gemeente-bijdrage/{token}/plek", data={
+        "titel": "Speeltuin De Vlindertuin", "soort": "playground",
+        "postcode": "1000", "gratis": "1", "age_min": "2", "age_max": "10"})
+    assert r.status_code == 302
+    with app.app_context():
+        ev = Event.query.filter_by(title="Speeltuin De Vlindertuin").first()
+        assert ev is not None
+        assert ev.pending is True and ev.source == "gemeente"
+        assert ev.is_permanent is True and ev.subtype == "playground"
+        assert ev.gemeente == "Brussel"
+        assert ev.lat is not None                    # via postcode_coord
+        assert "doorgegeven door" in (ev.attribution or "")
+
+
+def test_plek_zonder_soort_bewaart_invoer(client, app):
+    token = _token(app, client)
+    h = client.post(f"/gemeente-bijdrage/{token}/plek", data={
+        "titel": "Naamloos Park"}).get_data(as_text=True)
+    assert "Kies wat voor plek" in h
+    assert 'value="Naamloos Park"' in h              # invoer niet kwijt
+    with app.app_context():
+        assert Event.query.filter_by(title="Naamloos Park").count() == 0
+
+
+def test_mail_noemt_plek_toevoegen_en_melden(client, app):
+    _token(app, client)
+    h = client.get("/beheer/gemeentecontacten/brussel").get_data(as_text=True)
+    assert "gezinsplek toevoegen die nog niet op Ravot staat" in h
+    assert "melden wanneer een plek niet meer bestaat" in h

@@ -1448,3 +1448,10 @@ details.gem-groep[open] > summary.gem-groep-titel::after { transform: rotate(180
   .gem-stats, .veldrij { grid-template-columns: 1fr; }
 }
 .gem-tegenspraak { color: #b8541c; display: block; margin-top: 2px; }
+details.gem-meld { margin-top: 8px; }
+details.gem-meld > summary { cursor: pointer; list-style: none; }
+details.gem-meld > summary::-webkit-details-marker { display: none; }
+.gem-meldform { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.gem-meldform select { flex: 1 1 220px; min-height: 40px; }
+.gem-meldform input[type=text] { flex: 2 1 240px; min-height: 40px; }
+.gem-gemeld { margin-top: 8px; color: #b8541c; }

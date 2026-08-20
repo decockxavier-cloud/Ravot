@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card" style="border-color:var(--zon)">
+  <h1 style="margin-top:0">📍 Plek toevoegen · {{ naam }}</h1>
+  <p class="hint">Staat er een speeltuin, park of andere gezinsplek in
+    {{ naam }} nog niet op Ravot? Geef ze hier door — onze redactie kijkt ze
+    na voor ze online komt.</p>
+  <p><a href="{{ url_for('public.gemeente_bijdrage', token=token) }}">← terug naar de bijdragepagina</a></p>
+</div>
+
+{% if fouten %}
+<div class="card" style="border-color:#c0392b">
+  {% for f in fouten %}<p class="hint" style="color:#c0392b;margin:4px 0">⚠️ {{ f }}</p>{% endfor %}
+</div>
+{% endif %}
+
+<div class="card">
+  <form method="post" enctype="multipart/form-data"
+        action="{{ url_for('public.gemeente_bijdrage_plek', token=token) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="hp-veld" aria-hidden="true">
+      <label for="website2">Website</label>
+      <input id="website2" type="text" name="website2" tabindex="-1" autocomplete="off">
+    </div>
+
+    <label for="titel">Naam van de plek *</label>
+    <input id="titel" type="text" name="titel" maxlength="255" required
+           value="{{ form.get('titel', '') }}" placeholder="Speeltuin De Vlindertuin">
+
+    <label for="soort" style="margin-top:12px">Wat voor plek is het? *</label>
+    <select id="soort" name="soort" required>
+      <option value="" {{ 'selected' if not form.get('soort') }}>— kies —</option>
+      {% for code, (emoji, label, _) in soorten.items() %}
+      <option value="{{ code }}" {{ 'selected' if form.get('soort') == code }}>{{ emoji }} {{ label }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="beschrijving" style="margin-top:12px">Korte beschrijving</label>
+    <textarea id="beschrijving" name="beschrijving" rows="4"
+              placeholder="Wat maakt deze plek leuk voor kinderen?">{{ form.get('beschrijving', '') }}</textarea>
+
+    <div class="veldrij" style="margin-top:12px">
+      <div>
+        <label for="adres">Adres</label>
+        <input id="adres" type="text" name="adres" maxlength="255"
+               value="{{ form.get('adres', '') }}" placeholder="Kerkstraat 12">
+      </div>
+      <div>
+        <label for="postcode">Postcode</label>
+        <input id="postcode" type="text" name="postcode" maxlength="4"
+               value="{{ form.get('postcode', '') }}" inputmode="numeric">
+      </div>
+    </div>
+
+    <div class="veldrij" style="margin-top:12px">
+      <div>
+        <label for="age_min">Leeftijd van</label>
+        <input id="age_min" type="number" name="age_min" min="0" max="99"
+               value="{{ form.get('age_min', '0') }}">
+      </div>
+      <div>
+        <label for="age_max">tot</label>
+        <input id="age_max" type="number" name="age_max" min="0" max="99"
+               value="{{ form.get('age_max', '12') }}">
+      </div>
+    </div>
+
+    <div class="veldrij" style="margin-top:12px">
+      <div>
+        <label class="chip" style="display:inline-flex;gap:6px;align-items:center">
+          <input type="checkbox" name="gratis" value="1"
+                 {{ 'checked' if form.get('gratis') }}> Gratis toegankelijk
+        </label>
+      </div>
+      <div>
+        <label class="chip" style="display:inline-flex;gap:6px;align-items:center">
+          <input type="checkbox" name="indoor" value="1"
+                 {{ 'checked' if form.get('indoor') }}> Overdekt / binnen
+        </label>
+      </div>
+    </div>
+
+    <label for="website" style="margin-top:12px">Meer info (link)
+      <span class="hint">(optioneel)</span></label>
+    <input id="website" type="url" name="website" maxlength="500"
+           value="{{ form.get('website', '') }}" placeholder="https://…">
+
+    <div class="veld" style="margin-top:12px">
+      <label>📷 Foto's <span class="hint">(tot 3, optioneel — jpg, png of
+        webp)</span></label>
+      <input type="file" name="fotos" accept="image/jpeg,image/png,image/webp" multiple>
+      <label class="check"><input type="checkbox" name="foto_akkoord" value="1">
+        Wij hebben de rechten op deze beelden en delen ze met Ravot
+        <span class="hint">(verborgen gegevens zoals GPS-locatie halen we er
+        automatisch af)</span></label>
+    </div>
+
+    <div class="acties" style="margin-top:16px">
+      <button class="btn btn-zon" type="submit">Plek doorsturen</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

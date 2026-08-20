@@ -27,8 +27,8 @@
   <h2 style="margin-top:0">De link voor {{ gemeente }}</h2>
   <p class="hint">Geldig tot <strong>{{ c.token_tot.strftime('%d/%m/%Y') if c.token_tot else '—' }}</strong>.
     Wie deze link heeft, kan voor {{ gemeente }} veldvragen beantwoorden,
-    foto's toevoegen, evenementen doorgeven en tekst schrijven — meer niet.
-    Alles gaat via nazicht.</p>
+    foto's toevoegen, plekken en evenementen doorgeven, foute fiches melden
+    en tekst schrijven — meer niet. Alles gaat via nazicht.</p>
   <p><input type="text" readonly value="{{ link }}" style="width:100%"
             onfocus="this.select()"></p>
   <form method="post" style="display:inline">
@@ -62,7 +62,9 @@ Daar kunt u ons mee helpen, met deze link (geen account nodig):
 Dit kan daar allemaal, en elk beetje telt:
 - korte vragen beantwoorden over uw speelterreinen (parking, toilet, omheind, …) — één klik per vraag, en uw antwoord weegt bij ons het zwaarst;
 - foto's toevoegen bij de plekken die u kent;
+- een speeltuin of andere gezinsplek toevoegen die nog niet op Ravot staat;
 - evenementen voor gezinnen doorgeven (een speelstraat, buitenspeeldag, kindermarkt, …);
+- melden wanneer een plek niet meer bestaat of de informatie niet klopt — dan passen wij de fiche aan of halen ze offline;
 - een korte tekst schrijven over uitstappen met kinderen in {{ gemeente }}.
 
 Alles wordt door onze redactie nagekeken voor het online komt. De link blijft een jaar geldig, dus u kunt er in meerdere keren aan werken — één foto of één beantwoorde vraag is al een hulp. Bovenaan de pagina ziet u de voortgang voor {{ gemeente }}.
